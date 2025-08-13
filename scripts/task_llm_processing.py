@@ -19,17 +19,20 @@ import time
 import sys
 import os
 import asyncio
-from typing import Dict, List, Any
+from typing import Dict, List, Any, Optional
 
 # Add the backend directory to the path so we can import our services
 sys.path.append(os.path.join(os.path.dirname(__file__), '..', 'backend'))
 
 from services.config import Settings
 from services.llm_team import LLMTeam
+from services.persona_manager import PersonaManager
 
 
-def process_requirements_with_llm(requirements_list: List[Dict], llm_provider: str, 
-                                llm_model: str, iterations: int) -> Dict[str, Any]:
+async def process_requirements_with_llm(requirements_list: List[Dict], llm_provider: str, 
+                                llm_model: str, iterations: int, 
+                                custom_personas: Optional[List[Dict]] = None, 
+                                custom_prompts: Optional[List[Dict]] = None) -> Dict[str, Any]:
     """
     Process requirements through Monte Carlo LLM iterations.
     
@@ -38,6 +41,8 @@ def process_requirements_with_llm(requirements_list: List[Dict], llm_provider: s
         llm_provider: LLM provider (openai or ollama)
         llm_model: Model name to use
         iterations: Number of Monte Carlo iterations
+        custom_personas: Optional custom personas to use
+        custom_prompts: Optional custom prompts to use
         
     Returns:
         Dict containing processed_requirements and llm_results
@@ -298,7 +303,7 @@ def _calculate_iteration_confidence(iteration: int, total_iterations: int, llm_r
 
 
 # Main execution function for Camunda
-def main():
+async def main():
     """Main function called by Camunda."""
     # This would be called by Camunda with the execution context
     # For now, this is a standalone script for testing
@@ -319,7 +324,7 @@ def main():
         }
     ]
     
-    result = process_requirements_with_llm(
+    result = await process_requirements_with_llm(
         requirements_list=sample_requirements,
         llm_provider='openai',
         llm_model='gpt-4o-mini',
@@ -340,5 +345,10 @@ def main():
         print(f"    Processing Time: {req['total_processing_time']:.2f}s")
 
 
+def run_main():
+    """Wrapper to run the async main function."""
+    asyncio.run(main())
+
+
 if __name__ == "__main__":
-    main()
+    run_main()

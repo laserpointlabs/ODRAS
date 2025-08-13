@@ -17,14 +17,20 @@ class LLMTeam:
     def __init__(self, settings: Settings):
         self.settings = settings
 
-    async def analyze_requirement(self, requirement_text: str, ontology_json_schema: dict) -> Dict:
-        """Call two personas and ensemble their JSON outputs by simple voting/merging.
+    async def analyze_requirement(self, requirement_text: str, ontology_json_schema: dict, 
+                                custom_personas: List[Dict] = None, custom_prompts: List[Dict] = None) -> Dict:
+        """Call configured personas and ensemble their JSON outputs by simple voting/merging.
         Returns JSON object adhering to `ontology_json_schema` best-effort.
         """
-        personas = [
-            ("Extractor", "You extract ontology-grounded entities from requirements."),
-            ("Reviewer", "You validate and correct extracted JSON to fit the schema strictly."),
-        ]
+        # Use custom personas if provided, otherwise use default ones
+        if custom_personas:
+            personas = [(p["name"], p["system_prompt"]) for p in custom_personas if p.get("is_active", True)]
+        else:
+            # Default personas
+            personas = [
+                ("Extractor", "You extract ontology-grounded entities from requirements."),
+                ("Reviewer", "You validate and correct extracted JSON to fit the schema strictly."),
+            ]
 
         outputs = []
         for role, system in personas:
