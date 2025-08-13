@@ -11,7 +11,7 @@ import time
 import sys
 import os
 sys.path.append(os.path.join(os.path.dirname(__file__), '..'))
-from backend.services.config import Settings
+from services.config import Settings
 import httpx
 
 
@@ -60,8 +60,8 @@ async def on_startup():
     Settings()  # loads env
 
 
-@app.get("/user-review", response_class=HTMLResponse)
-async def user_review_interface():
+@app.get("/", response_class=HTMLResponse)
+async def root():
     """Root endpoint with basic HTML interface."""
     html_content = """
     <!DOCTYPE html>
@@ -327,32 +327,33 @@ async def user_review_interface():
                     const categoryInput = editForm.querySelector('input[type="text"]');
                     const confidenceInput = editForm.querySelector('input[type="number"]');
                         
-                    if (textarea.value !== req.text || 
-                        categoryInput.value !== (req.category || '') ||
-                        confidenceInput.value !== (req.extraction_confidence || 0.8)) {
-                        edits.push({
-                            edit_type: 'modify',
-                            requirement_id: req.id,
-                            field: 'text',
-                            new_value: textarea.value
-                        });
-                        if (categoryInput.value !== (req.category || '')) {
+                        if (textarea.value !== req.text || 
+                            categoryInput.value !== (req.category || '') ||
+                            confidenceInput.value !== (req.extraction_confidence || 0.8)) {
                             edits.push({
                                 edit_type: 'modify',
                                 requirement_id: req.id,
-                                field: 'category',
-                                new_value: categoryInput.value
+                                field: 'text',
+                                new_value: textarea.value
                             });
+                            if (categoryInput.value !== (req.category || '')) {
+                                edits.push({
+                                    edit_type: 'modify',
+                                    requirement_id: req.id,
+                                    field: 'category',
+                                    new_value: categoryInput.value
+                                });
+                            }
+                            if (confidenceInput.value !== (req.extraction_confidence || 0.8)) {
+                                edits.push({
+                                    edit_type: 'modify',
+                                    requirement_id: req.id,
+                                    field: 'extraction_confidence',
+                                    new_value: parseFloat(confidenceInput.value)
+                                });
+                            }
                         }
-                        if (confidenceInput.value !== (req.extraction_confidence || 0.8)) {
-                            edits.push({
-                                edit_type: 'modify',
-                                requirement_id: req.id,
-                                field: 'extraction_confidence',
-                                new_value: parseFloat(confidenceInput.value)
-                            });
-                        }
-                    }
+                    });
                 });
                 
                 if (edits.length > 0) {
@@ -567,63 +568,13 @@ async def get_camunda_status():
     """Get Camunda engine status."""
     try:
         async with httpx.AsyncClient(timeout=10) as client:
-            # Check if REST API is accessible by trying to get engine info
-            response = await client.get(f"{CAMUNDA_REST_API}/engine")
+            response = await client.get(f"{CAMUNDA_BASE_URL}/actuator/health")
             if response.status_code == 200:
-                return {"status": "running", "url": CAMUNDA_BASE_URL, "api_url": CAMUNDA_REST_API}
+                return {"status": "running", "url": CAMUNDA_BASE_URL}
             else:
-                # Fallback: Try to check if deployments endpoint works
-                response = await client.get(f"{CAMUNDA_REST_API}/deployment")
-                if response.status_code == 200:
-                    return {"status": "running", "url": CAMUNDA_BASE_URL, "api_url": CAMUNDA_REST_API}
-                else:
-                    return {"status": "error", "url": CAMUNDA_BASE_URL, "message": "REST API not responding"}
+                return {"status": "error", "url": CAMUNDA_BASE_URL}
     except Exception as e:
         return {"status": "unreachable", "error": str(e), "url": CAMUNDA_BASE_URL}
-
-
-@app.get("/api/ollama/status")
-async def get_ollama_status():
-    """Get Ollama server status."""
-    try:
-        settings = Settings()
-        base = settings.ollama_url.rstrip('/')
-        async with httpx.AsyncClient(timeout=10) as client:
-            # Check if Ollama is running by accessing its API
-            response = await client.get(f"{base}/api/tags")
-            if response.status_code == 200:
-                data = response.json()
-                model_count = len(data.get("models", []))
-                return {"status": "running", "url": base, "model_count": model_count}
-            else:
-                return {"status": "error", "url": base, "message": "API not responding"}
-    except Exception as e:
-        return {"status": "unreachable", "error": str(e), "url": Settings().ollama_url}
-
-
-@app.get("/api/openai/status")
-async def get_openai_status():
-    """Get OpenAI API status."""
-    try:
-        api_key = Settings().openai_api_key
-        if not api_key:
-            return {"status": "not_configured", "message": "OPENAI_API_KEY not set"}
-        
-        headers = {"Authorization": f"Bearer {api_key}"}
-        url = "https://api.openai.com/v1/models"
-        
-        async with httpx.AsyncClient(timeout=10) as client:
-            response = await client.get(url, headers=headers)
-            if response.status_code == 200:
-                data = response.json()
-                model_count = len(data.get("data", []))
-                return {"status": "running", "url": "https://api.openai.com", "model_count": model_count}
-            elif response.status_code == 401:
-                return {"status": "unauthorized", "message": "Invalid API key"}
-            else:
-                return {"status": "error", "message": f"API returned status {response.status_code}"}
-    except Exception as e:
-        return {"status": "unreachable", "error": str(e)}
 
 
 @app.get("/api/camunda/deployments")
@@ -640,8 +591,8 @@ async def get_camunda_deployments():
         return {"deployments": [], "error": str(e)}
 
 
-@app.get("/", response_class=HTMLResponse)
-async def index():
+@app.get("/old", response_class=HTMLResponse)
+async def index_old():
     # Minimal HTML UI
     html = """
     <!DOCTYPE html>
@@ -685,62 +636,26 @@ async def index():
         .test-section { margin-top: 1rem; padding-top: 1rem; border-top: 1px solid #e5e7eb; }
         .test-input { margin-bottom: 0.5rem; }
         .test-result { background: #f1f5f9; padding: 0.5rem; border-radius: 4px; margin-top: 0.5rem; }
-        
-        /* Compact status badges */
-        .status-badge { 
-          padding: 0.25rem 0.5rem; 
-          border-radius: 4px; 
-          font-size: 0.875rem;
-          background: #f3f4f6;
-          border: 1px solid #e5e7eb;
-          display: inline-flex;
-          align-items: center;
-          gap: 0.25rem;
-        }
-        .status-indicator {
-          font-weight: 600;
-        }
-        .status-badge.online { 
-          background: #dcfce7; 
-          border-color: #86efac;
-          color: #166534;
-        }
-        .status-badge.online .status-indicator { color: #16a34a; }
-        .status-badge.offline { 
-          background: #fee2e2; 
-          border-color: #fca5a5;
-          color: #991b1b;
-        }
-        .status-badge.offline .status-indicator { color: #dc2626; }
-        .status-badge.warning { 
-          background: #fef3c7; 
-          border-color: #fde047;
-          color: #854d0e;
-        }
-        .status-badge.warning .status-indicator { color: #ca8a04; }
       </style>
     </head>
     <body>
       <h1>ODRAS MVP - Camunda BPMN</h1>
       
-      <div class="card" style="padding: 0.75rem;">
-        <div style="display: flex; align-items: center; gap: 1rem; flex-wrap: wrap;">
-          <h4 style="margin: 0;">Services:</h4>
-          <span id="camunda-status" class="status-badge">Camunda: <span class="status-indicator">...</span></span>
-          <span id="ollama-status" class="status-badge">Ollama: <span class="status-indicator">...</span></span>
-          <span id="openai-status" class="status-badge">OpenAI: <span class="status-indicator">...</span></span>
-        </div>
+      <div class="card">
+        <h3>System Status</h3>
+        <div id="camunda-status">Checking...</div>
+        <button onclick="checkCamundaStatus()">Refresh Status</button>
+        <button onclick="debugFunctions()">Debug Functions</button>
+        <button onclick="showTab('personas')">Test Personas Tab</button>
+        <button onclick="showTab('prompts')">Test Prompts Tab</button>
       </div>
       
       <!-- Tab Navigation -->
       <div class="tabs">
-        <button class="tab-button active" onclick='showTab("upload")'>Upload & Process</button>
-        <button class="tab-button" onclick='showTab("personas")'>Personas</button>
-        <button class="tab-button" onclick='showTab("prompts")'>Prompts</button>
-        <button class="tab-button" onclick='showTab("runs")'>Active Runs</button>
-        <button class="tab-button" onclick='showTab("tasks")' id="tasks-tab-button">
-          User Tasks <span id="task-count-badge" style="background: #ef4444; color: white; padding: 2px 6px; border-radius: 10px; margin-left: 5px; display: none;">0</span>
-        </button>
+        <button class="tab-button active" onclick="showTab('upload')">Upload & Process</button>
+        <button class="tab-button" onclick="showTab('personas')">Personas</button>
+        <button class="tab-button" onclick="showTab('prompts')">Prompts</button>
+        <button class="tab-button" onclick="showTab('runs')">Active Runs</button>
       </div>
       
       <!-- Upload Tab -->
@@ -759,9 +674,8 @@ async def index():
               <option value="ollama">Ollama (local)</option>
             </select>
             <label>LLM Model</label>
-            <select name="llm_model" id="llm_model">
-              <option value="">Select a model...</option>
-            </select>
+            <input name="llm_model" list="models-list" placeholder="gpt-4o-mini / llama3:8b-instruct" />
+            <datalist id="models-list"></datalist>
             <button type="submit">Start BPMN Analysis</button>
           </form>
           <div id="result"></div>
@@ -807,35 +721,18 @@ async def index():
         </div>
       </div>
       
-      <!-- User Tasks Tab -->
-      <div id="tasks-tab" class="tab-content">
-        <div class="card">
-          <h3>Pending User Tasks</h3>
-          <p style="color: #666; margin-bottom: 20px;">
-            Tasks requiring your review or approval in the BPMN workflow.
-          </p>
-          <div id="user-tasks-list">
-            <div style="padding: 20px; text-align: center; color: #999;">
-              No pending tasks. Tasks will appear here when a workflow requires user input.
-            </div>
-          </div>
-          <button onclick="refreshUserTasks()" style="margin-top: 20px;">Refresh Tasks</button>
-        </div>
-      </div>
-      
       <script>
         const form = document.getElementById('upload-form');
         const result = document.getElementById('result');
         const providerSelect = document.querySelector('select[name="llm_provider"]');
-        const modelSelect = document.getElementById('llm_model');
+        const modelInput = document.querySelector('input[name="llm_model"]');
+        const modelsList = document.getElementById('models-list');
         
-        // Check all statuses on page load and set up auto-refresh
+        // Check Camunda status on page load
         console.log('Page loaded, checking status...');
         setTimeout(() => {
-          console.log('Checking all statuses...');
-          checkAllStatuses();
-          // Auto-refresh status every 10 seconds
-          setInterval(checkAllStatuses, 10000);
+          console.log('Checking Camunda status...');
+          checkCamundaStatus();
         }, 100);
         setTimeout(() => {
           console.log('Refreshing runs...');
@@ -877,138 +774,50 @@ async def index():
         providerSelect.addEventListener('change', async () => {
           console.log('Provider changed to:', providerSelect.value);
           const provider = providerSelect.value;
-          
-          // Clear the select dropdown
-          modelSelect.innerHTML = '<option value="">Loading models...</option>';
-          
-          if (!provider) {
-            modelSelect.innerHTML = '<option value="">Select a provider first...</option>';
-            return;
-          }
-          
+          modelsList.innerHTML = '';
+          modelInput.value = '';
+          if (!provider) return;
           try {
             console.log('Fetching models for provider:', provider);
             const res = await fetch(`/api/models/${provider}`);
             const json = await res.json();
             console.log('Models response:', json);
             
-            // Extract model names based on provider format
-            let modelNames = [];
-            if (json.models && Array.isArray(json.models)) {
+            const names = (function normalize() {
+              const arr = Array.isArray(json.models) ? json.models : [];
               if (provider === 'openai') {
-                // OpenAI models have 'id' field
-                modelNames = json.models.map(m => {
-                  if (typeof m === 'string') return m;
-                  return m.id || m.name || '';
-                }).filter(Boolean);
-              } else if (provider === 'ollama') {
-                // Ollama models have 'model' or 'name' field
-                modelNames = json.models.map(m => {
-                  if (typeof m === 'string') return m;
-                  return m.model || m.name || '';
-                }).filter(Boolean);
+                return arr.map(m => (typeof m === 'string' ? m : (m.id || ''))).filter(Boolean);
               }
-            }
+              return arr.map(m => (m.model || m.name || '')).filter(Boolean);
+            })();
             
-            console.log('Available models:', modelNames);
-            
-            // Clear and populate the select dropdown with all models
-            modelSelect.innerHTML = '';
-            
-            // Add a default option
-            const defaultOption = document.createElement('option');
-            defaultOption.value = '';
-            defaultOption.textContent = 'Select a model...';
-            modelSelect.appendChild(defaultOption);
-            
-            // Add all model options
-            modelNames.forEach(name => {
-              const option = document.createElement('option');
-              option.value = name;
-              option.textContent = name;
-              modelSelect.appendChild(option);
-            });
-            
-            // Set a default value if models are available
-            if (modelNames.length > 0) {
-              // For OpenAI, prefer gpt-4o-mini or gpt-3.5-turbo
-              if (provider === 'openai') {
-                const preferred = modelNames.find(m => m.includes('gpt-4o-mini')) || 
-                                modelNames.find(m => m.includes('gpt-3.5-turbo')) ||
-                                modelNames[0];
-                modelSelect.value = preferred;
-              } else {
-                // For Ollama, just use the first available model
-                modelSelect.value = modelNames[0];
-              }
-              console.log('Set default model to:', modelSelect.value);
-              console.log('Total models in dropdown:', modelNames.length);
+            console.log('Normalized names:', names);
+            modelsList.innerHTML = names.map(n => `<option value="${n}"></option>`).join('');
+            if (names.length) {
+              modelInput.value = names[0];
+              console.log('Set default model to:', names[0]);
             }
           } catch (e) {
             console.error('Error fetching models:', e);
-            // On error, show a message in the dropdown
-            modelSelect.innerHTML = '<option value="">Error loading models</option>';
           }
         });
 
-        window.checkAllStatuses = async function() {
-          // Helper function to update status badge
-          function updateStatus(elementId, serviceName, status, details = '') {
-            const badge = document.getElementById(elementId);
-            const indicator = badge.querySelector('.status-indicator');
-            
-            // Remove all status classes
-            badge.classList.remove('online', 'offline', 'warning');
-            
-            if (status === 'running' || status === 'online') {
-              badge.classList.add('online');
-              indicator.textContent = '●';
-              badge.title = `${serviceName} is running${details ? ': ' + details : ''}`;
-            } else if (status === 'offline' || status === 'unreachable') {
-              badge.classList.add('offline');
-              indicator.textContent = '○';
-              badge.title = `${serviceName} is offline${details ? ': ' + details : ''}`;
-            } else {
-              badge.classList.add('warning');
-              indicator.textContent = '◐';
-              badge.title = `${serviceName}: ${status}${details ? ' - ' + details : ''}`;
-            }
-          }
-          
-          // Check Camunda status
+        async function checkCamundaStatus() {
+          const statusDiv = document.getElementById('camunda-status');
           try {
             const res = await fetch('/api/camunda/status');
             const json = await res.json();
-            updateStatus('camunda-status', 'Camunda', json.status, json.message);
+            if (json.status === 'running') {
+              statusDiv.innerHTML = '<div class="status running">✅ Camunda is running</div>';
+            } else {
+              statusDiv.innerHTML = `<div class="status error">❌ Camunda: ${json.status}</div>`;
+            }
           } catch (e) {
-            updateStatus('camunda-status', 'Camunda', 'offline', 'Cannot connect');
-          }
-          
-          // Check Ollama status
-          try {
-            const res = await fetch('/api/ollama/status');
-            const json = await res.json();
-            const details = json.status === 'running' ? `${json.model_count} models` : json.error;
-            updateStatus('ollama-status', 'Ollama', json.status, details);
-          } catch (e) {
-            updateStatus('ollama-status', 'Ollama', 'offline', 'Cannot check status');
-          }
-          
-          // Check OpenAI status  
-          try {
-            const res = await fetch('/api/openai/status');
-            const json = await res.json();
-            const details = json.status === 'running' ? `${json.model_count} models` : json.message;
-            updateStatus('openai-status', 'OpenAI', json.status, details);
-          } catch (e) {
-            updateStatus('openai-status', 'OpenAI', 'offline', 'Cannot check status');
+            statusDiv.innerHTML = '<div class="status error">❌ Cannot connect to Camunda</div>';
           }
         }
-        
-        // Keep backward compatibility  
-        window.checkCamundaStatus = checkAllStatuses;
 
-        window.refreshRuns = async function() {
+        async function refreshRuns() {
           const runsDiv = document.getElementById('runs-list');
           try {
             const res = await fetch('/api/runs');
@@ -1024,70 +833,9 @@ async def index():
             runsDiv.innerHTML = '<div class="status error">Error loading runs</div>';
           }
         }
-        
-        // Refresh User Tasks
-        window.refreshUserTasks = async function() {
-          const tasksDiv = document.getElementById('user-tasks-list');
-          const taskBadge = document.getElementById('task-count-badge');
-          
-          try {
-            const res = await fetch('/api/user-tasks');
-            const json = await res.json();
-            
-            if (json.tasks && json.tasks.length > 0) {
-              // Update badge
-              taskBadge.textContent = json.tasks.length;
-              taskBadge.style.display = 'inline-block';
-              
-              // Build task cards
-              tasksDiv.innerHTML = json.tasks.map(task => `
-                <div style="border: 1px solid #007bff; border-radius: 8px; padding: 15px; margin-bottom: 15px; background: #f0f7ff;">
-                  <div style="display: flex; justify-content: space-between; align-items: start; margin-bottom: 10px;">
-                    <h4 style="margin: 0; color: #007bff;">${task.name}</h4>
-                    <span style="background: #ffc107; color: #000; padding: 4px 8px; border-radius: 4px; font-size: 12px;">
-                      ${task.taskDefinitionKey}
-                    </span>
-                  </div>
-                  
-                  <div style="color: #666; margin-bottom: 10px;">
-                    <strong>Process Instance:</strong> ${task.processInstanceId}<br/>
-                    <strong>Created:</strong> ${new Date(task.created).toLocaleString()}<br/>
-                    ${task.description ? `<strong>Description:</strong> ${task.description}<br/>` : ''}
-                  </div>
-                  
-                  <button onclick="reviewTask('${task.id}')" style="background: #007bff; color: white; padding: 8px 16px; border: none; border-radius: 4px; cursor: pointer;">
-                    Review Requirements
-                  </button>
-                </div>
-              `).join('');
-            } else {
-              tasksDiv.innerHTML = `
-                <div style="padding: 20px; text-align: center; color: #999;">
-                  No pending tasks. Tasks will appear here when a workflow requires user input.
-                </div>
-              `;
-              // Hide badge
-              taskBadge.style.display = 'none';
-            }
-          } catch (e) {
-            tasksDiv.innerHTML = `
-              <div style="padding: 20px; text-align: center; color: #dc3545;">
-                Error loading tasks: ${e.message}
-              </div>
-            `;
-            taskBadge.style.display = 'none';
-          }
-        }
-        
-        // Review a specific task
-        window.reviewTask = async function(taskId) {
-          // For now, redirect to the user-review page
-          // Later we can implement an inline review interface
-          window.location.href = `/user-review?taskId=${taskId}`;
-        }
 
-        // Tab Management - Make it global
-        window.showTab = function(tabName) {
+        // Tab Management
+        function showTab(tabName) {
           console.log('showTab called with:', tabName);
           
           try {
@@ -1109,7 +857,7 @@ async def index():
             }
             
             // Add active class to selected tab button
-            const activeButton = document.querySelector(`[onclick='showTab("${tabName}")']`);
+            const activeButton = document.querySelector(`[onclick="showTab('${tabName}')"]`);
             if (activeButton) {
               activeButton.classList.add('active');
               console.log('Tab button activated:', tabName);
@@ -1148,7 +896,7 @@ async def index():
           }
         ];
 
-        window.addPersona = function() {
+        function addPersona() {
           const newPersona = {
             id: 'persona_' + Date.now(),
             name: 'New Persona',
@@ -1173,32 +921,32 @@ async def index():
           }
         }
 
-        window.renderPersonas = function() {
+        function renderPersonas() {
           const container = document.getElementById('personas-list');
-          container.innerHTML = personas.map(persona => `
-            <div class="persona-item">
-              <h4>${persona.name}</h4>
-              <div class="form-group">
-                <label>Name:</label>
-                <input type="text" value="${persona.name}" onchange="updatePersona('${persona.id}', 'name', this.value)">
-              </div>
-              <div class="form-group">
-                <label>Description:</label>
-                <input type="text" value="${persona.description}" onchange="updatePersona('${persona.id}', 'description', this.value)">
-              </div>
-              <div class="form-group">
-                <label>System Prompt:</label>
-                <textarea rows="4" onchange="updatePersona('${persona.id}', 'system_prompt', this.value)">${persona.system_prompt}</textarea>
-              </div>
-              <div class="form-group">
-                <label>
-                  <input type="checkbox" ${persona.is_active ? 'checked' : ''} onchange="togglePersona('${persona.id}')">
-                  Active
-                </label>
-              </div>
-              <button onclick="deletePersona('${persona.id}')">Delete</button>
-            </div>
-          `).join('');
+          container.innerHTML = personas.map(persona => 
+            '<div class="persona-item">' +
+              '<h4>' + persona.name + '</h4>' +
+              '<div class="form-group">' +
+                '<label>Name:</label>' +
+                '<input type="text" value="' + persona.name + '" onchange="updatePersona(\'' + persona.id + '\', \'name\', this.value)">' +
+              '</div>' +
+              '<div class="form-group">' +
+                '<label>Description:</label>' +
+                '<input type="text" value="' + persona.description + '" onchange="updatePersona(\'' + persona.id + '\', \'description\', this.value)">' +
+              '</div>' +
+              '<div class="form-group">' +
+                '<label>System Prompt:</label>' +
+                '<textarea rows="4" onchange="updatePersona(\'' + persona.id + '\', \'system_prompt\', this.value)">' + persona.system_prompt + '</textarea>' +
+              '</div>' +
+              '<div class="form-group">' +
+                '<label>' +
+                  '<input type="checkbox" ' + (persona.is_active ? 'checked' : '') + ' onchange="togglePersona(\'' + persona.id + '\')">' +
+                  'Active' +
+                '</label>' +
+              '</div>' +
+              '<button onclick="deletePersona(\'' + persona.id + '\')">Delete</button>' +
+            '</div>'
+          ).join('');
         }
 
         function updatePersona(personaId, field, value) {
@@ -1234,7 +982,7 @@ async def index():
           }
         }
 
-        window.loadPersonas = async function() {
+        async function loadPersonas() {
           try {
             const response = await fetch('/api/personas');
             const data = await response.json();
@@ -1285,45 +1033,45 @@ async def index():
           }
         }
 
-        window.renderPrompts = function() {
+        function renderPrompts() {
           const container = document.getElementById('prompts-list');
-          container.innerHTML = prompts.map(prompt => `
-            <div class="prompt-item">
-              <h4>${prompt.name}</h4>
-              <div class="form-group">
-                <label>Name:</label>
-                <input type="text" value="${prompt.name}" onchange="updatePrompt('${prompt.id}', 'name', this.value)">
-              </div>
-              <div class="form-group">
-                <label>Description:</label>
-                <input type="text" value="${prompt.description}" onchange="updatePrompt('${prompt.id}', 'description', this.value)">
-              </div>
-              <div class="form-group">
-                <label>Prompt Template:</label>
-                <textarea rows="6" onchange="updatePrompt('${prompt.id}', 'prompt_template', this.value)">${prompt.prompt_template}</textarea>
-              </div>
-              <div class="form-group">
-                <label>Variables (comma-separated):</label>
-                <input type="text" value="${prompt.variables.join(', ')}" onchange="updatePrompt('${prompt.id}', 'variables', this.value.split(',').map(v => v.trim()))">
-              </div>
-              <div class="form-group">
-                <label>
-                  <input type="checkbox" ${prompt.is_active ? 'checked' : ''} onchange="togglePrompt('${prompt.id}')">
-                  Active
-                </label>
-              </div>
-              <div class="test-section">
-                <h5>Test Prompt</h5>
-                <div class="test-input">
-                  <label>Test Variables (JSON):</label>
-                  <textarea rows="3" placeholder='{"requirement_text": "Test requirement", "category": "Test", "source_file": "test.txt", "iteration": 1}'>${JSON.stringify({requirement_text: "Test requirement", category: "Test", source_file: "test.txt", iteration: 1}, null, 2)}</textarea>
-                </div>
-                <button onclick="testPrompt('${prompt.id}', this.previousElementSibling.querySelector('textarea').value)">Test Prompt</button>
-                <div class="test-result" id="test-result-${prompt.id}"></div>
-              </div>
-              <button onclick="deletePrompt('${prompt.id}')">Delete</button>
-            </div>
-          `).join('');
+          container.innerHTML = prompts.map(prompt => 
+            '<div class="prompt-item">' +
+              '<h4>' + prompt.name + '</h4>' +
+              '<div class="form-group">' +
+                '<label>Name:</label>' +
+                '<input type="text" value="' + prompt.name + '" onchange="updatePrompt(\'' + prompt.id + '\', \'name\', this.value)">' +
+              '</div>' +
+              '<div class="form-group">' +
+                '<label>Description:</label>' +
+                '<input type="text" value="' + prompt.description + '" onchange="updatePrompt(\'' + prompt.id + '\', \'description\', this.value)">' +
+              '</div>' +
+              '<div class="form-group">' +
+                '<label>Prompt Template:</label>' +
+                '<textarea rows="6" onchange="updatePrompt(\'' + prompt.id + '\', \'prompt_template\', this.value)">' + prompt.prompt_template + '</textarea>' +
+              '</div>' +
+              '<div class="form-group">' +
+                '<label>Variables (comma-separated):</label>' +
+                '<input type="text" value="' + prompt.variables.join(', ') + '" onchange="updatePrompt(\'' + prompt.id + '\', \'variables\', this.value.split(\',\').map(v => v.trim()))">' +
+              '</div>' +
+              '<div class="form-group">' +
+                '<label>' +
+                  '<input type="checkbox" ' + (prompt.is_active ? 'checked' : '') + ' onchange="togglePrompt(\'' + prompt.id + '\')">' +
+                  'Active' +
+                '</label>' +
+              '</div>' +
+              '<div class="test-section">' +
+                '<h5>Test Prompt</h5>' +
+                '<div class="test-input">' +
+                  '<label>Test Variables (JSON):</label>' +
+                  '<textarea rows="3" placeholder=\'{"requirement_text": "Test requirement", "category": "Test", "source_file": "test.txt", "iteration": 1}\'>' + JSON.stringify({requirement_text: "Test requirement", category: "Test", source_file: "test.txt", iteration: 1}, null, 2) + '</textarea>' +
+                '</div>' +
+                '<button onclick="testPrompt(\'' + prompt.id + '\', this.previousElementSibling.querySelector(\'textarea\').value)">Test Prompt</button>' +
+                '<div class="test-result" id="test-result-' + prompt.id + '"></div>' +
+              '</div>' +
+              '<button onclick="deletePrompt(\'' + prompt.id + '\')">Delete</button>' +
+            '</div>'
+          ).join('');
         }
 
         function updatePrompt(promptId, field, value) {
@@ -1359,7 +1107,7 @@ async def index():
           }
         }
 
-        window.loadPrompts = async function() {
+        async function loadPrompts() {
           try {
             const response = await fetch('/api/prompts');
             const data = await response.json();
@@ -1414,19 +1162,21 @@ async def index():
           try {
             loadPersonas();
             loadPrompts();
-            refreshUserTasks();  // Check for user tasks on load
-            checkAllStatuses();  // Check service statuses
             console.log('Initialization complete');
           } catch (e) {
             console.error('Error during initialization:', e);
           }
-          
-          // Periodically check for updates
-          setInterval(checkAllStatuses, 10000);  // Service status every 10 seconds
-          setInterval(refreshUserTasks, 30000);  // User tasks every 30 seconds
         });
 
-
+        // Debug function to check if functions are available
+        window.debugFunctions = function() {
+          console.log('Available functions:', {
+            showTab: typeof showTab,
+            loadPersonas: typeof loadPersonas,
+            loadPrompts: typeof loadPrompts,
+            checkCamundaStatus: typeof checkCamundaStatus
+          });
+        };
       </script>
     </body>
     </html>
@@ -1576,44 +1326,6 @@ async def test_prompt(prompt_id: str, test_data: Dict):
 
 
 # User Task Management API for BPMN User Tasks
-@app.get("/api/user-tasks")
-async def get_all_user_tasks():
-    """Get all pending user tasks across all process instances."""
-    try:
-        # Get all active user tasks from Camunda
-        response = requests.get(
-            f"{CAMUNDA_REST_API}/task",
-            params={
-                "processDefinitionKey": "odras_requirements_analysis",
-                "taskDefinitionKey": "Task_UserReview",  # Our user review task
-                "active": "true"
-            }
-        )
-        
-        if response.status_code == 200:
-            tasks = response.json()
-            
-            # Format tasks for UI
-            formatted_tasks = []
-            for task in tasks:
-                formatted_tasks.append({
-                    "id": task.get("id"),
-                    "name": task.get("name", "Review Requirements"),
-                    "description": task.get("description", "Review and approve extracted requirements"),
-                    "taskDefinitionKey": task.get("taskDefinitionKey"),
-                    "processInstanceId": task.get("processInstanceId"),
-                    "created": task.get("created"),
-                    "priority": task.get("priority", 50)
-                })
-            
-            return {"tasks": formatted_tasks}
-        else:
-            return {"tasks": [], "error": f"Camunda returned status {response.status_code}"}
-            
-    except Exception as e:
-        return {"tasks": [], "error": str(e)}
-
-
 @app.get("/api/user-tasks/{process_instance_id}")
 async def get_user_tasks(process_instance_id: str):
     """Get user tasks for a specific process instance."""

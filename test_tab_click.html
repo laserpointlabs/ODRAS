@@ -1,0 +1,53 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Test Tab Click Simulation</title>
+</head>
+<body>
+    <h1>Testing Tab Click Functionality</h1>
+    <iframe id="testFrame" src="http://localhost:8000" width="100%" height="600"></iframe>
+    
+    <div style="margin-top: 20px;">
+        <button onclick="testTabClick('personas')">Test Click Personas Tab</button>
+        <button onclick="testTabClick('prompts')">Test Click Prompts Tab</button>
+        <button onclick="testTabClick('runs')">Test Click Runs Tab</button>
+        <button onclick="testTabClick('upload')">Test Click Upload Tab</button>
+    </div>
+    
+    <div id="results" style="margin-top: 20px; padding: 10px; border: 1px solid #ccc;">
+        <h3>Test Results:</h3>
+        <pre id="output"></pre>
+    </div>
+    
+    <script>
+        function testTabClick(tabName) {
+            const iframe = document.getElementById('testFrame');
+            const iframeDoc = iframe.contentDocument || iframe.contentWindow.document;
+            const output = document.getElementById('output');
+            
+            try {
+                // Check if showTab function exists
+                if (iframe.contentWindow.showTab) {
+                    output.textContent += `✅ showTab function exists\n`;
+                    
+                    // Call the function
+                    iframe.contentWindow.showTab(tabName);
+                    output.textContent += `✅ Called showTab('${tabName}')\n`;
+                    
+                    // Check if the tab content is now visible
+                    const tabContent = iframeDoc.getElementById(tabName + '-tab');
+                    if (tabContent && tabContent.classList.contains('active')) {
+                        output.textContent += `✅ ${tabName}-tab is now active\n\n`;
+                    } else {
+                        output.textContent += `❌ ${tabName}-tab is NOT active\n\n`;
+                    }
+                } else {
+                    output.textContent += `❌ showTab function not found in iframe\n\n`;
+                }
+            } catch (e) {
+                output.textContent += `❌ Error: ${e.message}\n\n`;
+            }
+        }
+    </script>
+</body>
+</html>

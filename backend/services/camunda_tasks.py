@@ -407,3 +407,4 @@ TASK_REGISTRY = {
     'store_rdf': store_results_in_rdf_db
 }
 
+
