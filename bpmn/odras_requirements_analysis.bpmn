@@ -1,0 +1,177 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<bpmn:definitions xmlns:bpmn="http://www.omg.org/spec/BPMN/20100524/MODEL" 
+                   xmlns:bpmndi="http://www.omg.org/spec/BPMN/20100524/DI" 
+                   xmlns:dc="http://www.omg.org/spec/DD/20100524/DC" 
+                   xmlns:di="http://www.omg.org/spec/DD/20100524/DI" 
+                   xmlns:camunda="http://camunda.org/schema/1.0/bpmn"
+                   id="Definitions_1" 
+                   targetNamespace="http://bpmn.io/schema/bpmn">
+  
+  <bpmn:process id="odras_requirements_analysis" name="ODRAS Requirements Analysis" isExecutable="true">
+    
+    <!-- Start Event -->
+    <bpmn:startEvent id="StartEvent_1" name="Document Uploaded">
+      <bpmn:outgoing>Flow_1</bpmn:outgoing>
+    </bpmn:startEvent>
+    
+    <!-- Script Task 1: Document Processing and Requirement Extraction -->
+    <bpmn:scriptTask id="Task_ExtractRequirements" name="Extract Requirements from Document">
+      <bpmn:incoming>Flow_1</bpmn:incoming>
+      <bpmn:outgoing>Flow_2</bpmn:outgoing>
+      <bpmn:script>
+        <![CDATA[
+          # External script reference
+          # This will be executed by Camunda calling the external Python function
+          # Script: scripts/task_extract_requirements.py
+        ]]>
+      </bpmn:script>
+    </bpmn:scriptTask>
+    
+    <!-- Script Task 2: Monte Carlo LLM Processing -->
+    <bpmn:scriptTask id="Task_LLMProcessing" name="Monte Carlo LLM Processing">
+      <bpmn:incoming>Flow_2</bpmn:incoming>
+      <bpmn:outgoing>Flow_3</bpmn:outgoing>
+      <bpmn:script>
+        <![CDATA[
+          # External script reference
+          # Script: scripts/task_llm_processing.py
+        ]]>
+      </bpmn:script>
+    </bpmn:scriptTask>
+    
+    <!-- Script Task 3: Store in Vector Database -->
+    <bpmn:scriptTask id="Task_StoreVector" name="Store Results in Vector Database">
+      <bpmn:incoming>Flow_3</bpmn:incoming>
+      <bpmn:outgoing>Flow_4</bpmn:outgoing>
+      <bpmn:script>
+        <![CDATA[
+          # External script reference
+          # Script: scripts/task_store_vector.py
+        ]]>
+      </bpmn:script>
+    </bpmn:scriptTask>
+    
+    <!-- Script Task 4: Store in Graph Database -->
+    <bpmn:scriptTask id="Task_StoreGraph" name="Store Results in Graph Database">
+      <bpmn:incoming>Flow_4</bpmn:incoming>
+      <bpmn:outgoing>Flow_5</bpmn:outgoing>
+      <bpmn:script>
+        <![CDATA[
+          # External script reference
+          # Script: scripts/task_store_graph.py
+        ]]>
+      </bpmn:script>
+    </bpmn:scriptTask>
+    
+    <!-- Script Task 5: Store in RDF Database -->
+    <bpmn:scriptTask id="Task_StoreRDF" name="Store Results in RDF Database">
+      <bpmn:incoming>Flow_5</bpmn:incoming>
+      <bpmn:outgoing>Flow_6</bpmn:outgoing>
+      <bpmn:script>
+        <![CDATA[
+          # External script reference
+          # Script: scripts/task_store_rdf.py
+        ]]>
+      </bpmn:script>
+    </bpmn:scriptTask>
+    
+    <!-- End Event -->
+    <bpmn:endEvent id="EndEvent_1" name="Analysis Complete">
+      <bpmn:incoming>Flow_6</bpmn:incoming>
+    </bpmn:endEvent>
+    
+    <!-- Sequence Flows -->
+    <bpmn:sequenceFlow id="Flow_1" sourceRef="StartEvent_1" targetRef="Task_ExtractRequirements" />
+    <bpmn:sequenceFlow id="Flow_2" sourceRef="Task_ExtractRequirements" targetRef="Task_LLMProcessing" />
+    <bpmn:sequenceFlow id="Flow_3" sourceRef="Task_LLMProcessing" targetRef="Task_StoreVector" />
+    <bpmn:sequenceFlow id="Flow_4" sourceRef="Task_StoreVector" targetRef="Task_StoreGraph" />
+    <bpmn:sequenceFlow id="Flow_5" sourceRef="Task_StoreGraph" targetRef="Task_StoreRDF" />
+    <bpmn:sequenceFlow id="Flow_6" sourceRef="Task_StoreRDF" targetRef="EndEvent_1" />
+    
+  </bpmn:process>
+  
+  <!-- BPMN Diagram -->
+  <bpmndi:BPMNDiagram id="BPMNDiagram_1">
+    <bpmndi:BPMNPlane id="BPMNPlane_1" bpmnElement="odras_requirements_analysis">
+      
+      <!-- Start Event -->
+      <bpmndi:BPMNShape id="StartEvent_1_di" bpmnElement="StartEvent_1">
+        <dc:Bounds x="152" y="232" width="36" height="36" />
+        <bpmndi:BPMNLabel>
+          <dc:Bounds x="148" y="275" width="44" height="14" />
+        </bpmndi:BPMNLabel>
+      </bpmndi:BPMNShape>
+      
+      <!-- Extract Requirements Task -->
+      <bpmndi:BPMNShape id="Task_ExtractRequirements_di" bpmnElement="Task_ExtractRequirements">
+        <dc:Bounds x="240" y="210" width="100" height="80" />
+        <bpmndi:BPMNLabel />
+      </bpmndi:BPMNShape>
+      
+      <!-- LLM Processing Task -->
+      <bpmndi:BPMNShape id="Task_LLMProcessing_di" bpmnElement="Task_LLMProcessing">
+        <dc:Bounds x="400" y="210" width="100" height="80" />
+        <bpmndi:BPMNLabel />
+      </bpmndi:BPMNShape>
+      
+      <!-- Store Vector Task -->
+      <bpmndi:BPMNShape id="Task_StoreVector_di" bpmnElement="Task_StoreVector">
+        <dc:Bounds x="560" y="210" width="100" height="80" />
+        <bpmndi:BPMNLabel />
+      </bpmndi:BPMNShape>
+      
+      <!-- Store Graph Task -->
+      <bpmndi:BPMNShape id="Task_StoreGraph_di" bpmnElement="Task_StoreGraph">
+        <dc:Bounds x="720" y="210" width="100" height="80" />
+        <bpmndi:BPMNLabel />
+      </bpmndi:BPMNShape>
+      
+      <!-- Store RDF Task -->
+      <bpmndi:BPMNShape id="Task_StoreRDF_di" bpmnElement="Task_StoreRDF">
+        <dc:Bounds x="880" y="210" width="100" height="80" />
+        <bpmndi:BPMNLabel />
+      </bpmndi:BPMNShape>
+      
+      <!-- End Event -->
+      <bpmndi:BPMNShape id="EndEvent_1_di" bpmnElement="EndEvent_1">
+        <dc:Bounds x="1042" y="232" width="36" height="36" />
+        <bpmndi:BPMNLabel>
+          <dc:Bounds x="1038" y="275" width="44" height="14" />
+        </bpmndi:BPMNLabel>
+      </bpmndi:BPMNShape>
+      
+      <!-- Sequence Flow Lines -->
+      <bpmndi:BPMNEdge id="Flow_1_di" bpmnElement="Flow_1">
+        <di:waypoint x="188" y="250" />
+        <di:waypoint x="240" y="250" />
+      </bpmndi:BPMNEdge>
+      
+      <bpmndi:BPMNEdge id="Flow_2_di" bpmnElement="Flow_2">
+        <di:waypoint x="340" y="250" />
+        <di:waypoint x="400" y="250" />
+      </bpmndi:BPMNEdge>
+      
+      <bpmndi:BPMNEdge id="Flow_3_di" bpmnElement="Flow_3">
+        <di:waypoint x="500" y="250" />
+        <di:waypoint x="560" y="250" />
+      </bpmndi:BPMNEdge>
+      
+      <bpmndi:BPMNEdge id="Flow_4_di" bpmnElement="Flow_4">
+        <di:waypoint x="660" y="250" />
+        <di:waypoint x="720" y="250" />
+      </bpmndi:BPMNEdge>
+      
+      <bpmndi:BPMNEdge id="Flow_5_di" bpmnElement="Flow_5">
+        <di:waypoint x="820" y="250" />
+        <di:waypoint x="880" y="250" />
+      </bpmndi:BPMNEdge>
+      
+      <bpmndi:BPMNEdge id="Flow_6_di" bpmnElement="Flow_6">
+        <di:waypoint x="980" y="250" />
+        <di:waypoint x="1042" y="250" />
+      </bpmndi:BPMNEdge>
+      
+    </bpmndi:BPMNPlane>
+  </bpmndi:BPMNDiagram>
+  
+</bpmn:definitions>

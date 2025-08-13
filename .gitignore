@@ -1,0 +1,14 @@
+.venv/
+__pycache__/
+.env
+.idea/
+.vscode/
+*.pyc
+*.pyo
+*.DS_Store
+**/.ipynb_checkpoints
+neo4j_data/
+neo4j_logs/
+qdrant_data/
+fuseki_data/
+

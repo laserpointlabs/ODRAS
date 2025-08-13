@@ -1,0 +1,61 @@
+Lets build a specification for a new tool that can perform the following:
+
+- Manage users and projects
+- Extract requirements using a defined set of words like 'shall' from a set of uploaded files on a project basis
+- Extract requirements using other technicques (TBD)
+- Maintain meta-data for the upladed documents
+- Documents should be chunked, overlapped, and embedded in a vector store with associated meta-data
+- Extracted requirements should be embedded in a similar manor with meta-data
+- View, Edit, Save, Export, Version, and Extend the base ontology (see dadms ontology workbench local folder for and example)
+- The base ontology:
+    - Requirement --> has_constratint --> Constraint
+    - Requirement --> deploys --> Component
+    - Component --> present --> Interface
+    - Component --> performs --> Process
+    - Process --> realizes --> Function
+    - Function --> activates_on --> Condition
+    - Function --> specifically_depends_upon --> Component 
+- Use react flow to help the user interact with devloped and extracted ontologies
+   - Present the ontology in a tree-view
+   - Allow the user to perform CRUD operations on Entities (Classes, Object Properties, Data Properties)
+   - Manage DataTypes
+   - Manage Annotation Properties
+   - Manage URI data
+- Store the ontologies in a RDF server (fuseki) and a graph database (neo4j)
+- Build an LLM Team and Manage Team configuration and Personas
+- Use remote (openai) and local (ollama) llm servers
+- Perform Context Management by builing and testing Prompts and only allowing tested prompts to be utilized
+- For each extracted requirement and using the llm team and the ontology should be interate on each requirment
+    - Extract any requirements contraints
+    - Review the requiement for efficacy and offer suggestions for improvment
+    - Per our base ontology or the specified ontology estimate the coneptual objects needed to for the requirements
+        - Estmate the Components and Interfaces
+        - Estimate the Processes
+        - Estimate the Functions and Conditions
+    - Liker terms shold be sqahed or clusted (airplane, aircraft, air-vehcile are all same entities)
+    - The coneptualization should be performed probabilistically, and clustered conetual systems identified (80% like this, 20% like that).
+    - The conceptualization should have convergence criteria
+    - The extracted conceptual models should be stored in the RDF and Graph dbs
+- The llms should only speak in the selected ontology data schema when asked to this should be a json formatted response
+- LLM Free talk is permissable unders some cercumstances to this schema output needs to be selectable
+- Permit additonal user generated requirements that can be reviewd by the llm team prior to acceptance
+- The UI should provide:
+    - Project/User Maintence
+    - File Uploading via selection or drag and drop
+    - Options to set the specific llm
+    - Query the RDF and Graph dbs
+    - Use a mcp like tools to automatically generate cyphers and sparql queires from user text
+    - Plot the graph db contexts for a specific coneptualization
+    - Review and interact with the requirments
+    - Generate requirements and coneptualization reports
+    - Allow SMEs to interace with the concept model and correct, change, edit via llm interactions (mcp like tool)
+    - The ability to upload a priori knowldege document for the llm knowledge, such as requirements writing techniques
+
+---
+Streach Goals:
+- Use a team of llm agents to extract the ontology
+- Extract an ontology from these requirements
+- The ontology should be extracted probabilistically and then we group or cluster general ontologies
+- The ontology extraction process should use convergence criteria to arrive at solutions 
+- Allow a user to specify a teamwork cloud instance and export the concept as condept definitions for sysml models
+- Use BPMN model and camunda to build the processes as a part of the workflow
