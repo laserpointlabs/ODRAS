@@ -17,6 +17,10 @@ import httpx
 
 app = FastAPI(title="ODRAS API", version="0.1.0")
 
+# Import test endpoints for development
+from backend.test_review_endpoint import router as test_router
+app.include_router(test_router)
+
 # Camunda configuration
 CAMUNDA_BASE_URL = "http://localhost:8080"
 CAMUNDA_REST_API = f"{CAMUNDA_BASE_URL}/engine-rest"
@@ -61,8 +65,15 @@ async def on_startup():
 
 
 @app.get("/user-review", response_class=HTMLResponse)
-async def user_review_interface():
-    """Root endpoint with basic HTML interface."""
+async def user_review_interface(taskId: Optional[str] = None, process_instance_id: Optional[str] = None):
+    """Requirements review interface or main interface."""
+    
+    # If taskId or process_instance_id is provided and not empty, show the review interface
+    if (taskId and taskId.strip()) or (process_instance_id and process_instance_id.strip()):
+        from backend.review_interface import generate_review_interface_html
+        return HTMLResponse(content=generate_review_interface_html(taskId, process_instance_id))
+    
+    # Otherwise show the main interface
     html_content = """
     <!DOCTYPE html>
     <html>

@@ -1,0 +1,136 @@
+name: CI
+
+on:
+  push:
+    branches: [ main, develop, feature/* ]
+  pull_request:
+    branches: [ main, develop ]
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    
+    strategy:
+      matrix:
+        python-version: ['3.9', '3.10', '3.11']
+    
+    steps:
+    - uses: actions/checkout@v3
+    
+    - name: Set up Python ${{ matrix.python-version }}
+      uses: actions/setup-python@v4
+      with:
+        python-version: ${{ matrix.python-version }}
+    
+    - name: Cache pip packages
+      uses: actions/cache@v3
+      with:
+        path: ~/.cache/pip
+        key: ${{ runner.os }}-pip-${{ hashFiles('requirements.txt') }}
+        restore-keys: |
+          ${{ runner.os }}-pip-
+    
+    - name: Install dependencies
+      run: |
+        python -m pip install --upgrade pip
+        pip install -r requirements.txt
+        pip install pytest pytest-cov flake8 black
+    
+    - name: Lint with flake8
+      run: |
+        # Stop the build if there are Python syntax errors or undefined names
+        flake8 . --count --select=E9,F63,F7,F82 --show-source --statistics
+        # Exit-zero treats all errors as warnings. The GitHub editor is 127 chars wide
+        flake8 . --count --exit-zero --max-complexity=10 --max-line-length=127 --statistics
+      continue-on-error: true
+    
+    - name: Format check with black
+      run: |
+        black --check --diff backend/ scripts/ || true
+      continue-on-error: true
+    
+    - name: Test imports
+      run: |
+        python -c "from backend.main import app; print('✅ Main app imports successfully')"
+        python -c "from backend.review_interface import generate_review_interface_html; print('✅ Review interface imports successfully')"
+        python -c "from backend.test_review_endpoint import router; print('✅ Test endpoints import successfully')"
+    
+    - name: Validate BPMN files
+      run: |
+        echo "Checking BPMN files exist and are valid XML..."
+        for file in bpmn/*.bpmn; do
+          if [ -f "$file" ]; then
+            python -c "import xml.etree.ElementTree as ET; ET.parse('$file'); print('✅ $file is valid XML')"
+          fi
+        done
+    
+    - name: Check for security issues
+      run: |
+        pip install bandit
+        bandit -r backend/ -ll || true
+      continue-on-error: true
+    
+    - name: Run basic tests
+      run: |
+        # Create a simple test to verify the app starts
+        cat > test_app.py << 'EOF'
+        from fastapi.testclient import TestClient
+        from backend.main import app
+        
+        client = TestClient(app)
+        
+        def test_read_root():
+            response = client.get("/")
+            assert response.status_code == 200
+            print("✅ Root endpoint test passed")
+        
+        def test_user_review_endpoint():
+            response = client.get("/user-review")
+            assert response.status_code == 200
+            assert "ODRAS" in response.text
+            print("✅ User review endpoint test passed")
+        
+        def test_user_review_with_task():
+            response = client.get("/user-review?taskId=test123")
+            assert response.status_code == 200
+            assert "Requirements Review" in response.text
+            print("✅ User review with taskId test passed")
+        
+        def test_api_endpoints():
+            # Test that API endpoints exist
+            response = client.get("/api/user-tasks")
+            assert response.status_code == 200
+            print("✅ User tasks API test passed")
+            
+            response = client.get("/api/test/status")
+            assert response.status_code == 200
+            print("✅ Test status API test passed")
+        
+        if __name__ == "__main__":
+            test_read_root()
+            test_user_review_endpoint()
+            test_user_review_with_task()
+            test_api_endpoints()
+            print("\n✅ All tests passed!")
+        EOF
+        
+        python test_app.py
+    
+    - name: Generate test coverage report
+      if: matrix.python-version == '3.10'
+      run: |
+        pytest test_app.py --cov=backend --cov-report=term-missing || true
+      continue-on-error: true
+    
+    - name: Check file sizes
+      run: |
+        echo "Checking for unusually large files..."
+        find . -type f -size +1M -not -path "./.git/*" -exec ls -lh {} \; | head -20
+        
+    - name: Summary
+      run: |
+        echo "## Build Summary"
+        echo "- Python version: ${{ matrix.python-version }}"
+        echo "- Branch: ${GITHUB_REF#refs/heads/}"
+        echo "- Commit: ${GITHUB_SHA::7}"
+        echo "- Build status: ✅ Complete"

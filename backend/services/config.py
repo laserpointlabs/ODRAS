@@ -1,3 +1,4 @@
+from typing import Optional
 from pydantic_settings import BaseSettings
 
 
@@ -11,7 +12,7 @@ class Settings(BaseSettings):
 
     llm_provider: str = "openai"  # openai | ollama
     llm_model: str = "gpt-4o-mini"
-    openai_api_key: str | None = None
+    openai_api_key: Optional[str] = None
 
     collection_name: str = "odras_requirements"
 

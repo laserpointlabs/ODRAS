@@ -1,21 +1,9 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<bpmn:definitions xmlns:bpmn="http://www.omg.org/spec/BPMN/20100524/MODEL" 
-                   xmlns:bpmndi="http://www.omg.org/spec/BPMN/20100524/DI" 
-                   xmlns:dc="http://www.omg.org/spec/DD/20100524/DC" 
-                   xmlns:di="http://www.omg.org/spec/DD/20100524/DI" 
-                   xmlns:camunda="http://camunda.org/schema/1.0/bpmn"
-                   xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
-                   id="Definitions_1" 
-                   targetNamespace="http://bpmn.io/schema/bpmn">
-  
+<bpmn:definitions xmlns:bpmn="http://www.omg.org/spec/BPMN/20100524/MODEL" xmlns:bpmndi="http://www.omg.org/spec/BPMN/20100524/DI" xmlns:dc="http://www.omg.org/spec/DD/20100524/DC" xmlns:di="http://www.omg.org/spec/DD/20100524/DI" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" id="Definitions_1" targetNamespace="http://bpmn.io/schema/bpmn" exporter="Camunda Modeler" exporterVersion="5.34.0">
   <bpmn:process id="odras_requirements_analysis" name="ODRAS Requirements Analysis" isExecutable="true">
-    
-    <!-- Start Event -->
     <bpmn:startEvent id="StartEvent_1" name="Document Uploaded">
       <bpmn:outgoing>Flow_1</bpmn:outgoing>
     </bpmn:startEvent>
-    
-    <!-- Script Task 1: Document Processing and Requirement Extraction -->
     <bpmn:scriptTask id="Task_ExtractRequirements" name="Extract Requirements from Document">
       <bpmn:incoming>Flow_1</bpmn:incoming>
       <bpmn:outgoing>Flow_2</bpmn:outgoing>
@@ -27,32 +15,24 @@
         ]]>
       </bpmn:script>
     </bpmn:scriptTask>
-    
-    <!-- User Task: Review and Approve Requirements -->
     <bpmn:userTask id="Task_UserReview" name="Review and Approve Requirements">
-      <bpmn:incoming>Flow_2</bpmn:incoming>
-      <bpmn:incoming>Flow_5_Edit</bpmn:incoming>
-      <bpmn:incoming>Flow_5_Rerun</bpmn:incoming>
-      <bpmn:outgoing>Flow_3</bpmn:outgoing>
       <bpmn:documentation>
-        <![CDATA[
           User reviews extracted requirements and chooses to:
           - Approve: Continue to LLM processing
           - Edit: Modify requirements manually
           - Rerun: Re-extract requirements with different parameters
-        ]]>
-      </bpmn:documentation>
+        </bpmn:documentation>
+      <bpmn:incoming>Flow_2</bpmn:incoming>
+      <bpmn:incoming>Flow_5_Edit</bpmn:incoming>
+      <bpmn:incoming>Flow_5_Rerun</bpmn:incoming>
+      <bpmn:outgoing>Flow_3</bpmn:outgoing>
     </bpmn:userTask>
-    
-    <!-- Decision Gateway: User Choice -->
     <bpmn:exclusiveGateway id="Gateway_UserChoice" name="User Choice">
       <bpmn:incoming>Flow_3</bpmn:incoming>
       <bpmn:outgoing>Flow_4_Approve</bpmn:outgoing>
       <bpmn:outgoing>Flow_4_Edit</bpmn:outgoing>
       <bpmn:outgoing>Flow_4_Rerun</bpmn:outgoing>
     </bpmn:exclusiveGateway>
-    
-    <!-- Script Task: Handle User Edits -->
     <bpmn:scriptTask id="Task_HandleUserEdits" name="Process User Edits">
       <bpmn:incoming>Flow_4_Edit</bpmn:incoming>
       <bpmn:outgoing>Flow_5_Edit</bpmn:outgoing>
@@ -63,8 +43,6 @@
         ]]>
       </bpmn:script>
     </bpmn:scriptTask>
-    
-    <!-- Script Task: Rerun Extraction -->
     <bpmn:scriptTask id="Task_RerunExtraction" name="Rerun Requirements Extraction">
       <bpmn:incoming>Flow_4_Rerun</bpmn:incoming>
       <bpmn:outgoing>Flow_5_Rerun</bpmn:outgoing>
@@ -75,10 +53,6 @@
         ]]>
       </bpmn:script>
     </bpmn:scriptTask>
-    
-
-    
-    <!-- Script Task 2: Monte Carlo LLM Processing -->
     <bpmn:scriptTask id="Task_LLMProcessing" name="Monte Carlo LLM Processing">
       <bpmn:incoming>Flow_4_Approve</bpmn:incoming>
       <bpmn:outgoing>Flow_7</bpmn:outgoing>
@@ -89,8 +63,6 @@
         ]]>
       </bpmn:script>
     </bpmn:scriptTask>
-    
-    <!-- Script Task 3: Store in Vector Database -->
     <bpmn:scriptTask id="Task_StoreVector" name="Store Results in Vector Database">
       <bpmn:incoming>Flow_7</bpmn:incoming>
       <bpmn:outgoing>Flow_8</bpmn:outgoing>
@@ -101,8 +73,6 @@
         ]]>
       </bpmn:script>
     </bpmn:scriptTask>
-    
-    <!-- Script Task 4: Store in Graph Database -->
     <bpmn:scriptTask id="Task_StoreGraph" name="Store Results in Graph Database">
       <bpmn:incoming>Flow_8</bpmn:incoming>
       <bpmn:outgoing>Flow_9</bpmn:outgoing>
@@ -113,8 +83,6 @@
         ]]>
       </bpmn:script>
     </bpmn:scriptTask>
-    
-    <!-- Script Task 5: Store in RDF Database -->
     <bpmn:scriptTask id="Task_StoreRDF" name="Store Results in RDF Database">
       <bpmn:incoming>Flow_9</bpmn:incoming>
       <bpmn:outgoing>Flow_10</bpmn:outgoing>
@@ -125,193 +93,139 @@
         ]]>
       </bpmn:script>
     </bpmn:scriptTask>
-    
-    <!-- End Event -->
     <bpmn:endEvent id="EndEvent_1" name="Analysis Complete">
       <bpmn:incoming>Flow_10</bpmn:incoming>
     </bpmn:endEvent>
-    
-    <!-- Sequence Flows -->
     <bpmn:sequenceFlow id="Flow_1" sourceRef="StartEvent_1" targetRef="Task_ExtractRequirements" />
     <bpmn:sequenceFlow id="Flow_2" sourceRef="Task_ExtractRequirements" targetRef="Task_UserReview" />
     <bpmn:sequenceFlow id="Flow_3" sourceRef="Task_UserReview" targetRef="Gateway_UserChoice" />
-    
-    <!-- Decision flows -->
-    <bpmn:sequenceFlow id="Flow_4_Approve" sourceRef="Gateway_UserChoice" targetRef="Task_LLMProcessing">
-      <bpmn:conditionExpression xsi:type="bpmn:tFormalExpression">
-        <![CDATA[${user_choice == 'approve'}]]>
-      </bpmn:conditionExpression>
+    <bpmn:sequenceFlow id="Flow_4_Approve" name="approve" sourceRef="Gateway_UserChoice" targetRef="Task_LLMProcessing">
+      <bpmn:conditionExpression xsi:type="bpmn:tFormalExpression">${user_choice == 'approve'}</bpmn:conditionExpression>
     </bpmn:sequenceFlow>
-    
-    <bpmn:sequenceFlow id="Flow_4_Edit" sourceRef="Gateway_UserChoice" targetRef="Task_HandleUserEdits">
-      <bpmn:conditionExpression xsi:type="bpmn:tFormalExpression">
-        <![CDATA[${user_choice == 'edit'}]]>
-      </bpmn:conditionExpression>
+    <bpmn:sequenceFlow id="Flow_4_Edit" name="edit" sourceRef="Gateway_UserChoice" targetRef="Task_HandleUserEdits">
+      <bpmn:conditionExpression xsi:type="bpmn:tFormalExpression">${user_choice == 'edit'}</bpmn:conditionExpression>
     </bpmn:sequenceFlow>
-    
-    <bpmn:sequenceFlow id="Flow_4_Rerun" sourceRef="Gateway_UserChoice" targetRef="Task_RerunExtraction">
-      <bpmn:conditionExpression xsi:type="bpmn:tFormalExpression">
-        <![CDATA[${user_choice == 'rerun'}]]>
-      </bpmn:conditionExpression>
+    <bpmn:sequenceFlow id="Flow_4_Rerun" name="rerun" sourceRef="Gateway_UserChoice" targetRef="Task_RerunExtraction">
+      <bpmn:conditionExpression xsi:type="bpmn:tFormalExpression">${user_choice == 'rerun'}</bpmn:conditionExpression>
     </bpmn:sequenceFlow>
-    
-    <!-- Edit/Rerun flows - Loop back to User Review -->
     <bpmn:sequenceFlow id="Flow_5_Edit" sourceRef="Task_HandleUserEdits" targetRef="Task_UserReview" />
     <bpmn:sequenceFlow id="Flow_5_Rerun" sourceRef="Task_RerunExtraction" targetRef="Task_UserReview" />
-    
-    <!-- Continue with original flow -->
     <bpmn:sequenceFlow id="Flow_7" sourceRef="Task_LLMProcessing" targetRef="Task_StoreVector" />
     <bpmn:sequenceFlow id="Flow_8" sourceRef="Task_StoreVector" targetRef="Task_StoreGraph" />
     <bpmn:sequenceFlow id="Flow_9" sourceRef="Task_StoreGraph" targetRef="Task_StoreRDF" />
     <bpmn:sequenceFlow id="Flow_10" sourceRef="Task_StoreRDF" targetRef="EndEvent_1" />
-    
   </bpmn:process>
-  
-  <!-- BPMN Diagram -->
   <bpmndi:BPMNDiagram id="BPMNDiagram_1">
     <bpmndi:BPMNPlane id="BPMNPlane_1" bpmnElement="odras_requirements_analysis">
-      
-      <!-- Start Event -->
       <bpmndi:BPMNShape id="StartEvent_1_di" bpmnElement="StartEvent_1">
         <dc:Bounds x="152" y="232" width="36" height="36" />
         <bpmndi:BPMNLabel>
           <dc:Bounds x="148" y="275" width="44" height="14" />
         </bpmndi:BPMNLabel>
       </bpmndi:BPMNShape>
-      
-      <!-- Extract Requirements Task -->
       <bpmndi:BPMNShape id="Task_ExtractRequirements_di" bpmnElement="Task_ExtractRequirements">
         <dc:Bounds x="240" y="210" width="100" height="80" />
         <bpmndi:BPMNLabel />
       </bpmndi:BPMNShape>
-      
-      <!-- User Review Task -->
       <bpmndi:BPMNShape id="Task_UserReview_di" bpmnElement="Task_UserReview">
         <dc:Bounds x="400" y="210" width="100" height="80" />
         <bpmndi:BPMNLabel />
       </bpmndi:BPMNShape>
-      
-      <!-- Decision Gateway -->
-      <bpmndi:BPMNShape id="Gateway_UserChoice_di" bpmnElement="Gateway_UserChoice">
+      <bpmndi:BPMNShape id="Gateway_UserChoice_di" bpmnElement="Gateway_UserChoice" isMarkerVisible="true">
         <dc:Bounds x="560" y="225" width="50" height="50" />
         <bpmndi:BPMNLabel />
       </bpmndi:BPMNShape>
-      
-      <!-- Handle User Edits Task -->
       <bpmndi:BPMNShape id="Task_HandleUserEdits_di" bpmnElement="Task_HandleUserEdits">
         <dc:Bounds x="680" y="150" width="100" height="80" />
         <bpmndi:BPMNLabel />
       </bpmndi:BPMNShape>
-      
-      <!-- Rerun Extraction Task -->
       <bpmndi:BPMNShape id="Task_RerunExtraction_di" bpmnElement="Task_RerunExtraction">
         <dc:Bounds x="680" y="300" width="100" height="80" />
         <bpmndi:BPMNLabel />
       </bpmndi:BPMNShape>
-      
-
-      
-      <!-- LLM Processing Task -->
       <bpmndi:BPMNShape id="Task_LLMProcessing_di" bpmnElement="Task_LLMProcessing">
         <dc:Bounds x="960" y="210" width="100" height="80" />
         <bpmndi:BPMNLabel />
       </bpmndi:BPMNShape>
-      
-      <!-- Store Vector Task -->
       <bpmndi:BPMNShape id="Task_StoreVector_di" bpmnElement="Task_StoreVector">
         <dc:Bounds x="1120" y="210" width="100" height="80" />
         <bpmndi:BPMNLabel />
       </bpmndi:BPMNShape>
-      
-      <!-- Store Graph Task -->
       <bpmndi:BPMNShape id="Task_StoreGraph_di" bpmnElement="Task_StoreGraph">
         <dc:Bounds x="1280" y="210" width="100" height="80" />
         <bpmndi:BPMNLabel />
       </bpmndi:BPMNShape>
-      
-      <!-- Store RDF Task -->
       <bpmndi:BPMNShape id="Task_StoreRDF_di" bpmnElement="Task_StoreRDF">
         <dc:Bounds x="1440" y="210" width="100" height="80" />
         <bpmndi:BPMNLabel />
       </bpmndi:BPMNShape>
-      
-      <!-- End Event -->
       <bpmndi:BPMNShape id="EndEvent_1_di" bpmnElement="EndEvent_1">
         <dc:Bounds x="1602" y="232" width="36" height="36" />
         <bpmndi:BPMNLabel>
           <dc:Bounds x="1598" y="275" width="44" height="14" />
         </bpmndi:BPMNLabel>
       </bpmndi:BPMNShape>
-      
-      <!-- Sequence Flow Lines -->
       <bpmndi:BPMNEdge id="Flow_1_di" bpmnElement="Flow_1">
         <di:waypoint x="188" y="250" />
         <di:waypoint x="240" y="250" />
       </bpmndi:BPMNEdge>
-      
       <bpmndi:BPMNEdge id="Flow_2_di" bpmnElement="Flow_2">
         <di:waypoint x="340" y="250" />
         <di:waypoint x="400" y="250" />
       </bpmndi:BPMNEdge>
-      
       <bpmndi:BPMNEdge id="Flow_3_di" bpmnElement="Flow_3">
         <di:waypoint x="500" y="250" />
         <di:waypoint x="560" y="250" />
       </bpmndi:BPMNEdge>
-      
-      <!-- Decision flows -->
       <bpmndi:BPMNEdge id="Flow_4_Approve_di" bpmnElement="Flow_4_Approve">
         <di:waypoint x="610" y="250" />
         <di:waypoint x="960" y="250" />
+        <bpmndi:BPMNLabel>
+          <dc:Bounds x="765" y="232" width="40" height="14" />
+        </bpmndi:BPMNLabel>
       </bpmndi:BPMNEdge>
-      
       <bpmndi:BPMNEdge id="Flow_4_Edit_di" bpmnElement="Flow_4_Edit">
         <di:waypoint x="585" y="225" />
         <di:waypoint x="680" y="190" />
+        <bpmndi:BPMNLabel>
+          <dc:Bounds x="624" y="190" width="18" height="14" />
+        </bpmndi:BPMNLabel>
       </bpmndi:BPMNEdge>
-      
       <bpmndi:BPMNEdge id="Flow_4_Rerun_di" bpmnElement="Flow_4_Rerun">
         <di:waypoint x="585" y="275" />
         <di:waypoint x="680" y="340" />
+        <bpmndi:BPMNLabel>
+          <dc:Bounds x="620" y="290" width="26" height="14" />
+        </bpmndi:BPMNLabel>
       </bpmndi:BPMNEdge>
-      
-      <!-- Edit/Rerun flows - Loop back to User Review -->
       <bpmndi:BPMNEdge id="Flow_5_Edit_di" bpmnElement="Flow_5_Edit">
         <di:waypoint x="730" y="150" />
         <di:waypoint x="730" y="120" />
         <di:waypoint x="450" y="120" />
         <di:waypoint x="450" y="210" />
       </bpmndi:BPMNEdge>
-      
       <bpmndi:BPMNEdge id="Flow_5_Rerun_di" bpmnElement="Flow_5_Rerun">
         <di:waypoint x="730" y="380" />
         <di:waypoint x="730" y="400" />
         <di:waypoint x="450" y="400" />
         <di:waypoint x="450" y="290" />
       </bpmndi:BPMNEdge>
-      
-      <!-- Continue with original flow -->
       <bpmndi:BPMNEdge id="Flow_7_di" bpmnElement="Flow_7">
         <di:waypoint x="1060" y="250" />
         <di:waypoint x="1120" y="250" />
       </bpmndi:BPMNEdge>
-      
       <bpmndi:BPMNEdge id="Flow_8_di" bpmnElement="Flow_8">
         <di:waypoint x="1220" y="250" />
         <di:waypoint x="1280" y="250" />
       </bpmndi:BPMNEdge>
-      
       <bpmndi:BPMNEdge id="Flow_9_di" bpmnElement="Flow_9">
         <di:waypoint x="1380" y="250" />
         <di:waypoint x="1440" y="250" />
       </bpmndi:BPMNEdge>
-      
       <bpmndi:BPMNEdge id="Flow_10_di" bpmnElement="Flow_10">
         <di:waypoint x="1540" y="250" />
         <di:waypoint x="1602" y="250" />
       </bpmndi:BPMNEdge>
-      
     </bpmndi:BPMNPlane>
   </bpmndi:BPMNDiagram>
-  
 </bpmn:definitions>
