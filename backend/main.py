@@ -8,11 +8,10 @@ import requests
 import json
 import time
 
-import sys
-import os
-sys.path.append(os.path.join(os.path.dirname(__file__), '..'))
-from backend.services.config import Settings
 import httpx
+
+# Import services using relative imports
+from .services.config import Settings
 
 
 app = FastAPI(title="ODRAS API", version="0.1.0")

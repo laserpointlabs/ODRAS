@@ -50,4 +50,9 @@ psycopg2-binary>=2.9.0
 tqdm>=4.67.0
 portalocker>=3.2.0
 
+# Testing dependencies
+pytest>=8.0.0
+pytest-cov>=4.0.0
+httpx>=0.28.0
+
 

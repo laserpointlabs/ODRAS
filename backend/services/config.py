@@ -28,10 +28,6 @@ class Settings(BaseSettings):
     minio_bucket_name: str = "odras-files"
     minio_secure: bool = False
 
-    class Config:
-        env_file = ".env"
-        case_sensitive = False
-    
     # PostgreSQL Configuration  
     postgres_host: str = "localhost"
     postgres_port: int = 5432
