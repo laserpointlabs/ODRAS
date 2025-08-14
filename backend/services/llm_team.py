@@ -1,9 +1,10 @@
-from typing import Dict, List, Tuple
-import os
-import httpx
 import json
-import time
+import os
 import random
+import time
+from typing import Dict, List, Tuple
+
+import httpx
 
 from .config import Settings
 
@@ -17,8 +18,13 @@ class LLMTeam:
     def __init__(self, settings: Settings):
         self.settings = settings
 
-    async def analyze_requirement(self, requirement_text: str, ontology_json_schema: dict, 
-                                custom_personas: List[Dict] = None, custom_prompts: List[Dict] = None) -> Dict:
+    async def analyze_requirement(
+        self,
+        requirement_text: str,
+        ontology_json_schema: dict,
+        custom_personas: List[Dict] = None,
+        custom_prompts: List[Dict] = None,
+    ) -> Dict:
         """Call configured personas and ensemble their JSON outputs by simple voting/merging.
         Returns JSON object adhering to `ontology_json_schema` best-effort.
         """
@@ -76,11 +82,16 @@ class LLMTeam:
             "response_format": {"type": "json_object"},
             "messages": [
                 {"role": "system", "content": system_prompt + " Return ONLY JSON conforming to the schema."},
-                {"role": "user", "content": json.dumps({
-                    "task": "Extract ontology-grounded JSON for requirement",
-                    "schema": schema,
-                    "requirement": text,
-                })},
+                {
+                    "role": "user",
+                    "content": json.dumps(
+                        {
+                            "task": "Extract ontology-grounded JSON for requirement",
+                            "schema": schema,
+                            "requirement": text,
+                        }
+                    ),
+                },
             ],
             "temperature": 0.2,
         }
@@ -95,17 +106,22 @@ class LLMTeam:
                 return {"text": text, "state": "Draft", "originates_from": "parse-error"}
 
     async def _call_ollama(self, text: str, system_prompt: str, schema: dict) -> Dict:
-        base = self.settings.ollama_url.rstrip('/')
+        base = self.settings.ollama_url.rstrip("/")
         url = f"{base}/v1/chat/completions"
         payload = {
             "model": self.settings.llm_model or "llama3:8b-instruct",
             "messages": [
                 {"role": "system", "content": system_prompt + " Return ONLY JSON conforming to the schema."},
-                {"role": "user", "content": json.dumps({
-                    "task": "Extract ontology-grounded JSON for requirement",
-                    "schema": schema,
-                    "requirement": text,
-                })},
+                {
+                    "role": "user",
+                    "content": json.dumps(
+                        {
+                            "task": "Extract ontology-grounded JSON for requirement",
+                            "schema": schema,
+                            "requirement": text,
+                        }
+                    ),
+                },
             ],
             "temperature": 0.2,
             "stream": False,
@@ -131,7 +147,3 @@ class LLMTeam:
                 if k not in merged:
                     merged[k] = v
         return merged
-
-
-
-

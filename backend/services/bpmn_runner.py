@@ -1,12 +1,12 @@
 import uuid
-from typing import Dict, Any, List
+from typing import Any, Dict, List
 
 from .config import Settings
-from .requirement_extractor import RequirementExtractor
+from .embeddings import SimpleHasherEmbedder
 from .llm_team import LLMTeam
 from .ontology_schema import REQUIREMENT_SCHEMA
-from .embeddings import SimpleHasherEmbedder
 from .persistence import PersistenceLayer
+from .requirement_extractor import RequirementExtractor
 
 
 class BPMNWorkflowRunner:
@@ -25,16 +25,18 @@ class BPMNWorkflowRunner:
 
     async def start_run(self, document_bytes: bytes, filename: str, iterations: int = 10) -> str:
         run_id = str(uuid.uuid4())
-        self.status.update({
-            "status": "running",
-            "filename": filename,
-            "iterations": iterations,
-            "run_id": run_id,
-        })
+        self.status.update(
+            {
+                "status": "running",
+                "filename": filename,
+                "iterations": iterations,
+                "run_id": run_id,
+            }
+        )
 
         # Parse doc text (MVP: treat as utf-8 text)
         try:
-            text = document_bytes.decode('utf-8', errors='ignore')
+            text = document_bytes.decode("utf-8", errors="ignore")
         except Exception:
             text = ""
 
@@ -67,14 +69,14 @@ class BPMNWorkflowRunner:
             rid = obj.get("id")
             entities = obj.get("entities", [])
             for e in entities:
-                triples.append((f"req:{rid}", "HAS_ENTITY", f"ent:{e.get('id')}") )
+                triples.append((f"req:{rid}", "HAS_ENTITY", f"ent:{e.get('id')}"))
             for rel in obj.get("relationships", []):
                 triples.append((f"ent:{rel.get('source')}", rel.get("type", "REL"), f"ent:{rel.get('target')}"))
         self.persistence.write_graph(triples)
 
         # 5) Push to RDF (sketch TTL via simple triples)
         ttl_lines = []
-        for s,p,o in triples:
+        for s, p, o in triples:
             ttl_lines.append(f"<{s}> <{p}> <{o}> .")
         ttl = "\n".join(ttl_lines)
         self.persistence.write_rdf(ttl)
@@ -101,7 +103,3 @@ class BPMNWorkflowRunner:
                 et = e.get("type", "Unknown")
                 counts[et] = counts.get(et, 0) + 1
         return counts
-
-
-
-

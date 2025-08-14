@@ -1,159 +1,304 @@
-"""
-Main FastAPI application for ODRAS.
-"""
-import asyncio
 import json
 import time
-from typing import List, Dict, Optional
+from typing import Dict, List, Optional
 
 import httpx
 import requests
 import uvicorn
-from fastapi import FastAPI, UploadFile, File, Form, HTTPException, Body
+from fastapi import Body, FastAPI, File, Form, HTTPException, UploadFile
 from fastapi.responses import HTMLResponse
-from fastapi.staticfiles import StaticFiles
 
-# Local imports
-from .config import (
-    CAMUNDA_BASE_URL, 
-    CAMUNDA_REST_API, 
-    DEFAULT_PERSONAS, 
-    DEFAULT_PROMPTS,
-    APP_TITLE,
-    APP_VERSION,
-    APP_DESCRIPTION
-)
-from .models import Persona, Prompt, UserDecision, APIResponse
-from .logging_config import setup_logging, get_logger
-from .exceptions import ODRASException, ServiceError
+# Import services using relative imports
 from .services.config import Settings
+# Import API routers
+from backend.api.files import router as files_router
+from backend.api.ontology import router as ontology_router
+from backend.test_review_endpoint import router as test_router
 
-# Setup logging
-setup_logging()
-logger = get_logger(__name__)
+app = FastAPI(title="ODRAS API", version="0.1.0")
 
-# Initialize FastAPI app
-app = FastAPI(
-    title=APP_TITLE,
-    version=APP_VERSION,
-    description=APP_DESCRIPTION
-)
-
-# Import and include routers
-from .test_review_endpoint import router as test_router
-from .api.ontology import router as ontology_router
-from .api.files import router as files_router
-
+# Include API routers
 app.include_router(test_router)
 app.include_router(ontology_router)
 app.include_router(files_router)
 
-# In-memory storage (MVP - replace with Redis/DB later)
+# Camunda configuration
+CAMUNDA_BASE_URL = "http://localhost:8080"
+CAMUNDA_REST_API = f"{CAMUNDA_BASE_URL}/engine-rest"
+
+# Simple in-memory run registry (MVP). Replace with Redis/DB later.
 RUNS: Dict[str, Dict] = {}
-PERSONAS: List[Dict] = DEFAULT_PERSONAS.copy()
-PROMPTS: List[Dict] = DEFAULT_PROMPTS.copy()
+
+# In-memory storage for personas and prompts (MVP). Replace with Redis/DB later.
+PERSONAS: List[Dict] = [
+    {
+        "id": "extractor",
+        "name": "Extractor",
+        "description": "You extract ontology-grounded entities from requirements.",
+        "system_prompt": "You are an expert requirements analyst. Your role is to extract ontology-grounded entities from requirements text. Return ONLY JSON conforming to the provided schema.",
+        "is_active": True,
+    },
+    {
+        "id": "reviewer",
+        "name": "Reviewer",
+        "description": "You validate and correct extracted JSON to fit the schema strictly.",
+        "system_prompt": "You are a quality assurance specialist. Your role is to validate and correct extracted JSON to ensure it strictly conforms to the provided schema. Return ONLY JSON conforming to the schema.",
+        "is_active": True,
+    },
+]
+
+PROMPTS: List[Dict] = [
+    {
+        "id": "default_analysis",
+        "name": "Default Analysis",
+        "description": "Default prompt for requirement analysis",
+        "prompt_template": "Analyze the following requirement and extract key information:\n\nRequirement: {requirement_text}\nCategory: {category}\nSource: {source_file}\nIteration: {iteration}\n\nPlease provide:\n1. Extracted entities (Components, Interfaces, Functions, Processes, Conditions)\n2. Constraints and dependencies\n3. Performance requirements\n4. Quality attributes\n5. Confidence level (0.0-1.0)\n\nFormat your response as JSON.",
+        "variables": ["requirement_text", "category", "source_file", "iteration"],
+        "is_active": True,
+    }
+]
 
 
 @app.on_event("startup")
 async def on_startup():
-    """Initialize application on startup."""
-    try:
-        logger.info("Starting ODRAS application...")
-        # Ensure services are initialized lazily via Settings
-        settings = Settings()
-        logger.info(f"Configuration loaded: {settings.fuseki_url}")
-        logger.info("ODRAS application started successfully")
-    except Exception as e:
-        logger.error(f"Failed to start ODRAS application: {e}")
-        raise
+    # Ensure services are initialized lazily via Settings
+    Settings()  # loads env
 
 
 @app.get("/ontology-editor", response_class=HTMLResponse)
 async def ontology_editor():
     """Simple, working ontology editor interface."""
     try:
-        logger.info("Serving ontology editor interface")
         with open("frontend/simple-ontology-editor.html", "r") as f:
-            content = f.read()
-            logger.debug(f"Ontology editor loaded, size: {len(content)} characters")
-            return HTMLResponse(content=content)
+            return HTMLResponse(content=f.read())
     except FileNotFoundError:
-        logger.error("Ontology editor HTML file not found")
         return HTMLResponse(
-            content="<h1>Ontology Editor not found</h1><p>Please ensure frontend/simple-ontology-editor.html exists.</p>", 
-            status_code=404
+            content="<h1>Ontology Editor not found</h1><p>Please ensure frontend/simple-ontology-editor.html exists.</p>",
+            status_code=404,
         )
-    except Exception as e:
-        logger.error(f"Error serving ontology editor: {e}")
-        raise HTTPException(status_code=500, detail="Internal server error")
+
 
 @app.post("/api/ontology/push-turtle")
 async def push_turtle_to_fuseki(turtle_content: str = Body(...)):
     """Push turtle RDF content to Fuseki - bypasses authentication issues"""
     try:
-        logger.info("Attempting to push turtle content to Fuseki via persistence layer")
-        from .services.persistence import PersistenceLayer
-        
+        from backend.services.config import Settings
+        from backend.services.persistence import PersistenceLayer
+
         settings = Settings()
         persistence = PersistenceLayer(settings)
-        
+
         # Use our existing persistence layer which might handle auth better
         persistence.write_rdf(turtle_content)
-        logger.info("Successfully pushed ontology to Fuseki via persistence layer")
-        
+
         return {"success": True, "message": "Ontology pushed to Fuseki successfully"}
-        
-    except Exception as e:
-        logger.warning(f"Persistence layer failed, trying direct approach: {e}")
+
+    except Exception:
         # If that fails, try direct approach via Graph Store Protocol
         try:
-            settings = Settings()
-            base = settings.fuseki_url.rstrip('/')
+            from backend.services.config import Settings as _Settings
+
+            s = _Settings()
+            base = s.fuseki_url.rstrip("/")
             url = f"{base}/data?default"
-            headers = {'Content-Type': 'text/turtle'}
-            
-            logger.info(f"Attempting direct Fuseki connection to: {url}")
-            resp = requests.put(url, data=turtle_content.encode('utf-8'), headers=headers, timeout=10)
-            
+            headers = {"Content-Type": "text/turtle"}
+            resp = requests.put(url, data=turtle_content.encode("utf-8"), headers=headers, timeout=10)
             if 200 <= resp.status_code < 300:
-                logger.info("Successfully pushed ontology to Fuseki via direct connection")
                 return {"success": True, "message": "Ontology pushed to Fuseki successfully (fallback)"}
             else:
-                logger.error(f"Fuseki returned error: {resp.status_code}: {resp.text}")
                 return {"success": False, "error": f"Fuseki returned {resp.status_code}: {resp.text}"}
-                
         except Exception as e2:
-            logger.error(f"Direct Fuseki connection also failed: {e2}")
             return {"success": False, "error": f"Failed to push to Fuseki: {str(e2)}"}
+
 
 @app.get("/user-review", response_class=HTMLResponse)
 async def user_review_interface(taskId: Optional[str] = None, process_instance_id: Optional[str] = None):
     """Requirements review interface or main interface."""
-    try:
-        # If taskId or process_instance_id is provided and not empty, show the review interface
-        if (taskId and taskId.strip()) or (process_instance_id and process_instance_id.strip()):
-            logger.info(f"Serving review interface for task: {taskId}, process: {process_instance_id}")
-            from .review_interface import generate_review_interface_html
-            # Ensure we have non-None values
-            task_id_safe = taskId or ""
-            process_id_safe = process_instance_id or ""
-            return HTMLResponse(content=generate_review_interface_html(task_id_safe, process_id_safe))
+
+    # If taskId or process_instance_id is provided and not empty, show the review interface
+    if (taskId and taskId.strip()) or (process_instance_id and process_instance_id.strip()):
+        from backend.review_interface import generate_review_interface_html
+
+        # Ensure we have non-None values
+        task_id_safe = taskId or ""
+        process_id_safe = process_instance_id or ""
+        return HTMLResponse(content=generate_review_interface_html(task_id_safe, process_id_safe))
+
+    # Otherwise show the main interface
+    html_content = """
+    <!DOCTYPE html>
+    <html>
+    <head>
+        <title>ODRAS - Ontology-Driven Requirements Analysis System</title>
+        <style>
+            body { font-family: Arial, sans-serif; margin: 40px; }
+            .container { max-width: 1200px; margin: 0 auto; }
+            .form-group { margin-bottom: 20px; }
+            label { display: block; margin-bottom: 5px; font-weight: bold; }
+            input, select, textarea { width: 100%; padding: 8px; border: 1px solid #ddd; border-radius: 4px; }
+            button { background-color: #007bff; color: white; padding: 10px 20px; border: none; border-radius: 4px; cursor: pointer; margin-right: 10px; }
+            button:hover { background-color: #0056b3; }
+            .status { margin-top: 20px; padding: 10px; border-radius: 4px; }
+            .status.success { background-color: #d4edda; border: 1px solid #c3e6cb; color: #155724; }
+            .status.error { background-color: #f8d7da; border: 1px solid #f5c6cb; color: #721c24; }
+            .status.info { background-color: #d1ecf1; border: 1px solid #bee5eb; color: #0c5460; }
+            .requirements-grid { display: grid; grid-template-columns: 1fr; gap: 15px; margin-top: 20px; }
+            .requirement-card { border: 1px solid #ddd; border-radius: 8px; padding: 15px; background: #f9f9f9; }
+            .requirement-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px; }
+            .requirement-id { font-weight: bold; color: #007bff; }
+            .requirement-confidence { padding: 4px 8px; border-radius: 4px; font-size: 12px; }
+            .confidence-high { background: #d4edda; color: #155724; }
+            .confidence-medium { background: #fff3cd; color: #856404; }
+            .confidence-low { background: #f8d7da; color: #721c24; }
+            .requirement-text { margin: 10px 0; line-height: 1.5; }
+            .requirement-meta { font-size: 12px; color: #666; }
+            .edit-form { display: none; margin-top: 10px; }
+            .edit-form.show { display: block; }
+            .decision-buttons { margin-top: 20px; padding: 20px; background: #f8f9fa; border-radius: 8px; }
+            .decision-buttons h3 { margin-top: 0; }
+            .btn-approve { background-color: #28a745; }
+            .btn-edit { background-color: #ffc107; color: #212529; }
+            .btn-rerun { background-color: #dc3545; }
+            .hidden { display: none; }
+        </style>
+    </head>
+    <body>
+        <div class="container">
+            <h1>ODRAS - Ontology-Driven Requirements Analysis System</h1>
+            
+            <form id="uploadForm">
+                <div class="form-group">
+                    <label for="file">Select Document:</label>
+                    <input type="file" id="file" name="file" accept=".txt,.md,.pdf" required>
+                </div>
+                
+                <div class="form-group">
+                    <label for="iterations">Monte Carlo Iterations:</label>
+                    <input type="number" id="iterations" name="iterations" value="10" min="1" max="100">
+                </div>
+                
+                <div class="form-group">
+                    <label for="llm_provider">LLM Provider:</label>
+                    <select id="llm_provider" name="llm_provider">
+                        <option value="openai">OpenAI</option>
+                        <option value="ollama">Ollama (Local)</option>
+                    </select>
+                </div>
+                
+                <div class="form-group">
+                    <label for="llm_model">LLM Model:</label>
+                    <input type="text" id="llm_model" name="llm_model" value="gpt-4o-mini">
+                </div>
+                
+                <button type="submit">Start Analysis</button>
+            </form>
+            
+            <div id="status"></div>
+            
+            <div id="results" style="display: none;">
+                <h2>Analysis Results</h2>
+                <div id="resultsContent"></div>
+            </div>
+            
+            <div id="userReview" class="hidden">
+                <h2>Requirements Review</h2>
+                <p>Please review the extracted requirements before proceeding to LLM analysis.</p>
+                
+                <div id="requirementsGrid" class="requirements-grid"></div>
+                
+                <div class="decision-buttons">
+                    <h3>Make Your Decision:</h3>
+                    <button class="btn-approve" onclick="completeUserTask('approve')">✅ Approve & Continue</button>
+                    <button class="btn-edit" onclick="showEditInterface()">✏️ Edit Requirements</button>
+                    <button class="btn-rerun" onclick="showRerunInterface()">🔄 Rerun Extraction</button>
+                </div>
+                
+                <div id="editInterface" class="hidden">
+                    <h3>Edit Requirements</h3>
+                    <div id="editForms"></div>
+                    <button onclick="saveEdits()">Save Edits</button>
+                    <button onclick="cancelEdit()">Cancel</button>
+                </div>
+                
+                <div id="rerunInterface" class="hidden">
+                    <h3>Rerun Extraction with New Parameters</h3>
+                    <div class="form-group">
+                        <label for="confidenceThreshold">Confidence Threshold:</label>
+                        <input type="number" id="confidenceThreshold" min="0" max="1" step="0.1" value="0.6">
+                    </div>
+                    <div class="form-group">
+                        <label for="minTextLength">Minimum Text Length:</label>
+                        <input type="number" id="minTextLength" min="5" value="15">
+                    </div>
+                    <div class="form-group">
+                        <label for="customPatterns">Custom Patterns (one per line):</label>
+                        <textarea id="customPatterns" rows="4" placeholder="Enter custom regex patterns..."></textarea>
+                    </div>
+                    <button onclick="rerunExtraction()">Rerun Extraction</button>
+                    <button onclick="cancelRerun()">Cancel</button>
+                </div>
+            </div>
+        </div>
         
-        # Otherwise show the main interface
-        logger.info("Serving main user interface")
-        try:
-            with open("frontend/main_interface.html", "r") as f:
-                html_content = f.read()
-            return HTMLResponse(content=html_content)
-        except FileNotFoundError:
-            logger.error("Main interface HTML file not found")
-            return HTMLResponse(
-                content="<h1>Main Interface Not Found</h1><p>Please ensure frontend/main_interface.html exists.</p>", 
-                status_code=404
-            )
-        except Exception as e:
-            logger.error(f"Error serving main interface: {e}")
-            raise HTTPException(status_code=500, detail="Internal server error")
+        <script>
+            let currentProcessId = null;
+            let currentRequirements = [];
+            
+            document.getElementById('uploadForm').addEventListener('submit', async (e) => {
+                e.preventDefault();
+                
+                const formData = new FormData();
+                const fileInput = document.getElementById('file');
+                const iterationsInput = document.getElementById('iterations');
+                const llmProviderInput = document.getElementById('llm_provider');
+                const llmModelInput = document.getElementById('llm_model');
+                
+                formData.append('file', fileInput.files[0]);
+                formData.append('iterations', iterationsInput.value);
+                formData.append('llm_provider', llmProviderInput.value);
+                formData.append('llm_model', llmModelInput.value);
+                
+                const statusDiv = document.getElementById('status');
+                statusDiv.innerHTML = '<div class="status info">Starting analysis...</div>';
+                
+                try {
+                    const response = await fetch('/api/upload', {
+                        method: 'POST',
+                        body: formData
+                    });
+                    
+                    if (response.ok) {
+                        const result = await response.json();
+                        currentProcessId = result.process_id;
+                        statusDiv.innerHTML = `<div class="status success">Analysis started! Run ID: ${result.run_id}</div>`;
+                        
+                        // Show results section
+                        document.getElementById('results').style.display = 'block';
+                        document.getElementById('resultsContent').innerHTML = `
+                            <p><strong>Run ID:</strong> ${result.run_id}</p>
+                            <p><strong>Status:</strong> ${result.status}</p>
+                            <p><strong>Process ID:</strong> ${result.process_id}</p>
+                            <p><a href="http://localhost:8080/cockpit/default/#/process-instance/${result.process_id}" target="_blank">View in Camunda Cockpit</a></p>
+                        `;
+                        
+                        // Start monitoring for user task
+                        setTimeout(() => checkForUserTask(result.process_id), 2000);
+                    } else {
+                        const error = await response.json();
+                        statusDiv.innerHTML = `<div class="status error">Error: ${error.detail}</div>`;
+                    }
+                } catch (error) {
+                    statusDiv.innerHTML = `<div class="status error">Error: ${error.message}</div>`;
+                }
+            });
+            
+            async function checkForUserTask(processId) {
+                try {
+                    const response = await fetch(`/api/user-tasks/${processId}/status`);
+                    if (response.ok) {
+                        const status = await response.json();
+                        if (status.current_state === 'waiting_for_user_review') {
+                            // Show user review interface
                             await loadRequirementsForReview(processId);
                             document.getElementById('userReview').classList.remove('hidden');
                         } else if (status.current_state === 'llm_processing') {
@@ -337,23 +482,23 @@ async def upload_document(
     """Upload document and start Camunda BPMN process."""
     try:
         content = await file.read()
-        document_text = content.decode('utf-8', errors='ignore')
-        
+        document_text = content.decode("utf-8", errors="ignore")
+
         # Ensure filename is never None
         document_filename = file.filename or "unknown_document.txt"
-        
+
         # Start Camunda BPMN process
         process_id = await start_camunda_process(
             document_content=document_text,
             document_filename=document_filename,
             llm_provider=llm_provider or "openai",
             llm_model=llm_model or "gpt-4o-mini",
-            iterations=iterations
+            iterations=iterations,
         )
-        
+
         if not process_id:
             raise HTTPException(status_code=500, detail="Failed to start Camunda process")
-        
+
         # Store run info
         run_id = str(process_id)
         RUNS[run_id] = {
@@ -363,50 +508,36 @@ async def upload_document(
             "iterations": iterations,
             "llm_provider": llm_provider,
             "llm_model": llm_model,
-            "camunda_url": f"{CAMUNDA_BASE_URL}/cockpit/default/#/process-instance/{process_id}"
+            "camunda_url": f"{CAMUNDA_BASE_URL}/cockpit/default/#/process-instance/{process_id}",
         }
-        
+
         return {"run_id": run_id, "status": "started", "process_id": process_id}
-        
+
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
 
-async def start_camunda_process(document_content: str, document_filename: str, 
-                               llm_provider: str, llm_model: str, iterations: int) -> Optional[str]:
+async def start_camunda_process(
+    document_content: str, document_filename: str, llm_provider: str, llm_model: str, iterations: int
+) -> Optional[str]:
     """Start a new Camunda BPMN process instance."""
-    
+
     # First, ensure the BPMN is deployed
     deployment_id = await deploy_bpmn_if_needed()
     if not deployment_id:
         return None
-    
+
     # Start process instance
     start_url = f"{CAMUNDA_REST_API}/process-definition/key/odras_requirements_analysis/start"
-    
+
     variables = {
-        "document_content": {
-            "value": document_content,
-            "type": "String"
-        },
-        "document_filename": {
-            "value": document_filename,
-            "type": "String"
-        },
-        "llm_provider": {
-            "value": llm_provider,
-            "type": "String"
-        },
-        "llm_model": {
-            "value": llm_model,
-            "type": "String"
-        },
-        "iterations": {
-            "value": iterations,
-            "type": "Integer"
-        }
+        "document_content": {"value": document_content, "type": "String"},
+        "document_filename": {"value": document_filename, "type": "String"},
+        "llm_provider": {"value": llm_provider, "type": "String"},
+        "llm_model": {"value": llm_model, "type": "String"},
+        "iterations": {"value": iterations, "type": "Integer"},
     }
-    
+
     try:
         async with httpx.AsyncClient(timeout=30) as client:
             response = await client.post(start_url, json={"variables": variables})
@@ -429,20 +560,16 @@ async def deploy_bpmn_if_needed() -> Optional[str]:
                 return data[0]["id"] if data else None
     except Exception:
         pass
-    
+
     # Deploy BPMN
     try:
         bpmn_file_path = "../bpmn/odras_requirements_analysis.bpmn"
         with open(bpmn_file_path, "rb") as f:
             files = {"file": ("odras_requirements_analysis.bpmn", f, "application/xml")}
             data = {"deployment-name": "odras-requirements-analysis"}
-            
+
             async with httpx.AsyncClient(timeout=30) as client:
-                response = await client.post(
-                    f"{CAMUNDA_REST_API}/deployment/create",
-                    files=files,
-                    data=data
-                )
+                response = await client.post(f"{CAMUNDA_REST_API}/deployment/create", files=files, data=data)
                 response.raise_for_status()
                 data = response.json()
                 return data.get("id")
@@ -456,26 +583,26 @@ async def get_run_status(run_id: str):
     """Get status of a specific run."""
     if run_id not in RUNS:
         raise HTTPException(status_code=404, detail="Run not found")
-    
+
     run_info = RUNS[run_id].copy()
-    
+
     try:
         # Get Camunda process instance status
         process_id = run_info["process_id"]
         status_url = f"{CAMUNDA_REST_API}/process-instance/{process_id}"
-        
+
         async with httpx.AsyncClient(timeout=10) as client:
             response = await client.get(status_url)
             if response.status_code == 200:
                 status_info = response.json()
-                
+
                 # Check if completed
                 if status_info.get("state") == "completed":
                     run_info["status"] = "completed"
-                
+
     except Exception as e:
         run_info["camunda_error"] = str(e)
-    
+
     return run_info
 
 
@@ -504,7 +631,7 @@ async def get_ollama_status():
     """Get Ollama server status."""
     try:
         settings = Settings()
-        base = settings.ollama_url.rstrip('/')
+        base = settings.ollama_url.rstrip("/")
         async with httpx.AsyncClient(timeout=10) as client:
             # Check if Ollama is running by accessing its API
             response = await client.get(f"{base}/api/tags")
@@ -525,10 +652,10 @@ async def get_openai_status():
         api_key = Settings().openai_api_key
         if not api_key:
             return {"status": "not_configured", "message": "OPENAI_API_KEY not set"}
-        
+
         headers = {"Authorization": f"Bearer {api_key}"}
         url = "https://api.openai.com/v1/models"
-        
+
         async with httpx.AsyncClient(timeout=10) as client:
             response = await client.get(url, headers=headers)
             if response.status_code == 200:
@@ -1507,7 +1634,7 @@ async def index():
 @app.get("/api/models/ollama", response_model=dict)
 async def list_ollama_models():
     settings = Settings()
-    base = settings.ollama_url.rstrip('/')
+    base = settings.ollama_url.rstrip("/")
     try:
         async with httpx.AsyncClient(timeout=10) as client:
             r = await client.get(f"{base}/api/tags")
@@ -1557,7 +1684,7 @@ async def create_persona(persona: Dict):
         "name": persona.get("name", "New Persona"),
         "description": persona.get("description", ""),
         "system_prompt": persona.get("system_prompt", ""),
-        "is_active": persona.get("is_active", True)
+        "is_active": persona.get("is_active", True),
     }
     PERSONAS.append(new_persona)
     return {"persona": new_persona, "message": "Persona created successfully"}
@@ -1597,7 +1724,7 @@ async def create_prompt(prompt: Dict):
         "description": prompt.get("description", ""),
         "prompt_template": prompt.get("prompt_template", ""),
         "variables": prompt.get("variables", []),
-        "is_active": prompt.get("is_active", True)
+        "is_active": prompt.get("is_active", True),
     }
     PROMPTS.append(new_prompt)
     return {"prompt": new_prompt, "message": "Prompt created successfully"}
@@ -1627,19 +1754,19 @@ async def test_prompt(prompt_id: str, test_data: Dict):
     prompt = next((p for p in PROMPTS if p["id"] == prompt_id), None)
     if not prompt:
         raise HTTPException(status_code=404, detail="Prompt not found")
-    
+
     try:
         # Fill the prompt template with test variables
         filled_prompt = prompt["prompt_template"]
         for variable in prompt.get("variables", []):
             if variable in test_data:
                 filled_prompt = filled_prompt.replace(f"{{{variable}}}", str(test_data[variable]))
-        
+
         return {
             "prompt_id": prompt_id,
             "filled_prompt": filled_prompt,
             "test_variables": test_data,
-            "message": "Prompt filled successfully"
+            "message": "Prompt filled successfully",
         }
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Error testing prompt: {str(e)}")
@@ -1656,30 +1783,32 @@ async def get_all_user_tasks():
             params={
                 "processDefinitionKey": "odras_requirements_analysis",
                 "taskDefinitionKey": "Task_UserReview",  # Our user review task
-                "active": "true"
-            }
+                "active": "true",
+            },
         )
-        
+
         if response.status_code == 200:
             tasks = response.json()
-            
+
             # Format tasks for UI
             formatted_tasks = []
             for task in tasks:
-                formatted_tasks.append({
-                    "id": task.get("id"),
-                    "name": task.get("name", "Review Requirements"),
-                    "description": task.get("description", "Review and approve extracted requirements"),
-                    "taskDefinitionKey": task.get("taskDefinitionKey"),
-                    "processInstanceId": task.get("processInstanceId"),
-                    "created": task.get("created"),
-                    "priority": task.get("priority", 50)
-                })
-            
+                formatted_tasks.append(
+                    {
+                        "id": task.get("id"),
+                        "name": task.get("name", "Review Requirements"),
+                        "description": task.get("description", "Review and approve extracted requirements"),
+                        "taskDefinitionKey": task.get("taskDefinitionKey"),
+                        "processInstanceId": task.get("processInstanceId"),
+                        "created": task.get("created"),
+                        "priority": task.get("priority", 50),
+                    }
+                )
+
             return {"tasks": formatted_tasks}
         else:
             return {"tasks": [], "error": f"Camunda returned status {response.status_code}"}
-            
+
     except Exception as e:
         return {"tasks": [], "error": str(e)}
 
@@ -1691,20 +1820,16 @@ async def get_user_tasks(process_instance_id: str):
         # Query Camunda for user tasks
         tasks_url = f"{CAMUNDA_REST_API}/task"
         params = {"processInstanceId": process_instance_id}
-        
+
         async with httpx.AsyncClient(timeout=10) as client:
             response = await client.get(tasks_url, params=params)
             response.raise_for_status()
             tasks = response.json()
-            
+
             # Filter for user tasks
             user_tasks = [task for task in tasks if task.get("taskDefinitionKey") == "Task_UserReview"]
-            
-            return {
-                "process_instance_id": process_instance_id,
-                "user_tasks": user_tasks,
-                "total_tasks": len(user_tasks)
-            }
+
+            return {"process_instance_id": process_instance_id, "user_tasks": user_tasks, "total_tasks": len(user_tasks)}
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Error fetching user tasks: {str(e)}")
 
@@ -1715,12 +1840,12 @@ async def get_requirements_for_review(process_instance_id: str):
     try:
         # Get process variables to find requirements
         variables_url = f"{CAMUNDA_REST_API}/process-instance/{process_instance_id}/variables"
-        
+
         async with httpx.AsyncClient(timeout=10) as client:
             response = await client.get(variables_url)
             response.raise_for_status()
             variables = response.json()
-            
+
             # Extract requirements from process variables
             requirements_list = []
             if "requirements_list" in variables:
@@ -1729,16 +1854,16 @@ async def get_requirements_for_review(process_instance_id: str):
                     requirements_list = json.loads(requirements_data)
                 else:
                     requirements_list = requirements_data
-            
+
             document_content = variables.get("document_content", {}).get("value", "")
             document_filename = variables.get("document_filename", {}).get("value", "unknown")
-            
+
             return {
                 "process_instance_id": process_instance_id,
                 "requirements": requirements_list,
                 "document_content": document_content,
                 "document_filename": document_filename,
-                "total_requirements": len(requirements_list)
+                "total_requirements": len(requirements_list),
             }
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Error fetching requirements: {str(e)}")
@@ -1751,58 +1876,47 @@ async def complete_user_task(process_instance_id: str, user_decision: Dict):
         # Get the task ID for this process instance
         tasks_url = f"{CAMUNDA_REST_API}/task"
         params = {"processInstanceId": process_instance_id}
-        
+
         async with httpx.AsyncClient(timeout=10) as client:
             response = await client.get(tasks_url, params=params)
             response.raise_for_status()
             tasks = response.json()
-            
+
             # Find the user review task
             user_task = next((task for task in tasks if task.get("taskDefinitionKey") == "Task_UserReview"), None)
             if not user_task:
                 raise HTTPException(status_code=404, detail="User review task not found")
-            
+
             task_id = user_task["id"]
-            
+
             # Prepare variables based on user decision
             decision = user_decision.get("decision", "approve")
-            variables = {
-                "user_choice": {
-                    "value": decision,
-                    "type": "String"
-                }
-            }
-            
+            variables = {"user_choice": {"value": decision, "type": "String"}}
+
             # Add additional variables based on decision
             if decision == "edit":
                 user_edits = user_decision.get("user_edits", [])
-                variables["user_edits"] = {
-                    "value": json.dumps(user_edits),
-                    "type": "String"
-                }
+                variables["user_edits"] = {"value": json.dumps(user_edits), "type": "String"}
             elif decision == "rerun":
                 extraction_parameters = user_decision.get("extraction_parameters", {})
-                variables["extraction_parameters"] = {
-                    "value": json.dumps(extraction_parameters),
-                    "type": "String"
-                }
-            
+                variables["extraction_parameters"] = {"value": json.dumps(extraction_parameters), "type": "String"}
+
             # Complete the task
             complete_url = f"{CAMUNDA_REST_API}/task/{task_id}/complete"
             complete_response = await client.post(complete_url, json={"variables": variables})
             complete_response.raise_for_status()
-            
+
             # Update run status
             if process_instance_id in RUNS:
                 RUNS[process_instance_id]["status"] = f"user_task_completed_{decision}"
                 RUNS[process_instance_id]["user_decision"] = user_decision
-            
+
             return {
                 "task_id": task_id,
                 "process_instance_id": process_instance_id,
                 "decision": decision,
                 "status": "completed",
-                "message": f"User task completed with decision: {decision}"
+                "message": f"User task completed with decision: {decision}",
             }
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Error completing user task: {str(e)}")
@@ -1814,18 +1928,18 @@ async def get_user_task_status(process_instance_id: str):
     try:
         # Get process instance status
         instance_url = f"{CAMUNDA_REST_API}/process-instance/{process_instance_id}"
-        
+
         async with httpx.AsyncClient(timeout=10) as client:
             response = await client.get(instance_url)
             response.raise_for_status()
             instance = response.json()
-            
+
             # Get current activities
             activities_url = f"{CAMUNDA_REST_API}/process-instance/{process_instance_id}/activity-instances"
             activities_response = await client.get(activities_url)
             activities_response.raise_for_status()
             activities = activities_response.json()
-            
+
             # Determine current state
             current_state = "unknown"
             if activities.get("childActivityInstances"):
@@ -1838,14 +1952,14 @@ async def get_user_task_status(process_instance_id: str):
                         current_state = "llm_processing"
                     elif activity.get("activityId") == "Task_StoreVector":
                         current_state = "storing_results"
-            
+
             return {
                 "process_instance_id": process_instance_id,
                 "current_state": current_state,
                 "process_status": instance.get("state", "unknown"),
                 "business_key": instance.get("businessKey"),
                 "start_time": instance.get("startTime"),
-                "end_time": instance.get("endTime")
+                "end_time": instance.get("endTime"),
             }
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Error fetching task status: {str(e)}")
@@ -1857,6 +1971,3 @@ def run():
 
 if __name__ == "__main__":
     run()
-
-
-

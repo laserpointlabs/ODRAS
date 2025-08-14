@@ -1,11 +1,12 @@
-from typing import List, Dict, Any
+import hashlib
+from typing import Any, Dict, List
+
+import numpy as np
+from neo4j import GraphDatabase
 from qdrant_client import QdrantClient
 from qdrant_client.http import models as qmodels
-from neo4j import GraphDatabase
-from rdflib import Graph, Namespace, Literal, RDF, URIRef
-from SPARQLWrapper import SPARQLWrapper, POST, JSON
-import numpy as np
-import hashlib
+from rdflib import RDF, Graph, Literal, Namespace, URIRef
+from SPARQLWrapper import JSON, POST, SPARQLWrapper
 
 from .config import Settings
 
@@ -44,7 +45,9 @@ class PersistenceLayer:
             for subj, pred, obj in triples:
                 session.run(
                     "MERGE (s:Entity {iri:$s}) MERGE (o:Entity {iri:$o}) MERGE (s)-[r:REL {type:$p}]->(o)",
-                    s=subj, o=obj, p=pred
+                    s=subj,
+                    o=obj,
+                    p=pred,
                 )
 
     def write_rdf(self, ttl: str):
@@ -65,11 +68,13 @@ class PersistenceLayer:
         auth = None
         if getattr(self.settings, "fuseki_user", None) and getattr(self.settings, "fuseki_password", None):
             import requests
+
             auth = (self.settings.fuseki_user, self.settings.fuseki_password)
 
         # Attempt Graph Store Protocol
         try:
             import requests
+
             headers = {"Content-Type": "text/turtle"}
             resp = requests.put(graph_store_url, data=ttl.encode("utf-8"), headers=headers, auth=auth, timeout=10)
             if 200 <= resp.status_code < 300:
@@ -90,8 +95,8 @@ class PersistenceLayer:
                     # Convert to: PREFIX ex: <http://example/>
                     try:
                         # Remove trailing '.' and replace '@prefix' with 'PREFIX'
-                        without_dot = stripped[:-1] if stripped.endswith('.') else stripped
-                        prefix_lines.append(without_dot.replace('@prefix', 'PREFIX'))
+                        without_dot = stripped[:-1] if stripped.endswith(".") else stripped
+                        prefix_lines.append(without_dot.replace("@prefix", "PREFIX"))
                     except Exception:
                         # If parsing fails, just skip; SPARQL may still work if QNames are not used
                         pass
@@ -120,7 +125,3 @@ class PersistenceLayer:
             sparql.query()
         except Exception as e:
             raise RuntimeError(f"Failed to write RDF to Fuseki: {e}")
-
-
-
-

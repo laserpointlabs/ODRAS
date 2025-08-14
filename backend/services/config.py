@@ -1,4 +1,5 @@
 from typing import Optional
+
 from pydantic_settings import BaseSettings
 
 
@@ -17,10 +18,10 @@ class Settings(BaseSettings):
     openai_api_key: Optional[str] = None
 
     collection_name: str = "odras_requirements"
-    
+
     # File Storage Configuration
     storage_backend: str = "minio"  # local | minio | postgresql
-    
+
     # MinIO Configuration
     minio_endpoint: str = "localhost:9000"
     minio_access_key: str = "minioadmin"
@@ -28,20 +29,16 @@ class Settings(BaseSettings):
     minio_bucket_name: str = "odras-files"
     minio_secure: bool = False
 
-    # PostgreSQL Configuration  
+    # PostgreSQL Configuration
     postgres_host: str = "localhost"
     postgres_port: int = 5432
     postgres_database: str = "odras"
     postgres_user: str = "postgres"
     postgres_password: str = "password"
-    
+
     # Local Storage Configuration
     local_storage_path: str = "./storage/files"
 
     class Config:
         env_file = ".env"
         case_sensitive = False
-
-
-
-
