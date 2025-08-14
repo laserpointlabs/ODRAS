@@ -1,304 +1,159 @@
+"""
+Main FastAPI application for ODRAS.
+"""
+import asyncio
+import json
+import time
+from typing import List, Dict, Optional
+
+import httpx
+import requests
+import uvicorn
 from fastapi import FastAPI, UploadFile, File, Form, HTTPException, Body
 from fastapi.responses import HTMLResponse
 from fastapi.staticfiles import StaticFiles
-from typing import List, Dict, Optional
-import uvicorn
-import asyncio
-import requests
-import json
-import time
 
-import httpx
-
-# Import services using relative imports
+# Local imports
+from .config import (
+    CAMUNDA_BASE_URL, 
+    CAMUNDA_REST_API, 
+    DEFAULT_PERSONAS, 
+    DEFAULT_PROMPTS,
+    APP_TITLE,
+    APP_VERSION,
+    APP_DESCRIPTION
+)
+from .models import Persona, Prompt, UserDecision, APIResponse
+from .logging_config import setup_logging, get_logger
+from .exceptions import ODRASException, ServiceError
 from .services.config import Settings
 
+# Setup logging
+setup_logging()
+logger = get_logger(__name__)
 
-app = FastAPI(title="ODRAS API", version="0.1.0")
+# Initialize FastAPI app
+app = FastAPI(
+    title=APP_TITLE,
+    version=APP_VERSION,
+    description=APP_DESCRIPTION
+)
 
-# Import test endpoints for development
-from backend.test_review_endpoint import router as test_router
+# Import and include routers
+from .test_review_endpoint import router as test_router
+from .api.ontology import router as ontology_router
+from .api.files import router as files_router
+
 app.include_router(test_router)
-
-# Import ontology API endpoints
-from backend.api.ontology import router as ontology_router
 app.include_router(ontology_router)
-
-# Import file storage API endpoints
-from backend.api.files import router as files_router
 app.include_router(files_router)
 
-# Camunda configuration
-CAMUNDA_BASE_URL = "http://localhost:8080"
-CAMUNDA_REST_API = f"{CAMUNDA_BASE_URL}/engine-rest"
-
-# Simple in-memory run registry (MVP). Replace with Redis/DB later.
+# In-memory storage (MVP - replace with Redis/DB later)
 RUNS: Dict[str, Dict] = {}
-
-# In-memory storage for personas and prompts (MVP). Replace with Redis/DB later.
-PERSONAS: List[Dict] = [
-    {
-        "id": "extractor",
-        "name": "Extractor",
-        "description": "You extract ontology-grounded entities from requirements.",
-        "system_prompt": "You are an expert requirements analyst. Your role is to extract ontology-grounded entities from requirements text. Return ONLY JSON conforming to the provided schema.",
-        "is_active": True
-    },
-    {
-        "id": "reviewer",
-        "name": "Reviewer", 
-        "description": "You validate and correct extracted JSON to fit the schema strictly.",
-        "system_prompt": "You are a quality assurance specialist. Your role is to validate and correct extracted JSON to ensure it strictly conforms to the provided schema. Return ONLY JSON conforming to the schema.",
-        "is_active": True
-    }
-]
-
-PROMPTS: List[Dict] = [
-    {
-        "id": "default_analysis",
-        "name": "Default Analysis",
-        "description": "Default prompt for requirement analysis",
-        "prompt_template": "Analyze the following requirement and extract key information:\n\nRequirement: {requirement_text}\nCategory: {category}\nSource: {source_file}\nIteration: {iteration}\n\nPlease provide:\n1. Extracted entities (Components, Interfaces, Functions, Processes, Conditions)\n2. Constraints and dependencies\n3. Performance requirements\n4. Quality attributes\n5. Confidence level (0.0-1.0)\n\nFormat your response as JSON.",
-        "variables": ["requirement_text", "category", "source_file", "iteration"],
-        "is_active": True
-    }
-]
+PERSONAS: List[Dict] = DEFAULT_PERSONAS.copy()
+PROMPTS: List[Dict] = DEFAULT_PROMPTS.copy()
 
 
 @app.on_event("startup")
 async def on_startup():
-    # Ensure services are initialized lazily via Settings
-    Settings()  # loads env
+    """Initialize application on startup."""
+    try:
+        logger.info("Starting ODRAS application...")
+        # Ensure services are initialized lazily via Settings
+        settings = Settings()
+        logger.info(f"Configuration loaded: {settings.fuseki_url}")
+        logger.info("ODRAS application started successfully")
+    except Exception as e:
+        logger.error(f"Failed to start ODRAS application: {e}")
+        raise
 
 
 @app.get("/ontology-editor", response_class=HTMLResponse)
 async def ontology_editor():
     """Simple, working ontology editor interface."""
     try:
+        logger.info("Serving ontology editor interface")
         with open("frontend/simple-ontology-editor.html", "r") as f:
-            return HTMLResponse(content=f.read())
+            content = f.read()
+            logger.debug(f"Ontology editor loaded, size: {len(content)} characters")
+            return HTMLResponse(content=content)
     except FileNotFoundError:
-        return HTMLResponse(content="<h1>Ontology Editor not found</h1><p>Please ensure frontend/simple-ontology-editor.html exists.</p>", status_code=404)
+        logger.error("Ontology editor HTML file not found")
+        return HTMLResponse(
+            content="<h1>Ontology Editor not found</h1><p>Please ensure frontend/simple-ontology-editor.html exists.</p>", 
+            status_code=404
+        )
+    except Exception as e:
+        logger.error(f"Error serving ontology editor: {e}")
+        raise HTTPException(status_code=500, detail="Internal server error")
 
 @app.post("/api/ontology/push-turtle")
 async def push_turtle_to_fuseki(turtle_content: str = Body(...)):
     """Push turtle RDF content to Fuseki - bypasses authentication issues"""
     try:
-        from backend.services.persistence import PersistenceLayer
-        from backend.services.config import Settings
+        logger.info("Attempting to push turtle content to Fuseki via persistence layer")
+        from .services.persistence import PersistenceLayer
         
         settings = Settings()
         persistence = PersistenceLayer(settings)
         
         # Use our existing persistence layer which might handle auth better
         persistence.write_rdf(turtle_content)
+        logger.info("Successfully pushed ontology to Fuseki via persistence layer")
         
         return {"success": True, "message": "Ontology pushed to Fuseki successfully"}
         
     except Exception as e:
+        logger.warning(f"Persistence layer failed, trying direct approach: {e}")
         # If that fails, try direct approach via Graph Store Protocol
         try:
-            import requests
-            from backend.services.config import Settings as _Settings
-            s = _Settings()
-            base = s.fuseki_url.rstrip('/')
+            settings = Settings()
+            base = settings.fuseki_url.rstrip('/')
             url = f"{base}/data?default"
             headers = {'Content-Type': 'text/turtle'}
+            
+            logger.info(f"Attempting direct Fuseki connection to: {url}")
             resp = requests.put(url, data=turtle_content.encode('utf-8'), headers=headers, timeout=10)
+            
             if 200 <= resp.status_code < 300:
+                logger.info("Successfully pushed ontology to Fuseki via direct connection")
                 return {"success": True, "message": "Ontology pushed to Fuseki successfully (fallback)"}
             else:
+                logger.error(f"Fuseki returned error: {resp.status_code}: {resp.text}")
                 return {"success": False, "error": f"Fuseki returned {resp.status_code}: {resp.text}"}
+                
         except Exception as e2:
+            logger.error(f"Direct Fuseki connection also failed: {e2}")
             return {"success": False, "error": f"Failed to push to Fuseki: {str(e2)}"}
 
 @app.get("/user-review", response_class=HTMLResponse)
 async def user_review_interface(taskId: Optional[str] = None, process_instance_id: Optional[str] = None):
     """Requirements review interface or main interface."""
-    
-    # If taskId or process_instance_id is provided and not empty, show the review interface
-    if (taskId and taskId.strip()) or (process_instance_id and process_instance_id.strip()):
-        from backend.review_interface import generate_review_interface_html
-        # Ensure we have non-None values
-        task_id_safe = taskId or ""
-        process_id_safe = process_instance_id or ""
-        return HTMLResponse(content=generate_review_interface_html(task_id_safe, process_id_safe))
-    
-    # Otherwise show the main interface
-    html_content = """
-    <!DOCTYPE html>
-    <html>
-    <head>
-        <title>ODRAS - Ontology-Driven Requirements Analysis System</title>
-        <style>
-            body { font-family: Arial, sans-serif; margin: 40px; }
-            .container { max-width: 1200px; margin: 0 auto; }
-            .form-group { margin-bottom: 20px; }
-            label { display: block; margin-bottom: 5px; font-weight: bold; }
-            input, select, textarea { width: 100%; padding: 8px; border: 1px solid #ddd; border-radius: 4px; }
-            button { background-color: #007bff; color: white; padding: 10px 20px; border: none; border-radius: 4px; cursor: pointer; margin-right: 10px; }
-            button:hover { background-color: #0056b3; }
-            .status { margin-top: 20px; padding: 10px; border-radius: 4px; }
-            .status.success { background-color: #d4edda; border: 1px solid #c3e6cb; color: #155724; }
-            .status.error { background-color: #f8d7da; border: 1px solid #f5c6cb; color: #721c24; }
-            .status.info { background-color: #d1ecf1; border: 1px solid #bee5eb; color: #0c5460; }
-            .requirements-grid { display: grid; grid-template-columns: 1fr; gap: 15px; margin-top: 20px; }
-            .requirement-card { border: 1px solid #ddd; border-radius: 8px; padding: 15px; background: #f9f9f9; }
-            .requirement-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px; }
-            .requirement-id { font-weight: bold; color: #007bff; }
-            .requirement-confidence { padding: 4px 8px; border-radius: 4px; font-size: 12px; }
-            .confidence-high { background: #d4edda; color: #155724; }
-            .confidence-medium { background: #fff3cd; color: #856404; }
-            .confidence-low { background: #f8d7da; color: #721c24; }
-            .requirement-text { margin: 10px 0; line-height: 1.5; }
-            .requirement-meta { font-size: 12px; color: #666; }
-            .edit-form { display: none; margin-top: 10px; }
-            .edit-form.show { display: block; }
-            .decision-buttons { margin-top: 20px; padding: 20px; background: #f8f9fa; border-radius: 8px; }
-            .decision-buttons h3 { margin-top: 0; }
-            .btn-approve { background-color: #28a745; }
-            .btn-edit { background-color: #ffc107; color: #212529; }
-            .btn-rerun { background-color: #dc3545; }
-            .hidden { display: none; }
-        </style>
-    </head>
-    <body>
-        <div class="container">
-            <h1>ODRAS - Ontology-Driven Requirements Analysis System</h1>
-            
-            <form id="uploadForm">
-                <div class="form-group">
-                    <label for="file">Select Document:</label>
-                    <input type="file" id="file" name="file" accept=".txt,.md,.pdf" required>
-                </div>
-                
-                <div class="form-group">
-                    <label for="iterations">Monte Carlo Iterations:</label>
-                    <input type="number" id="iterations" name="iterations" value="10" min="1" max="100">
-                </div>
-                
-                <div class="form-group">
-                    <label for="llm_provider">LLM Provider:</label>
-                    <select id="llm_provider" name="llm_provider">
-                        <option value="openai">OpenAI</option>
-                        <option value="ollama">Ollama (Local)</option>
-                    </select>
-                </div>
-                
-                <div class="form-group">
-                    <label for="llm_model">LLM Model:</label>
-                    <input type="text" id="llm_model" name="llm_model" value="gpt-4o-mini">
-                </div>
-                
-                <button type="submit">Start Analysis</button>
-            </form>
-            
-            <div id="status"></div>
-            
-            <div id="results" style="display: none;">
-                <h2>Analysis Results</h2>
-                <div id="resultsContent"></div>
-            </div>
-            
-            <div id="userReview" class="hidden">
-                <h2>Requirements Review</h2>
-                <p>Please review the extracted requirements before proceeding to LLM analysis.</p>
-                
-                <div id="requirementsGrid" class="requirements-grid"></div>
-                
-                <div class="decision-buttons">
-                    <h3>Make Your Decision:</h3>
-                    <button class="btn-approve" onclick="completeUserTask('approve')">✅ Approve & Continue</button>
-                    <button class="btn-edit" onclick="showEditInterface()">✏️ Edit Requirements</button>
-                    <button class="btn-rerun" onclick="showRerunInterface()">🔄 Rerun Extraction</button>
-                </div>
-                
-                <div id="editInterface" class="hidden">
-                    <h3>Edit Requirements</h3>
-                    <div id="editForms"></div>
-                    <button onclick="saveEdits()">Save Edits</button>
-                    <button onclick="cancelEdit()">Cancel</button>
-                </div>
-                
-                <div id="rerunInterface" class="hidden">
-                    <h3>Rerun Extraction with New Parameters</h3>
-                    <div class="form-group">
-                        <label for="confidenceThreshold">Confidence Threshold:</label>
-                        <input type="number" id="confidenceThreshold" min="0" max="1" step="0.1" value="0.6">
-                    </div>
-                    <div class="form-group">
-                        <label for="minTextLength">Minimum Text Length:</label>
-                        <input type="number" id="minTextLength" min="5" value="15">
-                    </div>
-                    <div class="form-group">
-                        <label for="customPatterns">Custom Patterns (one per line):</label>
-                        <textarea id="customPatterns" rows="4" placeholder="Enter custom regex patterns..."></textarea>
-                    </div>
-                    <button onclick="rerunExtraction()">Rerun Extraction</button>
-                    <button onclick="cancelRerun()">Cancel</button>
-                </div>
-            </div>
-        </div>
+    try:
+        # If taskId or process_instance_id is provided and not empty, show the review interface
+        if (taskId and taskId.strip()) or (process_instance_id and process_instance_id.strip()):
+            logger.info(f"Serving review interface for task: {taskId}, process: {process_instance_id}")
+            from .review_interface import generate_review_interface_html
+            # Ensure we have non-None values
+            task_id_safe = taskId or ""
+            process_id_safe = process_instance_id or ""
+            return HTMLResponse(content=generate_review_interface_html(task_id_safe, process_id_safe))
         
-        <script>
-            let currentProcessId = null;
-            let currentRequirements = [];
-            
-            document.getElementById('uploadForm').addEventListener('submit', async (e) => {
-                e.preventDefault();
-                
-                const formData = new FormData();
-                const fileInput = document.getElementById('file');
-                const iterationsInput = document.getElementById('iterations');
-                const llmProviderInput = document.getElementById('llm_provider');
-                const llmModelInput = document.getElementById('llm_model');
-                
-                formData.append('file', fileInput.files[0]);
-                formData.append('iterations', iterationsInput.value);
-                formData.append('llm_provider', llmProviderInput.value);
-                formData.append('llm_model', llmModelInput.value);
-                
-                const statusDiv = document.getElementById('status');
-                statusDiv.innerHTML = '<div class="status info">Starting analysis...</div>';
-                
-                try {
-                    const response = await fetch('/api/upload', {
-                        method: 'POST',
-                        body: formData
-                    });
-                    
-                    if (response.ok) {
-                        const result = await response.json();
-                        currentProcessId = result.process_id;
-                        statusDiv.innerHTML = `<div class="status success">Analysis started! Run ID: ${result.run_id}</div>`;
-                        
-                        // Show results section
-                        document.getElementById('results').style.display = 'block';
-                        document.getElementById('resultsContent').innerHTML = `
-                            <p><strong>Run ID:</strong> ${result.run_id}</p>
-                            <p><strong>Status:</strong> ${result.status}</p>
-                            <p><strong>Process ID:</strong> ${result.process_id}</p>
-                            <p><a href="http://localhost:8080/cockpit/default/#/process-instance/${result.process_id}" target="_blank">View in Camunda Cockpit</a></p>
-                        `;
-                        
-                        // Start monitoring for user task
-                        setTimeout(() => checkForUserTask(result.process_id), 2000);
-                    } else {
-                        const error = await response.json();
-                        statusDiv.innerHTML = `<div class="status error">Error: ${error.detail}</div>`;
-                    }
-                } catch (error) {
-                    statusDiv.innerHTML = `<div class="status error">Error: ${error.message}</div>`;
-                }
-            });
-            
-            async function checkForUserTask(processId) {
-                try {
-                    const response = await fetch(`/api/user-tasks/${processId}/status`);
-                    if (response.ok) {
-                        const status = await response.json();
-                        if (status.current_state === 'waiting_for_user_review') {
-                            // Show user review interface
+        # Otherwise show the main interface
+        logger.info("Serving main user interface")
+        try:
+            with open("frontend/main_interface.html", "r") as f:
+                html_content = f.read()
+            return HTMLResponse(content=html_content)
+        except FileNotFoundError:
+            logger.error("Main interface HTML file not found")
+            return HTMLResponse(
+                content="<h1>Main Interface Not Found</h1><p>Please ensure frontend/main_interface.html exists.</p>", 
+                status_code=404
+            )
+        except Exception as e:
+            logger.error(f"Error serving main interface: {e}")
+            raise HTTPException(status_code=500, detail="Internal server error")
                             await loadRequirementsForReview(processId);
                             document.getElementById('userReview').classList.remove('hidden');
                         } else if (status.current_state === 'llm_processing') {
