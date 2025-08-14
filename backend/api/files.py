@@ -492,9 +492,11 @@ async def extract_requirements_by_keywords(
                 if any(k in low for k in keywords):
                     extracted_count += 1
                     rid = f"req_{fid}_{extracted_count}"
+                    # Clean the text for RDF
+                    clean_text = sent.replace('\\', ' ').replace('"', '\\"')
                     ttl_lines.extend([
                         f"odras:{rid} rdf:type odras:Requirement .",
-                        f"odras:{rid} odras:text \"{sent.replace('\\', ' ').replace('"', '\\"')}\" .",
+                        f"odras:{rid} odras:text \"{clean_text}\" .",
                         f"odras:{rid} odras:sourceFile \"{meta.get('filename','unknown')}\" .",
                         ""
                     ])
