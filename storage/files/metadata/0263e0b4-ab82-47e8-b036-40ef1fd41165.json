@@ -1,0 +1,13 @@
+{
+  "file_id": "0263e0b4-ab82-47e8-b036-40ef1fd41165",
+  "filename": "disaster_response_requirements.md",
+  "content_type": "application/octet-stream",
+  "size": 4190,
+  "hash_md5": "d4385c8de8f0d256b39c17cd65202516",
+  "hash_sha256": "4c0eee1173797deef9df3070d993f057dee89e5662448ae67e662c17b7beeea1",
+  "storage_path": "minio/0263e0b4-ab82-47e8-b036-40ef1fd41165",
+  "created_at": "2025-08-14T16:22:44.292469+00:00",
+  "updated_at": "2025-08-14T16:22:44.292469+00:00",
+  "project_id": null,
+  "tags": {}
+}

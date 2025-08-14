@@ -1,0 +1,474 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ODRAS Simple Ontology Editor</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            margin: 20px;
+            background: #f5f5f5;
+        }
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            background: white;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+        .header {
+            text-align: center;
+            margin-bottom: 30px;
+            padding-bottom: 20px;
+            border-bottom: 2px solid #3498db;
+        }
+        .section {
+            margin-bottom: 30px;
+        }
+        .section h2 {
+            color: #2c3e50;
+            border-bottom: 1px solid #ecf0f1;
+            padding-bottom: 10px;
+        }
+        .ontology-editor {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 20px;
+        }
+        .editor-panel {
+            background: #f8f9fa;
+            padding: 15px;
+            border-radius: 4px;
+            border: 1px solid #dee2e6;
+        }
+        .current-ontology {
+            font-family: monospace;
+            font-size: 14px;
+            white-space: pre-wrap;
+            word-break: break-word;
+            background: #fff;
+            padding: 15px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            max-height: 400px;
+            overflow-y: auto;
+        }
+        .json-editor {
+            width: 100%;
+            height: 400px;
+            font-family: monospace;
+            font-size: 14px;
+            padding: 10px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+        }
+        .btn {
+            background: #3498db;
+            color: white;
+            padding: 10px 20px;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            margin-right: 10px;
+            margin-bottom: 10px;
+        }
+        .btn:hover {
+            background: #2980b9;
+        }
+        .btn.success {
+            background: #27ae60;
+        }
+        .btn.danger {
+            background: #e74c3c;
+        }
+        .status {
+            padding: 10px;
+            margin: 10px 0;
+            border-radius: 4px;
+        }
+        .status.success {
+            background: #d4edda;
+            color: #155724;
+            border: 1px solid #c3e6cb;
+        }
+        .status.error {
+            background: #f8d7da;
+            color: #721c24;
+            border: 1px solid #f5c6cb;
+        }
+        .quick-actions {
+            background: #e8f5e8;
+            padding: 15px;
+            border-radius: 4px;
+            margin-bottom: 20px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>🧠 ODRAS Simple Ontology Editor</h1>
+            <p>Direct edit and push to Fuseki - Requirements → Components → Interfaces → Functions → Processes</p>
+        </div>
+
+        <div class="quick-actions">
+            <h3>Quick Actions</h3>
+            <button class="btn" onclick="loadBaseOntology()">📥 Load Base Ontology</button>
+            <button class="btn success" onclick="pushToFuseki()">🚀 Push to Fuseki</button>
+            <button class="btn" onclick="testFuseki()">🔍 Test Fuseki Connection</button>
+        </div>
+
+        <div class="ontology-editor">
+            <div class="editor-panel">
+                <h2>JSON Ontology Editor</h2>
+                <textarea id="ontology-json" class="json-editor" placeholder="Loading ontology..."></textarea>
+                <br>
+                <button class="btn success" onclick="saveOntology()">💾 Save to Fuseki</button>
+                <button class="btn" onclick="validateJson()">✅ Validate JSON</button>
+                <button class="btn" onclick="resetToBase()">🔄 Reset to Base</button>
+            </div>
+
+            <div class="editor-panel">
+                <h2>Current Ontology Structure</h2>
+                <pre id="ontology-display" class="current-ontology">Loading...</pre>
+                <button class="btn" onclick="refreshDisplay()">🔄 Refresh Display</button>
+            </div>
+        </div>
+
+        <div id="status-area"></div>
+    </div>
+
+    <script>
+        // Base ODRAS ontology structure
+        const BASE_ONTOLOGY = {
+            "metadata": {
+                "name": "ODRAS Core Ontology",
+                "version": "1.0",
+                "description": "Core ontology for Requirements → Components → Interfaces → Functions → Processes",
+                "namespace": "http://odras.system/ontology"
+            },
+            "classes": [
+                {
+                    "name": "Requirement",
+                    "label": "Requirement",
+                    "comment": "A statement that identifies a necessary attribute, capability, characteristic, or quality of a system"
+                },
+                {
+                    "name": "Component",
+                    "label": "Component", 
+                    "comment": "A modular part of a system that encapsulates specific functionality"
+                },
+                {
+                    "name": "Interface",
+                    "label": "Interface",
+                    "comment": "A shared boundary between system components"
+                },
+                {
+                    "name": "Function",
+                    "label": "Function",
+                    "comment": "A specific purpose or activity that the system must perform"
+                },
+                {
+                    "name": "Process",
+                    "label": "Process",
+                    "comment": "A series of actions or steps taken to achieve a particular end"
+                },
+                {
+                    "name": "Condition",
+                    "label": "Condition",
+                    "comment": "A circumstance that triggers or constrains system behavior"
+                },
+                {
+                    "name": "Constraint",
+                    "label": "Constraint",
+                    "comment": "A limitation or restriction on system behavior or design"
+                }
+            ],
+            "object_properties": [
+                {
+                    "name": "deploys",
+                    "label": "deploys",
+                    "domain": "Requirement",
+                    "range": "Component",
+                    "comment": "Links a requirement to components that implement it"
+                },
+                {
+                    "name": "present",
+                    "label": "present",
+                    "domain": "Component",
+                    "range": "Interface",
+                    "comment": "Links a component to interfaces it presents"
+                },
+                {
+                    "name": "performs",
+                    "label": "performs",
+                    "domain": "Component",
+                    "range": "Process",
+                    "comment": "Links a component to processes it performs"
+                },
+                {
+                    "name": "realizes",
+                    "label": "realizes",
+                    "domain": "Process",
+                    "range": "Function",
+                    "comment": "Links a process to the function it realizes"
+                },
+                {
+                    "name": "activates_on",
+                    "label": "activates on",
+                    "domain": "Function",
+                    "range": "Condition",
+                    "comment": "Links a function to conditions that activate it"
+                },
+                {
+                    "name": "has_constraint",
+                    "label": "has constraint",
+                    "domain": "Requirement",
+                    "range": "Constraint",
+                    "comment": "Links a requirement to its constraints"
+                }
+            ],
+            "datatype_properties": [
+                {
+                    "name": "id",
+                    "label": "identifier",
+                    "range": "string",
+                    "comment": "Unique identifier"
+                },
+                {
+                    "name": "text",
+                    "label": "text content",
+                    "domain": "Requirement",
+                    "range": "string",
+                    "comment": "The textual content of the requirement"
+                },
+                {
+                    "name": "priority",
+                    "label": "priority",
+                    "domain": "Requirement",
+                    "range": "string",
+                    "comment": "Priority level (High, Medium, Low)"
+                },
+                {
+                    "name": "state",
+                    "label": "state",
+                    "domain": "Requirement",
+                    "range": "string",
+                    "comment": "Current state (Draft, Reviewed, Approved)"
+                }
+            ]
+        };
+
+        // Load the base ontology on page load
+        window.addEventListener('load', function() {
+            loadBaseOntology();
+        });
+
+        function loadBaseOntology() {
+            document.getElementById('ontology-json').value = JSON.stringify(BASE_ONTOLOGY, null, 2);
+            updateDisplay();
+            showStatus('Base ontology loaded', 'success');
+        }
+
+        function updateDisplay() {
+            try {
+                const ontology = JSON.parse(document.getElementById('ontology-json').value);
+                let display = `ONTOLOGY: ${ontology.metadata.name}\n`;
+                display += `Description: ${ontology.metadata.description}\n\n`;
+                
+                display += "CLASSES:\n";
+                ontology.classes.forEach(cls => {
+                    display += `  • ${cls.name}: ${cls.comment}\n`;
+                });
+                
+                display += "\nOBJECT PROPERTIES (Relationships):\n";
+                ontology.object_properties.forEach(prop => {
+                    display += `  • ${prop.domain} --${prop.name}--> ${prop.range}\n`;
+                    display += `    (${prop.comment})\n`;
+                });
+                
+                display += "\nDATATYPE PROPERTIES:\n";
+                ontology.datatype_properties.forEach(prop => {
+                    const domain = prop.domain ? `${prop.domain}.` : '';
+                    display += `  • ${domain}${prop.name}: ${prop.range}\n`;
+                });
+                
+                document.getElementById('ontology-display').textContent = display;
+            } catch (e) {
+                document.getElementById('ontology-display').textContent = `ERROR: ${e.message}`;
+            }
+        }
+
+        function validateJson() {
+            try {
+                const ontology = JSON.parse(document.getElementById('ontology-json').value);
+                
+                // Basic validation
+                if (!ontology.metadata || !ontology.classes || !ontology.object_properties) {
+                    throw new Error('Missing required sections: metadata, classes, object_properties');
+                }
+                
+                updateDisplay();
+                showStatus('JSON is valid!', 'success');
+                return true;
+            } catch (e) {
+                showStatus(`Invalid JSON: ${e.message}`, 'error');
+                return false;
+            }
+        }
+
+        async function testFuseki() {
+            try {
+                showStatus('Testing Fuseki connection...', 'info');
+                
+                // Test simple query
+                const response = await fetch('http://localhost:3030/odras/query?query=' + 
+                    encodeURIComponent('SELECT * WHERE { ?s ?p ?o } LIMIT 1'));
+                
+                if (response.ok) {
+                    showStatus('✅ Fuseki connection successful!', 'success');
+                } else {
+                    showStatus(`❌ Fuseki error: ${response.status}`, 'error');
+                }
+            } catch (error) {
+                showStatus(`❌ Cannot connect to Fuseki: ${error.message}`, 'error');
+            }
+        }
+
+        async function pushToFuseki() {
+            if (!validateJson()) {
+                return;
+            }
+
+            try {
+                showStatus('Pushing ontology to Fuseki...', 'info');
+                
+                const ontologyJson = JSON.parse(document.getElementById('ontology-json').value);
+                
+                // Convert to RDF turtle format
+                const turtle = convertToTurtle(ontologyJson);
+                
+                // Use our backend API endpoint that handles authentication
+                const response = await fetch('/api/ontology/push-turtle', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify(turtle)
+                });
+
+                const result = await response.json();
+                
+                if (result.success) {
+                    showStatus('✅ Ontology successfully pushed to Fuseki!', 'success');
+                } else {
+                    showStatus(`❌ Failed to push to Fuseki: ${result.error}`, 'error');
+                }
+                
+            } catch (error) {
+                showStatus(`❌ Error pushing to Fuseki: ${error.message}`, 'error');
+            }
+        }
+
+        async function clearFuseki() {
+            try {
+                const response = await fetch('http://localhost:3030/odras/update', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/sparql-update'
+                    },
+                    body: 'DELETE WHERE { ?s ?p ?o }'
+                });
+                return response.ok;
+            } catch (error) {
+                console.error('Error clearing Fuseki:', error);
+                return false;
+            }
+        }
+
+        function convertToTurtle(ontology) {
+            let turtle = `@prefix odras: <http://odras.system/ontology#> .
+@prefix owl: <http://www.w3.org/2002/07/owl#> .
+@prefix rdfs: <http://www.w3.org/2000/01/rdf-schema#> .
+@prefix xsd: <http://www.w3.org/2001/XMLSchema#> .
+
+# Ontology declaration
+<http://odras.system/ontology> a owl:Ontology ;
+    rdfs:label "${ontology.metadata.name}" ;
+    rdfs:comment "${ontology.metadata.description}" .
+
+# Classes
+`;
+
+            ontology.classes.forEach(cls => {
+                turtle += `odras:${cls.name} a owl:Class ;
+    rdfs:label "${cls.label}" ;
+    rdfs:comment "${cls.comment}" .
+
+`;
+            });
+
+            turtle += `# Object Properties
+`;
+            ontology.object_properties.forEach(prop => {
+                turtle += `odras:${prop.name} a owl:ObjectProperty ;
+    rdfs:label "${prop.label}" ;
+    rdfs:comment "${prop.comment}" ;
+    rdfs:domain odras:${prop.domain} ;
+    rdfs:range odras:${prop.range} .
+
+`;
+            });
+
+            turtle += `# Datatype Properties
+`;
+            ontology.datatype_properties.forEach(prop => {
+                const range = prop.range === 'string' ? 'xsd:string' : `xsd:${prop.range}`;
+                const domain = prop.domain ? `rdfs:domain odras:${prop.domain} ;` : '';
+                turtle += `odras:${prop.name} a owl:DatatypeProperty ;
+    rdfs:label "${prop.label}" ;
+    rdfs:comment "${prop.comment}" ;
+    ${domain}
+    rdfs:range ${range} .
+
+`;
+            });
+
+            return turtle;
+        }
+
+        function saveOntology() {
+            pushToFuseki();
+        }
+
+        function resetToBase() {
+            if (confirm('This will reset to the base ontology. Continue?')) {
+                loadBaseOntology();
+            }
+        }
+
+        function refreshDisplay() {
+            updateDisplay();
+        }
+
+        function showStatus(message, type) {
+            const statusArea = document.getElementById('status-area');
+            statusArea.innerHTML = `<div class="status ${type}">${message}</div>`;
+            
+            // Auto-hide success messages
+            if (type === 'success') {
+                setTimeout(() => {
+                    statusArea.innerHTML = '';
+                }, 3000);
+            }
+        }
+
+        // Update display when JSON changes
+        document.getElementById('ontology-json').addEventListener('input', function() {
+            updateDisplay();
+        });
+    </script>
+</body>
+</html>

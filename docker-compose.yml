@@ -32,15 +32,15 @@ services:
     image: stain/jena-fuseki
     container_name: odras_fuseki
     restart: unless-stopped
-    environment:
-      - ADMIN_PASSWORD=admin
-      - FUSEKI_DATASET_1=odras
-      - FUSEKI_DATASET_1_TYPE=mem
-      - FUSEKI_DATASET_1_PATH=/odras
     ports:
       - "3030:3030"
     volumes:
+      - ./shiro.ini:/fuseki/shiro.ini
       - fuseki_data:/fuseki
+    # environment:
+    #   - ADMIN_PASSWORD=admin
+    #   - FUSEKI_DATASET_1=odras
+    # - FUSEKI_DATASET_1_TYPE=mem
 
   ollama:
     image: ollama/ollama:latest
@@ -63,12 +63,54 @@ services:
       - TZ=UTC
       # Default admin is demo/demo for Camunda Run
 
+  # MinIO for S3-compatible object storage
+  minio:
+    image: minio/minio:latest
+    container_name: odras_minio
+    restart: unless-stopped
+    ports:
+      - "9000:9000"     # API
+      - "9001:9001"     # Console
+    environment:
+      - MINIO_ROOT_USER=minioadmin
+      - MINIO_ROOT_PASSWORD=minioadmin
+    command: server /data --console-address ":9001"
+    volumes:
+      - minio_data:/data
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:9000/minio/health/live"]
+      interval: 30s
+      timeout: 20s
+      retries: 3
+
+  # PostgreSQL for structured data and file metadata
+  postgres:
+    image: postgres:15
+    container_name: odras_postgres
+    restart: unless-stopped
+    environment:
+      - POSTGRES_DB=odras
+      - POSTGRES_USER=postgres
+      - POSTGRES_PASSWORD=password
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      - ./scripts/init-postgres.sql:/docker-entrypoint-initdb.d/init-postgres.sql
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
 volumes:
   qdrant_data:
   neo4j_data:
   neo4j_logs:
   fuseki_data:
   ollama_data:
+  minio_data:
+  postgres_data:
 
 
 

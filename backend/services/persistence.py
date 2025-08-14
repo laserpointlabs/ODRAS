@@ -48,18 +48,78 @@ class PersistenceLayer:
                 )
 
     def write_rdf(self, ttl: str):
+        """
+        Write Turtle content to Fuseki.
+
+        Strategy:
+        1) Preferred: Graph Store Protocol (PUT text/turtle to /data?default) to replace default graph
+        2) Fallback: SPARQL Update with PREFIX + INSERT DATA
+
+        Raises an exception if both strategies fail.
+        """
+        # Normalize base dataset URL
+        base = self.settings.fuseki_url.rstrip("/")
+        graph_store_url = f"{base}/data?default"
+
+        # Build auth if configured
+        auth = None
+        if getattr(self.settings, "fuseki_user", None) and getattr(self.settings, "fuseki_password", None):
+            import requests
+            auth = (self.settings.fuseki_user, self.settings.fuseki_password)
+
+        # Attempt Graph Store Protocol
         try:
-            sparql = SPARQLWrapper(self.settings.fuseki_url + "/update")
-            sparql.setMethod(POST)
-            # Using SPARQL Update to insert data
-            sparql.setQuery(f"""
-                INSERT DATA {{
-                    {ttl}
-                }}
-            """)
-            sparql.query()
+            import requests
+            headers = {"Content-Type": "text/turtle"}
+            resp = requests.put(graph_store_url, data=ttl.encode("utf-8"), headers=headers, auth=auth, timeout=10)
+            if 200 <= resp.status_code < 300:
+                return
+            # If not successful, fall through to SPARQL Update fallback
         except Exception:
+            # Fall through to SPARQL Update fallback
             pass
+
+        # SPARQL Update fallback: convert @prefix -> PREFIX and insert TTL body
+        try:
+            prefix_lines = []
+            body_lines = []
+            for line in ttl.splitlines():
+                stripped = line.strip()
+                if stripped.startswith("@prefix"):
+                    # Example: @prefix ex: <http://example/> .
+                    # Convert to: PREFIX ex: <http://example/>
+                    try:
+                        # Remove trailing '.' and replace '@prefix' with 'PREFIX'
+                        without_dot = stripped[:-1] if stripped.endswith('.') else stripped
+                        prefix_lines.append(without_dot.replace('@prefix', 'PREFIX'))
+                    except Exception:
+                        # If parsing fails, just skip; SPARQL may still work if QNames are not used
+                        pass
+                else:
+                    body_lines.append(line)
+
+            prefixes_block = "\n".join(prefix_lines)
+            body_block = "\n".join(body_lines)
+
+            sparql = SPARQLWrapper(base + "/update")
+            sparql.setMethod(POST)
+            # If credentials provided, use them
+            if getattr(self.settings, "fuseki_user", None) and getattr(self.settings, "fuseki_password", None):
+                try:
+                    sparql.setCredentials(self.settings.fuseki_user, self.settings.fuseki_password)
+                except Exception:
+                    pass
+
+            query = f"""
+                {prefixes_block}
+                INSERT DATA {{
+                {body_block}
+                }}
+            """
+            sparql.setQuery(query)
+            sparql.query()
+        except Exception as e:
+            raise RuntimeError(f"Failed to write RDF to Fuseki: {e}")
 
 
 

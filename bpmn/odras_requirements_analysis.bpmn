@@ -8,12 +8,10 @@
       <bpmn:incoming>Flow_1</bpmn:incoming>
       <bpmn:outgoing>Flow_2</bpmn:outgoing>
       <bpmn:script>
-        <![CDATA[
           # External script reference
           # This will be executed by Camunda calling the external Python function
           # Script: scripts/task_extract_requirements.py
-        ]]>
-      </bpmn:script>
+        </bpmn:script>
     </bpmn:scriptTask>
     <bpmn:userTask id="Task_UserReview" name="Review and Approve Requirements">
       <bpmn:documentation>
@@ -37,61 +35,49 @@
       <bpmn:incoming>Flow_4_Edit</bpmn:incoming>
       <bpmn:outgoing>Flow_5_Edit</bpmn:outgoing>
       <bpmn:script>
-        <![CDATA[
           # External script reference
           # Script: scripts/task_handle_user_edits.py
-        ]]>
-      </bpmn:script>
+        </bpmn:script>
     </bpmn:scriptTask>
     <bpmn:scriptTask id="Task_RerunExtraction" name="Rerun Requirements Extraction">
       <bpmn:incoming>Flow_4_Rerun</bpmn:incoming>
       <bpmn:outgoing>Flow_5_Rerun</bpmn:outgoing>
       <bpmn:script>
-        <![CDATA[
           # External script reference
           # Script: scripts/task_rerun_extraction.py
-        ]]>
-      </bpmn:script>
+        </bpmn:script>
     </bpmn:scriptTask>
     <bpmn:scriptTask id="Task_LLMProcessing" name="Monte Carlo LLM Processing">
       <bpmn:incoming>Flow_4_Approve</bpmn:incoming>
       <bpmn:outgoing>Flow_7</bpmn:outgoing>
       <bpmn:script>
-        <![CDATA[
           # External script reference
           # Script: scripts/task_llm_processing.py
-        ]]>
-      </bpmn:script>
+        </bpmn:script>
     </bpmn:scriptTask>
     <bpmn:scriptTask id="Task_StoreVector" name="Store Results in Vector Database">
       <bpmn:incoming>Flow_7</bpmn:incoming>
       <bpmn:outgoing>Flow_8</bpmn:outgoing>
       <bpmn:script>
-        <![CDATA[
           # External script reference
           # Script: scripts/task_store_vector.py
-        ]]>
-      </bpmn:script>
+        </bpmn:script>
     </bpmn:scriptTask>
     <bpmn:scriptTask id="Task_StoreGraph" name="Store Results in Graph Database">
       <bpmn:incoming>Flow_8</bpmn:incoming>
       <bpmn:outgoing>Flow_9</bpmn:outgoing>
       <bpmn:script>
-        <![CDATA[
           # External script reference
           # Script: scripts/task_store_graph.py
-        ]]>
-      </bpmn:script>
+        </bpmn:script>
     </bpmn:scriptTask>
     <bpmn:scriptTask id="Task_StoreRDF" name="Store Results in RDF Database">
       <bpmn:incoming>Flow_9</bpmn:incoming>
       <bpmn:outgoing>Flow_10</bpmn:outgoing>
       <bpmn:script>
-        <![CDATA[
           # External script reference
           # Script: scripts/task_store_rdf.py
-        ]]>
-      </bpmn:script>
+        </bpmn:script>
     </bpmn:scriptTask>
     <bpmn:endEvent id="EndEvent_1" name="Analysis Complete">
       <bpmn:incoming>Flow_10</bpmn:incoming>

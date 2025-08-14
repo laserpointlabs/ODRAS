@@ -1,0 +1,759 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ODRAS Ontology Editor</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: #f5f5f5;
+            color: #333;
+        }
+
+        .container {
+            max-width: 1400px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+
+        .header {
+            background: white;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+            margin-bottom: 20px;
+        }
+
+        .header h1 {
+            color: #2c3e50;
+            margin-bottom: 10px;
+        }
+
+        .tabs {
+            display: flex;
+            background: white;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+            margin-bottom: 20px;
+        }
+
+        .tab {
+            flex: 1;
+            padding: 15px 20px;
+            background: #ecf0f1;
+            border: none;
+            cursor: pointer;
+            font-size: 16px;
+            transition: background 0.3s;
+        }
+
+        .tab.active {
+            background: #3498db;
+            color: white;
+        }
+
+        .tab:hover {
+            background: #2980b9;
+            color: white;
+        }
+
+        .tab-content {
+            display: none;
+            background: white;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+            margin-bottom: 20px;
+        }
+
+        .tab-content.active {
+            display: block;
+        }
+
+        .form-group {
+            margin-bottom: 20px;
+        }
+
+        .form-group label {
+            display: block;
+            margin-bottom: 8px;
+            font-weight: 600;
+            color: #2c3e50;
+        }
+
+        .form-group input,
+        .form-group select,
+        .form-group textarea {
+            width: 100%;
+            padding: 12px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            font-size: 14px;
+        }
+
+        .form-group textarea {
+            min-height: 120px;
+            font-family: 'Monaco', 'Consolas', monospace;
+        }
+
+        .btn {
+            background: #3498db;
+            color: white;
+            padding: 12px 24px;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 14px;
+            transition: background 0.3s;
+            margin-right: 10px;
+            margin-bottom: 10px;
+        }
+
+        .btn:hover {
+            background: #2980b9;
+        }
+
+        .btn.btn-success {
+            background: #27ae60;
+        }
+
+        .btn.btn-success:hover {
+            background: #229954;
+        }
+
+        .btn.btn-danger {
+            background: #e74c3c;
+        }
+
+        .btn.btn-danger:hover {
+            background: #c0392b;
+        }
+
+        .btn.btn-warning {
+            background: #f39c12;
+        }
+
+        .btn.btn-warning:hover {
+            background: #e67e22;
+        }
+
+        .status {
+            padding: 12px;
+            border-radius: 4px;
+            margin: 10px 0;
+        }
+
+        .status.success {
+            background: #d4edda;
+            border: 1px solid #c3e6cb;
+            color: #155724;
+        }
+
+        .status.error {
+            background: #f8d7da;
+            border: 1px solid #f5c6cb;
+            color: #721c24;
+        }
+
+        .status.info {
+            background: #d1ecf1;
+            border: 1px solid #bee5eb;
+            color: #0c5460;
+        }
+
+        .grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 20px;
+        }
+
+        .ontology-viewer {
+            max-height: 500px;
+            overflow-y: auto;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            padding: 15px;
+            background: #f8f9fa;
+        }
+
+        .entity-item {
+            background: white;
+            border: 1px solid #e9ecef;
+            border-radius: 4px;
+            padding: 10px;
+            margin-bottom: 10px;
+        }
+
+        .entity-header {
+            font-weight: 600;
+            color: #495057;
+            margin-bottom: 5px;
+        }
+
+        .entity-description {
+            color: #6c757d;
+            font-size: 13px;
+        }
+
+        .loading {
+            text-align: center;
+            padding: 40px;
+            color: #6c757d;
+        }
+
+        .file-drop-zone {
+            border: 2px dashed #3498db;
+            border-radius: 8px;
+            padding: 40px;
+            text-align: center;
+            background: #f8f9fa;
+            transition: background 0.3s;
+            cursor: pointer;
+        }
+
+        .file-drop-zone:hover {
+            background: #e9ecef;
+        }
+
+        .file-drop-zone.dragover {
+            background: #d1ecf1;
+            border-color: #2980b9;
+        }
+
+        .stats-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 15px;
+            margin-bottom: 20px;
+        }
+
+        .stat-card {
+            background: white;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+            text-align: center;
+        }
+
+        .stat-number {
+            font-size: 24px;
+            font-weight: bold;
+            color: #3498db;
+        }
+
+        .stat-label {
+            color: #6c757d;
+            margin-top: 5px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>🧠 ODRAS Ontology Editor & File Manager</h1>
+            <p>Manage your ontology and upload requirements documents with persistent storage.</p>
+        </div>
+
+        <div class="tabs">
+            <button class="tab active" onclick="showTab('ontology')">Ontology Management</button>
+            <button class="tab" onclick="showTab('upload')">File Upload & Storage</button>
+            <button class="tab" onclick="showTab('stats')">System Statistics</button>
+        </div>
+
+        <!-- Ontology Management Tab -->
+        <div id="ontology-tab" class="tab-content active">
+            <div class="grid">
+                <div>
+                    <h2>Current Ontology</h2>
+                    <button class="btn" onclick="loadOntology()">🔄 Refresh</button>
+                    <button class="btn btn-success" onclick="showAddClassForm()">➕ Add Class</button>
+                    <button class="btn btn-success" onclick="showAddPropertyForm()">🔗 Add Property</button>
+                    <button class="btn btn-warning" onclick="exportOntology()">📤 Export</button>
+                    
+                    <div id="ontology-viewer" class="ontology-viewer">
+                        <div class="loading">Loading ontology...</div>
+                    </div>
+                </div>
+
+                <div>
+                    <h2>JSON Editor</h2>
+                    <textarea id="ontology-json" placeholder="Ontology JSON will appear here..."></textarea>
+                    <br>
+                    <button class="btn btn-success" onclick="updateOntology()">💾 Save Changes</button>
+                    <button class="btn" onclick="validateOntology()">✅ Validate</button>
+                </div>
+            </div>
+
+            <div id="ontology-status"></div>
+        </div>
+
+        <!-- File Upload Tab -->
+        <div id="upload-tab" class="tab-content">
+            <div class="grid">
+                <div>
+                    <h2>Upload Requirements Document</h2>
+                    
+                    <div class="file-drop-zone" id="file-drop-zone" onclick="document.getElementById('file-input').click()">
+                        <p>📁 Click to select file or drag and drop</p>
+                        <p style="color: #6c757d; font-size: 14px;">Supported: .txt, .md, .pdf, .docx</p>
+                    </div>
+                    
+                    <input type="file" id="file-input" style="display: none;" accept=".txt,.md,.pdf,.docx" onchange="handleFileSelect(event)">
+                    
+                    <div class="form-group">
+                        <label for="project-id">Project ID (optional)</label>
+                        <input type="text" id="project-id" placeholder="Enter project identifier">
+                    </div>
+
+                    <div class="form-group">
+                        <label for="storage-backend">Storage Backend</label>
+                        <select id="storage-backend">
+                            <option value="local">Local Filesystem</option>
+                            <option value="minio">MinIO (S3-compatible)</option>
+                            <option value="postgresql">PostgreSQL</option>
+                        </select>
+                    </div>
+
+                    <div class="form-group">
+                        <label for="processing-params">Processing Parameters</label>
+                        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px;">
+                            <input type="number" id="iterations" placeholder="Iterations" value="10" min="1" max="100">
+                            <select id="llm-provider">
+                                <option value="openai">OpenAI</option>
+                                <option value="ollama">Ollama (Local)</option>
+                            </select>
+                        </div>
+                    </div>
+
+                    <button class="btn btn-success" onclick="uploadFile()">🚀 Upload & Process</button>
+                    <button class="btn" onclick="uploadOnly()">📁 Upload Only</button>
+                </div>
+
+                <div>
+                    <h2>Uploaded Files</h2>
+                    <button class="btn" onclick="loadFiles()">🔄 Refresh</button>
+                    <div id="files-list">
+                        <div class="loading">Loading files...</div>
+                    </div>
+                </div>
+            </div>
+
+            <div id="upload-status"></div>
+        </div>
+
+        <!-- Statistics Tab -->
+        <div id="stats-tab" class="tab-content">
+            <h2>System Statistics</h2>
+            
+            <div class="stats-grid" id="stats-grid">
+                <div class="stat-card">
+                    <div class="stat-number" id="stat-classes">-</div>
+                    <div class="stat-label">Ontology Classes</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-number" id="stat-properties">-</div>
+                    <div class="stat-label">Properties</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-number" id="stat-files">-</div>
+                    <div class="stat-label">Uploaded Files</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-number" id="stat-storage">-</div>
+                    <div class="stat-label">Storage Backend</div>
+                </div>
+            </div>
+
+            <button class="btn" onclick="loadStats()">🔄 Refresh Statistics</button>
+            
+            <div id="stats-details" style="margin-top: 20px;"></div>
+        </div>
+    </div>
+
+    <script>
+        let currentOntology = null;
+
+        // Tab switching
+        function showTab(tabName) {
+            // Hide all tab contents
+            document.querySelectorAll('.tab-content').forEach(content => {
+                content.classList.remove('active');
+            });
+            
+            // Remove active from all tabs
+            document.querySelectorAll('.tab').forEach(tab => {
+                tab.classList.remove('active');
+            });
+            
+            // Show selected tab content
+            document.getElementById(tabName + '-tab').classList.add('active');
+            
+            // Activate selected tab
+            event.target.classList.add('active');
+            
+            // Load content based on tab
+            if (tabName === 'ontology') {
+                loadOntology();
+            } else if (tabName === 'upload') {
+                loadFiles();
+            } else if (tabName === 'stats') {
+                loadStats();
+            }
+        }
+
+        // Ontology Management Functions
+        async function loadOntology() {
+            try {
+                const response = await fetch('/api/ontology/');
+                if (response.ok) {
+                    const result = await response.json();
+                    currentOntology = result.data;
+                    displayOntology(currentOntology);
+                    document.getElementById('ontology-json').value = JSON.stringify(currentOntology, null, 2);
+                } else {
+                    showStatus('ontology-status', 'Error loading ontology', 'error');
+                }
+            } catch (error) {
+                showStatus('ontology-status', `Error: ${error.message}`, 'error');
+            }
+        }
+
+        function displayOntology(ontology) {
+            const viewer = document.getElementById('ontology-viewer');
+            let html = '';
+
+            // Display classes
+            if (ontology.classes && ontology.classes.length > 0) {
+                html += '<h3 style="color: #3498db; margin-bottom: 10px;">Classes</h3>';
+                ontology.classes.forEach(cls => {
+                    html += `
+                        <div class="entity-item">
+                            <div class="entity-header">${cls.name}</div>
+                            <div class="entity-description">${cls.comment || cls.label || 'No description'}</div>
+                        </div>
+                    `;
+                });
+            }
+
+            // Display object properties
+            if (ontology.object_properties && ontology.object_properties.length > 0) {
+                html += '<h3 style="color: #27ae60; margin: 20px 0 10px 0;">Object Properties</h3>';
+                ontology.object_properties.forEach(prop => {
+                    html += `
+                        <div class="entity-item">
+                            <div class="entity-header">${prop.name}</div>
+                            <div class="entity-description">
+                                ${prop.domain || '?'} → ${prop.range || '?'}
+                                <br>${prop.comment || prop.label || 'No description'}
+                            </div>
+                        </div>
+                    `;
+                });
+            }
+
+            // Display datatype properties
+            if (ontology.datatype_properties && ontology.datatype_properties.length > 0) {
+                html += '<h3 style="color: #e74c3c; margin: 20px 0 10px 0;">Datatype Properties</h3>';
+                ontology.datatype_properties.forEach(prop => {
+                    html += `
+                        <div class="entity-item">
+                            <div class="entity-header">${prop.name}</div>
+                            <div class="entity-description">
+                                Type: ${prop.range || 'string'}
+                                <br>${prop.comment || prop.label || 'No description'}
+                            </div>
+                        </div>
+                    `;
+                });
+            }
+
+            viewer.innerHTML = html || '<div class="loading">No ontology data available</div>';
+        }
+
+        async function updateOntology() {
+            try {
+                const jsonText = document.getElementById('ontology-json').value;
+                const ontologyData = JSON.parse(jsonText);
+                
+                const response = await fetch('/api/ontology/', {
+                    method: 'PUT',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify(ontologyData)
+                });
+                
+                const result = await response.json();
+                if (result.success) {
+                    showStatus('ontology-status', 'Ontology updated successfully!', 'success');
+                    loadOntology(); // Refresh the display
+                } else {
+                    showStatus('ontology-status', `Error: ${result.error}`, 'error');
+                }
+            } catch (error) {
+                showStatus('ontology-status', `Error: ${error.message}`, 'error');
+            }
+        }
+
+        async function validateOntology() {
+            try {
+                const jsonText = document.getElementById('ontology-json').value;
+                const ontologyData = JSON.parse(jsonText);
+                
+                const response = await fetch('/api/ontology/validate', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify(ontologyData)
+                });
+                
+                const result = await response.json();
+                if (result.success) {
+                    showStatus('ontology-status', 'Ontology is valid!', 'success');
+                } else {
+                    showStatus('ontology-status', `Validation errors: ${result.data.errors.join(', ')}`, 'error');
+                }
+            } catch (error) {
+                showStatus('ontology-status', `Validation error: ${error.message}`, 'error');
+            }
+        }
+
+        // File Upload Functions
+        function handleFileSelect(event) {
+            const file = event.target.files[0];
+            if (file) {
+                const dropZone = document.getElementById('file-drop-zone');
+                dropZone.innerHTML = `
+                    <p>📄 Selected: ${file.name}</p>
+                    <p style="color: #6c757d; font-size: 14px;">Size: ${(file.size / 1024 / 1024).toFixed(2)} MB</p>
+                `;
+            }
+        }
+
+        async function uploadFile() {
+            const fileInput = document.getElementById('file-input');
+            const file = fileInput.files[0];
+            
+            if (!file) {
+                showStatus('upload-status', 'Please select a file first', 'error');
+                return;
+            }
+
+            const formData = new FormData();
+            formData.append('file', file);
+            formData.append('project_id', document.getElementById('project-id').value);
+            formData.append('iterations', document.getElementById('iterations').value);
+            formData.append('llm_provider', document.getElementById('llm-provider').value);
+
+            try {
+                showStatus('upload-status', 'Uploading and processing...', 'info');
+                
+                const response = await fetch('/api/upload', {
+                    method: 'POST',
+                    body: formData
+                });
+                
+                const result = await response.json();
+                if (result.success || result.run_id) {
+                    showStatus('upload-status', `File uploaded successfully! Process ID: ${result.process_id || result.run_id}`, 'success');
+                    loadFiles();
+                } else {
+                    showStatus('upload-status', `Upload failed: ${result.error || result.detail}`, 'error');
+                }
+            } catch (error) {
+                showStatus('upload-status', `Upload error: ${error.message}`, 'error');
+            }
+        }
+
+        async function uploadOnly() {
+            const fileInput = document.getElementById('file-input');
+            const file = fileInput.files[0];
+            
+            if (!file) {
+                showStatus('upload-status', 'Please select a file first', 'error');
+                return;
+            }
+
+            const formData = new FormData();
+            formData.append('file', file);
+            formData.append('project_id', document.getElementById('project-id').value);
+
+            try {
+                showStatus('upload-status', 'Uploading...', 'info');
+                
+                const response = await fetch('/api/files/upload', {
+                    method: 'POST',
+                    body: formData
+                });
+                
+                const result = await response.json();
+                if (result.success) {
+                    showStatus('upload-status', `File uploaded successfully! File ID: ${result.file_id}`, 'success');
+                    loadFiles();
+                } else {
+                    showStatus('upload-status', `Upload failed: ${result.error}`, 'error');
+                }
+            } catch (error) {
+                showStatus('upload-status', `Upload error: ${error.message}`, 'error');
+            }
+        }
+
+        async function loadFiles() {
+            try {
+                const response = await fetch('/api/files/');
+                if (response.ok) {
+                    const result = await response.json();
+                    displayFiles(result.files || []);
+                } else {
+                    document.getElementById('files-list').innerHTML = '<div class="loading">Error loading files</div>';
+                }
+            } catch (error) {
+                document.getElementById('files-list').innerHTML = '<div class="loading">Error loading files</div>';
+            }
+        }
+
+        function displayFiles(files) {
+            const container = document.getElementById('files-list');
+            
+            if (files.length === 0) {
+                container.innerHTML = '<div class="loading">No files uploaded yet</div>';
+                return;
+            }
+
+            let html = '';
+            files.forEach(file => {
+                html += `
+                    <div class="entity-item">
+                        <div class="entity-header">${file.filename}</div>
+                        <div class="entity-description">
+                            Size: ${(file.size / 1024).toFixed(1)} KB | 
+                            Type: ${file.content_type} | 
+                            Uploaded: ${new Date(file.created_at).toLocaleDateString()}
+                            <br>
+                            <button class="btn" style="margin-top: 5px;" onclick="downloadFile('${file.file_id}')">Download</button>
+                            <button class="btn btn-danger" style="margin-top: 5px;" onclick="deleteFile('${file.file_id}')">Delete</button>
+                        </div>
+                    </div>
+                `;
+            });
+
+            container.innerHTML = html;
+        }
+
+        async function downloadFile(fileId) {
+            try {
+                const response = await fetch(`/api/files/${fileId}/download`);
+                if (response.ok) {
+                    const blob = await response.blob();
+                    const url = window.URL.createObjectURL(blob);
+                    const a = document.createElement('a');
+                    a.href = url;
+                    a.download = `file_${fileId}`;
+                    a.click();
+                    window.URL.revokeObjectURL(url);
+                } else {
+                    showStatus('upload-status', 'Failed to download file', 'error');
+                }
+            } catch (error) {
+                showStatus('upload-status', `Download error: ${error.message}`, 'error');
+            }
+        }
+
+        async function deleteFile(fileId) {
+            if (!confirm('Are you sure you want to delete this file?')) {
+                return;
+            }
+
+            try {
+                const response = await fetch(`/api/files/${fileId}`, {
+                    method: 'DELETE'
+                });
+                
+                if (response.ok) {
+                    showStatus('upload-status', 'File deleted successfully', 'success');
+                    loadFiles();
+                } else {
+                    showStatus('upload-status', 'Failed to delete file', 'error');
+                }
+            } catch (error) {
+                showStatus('upload-status', `Delete error: ${error.message}`, 'error');
+            }
+        }
+
+        // Statistics Functions
+        async function loadStats() {
+            try {
+                // Load ontology stats
+                const ontologyResponse = await fetch('/api/ontology/statistics');
+                if (ontologyResponse.ok) {
+                    const ontologyStats = await ontologyResponse.json();
+                    document.getElementById('stat-classes').textContent = ontologyStats.data.classes || 0;
+                    document.getElementById('stat-properties').textContent = (ontologyStats.data.object_properties || 0) + (ontologyStats.data.datatype_properties || 0);
+                }
+
+                // Load storage info
+                const storageResponse = await fetch('/api/files/storage/info');
+                if (storageResponse.ok) {
+                    const storageInfo = await storageResponse.json();
+                    document.getElementById('stat-storage').textContent = storageInfo.storage_info.backend_type || 'Unknown';
+                }
+
+                // For now, set files to 0 as we don't have a count endpoint yet
+                document.getElementById('stat-files').textContent = '0';
+
+            } catch (error) {
+                console.error('Error loading statistics:', error);
+            }
+        }
+
+        // Utility Functions
+        function showStatus(elementId, message, type) {
+            const element = document.getElementById(elementId);
+            element.innerHTML = `<div class="status ${type}">${message}</div>`;
+            
+            // Auto-hide success messages after 5 seconds
+            if (type === 'success') {
+                setTimeout(() => {
+                    element.innerHTML = '';
+                }, 5000);
+            }
+        }
+
+        // File drag and drop
+        const dropZone = document.getElementById('file-drop-zone');
+        
+        dropZone.addEventListener('dragover', (e) => {
+            e.preventDefault();
+            dropZone.classList.add('dragover');
+        });
+        
+        dropZone.addEventListener('dragleave', () => {
+            dropZone.classList.remove('dragover');
+        });
+        
+        dropZone.addEventListener('drop', (e) => {
+            e.preventDefault();
+            dropZone.classList.remove('dragover');
+            
+            const files = e.dataTransfer.files;
+            if (files.length > 0) {
+                document.getElementById('file-input').files = files;
+                handleFileSelect({target: {files: files}});
+            }
+        });
+
+        // Initialize the page
+        window.addEventListener('load', () => {
+            loadOntology();
+        });
+    </script>
+</body>
+</html>

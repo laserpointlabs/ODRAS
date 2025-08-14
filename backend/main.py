@@ -1,4 +1,4 @@
-from fastapi import FastAPI, UploadFile, File, Form, HTTPException
+from fastapi import FastAPI, UploadFile, File, Form, HTTPException, Body
 from fastapi.responses import HTMLResponse
 from fastapi.staticfiles import StaticFiles
 from typing import List, Dict, Optional
@@ -20,6 +20,14 @@ app = FastAPI(title="ODRAS API", version="0.1.0")
 # Import test endpoints for development
 from backend.test_review_endpoint import router as test_router
 app.include_router(test_router)
+
+# Import ontology API endpoints
+from backend.api.ontology import router as ontology_router
+app.include_router(ontology_router)
+
+# Import file storage API endpoints
+from backend.api.files import router as files_router
+app.include_router(files_router)
 
 # Camunda configuration
 CAMUNDA_BASE_URL = "http://localhost:8080"
@@ -64,6 +72,47 @@ async def on_startup():
     Settings()  # loads env
 
 
+@app.get("/ontology-editor", response_class=HTMLResponse)
+async def ontology_editor():
+    """Simple, working ontology editor interface."""
+    try:
+        with open("frontend/simple-ontology-editor.html", "r") as f:
+            return HTMLResponse(content=f.read())
+    except FileNotFoundError:
+        return HTMLResponse(content="<h1>Ontology Editor not found</h1><p>Please ensure frontend/simple-ontology-editor.html exists.</p>", status_code=404)
+
+@app.post("/api/ontology/push-turtle")
+async def push_turtle_to_fuseki(turtle_content: str = Body(...)):
+    """Push turtle RDF content to Fuseki - bypasses authentication issues"""
+    try:
+        from backend.services.persistence import PersistenceLayer
+        from backend.services.config import Settings
+        
+        settings = Settings()
+        persistence = PersistenceLayer(settings)
+        
+        # Use our existing persistence layer which might handle auth better
+        persistence.write_rdf(turtle_content)
+        
+        return {"success": True, "message": "Ontology pushed to Fuseki successfully"}
+        
+    except Exception as e:
+        # If that fails, try direct approach via Graph Store Protocol
+        try:
+            import requests
+            from backend.services.config import Settings as _Settings
+            s = _Settings()
+            base = s.fuseki_url.rstrip('/')
+            url = f"{base}/data?default"
+            headers = {'Content-Type': 'text/turtle'}
+            resp = requests.put(url, data=turtle_content.encode('utf-8'), headers=headers, timeout=10)
+            if 200 <= resp.status_code < 300:
+                return {"success": True, "message": "Ontology pushed to Fuseki successfully (fallback)"}
+            else:
+                return {"success": False, "error": f"Fuseki returned {resp.status_code}: {resp.text}"}
+        except Exception as e2:
+            return {"success": False, "error": f"Failed to push to Fuseki: {str(e2)}"}
+
 @app.get("/user-review", response_class=HTMLResponse)
 async def user_review_interface(taskId: Optional[str] = None, process_instance_id: Optional[str] = None):
     """Requirements review interface or main interface."""
@@ -71,7 +120,10 @@ async def user_review_interface(taskId: Optional[str] = None, process_instance_i
     # If taskId or process_instance_id is provided and not empty, show the review interface
     if (taskId and taskId.strip()) or (process_instance_id and process_instance_id.strip()):
         from backend.review_interface import generate_review_interface_html
-        return HTMLResponse(content=generate_review_interface_html(taskId, process_instance_id))
+        # Ensure we have non-None values
+        task_id_safe = taskId or ""
+        process_id_safe = process_instance_id or ""
+        return HTMLResponse(content=generate_review_interface_html(task_id_safe, process_id_safe))
     
     # Otherwise show the main interface
     html_content = """
@@ -752,6 +804,7 @@ async def index():
         <button class="tab-button" onclick='showTab("tasks")' id="tasks-tab-button">
           User Tasks <span id="task-count-badge" style="background: #ef4444; color: white; padding: 2px 6px; border-radius: 10px; margin-left: 5px; display: none;">0</span>
         </button>
+        <button class="tab-button" onclick='showTab("files")'>Stored Files</button>
       </div>
       
       <!-- Upload Tab -->
@@ -815,6 +868,26 @@ async def index():
           <h3>Active Runs</h3>
           <div id="runs-list">Loading...</div>
           <button onclick="refreshRuns()">Refresh Runs</button>
+        </div>
+      </div>
+
+      <!-- Stored Files Tab -->
+      <div id="files-tab" class="tab-content">
+        <div class="card">
+          <h3>Stored Files (MinIO)</h3>
+          <p style="color:#666; margin-top:0.25rem;">Uploads are stored in MinIO bucket <strong>odras-files</strong>.</p>
+          <form id="batch-upload-form" enctype="multipart/form-data" style="margin-bottom:0.75rem;">
+            <div id="dropzone" style="border:2px dashed #93c5fd; background:#f0f7ff; padding:16px; border-radius:8px; text-align:center; cursor:pointer;">
+              Drag & drop files here or click to select
+            </div>
+            <input type="file" name="files" id="batch-files" multiple style="display:none;" />
+            <div id="pending-files" style="margin-top:8px; color:#555;"></div>
+            <div style="display:flex; gap: 0.5rem; align-items:center; margin-top:8px;">
+              <button type="submit">Upload to Storage</button>
+              <span id="batch-upload-status" class="status" style="margin-left:8px;"></span>
+            </div>
+          </form>
+          <div id="files-list">No files loaded</div>
         </div>
       </div>
       
@@ -1019,6 +1092,60 @@ async def index():
         // Keep backward compatibility  
         window.checkCamundaStatus = checkAllStatuses;
 
+        // Batch upload handler + drag & drop
+        (function(){
+          const form = document.getElementById('batch-upload-form');
+          if (!form) return;
+          const input = document.getElementById('batch-files');
+          const dz = document.getElementById('dropzone');
+          const pending = document.getElementById('pending-files');
+          function updatePending() {
+            const files = input.files;
+            if (!files || files.length === 0) { pending.textContent = ''; return; }
+            const list = Array.from(files).map(f => `${f.name} (${f.size} bytes)`).join(', ');
+            pending.textContent = `Selected: ${list}`;
+          }
+          dz.addEventListener('click', () => input.click());
+          dz.addEventListener('dragover', (e) => { e.preventDefault(); dz.style.background = '#e6f0ff'; });
+          dz.addEventListener('dragleave', () => { dz.style.background = '#f0f7ff'; });
+          dz.addEventListener('drop', (e) => {
+            e.preventDefault(); dz.style.background = '#f0f7ff';
+            const dt = new DataTransfer();
+            Array.from(e.dataTransfer.files).forEach(f => dt.items.add(f));
+            input.files = dt.files;
+            updatePending();
+          });
+          input.addEventListener('change', updatePending);
+
+          form.addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const statusEl = document.getElementById('batch-upload-status');
+            statusEl.className = 'status running';
+            statusEl.textContent = 'Uploading...';
+            try {
+              const fd = new FormData();
+              const files = input.files;
+              for (let i=0;i<files.length;i++){ fd.append('files', files[i]); }
+              // No project context
+              const res = await fetch('/api/files/batch/upload', { method: 'POST', body: fd });
+              const json = await res.json();
+              if (res.ok && json.success !== false) {
+                statusEl.className = 'status completed';
+                statusEl.textContent = `Uploaded ${json.summary?.successful_uploads ?? files.length} files`;
+                input.value = '';
+                pending.textContent = '';
+                loadFiles();
+              } else {
+                statusEl.className = 'status error';
+                statusEl.textContent = 'Upload failed';
+              }
+            } catch (err) {
+              statusEl.className = 'status error';
+              statusEl.textContent = 'Upload error';
+            }
+          });
+        })();
+
         window.refreshRuns = async function() {
           const runsDiv = document.getElementById('runs-list');
           try {
@@ -1135,6 +1262,9 @@ async def index():
             } else if (tabName === 'prompts') {
               console.log('Loading prompts...');
               loadPrompts();
+          } else if (tabName === 'files') {
+            console.log('Loading files...');
+            loadFiles();
             }
           } catch (e) {
             console.error('Error in showTab:', e);
@@ -1437,6 +1567,81 @@ async def index():
           setInterval(refreshUserTasks, 30000);  // User tasks every 30 seconds
         });
 
+        // Files Tab helpers
+        window.loadFiles = async function() {
+          const res = await fetch('/api/files');
+          const json = await res.json();
+          const el = document.getElementById('files-list');
+          if (json.success && json.files && json.files.length) {
+            el.innerHTML = json.files.map(f => `
+              <div class=\"status\" style=\"display:flex; align-items:center; justify-content:space-between; gap:8px; background:#f9fafb;\">
+                <div>
+                  <div><strong>${f.filename}</strong></div>
+                  <div style=\"font-size:12px; color:#666;\">${f.size} bytes · ${f.file_id}</div>
+                </div>
+                <button onclick=\"deleteStoredFile('${f.file_id}')\" style=\"background:#dc2626; color:white; border:none; padding:6px 10px; border-radius:4px; cursor:pointer;\">Delete</button>
+              </div>
+            `).join('');
+          } else {
+            el.innerHTML = '<div>No files found</div>';
+          }
+        }
+
+        window.deleteStoredFile = async function(fileId) {
+          if (!confirm('Delete this file?')) return;
+          const res = await fetch(`/api/files/${fileId}`, { method: 'DELETE' });
+          if (res.ok) {
+            loadFiles();
+          } else {
+            alert('Delete failed');
+          }
+        }
+
+        async function loadKeywordConfig() {
+          try {
+            const res = await fetch('/api/files/keywords');
+            const cfg = await res.json();
+            const el = document.getElementById('kw-config');
+            el.innerHTML = `
+              <div style=\"display:flex; flex-direction:column; gap:6px;\">
+                <label>Keywords (comma-separated)</label>
+                <input type=\"text\" id=\"kw-list\" value=\"${(cfg.keywords||[]).join(', ')}\"/>
+                <div style=\"display:flex; gap:8px;\">
+                  <label>Min length</label>
+                  <input type=\"number\" id=\"kw-min\" value=\"${cfg.min_text_length||15}\" style=\"width:80px;\" />
+                  <label>Context</label>
+                  <input type=\"number\" id=\"kw-ctx\" value=\"${cfg.context_window||160}\" style=\"width:80px;\" />
+                  <button onclick=\"saveKeywordConfig()\">Save</button>
+                </div>
+              </div>`;
+          } catch (e) { console.error(e); }
+        }
+
+        window.saveKeywordConfig = async function() {
+          const body = {
+            keywords: document.getElementById('kw-list').value.split(',').map(s => s.trim()).filter(Boolean),
+            min_text_length: parseInt(document.getElementById('kw-min').value||'15'),
+            context_window: parseInt(document.getElementById('kw-ctx').value||'160')
+          };
+          await fetch('/api/files/keywords', { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) });
+          await loadKeywordConfig();
+        }
+
+        window.runKeywordExtraction = async function() {
+          const project = document.getElementById('files-project').value || '';
+          const fd = new FormData();
+          if (project) fd.append('project_id', project);
+          const res = await fetch('/api/files/extract/keywords', { method: 'POST', body: fd });
+          const json = await res.json();
+          const el = document.getElementById('kw-result');
+          if (json.success) {
+            el.className = 'status completed';
+            el.textContent = `Extracted ${json.extracted_count} sentences; wrote ${json.triples_written} triples.`;
+          } else {
+            el.className = 'status error';
+            el.textContent = 'Extraction failed';
+          }
+        }
 
       </script>
     </body>
