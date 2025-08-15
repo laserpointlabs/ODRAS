@@ -39,6 +39,14 @@ class Settings(BaseSettings):
     # Local Storage Configuration
     local_storage_path: str = "./storage/files"
 
+    # Camunda BPM Configuration
+    camunda_base_url: str = "http://localhost:8080"
+    
+    # Application Configuration
+    api_base_url: str = "http://localhost:8000"
+    environment: str = "development"
+    log_level: str = "INFO"
+
     class Config:
         env_file = ".env"
         case_sensitive = False

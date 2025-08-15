@@ -22,8 +22,11 @@ app.include_router(test_router)
 app.include_router(ontology_router)
 app.include_router(files_router)
 
-# Camunda configuration
-CAMUNDA_BASE_URL = "http://localhost:8080"
+# Configuration instance
+settings = Settings()
+
+# Camunda configuration  
+CAMUNDA_BASE_URL = settings.camunda_base_url
 CAMUNDA_REST_API = f"{CAMUNDA_BASE_URL}/engine-rest"
 
 # Simple in-memory run registry (MVP). Replace with Redis/DB later.
