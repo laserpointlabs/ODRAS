@@ -1,4 +1,5 @@
 import json
+import logging
 import os
 import random
 import time
@@ -7,6 +8,8 @@ from typing import Any, Dict, List, Optional, Tuple
 import httpx
 
 from .config import Settings
+
+logger = logging.getLogger(__name__)
 
 
 class LLMTeam:
@@ -117,15 +120,29 @@ class LLMTeam:
             ],
             "temperature": 0.2,
         }
-        async with httpx.AsyncClient(timeout=60) as client:
-            r = await client.post(url, headers=headers, json=payload)
-            r.raise_for_status()
-            data = r.json()
-            content = data["choices"][0]["message"]["content"]
-            try:
-                return json.loads(content)
-            except Exception:
-                return {"text": text, "state": "Draft", "originates_from": "parse-error"}
+        try:
+            async with httpx.AsyncClient(timeout=60) as client:
+                logger.debug(f"Calling OpenAI API with model {model}")
+                r = await client.post(url, headers=headers, json=payload)
+                r.raise_for_status()
+                data = r.json()
+                content = data["choices"][0]["message"]["content"]
+                try:
+                    result = json.loads(content)
+                    logger.debug("Successfully parsed OpenAI response as JSON")
+                    return result
+                except json.JSONDecodeError as e:
+                    logger.warning(f"Failed to parse OpenAI response as JSON: {e}")
+                    return {"text": text, "state": "Draft", "originates_from": "parse-error"}
+        except httpx.HTTPStatusError as e:
+            logger.error(f"OpenAI API returned HTTP {e.response.status_code}: {e.response.text}")
+            return {"text": text, "state": "Draft", "originates_from": "api-error"}
+        except httpx.TimeoutException:
+            logger.error("OpenAI API request timed out")
+            return {"text": text, "state": "Draft", "originates_from": "timeout"}
+        except Exception as e:
+            logger.error(f"Unexpected error calling OpenAI API: {e}")
+            return {"text": text, "state": "Draft", "originates_from": "error"}
 
     async def _call_ollama(self, text: str, system_prompt: str, schema: Dict[str, Any]) -> Dict[str, Any]:
         """
@@ -159,15 +176,29 @@ class LLMTeam:
             "temperature": 0.2,
             "stream": False,
         }
-        async with httpx.AsyncClient(timeout=60) as client:
-            r = await client.post(url, json=payload)
-            r.raise_for_status()
-            data = r.json()
-            content = data["choices"][0]["message"]["content"]
-            try:
-                return json.loads(content)
-            except Exception:
-                return {"text": text, "state": "Draft", "originates_from": "parse-error"}
+        try:
+            async with httpx.AsyncClient(timeout=60) as client:
+                logger.debug(f"Calling Ollama API at {url}")
+                r = await client.post(url, json=payload)
+                r.raise_for_status()
+                data = r.json()
+                content = data["choices"][0]["message"]["content"]
+                try:
+                    result = json.loads(content)
+                    logger.debug("Successfully parsed Ollama response as JSON")
+                    return result
+                except json.JSONDecodeError as e:
+                    logger.warning(f"Failed to parse Ollama response as JSON: {e}")
+                    return {"text": text, "state": "Draft", "originates_from": "parse-error"}
+        except httpx.HTTPStatusError as e:
+            logger.error(f"Ollama API returned HTTP {e.response.status_code}: {e.response.text}")
+            return {"text": text, "state": "Draft", "originates_from": "api-error"}
+        except httpx.TimeoutException:
+            logger.error("Ollama API request timed out")
+            return {"text": text, "state": "Draft", "originates_from": "timeout"}
+        except Exception as e:
+            logger.error(f"Unexpected error calling Ollama API: {e}")
+            return {"text": text, "state": "Draft", "originates_from": "error"}
 
     def _merge_json(self, outputs: List[Dict[str, Any]]) -> Dict[str, Any]:
         """

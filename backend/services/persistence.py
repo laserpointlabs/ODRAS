@@ -1,4 +1,5 @@
 import hashlib
+import logging
 from typing import Any, Dict, List, Optional, Tuple
 
 import numpy as np
@@ -9,6 +10,8 @@ from rdflib import RDF, Graph, Literal, Namespace, URIRef
 from SPARQLWrapper import JSON, POST, SPARQLWrapper
 
 from .config import Settings
+
+logger = logging.getLogger(__name__)
 
 
 class PersistenceLayer:
@@ -27,12 +30,17 @@ class PersistenceLayer:
         Silently fails if Qdrant is not available (for offline development).
         """
         try:
-            if self.collection not in [c.name for c in self.qdrant.get_collections().collections]:
+            collections = self.qdrant.get_collections().collections
+            if self.collection not in [c.name for c in collections]:
+                logger.info(f"Creating Qdrant collection: {self.collection}")
                 self.qdrant.recreate_collection(
                     collection_name=self.collection,
                     vectors_config=qmodels.VectorParams(size=384, distance=qmodels.Distance.COSINE),
                 )
-        except Exception:
+            else:
+                logger.debug(f"Qdrant collection {self.collection} already exists")
+        except Exception as e:
+            logger.warning(f"Could not connect to Qdrant or create collection: {e}. Continuing for offline development.")
             # Allow offline dev when qdrant is not up yet
             pass
 
@@ -52,9 +60,13 @@ class PersistenceLayer:
             for idx, (vec, pl) in enumerate(zip(embeddings, payloads)):
                 pid = pl.get("id") or hashlib.md5(str(pl).encode()).hexdigest()
                 points.append(qmodels.PointStruct(id=pid, vector=vec, payload=pl))
+            
+            logger.debug(f"Upserting {len(points)} vector records to Qdrant collection {self.collection}")
             self.qdrant.upsert(collection_name=self.collection, points=points)
-        except Exception:
-            pass
+            logger.info(f"Successfully upserted {len(points)} vectors to Qdrant")
+        except Exception as e:
+            logger.error(f"Failed to upsert vectors to Qdrant: {e}")
+            # Fail silently for offline development
 
     def write_graph(self, triples: List[Tuple[str, str, str]]) -> None:
         """
