@@ -10,6 +10,7 @@ from fastapi.responses import HTMLResponse
 
 # Import services using relative imports
 from .services.config import Settings
+from .services.micro_kernel import MicroKernel
 # Import API routers
 from backend.api.files import router as files_router
 from backend.api.requirements import router as requirements_router
@@ -26,6 +27,7 @@ app.include_router(requirements_router)
 
 # Configuration instance
 settings = Settings()
+micro_kernel = MicroKernel(settings)
 
 # Camunda configuration  
 CAMUNDA_BASE_URL = settings.camunda_base_url
@@ -68,6 +70,13 @@ PROMPTS: List[Dict] = [
 async def on_startup():
     # Ensure services are initialized lazily via Settings
     Settings()  # loads env
+    # Start micro-kernel (fire and forget)
+    try:
+        import asyncio
+
+        asyncio.create_task(micro_kernel.start())
+    except Exception:
+        pass
 
 
 @app.get("/ontology-editor", response_class=HTMLResponse)

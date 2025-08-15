@@ -47,6 +47,13 @@ class Settings(BaseSettings):
     environment: str = "development"
     log_level: str = "INFO"
 
+    # Micro-kernel controls
+    micro_kernel_enabled: bool = True
+    micro_kernel_clear_on_start: bool = False
+    micro_kernel_autodeploy: bool = True
+    micro_kernel_bpmn_dir: str = "./bpmn"
+    micro_kernel_status_interval_sec: int = 15
+
     class Config:
         env_file = ".env"
         case_sensitive = False
