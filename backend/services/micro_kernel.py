@@ -98,16 +98,25 @@ class MicroKernel:
 
         logger.info(f"MicroKernel: deploying {len(bpmn_files)} BPMN file(s) from {bpmn_dir}")
         try:
-            async with httpx.AsyncClient(timeout=30) as client:
+            async with httpx.AsyncClient(timeout=60) as client:
                 for p in bpmn_files:
                     files = {"file": (p.name, p.read_bytes(), "application/xml")}
-                    data = {"deployment-name": f"odras-auto-{p.stem}"}
+                    data = {
+                        "deployment-name": f"odras-auto-{p.stem}",
+                        "deployment-source": "odras-micro-kernel",
+                        "enable-duplicate-filtering": "true",
+                        "deploy-changed-only": "true",
+                    }
                     try:
                         r = await client.post(f"{self.camunda_rest}/deployment/create", files=files, data=data)
-                        r.raise_for_status()
-                        logger.info(f" - Deployed {p.name}")
-                    except Exception as e:
-                        logger.warning(f" - Failed to deploy {p.name}: {e}")
+                        if 200 <= r.status_code < 300:
+                            logger.info(f" - Deployed {p.name}")
+                        else:
+                            logger.warning(
+                                f" - Failed to deploy {p.name}: {r.status_code} {r.text[:200]}"
+                            )
+                    except httpx.HTTPError as e:
+                        logger.warning(f" - HTTP error deploying {p.name}: {e}")
         except Exception as e:
             logger.warning(f"MicroKernel: error during BPMN deploy: {e}")
 
