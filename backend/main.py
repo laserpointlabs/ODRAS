@@ -11,7 +11,10 @@ from fastapi.responses import HTMLResponse
 
 # Import services using relative imports
 from .services.config import Settings
+from .services.file_storage import FileStorageService
 from .services.micro_kernel import MicroKernel
+from backend.services.requirement_extractor import RequirementExtractor
+from backend.api.requirements import save_requirements, SaveRequirementsRequest
 # Import API routers
 from backend.api.files import router as files_router
 from backend.api.requirements import router as requirements_router
@@ -1903,6 +1906,21 @@ async def get_requirements_for_review(process_instance_id: str):
             document_content = variables.get("document_content", {}).get("value", "")
             document_filename = variables.get("document_filename", {}).get("value", "unknown")
 
+            # Fallback: if no requirements present yet, derive them from document_content and set variable
+            if not requirements_list and document_content:
+                extractor = RequirementExtractor()
+                derived_reqs = extractor.extract(document_content)
+                requirements_list = derived_reqs
+                try:
+                    # Store back to Camunda as a JSON string in a String variable for compatibility
+                    await client.put(
+                        f"{CAMUNDA_REST_API}/process-instance/{process_instance_id}/variables/requirements_list",
+                        json={"value": json.dumps(derived_reqs), "type": "String"},
+                    )
+                except Exception:
+                    # Non-fatal if we cannot persist back
+                    pass
+
             return {
                 "process_instance_id": process_instance_id,
                 "requirements": requirements_list,
@@ -1945,6 +1963,32 @@ async def complete_user_task(process_instance_id: str, user_decision: Dict):
             elif decision == "rerun":
                 extraction_parameters = user_decision.get("extraction_parameters", {})
                 variables["extraction_parameters"] = {"value": json.dumps(extraction_parameters), "type": "String"}
+
+            # If approving, persist the requirements artifact to storage for audit and UI
+            if decision == "approve":
+                try:
+                    # Re-fetch variables to get requirements
+                    vars_resp = await client.get(f"{CAMUNDA_REST_API}/process-instance/{process_instance_id}/variables")
+                    vars_resp.raise_for_status()
+                    vars_json = vars_resp.json()
+                    reqs_raw = vars_json.get("requirements_list", {}).get("value")
+                    if isinstance(reqs_raw, str):
+                        reqs = json.loads(reqs_raw)
+                    else:
+                        reqs = reqs_raw or []
+                    filename = vars_json.get("document_filename", {}).get("value", "unknown")
+                    # We don't have source file_id in this path; leave None
+                    body = SaveRequirementsRequest(
+                        file_id="",
+                        project_id=None,
+                        requirements=reqs,
+                        source_filename=filename,
+                        process_instance_id=process_instance_id,
+                    )
+                    await save_requirements(body, FileStorageService(Settings()))
+                except Exception:
+                    # Non-fatal if persistence fails
+                    pass
 
             # Complete the task
             complete_url = f"{CAMUNDA_REST_API}/task/{task_id}/complete"

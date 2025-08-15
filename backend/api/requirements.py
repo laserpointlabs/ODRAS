@@ -77,12 +77,19 @@ async def save_requirements(
 
         # Use a descriptive filename; a new file_id will be assigned by storage
         suggested_name = f"requirements_{body.file_id}_{int(datetime.now().timestamp())}.json"
+        # Promote identifiers to tags for easy lookup from metadata
+        tags = {"kind": "requirements"}
+        if body.file_id:
+            tags["source_file_id"] = body.file_id
+        if body.process_instance_id:
+            tags["process_instance_id"] = body.process_instance_id
+
         result = await storage_service.store_file(
             content=content_bytes,
             filename=suggested_name,
             content_type="application/json",
             project_id=body.project_id,
-            tags={"kind": "requirements", "source_file_id": body.file_id},
+            tags=tags,
         )
 
         if result.get("success"):
