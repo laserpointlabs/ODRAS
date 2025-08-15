@@ -1,36 +1,32 @@
-from fastapi import FastAPI, UploadFile, File, Form, HTTPException, Body
-from fastapi.responses import HTMLResponse
-from fastapi.staticfiles import StaticFiles
-from typing import List, Dict, Optional
-import uvicorn
-import asyncio
-import requests
 import json
 import time
+from typing import Dict, List, Optional
 
-import sys
-import os
-sys.path.append(os.path.join(os.path.dirname(__file__), '..'))
-from backend.services.config import Settings
 import httpx
+import requests
+import uvicorn
+from fastapi import Body, FastAPI, File, Form, HTTPException, UploadFile
+from fastapi.responses import HTMLResponse
 
+# Import services using relative imports
+from .services.config import Settings
+# Import API routers
+from backend.api.files import router as files_router
+from backend.api.ontology import router as ontology_router
+from backend.test_review_endpoint import router as test_router
 
 app = FastAPI(title="ODRAS API", version="0.1.0")
 
-# Import test endpoints for development
-from backend.test_review_endpoint import router as test_router
+# Include API routers
 app.include_router(test_router)
-
-# Import ontology API endpoints
-from backend.api.ontology import router as ontology_router
 app.include_router(ontology_router)
-
-# Import file storage API endpoints
-from backend.api.files import router as files_router
 app.include_router(files_router)
 
-# Camunda configuration
-CAMUNDA_BASE_URL = "http://localhost:8080"
+# Configuration instance
+settings = Settings()
+
+# Camunda configuration  
+CAMUNDA_BASE_URL = settings.camunda_base_url
 CAMUNDA_REST_API = f"{CAMUNDA_BASE_URL}/engine-rest"
 
 # Simple in-memory run registry (MVP). Replace with Redis/DB later.
@@ -43,15 +39,15 @@ PERSONAS: List[Dict] = [
         "name": "Extractor",
         "description": "You extract ontology-grounded entities from requirements.",
         "system_prompt": "You are an expert requirements analyst. Your role is to extract ontology-grounded entities from requirements text. Return ONLY JSON conforming to the provided schema.",
-        "is_active": True
+        "is_active": True,
     },
     {
         "id": "reviewer",
-        "name": "Reviewer", 
+        "name": "Reviewer",
         "description": "You validate and correct extracted JSON to fit the schema strictly.",
         "system_prompt": "You are a quality assurance specialist. Your role is to validate and correct extracted JSON to ensure it strictly conforms to the provided schema. Return ONLY JSON conforming to the schema.",
-        "is_active": True
-    }
+        "is_active": True,
+    },
 ]
 
 PROMPTS: List[Dict] = [
@@ -61,7 +57,7 @@ PROMPTS: List[Dict] = [
         "description": "Default prompt for requirement analysis",
         "prompt_template": "Analyze the following requirement and extract key information:\n\nRequirement: {requirement_text}\nCategory: {category}\nSource: {source_file}\nIteration: {iteration}\n\nPlease provide:\n1. Extracted entities (Components, Interfaces, Functions, Processes, Conditions)\n2. Constraints and dependencies\n3. Performance requirements\n4. Quality attributes\n5. Confidence level (0.0-1.0)\n\nFormat your response as JSON.",
         "variables": ["requirement_text", "category", "source_file", "iteration"],
-        "is_active": True
+        "is_active": True,
     }
 ]
 
@@ -79,33 +75,37 @@ async def ontology_editor():
         with open("frontend/simple-ontology-editor.html", "r") as f:
             return HTMLResponse(content=f.read())
     except FileNotFoundError:
-        return HTMLResponse(content="<h1>Ontology Editor not found</h1><p>Please ensure frontend/simple-ontology-editor.html exists.</p>", status_code=404)
+        return HTMLResponse(
+            content="<h1>Ontology Editor not found</h1><p>Please ensure frontend/simple-ontology-editor.html exists.</p>",
+            status_code=404,
+        )
+
 
 @app.post("/api/ontology/push-turtle")
 async def push_turtle_to_fuseki(turtle_content: str = Body(...)):
     """Push turtle RDF content to Fuseki - bypasses authentication issues"""
     try:
-        from backend.services.persistence import PersistenceLayer
         from backend.services.config import Settings
-        
+        from backend.services.persistence import PersistenceLayer
+
         settings = Settings()
         persistence = PersistenceLayer(settings)
-        
+
         # Use our existing persistence layer which might handle auth better
         persistence.write_rdf(turtle_content)
-        
+
         return {"success": True, "message": "Ontology pushed to Fuseki successfully"}
-        
-    except Exception as e:
+
+    except Exception:
         # If that fails, try direct approach via Graph Store Protocol
         try:
-            import requests
             from backend.services.config import Settings as _Settings
+
             s = _Settings()
-            base = s.fuseki_url.rstrip('/')
+            base = s.fuseki_url.rstrip("/")
             url = f"{base}/data?default"
-            headers = {'Content-Type': 'text/turtle'}
-            resp = requests.put(url, data=turtle_content.encode('utf-8'), headers=headers, timeout=10)
+            headers = {"Content-Type": "text/turtle"}
+            resp = requests.put(url, data=turtle_content.encode("utf-8"), headers=headers, timeout=10)
             if 200 <= resp.status_code < 300:
                 return {"success": True, "message": "Ontology pushed to Fuseki successfully (fallback)"}
             else:
@@ -113,18 +113,20 @@ async def push_turtle_to_fuseki(turtle_content: str = Body(...)):
         except Exception as e2:
             return {"success": False, "error": f"Failed to push to Fuseki: {str(e2)}"}
 
+
 @app.get("/user-review", response_class=HTMLResponse)
 async def user_review_interface(taskId: Optional[str] = None, process_instance_id: Optional[str] = None):
     """Requirements review interface or main interface."""
-    
+
     # If taskId or process_instance_id is provided and not empty, show the review interface
     if (taskId and taskId.strip()) or (process_instance_id and process_instance_id.strip()):
         from backend.review_interface import generate_review_interface_html
+
         # Ensure we have non-None values
         task_id_safe = taskId or ""
         process_id_safe = process_instance_id or ""
         return HTMLResponse(content=generate_review_interface_html(task_id_safe, process_id_safe))
-    
+
     # Otherwise show the main interface
     html_content = """
     <!DOCTYPE html>
@@ -483,23 +485,23 @@ async def upload_document(
     """Upload document and start Camunda BPMN process."""
     try:
         content = await file.read()
-        document_text = content.decode('utf-8', errors='ignore')
-        
+        document_text = content.decode("utf-8", errors="ignore")
+
         # Ensure filename is never None
         document_filename = file.filename or "unknown_document.txt"
-        
+
         # Start Camunda BPMN process
         process_id = await start_camunda_process(
             document_content=document_text,
             document_filename=document_filename,
             llm_provider=llm_provider or "openai",
             llm_model=llm_model or "gpt-4o-mini",
-            iterations=iterations
+            iterations=iterations,
         )
-        
+
         if not process_id:
             raise HTTPException(status_code=500, detail="Failed to start Camunda process")
-        
+
         # Store run info
         run_id = str(process_id)
         RUNS[run_id] = {
@@ -509,50 +511,36 @@ async def upload_document(
             "iterations": iterations,
             "llm_provider": llm_provider,
             "llm_model": llm_model,
-            "camunda_url": f"{CAMUNDA_BASE_URL}/cockpit/default/#/process-instance/{process_id}"
+            "camunda_url": f"{CAMUNDA_BASE_URL}/cockpit/default/#/process-instance/{process_id}",
         }
-        
+
         return {"run_id": run_id, "status": "started", "process_id": process_id}
-        
+
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
 
-async def start_camunda_process(document_content: str, document_filename: str, 
-                               llm_provider: str, llm_model: str, iterations: int) -> Optional[str]:
+async def start_camunda_process(
+    document_content: str, document_filename: str, llm_provider: str, llm_model: str, iterations: int
+) -> Optional[str]:
     """Start a new Camunda BPMN process instance."""
-    
+
     # First, ensure the BPMN is deployed
     deployment_id = await deploy_bpmn_if_needed()
     if not deployment_id:
         return None
-    
+
     # Start process instance
     start_url = f"{CAMUNDA_REST_API}/process-definition/key/odras_requirements_analysis/start"
-    
+
     variables = {
-        "document_content": {
-            "value": document_content,
-            "type": "String"
-        },
-        "document_filename": {
-            "value": document_filename,
-            "type": "String"
-        },
-        "llm_provider": {
-            "value": llm_provider,
-            "type": "String"
-        },
-        "llm_model": {
-            "value": llm_model,
-            "type": "String"
-        },
-        "iterations": {
-            "value": iterations,
-            "type": "Integer"
-        }
+        "document_content": {"value": document_content, "type": "String"},
+        "document_filename": {"value": document_filename, "type": "String"},
+        "llm_provider": {"value": llm_provider, "type": "String"},
+        "llm_model": {"value": llm_model, "type": "String"},
+        "iterations": {"value": iterations, "type": "Integer"},
     }
-    
+
     try:
         async with httpx.AsyncClient(timeout=30) as client:
             response = await client.post(start_url, json={"variables": variables})
@@ -575,20 +563,16 @@ async def deploy_bpmn_if_needed() -> Optional[str]:
                 return data[0]["id"] if data else None
     except Exception:
         pass
-    
+
     # Deploy BPMN
     try:
         bpmn_file_path = "../bpmn/odras_requirements_analysis.bpmn"
         with open(bpmn_file_path, "rb") as f:
             files = {"file": ("odras_requirements_analysis.bpmn", f, "application/xml")}
             data = {"deployment-name": "odras-requirements-analysis"}
-            
+
             async with httpx.AsyncClient(timeout=30) as client:
-                response = await client.post(
-                    f"{CAMUNDA_REST_API}/deployment/create",
-                    files=files,
-                    data=data
-                )
+                response = await client.post(f"{CAMUNDA_REST_API}/deployment/create", files=files, data=data)
                 response.raise_for_status()
                 data = response.json()
                 return data.get("id")
@@ -602,26 +586,26 @@ async def get_run_status(run_id: str):
     """Get status of a specific run."""
     if run_id not in RUNS:
         raise HTTPException(status_code=404, detail="Run not found")
-    
+
     run_info = RUNS[run_id].copy()
-    
+
     try:
         # Get Camunda process instance status
         process_id = run_info["process_id"]
         status_url = f"{CAMUNDA_REST_API}/process-instance/{process_id}"
-        
+
         async with httpx.AsyncClient(timeout=10) as client:
             response = await client.get(status_url)
             if response.status_code == 200:
                 status_info = response.json()
-                
+
                 # Check if completed
                 if status_info.get("state") == "completed":
                     run_info["status"] = "completed"
-                
+
     except Exception as e:
         run_info["camunda_error"] = str(e)
-    
+
     return run_info
 
 
@@ -650,7 +634,7 @@ async def get_ollama_status():
     """Get Ollama server status."""
     try:
         settings = Settings()
-        base = settings.ollama_url.rstrip('/')
+        base = settings.ollama_url.rstrip("/")
         async with httpx.AsyncClient(timeout=10) as client:
             # Check if Ollama is running by accessing its API
             response = await client.get(f"{base}/api/tags")
@@ -671,10 +655,10 @@ async def get_openai_status():
         api_key = Settings().openai_api_key
         if not api_key:
             return {"status": "not_configured", "message": "OPENAI_API_KEY not set"}
-        
+
         headers = {"Authorization": f"Bearer {api_key}"}
         url = "https://api.openai.com/v1/models"
-        
+
         async with httpx.AsyncClient(timeout=10) as client:
             response = await client.get(url, headers=headers)
             if response.status_code == 200:
@@ -1653,7 +1637,7 @@ async def index():
 @app.get("/api/models/ollama", response_model=dict)
 async def list_ollama_models():
     settings = Settings()
-    base = settings.ollama_url.rstrip('/')
+    base = settings.ollama_url.rstrip("/")
     try:
         async with httpx.AsyncClient(timeout=10) as client:
             r = await client.get(f"{base}/api/tags")
@@ -1703,7 +1687,7 @@ async def create_persona(persona: Dict):
         "name": persona.get("name", "New Persona"),
         "description": persona.get("description", ""),
         "system_prompt": persona.get("system_prompt", ""),
-        "is_active": persona.get("is_active", True)
+        "is_active": persona.get("is_active", True),
     }
     PERSONAS.append(new_persona)
     return {"persona": new_persona, "message": "Persona created successfully"}
@@ -1743,7 +1727,7 @@ async def create_prompt(prompt: Dict):
         "description": prompt.get("description", ""),
         "prompt_template": prompt.get("prompt_template", ""),
         "variables": prompt.get("variables", []),
-        "is_active": prompt.get("is_active", True)
+        "is_active": prompt.get("is_active", True),
     }
     PROMPTS.append(new_prompt)
     return {"prompt": new_prompt, "message": "Prompt created successfully"}
@@ -1773,19 +1757,19 @@ async def test_prompt(prompt_id: str, test_data: Dict):
     prompt = next((p for p in PROMPTS if p["id"] == prompt_id), None)
     if not prompt:
         raise HTTPException(status_code=404, detail="Prompt not found")
-    
+
     try:
         # Fill the prompt template with test variables
         filled_prompt = prompt["prompt_template"]
         for variable in prompt.get("variables", []):
             if variable in test_data:
                 filled_prompt = filled_prompt.replace(f"{{{variable}}}", str(test_data[variable]))
-        
+
         return {
             "prompt_id": prompt_id,
             "filled_prompt": filled_prompt,
             "test_variables": test_data,
-            "message": "Prompt filled successfully"
+            "message": "Prompt filled successfully",
         }
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Error testing prompt: {str(e)}")
@@ -1802,30 +1786,32 @@ async def get_all_user_tasks():
             params={
                 "processDefinitionKey": "odras_requirements_analysis",
                 "taskDefinitionKey": "Task_UserReview",  # Our user review task
-                "active": "true"
-            }
+                "active": "true",
+            },
         )
-        
+
         if response.status_code == 200:
             tasks = response.json()
-            
+
             # Format tasks for UI
             formatted_tasks = []
             for task in tasks:
-                formatted_tasks.append({
-                    "id": task.get("id"),
-                    "name": task.get("name", "Review Requirements"),
-                    "description": task.get("description", "Review and approve extracted requirements"),
-                    "taskDefinitionKey": task.get("taskDefinitionKey"),
-                    "processInstanceId": task.get("processInstanceId"),
-                    "created": task.get("created"),
-                    "priority": task.get("priority", 50)
-                })
-            
+                formatted_tasks.append(
+                    {
+                        "id": task.get("id"),
+                        "name": task.get("name", "Review Requirements"),
+                        "description": task.get("description", "Review and approve extracted requirements"),
+                        "taskDefinitionKey": task.get("taskDefinitionKey"),
+                        "processInstanceId": task.get("processInstanceId"),
+                        "created": task.get("created"),
+                        "priority": task.get("priority", 50),
+                    }
+                )
+
             return {"tasks": formatted_tasks}
         else:
             return {"tasks": [], "error": f"Camunda returned status {response.status_code}"}
-            
+
     except Exception as e:
         return {"tasks": [], "error": str(e)}
 
@@ -1837,20 +1823,16 @@ async def get_user_tasks(process_instance_id: str):
         # Query Camunda for user tasks
         tasks_url = f"{CAMUNDA_REST_API}/task"
         params = {"processInstanceId": process_instance_id}
-        
+
         async with httpx.AsyncClient(timeout=10) as client:
             response = await client.get(tasks_url, params=params)
             response.raise_for_status()
             tasks = response.json()
-            
+
             # Filter for user tasks
             user_tasks = [task for task in tasks if task.get("taskDefinitionKey") == "Task_UserReview"]
-            
-            return {
-                "process_instance_id": process_instance_id,
-                "user_tasks": user_tasks,
-                "total_tasks": len(user_tasks)
-            }
+
+            return {"process_instance_id": process_instance_id, "user_tasks": user_tasks, "total_tasks": len(user_tasks)}
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Error fetching user tasks: {str(e)}")
 
@@ -1861,12 +1843,12 @@ async def get_requirements_for_review(process_instance_id: str):
     try:
         # Get process variables to find requirements
         variables_url = f"{CAMUNDA_REST_API}/process-instance/{process_instance_id}/variables"
-        
+
         async with httpx.AsyncClient(timeout=10) as client:
             response = await client.get(variables_url)
             response.raise_for_status()
             variables = response.json()
-            
+
             # Extract requirements from process variables
             requirements_list = []
             if "requirements_list" in variables:
@@ -1875,16 +1857,16 @@ async def get_requirements_for_review(process_instance_id: str):
                     requirements_list = json.loads(requirements_data)
                 else:
                     requirements_list = requirements_data
-            
+
             document_content = variables.get("document_content", {}).get("value", "")
             document_filename = variables.get("document_filename", {}).get("value", "unknown")
-            
+
             return {
                 "process_instance_id": process_instance_id,
                 "requirements": requirements_list,
                 "document_content": document_content,
                 "document_filename": document_filename,
-                "total_requirements": len(requirements_list)
+                "total_requirements": len(requirements_list),
             }
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Error fetching requirements: {str(e)}")
@@ -1897,58 +1879,47 @@ async def complete_user_task(process_instance_id: str, user_decision: Dict):
         # Get the task ID for this process instance
         tasks_url = f"{CAMUNDA_REST_API}/task"
         params = {"processInstanceId": process_instance_id}
-        
+
         async with httpx.AsyncClient(timeout=10) as client:
             response = await client.get(tasks_url, params=params)
             response.raise_for_status()
             tasks = response.json()
-            
+
             # Find the user review task
             user_task = next((task for task in tasks if task.get("taskDefinitionKey") == "Task_UserReview"), None)
             if not user_task:
                 raise HTTPException(status_code=404, detail="User review task not found")
-            
+
             task_id = user_task["id"]
-            
+
             # Prepare variables based on user decision
             decision = user_decision.get("decision", "approve")
-            variables = {
-                "user_choice": {
-                    "value": decision,
-                    "type": "String"
-                }
-            }
-            
+            variables = {"user_choice": {"value": decision, "type": "String"}}
+
             # Add additional variables based on decision
             if decision == "edit":
                 user_edits = user_decision.get("user_edits", [])
-                variables["user_edits"] = {
-                    "value": json.dumps(user_edits),
-                    "type": "String"
-                }
+                variables["user_edits"] = {"value": json.dumps(user_edits), "type": "String"}
             elif decision == "rerun":
                 extraction_parameters = user_decision.get("extraction_parameters", {})
-                variables["extraction_parameters"] = {
-                    "value": json.dumps(extraction_parameters),
-                    "type": "String"
-                }
-            
+                variables["extraction_parameters"] = {"value": json.dumps(extraction_parameters), "type": "String"}
+
             # Complete the task
             complete_url = f"{CAMUNDA_REST_API}/task/{task_id}/complete"
             complete_response = await client.post(complete_url, json={"variables": variables})
             complete_response.raise_for_status()
-            
+
             # Update run status
             if process_instance_id in RUNS:
                 RUNS[process_instance_id]["status"] = f"user_task_completed_{decision}"
                 RUNS[process_instance_id]["user_decision"] = user_decision
-            
+
             return {
                 "task_id": task_id,
                 "process_instance_id": process_instance_id,
                 "decision": decision,
                 "status": "completed",
-                "message": f"User task completed with decision: {decision}"
+                "message": f"User task completed with decision: {decision}",
             }
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Error completing user task: {str(e)}")
@@ -1960,18 +1931,18 @@ async def get_user_task_status(process_instance_id: str):
     try:
         # Get process instance status
         instance_url = f"{CAMUNDA_REST_API}/process-instance/{process_instance_id}"
-        
+
         async with httpx.AsyncClient(timeout=10) as client:
             response = await client.get(instance_url)
             response.raise_for_status()
             instance = response.json()
-            
+
             # Get current activities
             activities_url = f"{CAMUNDA_REST_API}/process-instance/{process_instance_id}/activity-instances"
             activities_response = await client.get(activities_url)
             activities_response.raise_for_status()
             activities = activities_response.json()
-            
+
             # Determine current state
             current_state = "unknown"
             if activities.get("childActivityInstances"):
@@ -1984,14 +1955,14 @@ async def get_user_task_status(process_instance_id: str):
                         current_state = "llm_processing"
                     elif activity.get("activityId") == "Task_StoreVector":
                         current_state = "storing_results"
-            
+
             return {
                 "process_instance_id": process_instance_id,
                 "current_state": current_state,
                 "process_status": instance.get("state", "unknown"),
                 "business_key": instance.get("businessKey"),
                 "start_time": instance.get("startTime"),
-                "end_time": instance.get("endTime")
+                "end_time": instance.get("endTime"),
             }
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Error fetching task status: {str(e)}")
@@ -2003,6 +1974,3 @@ def run():
 
 if __name__ == "__main__":
     run()
-
-
-

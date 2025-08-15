@@ -1,13 +1,17 @@
-from typing import List, Dict, Any
+import hashlib
+import logging
+from typing import Any, Dict, List, Optional, Tuple
+
+import numpy as np
+from neo4j import GraphDatabase
 from qdrant_client import QdrantClient
 from qdrant_client.http import models as qmodels
-from neo4j import GraphDatabase
-from rdflib import Graph, Namespace, Literal, RDF, URIRef
-from SPARQLWrapper import SPARQLWrapper, POST, JSON
-import numpy as np
-import hashlib
+from rdflib import RDF, Graph, Literal, Namespace, URIRef
+from SPARQLWrapper import JSON, POST, SPARQLWrapper
 
 from .config import Settings
+
+logger = logging.getLogger(__name__)
 
 
 class PersistenceLayer:
@@ -18,36 +22,72 @@ class PersistenceLayer:
         self.collection = settings.collection_name
         self._ensure_qdrant_collection()
 
-    def _ensure_qdrant_collection(self):
+    def _ensure_qdrant_collection(self) -> None:
+        """
+        Ensure the Qdrant collection exists, creating it if necessary.
+        
+        Creates a collection with 384-dimensional vectors using cosine distance.
+        Silently fails if Qdrant is not available (for offline development).
+        """
         try:
-            if self.collection not in [c.name for c in self.qdrant.get_collections().collections]:
+            collections = self.qdrant.get_collections().collections
+            if self.collection not in [c.name for c in collections]:
+                logger.info(f"Creating Qdrant collection: {self.collection}")
                 self.qdrant.recreate_collection(
                     collection_name=self.collection,
                     vectors_config=qmodels.VectorParams(size=384, distance=qmodels.Distance.COSINE),
                 )
-        except Exception:
+            else:
+                logger.debug(f"Qdrant collection {self.collection} already exists")
+        except Exception as e:
+            logger.warning(f"Could not connect to Qdrant or create collection: {e}. Continuing for offline development.")
             # Allow offline dev when qdrant is not up yet
             pass
 
-    def upsert_vector_records(self, embeddings: List[List[float]], payloads: List[Dict[str, Any]]):
+    def upsert_vector_records(self, embeddings: List[List[float]], payloads: List[Dict[str, Any]]) -> None:
+        """
+        Upsert vector embeddings with metadata into Qdrant.
+        
+        Args:
+            embeddings: List of vector embeddings (each a list of floats)
+            payloads: List of metadata dictionaries corresponding to each embedding
+            
+        Note:
+            Silently fails if Qdrant is not available (for offline development).
+        """
         try:
             points = []
             for idx, (vec, pl) in enumerate(zip(embeddings, payloads)):
                 pid = pl.get("id") or hashlib.md5(str(pl).encode()).hexdigest()
                 points.append(qmodels.PointStruct(id=pid, vector=vec, payload=pl))
+            
+            logger.debug(f"Upserting {len(points)} vector records to Qdrant collection {self.collection}")
             self.qdrant.upsert(collection_name=self.collection, points=points)
-        except Exception:
-            pass
+            logger.info(f"Successfully upserted {len(points)} vectors to Qdrant")
+        except Exception as e:
+            logger.error(f"Failed to upsert vectors to Qdrant: {e}")
+            # Fail silently for offline development
 
-    def write_graph(self, triples: List[tuple[str, str, str]]):
+    def write_graph(self, triples: List[Tuple[str, str, str]]) -> None:
+        """
+        Write RDF triples to Neo4j graph database.
+        
+        Args:
+            triples: List of (subject, predicate, object) tuples to store as graph relationships
+            
+        Note:
+            Creates Entity nodes and REL relationships in Neo4j.
+        """
         with self.neo4j.session() as session:
             for subj, pred, obj in triples:
                 session.run(
                     "MERGE (s:Entity {iri:$s}) MERGE (o:Entity {iri:$o}) MERGE (s)-[r:REL {type:$p}]->(o)",
-                    s=subj, o=obj, p=pred
+                    s=subj,
+                    o=obj,
+                    p=pred,
                 )
 
-    def write_rdf(self, ttl: str):
+    def write_rdf(self, ttl: str) -> None:
         """
         Write Turtle content to Fuseki.
 
@@ -65,11 +105,13 @@ class PersistenceLayer:
         auth = None
         if getattr(self.settings, "fuseki_user", None) and getattr(self.settings, "fuseki_password", None):
             import requests
+
             auth = (self.settings.fuseki_user, self.settings.fuseki_password)
 
         # Attempt Graph Store Protocol
         try:
             import requests
+
             headers = {"Content-Type": "text/turtle"}
             resp = requests.put(graph_store_url, data=ttl.encode("utf-8"), headers=headers, auth=auth, timeout=10)
             if 200 <= resp.status_code < 300:
@@ -90,8 +132,8 @@ class PersistenceLayer:
                     # Convert to: PREFIX ex: <http://example/>
                     try:
                         # Remove trailing '.' and replace '@prefix' with 'PREFIX'
-                        without_dot = stripped[:-1] if stripped.endswith('.') else stripped
-                        prefix_lines.append(without_dot.replace('@prefix', 'PREFIX'))
+                        without_dot = stripped[:-1] if stripped.endswith(".") else stripped
+                        prefix_lines.append(without_dot.replace("@prefix", "PREFIX"))
                     except Exception:
                         # If parsing fails, just skip; SPARQL may still work if QNames are not used
                         pass
@@ -120,7 +162,3 @@ class PersistenceLayer:
             sparql.query()
         except Exception as e:
             raise RuntimeError(f"Failed to write RDF to Fuseki: {e}")
-
-
-
-

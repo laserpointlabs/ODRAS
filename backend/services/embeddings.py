@@ -1,5 +1,5 @@
-from typing import List
 import hashlib
+from typing import List
 
 
 class SimpleHasherEmbedder:
@@ -22,7 +22,3 @@ class SimpleHasherEmbedder:
                 vec[i] = float(val)
             embeddings.append(vec)
         return embeddings
-
-
-
-
