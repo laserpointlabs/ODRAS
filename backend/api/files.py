@@ -15,6 +15,7 @@ from pydantic import BaseModel, Field
 from ..services.config import Settings
 from ..services.file_storage import FileStorageService
 from ..services.persistence import PersistenceLayer
+from ..services.requirement_extractor import RequirementExtractor
 
 logger = logging.getLogger(__name__)
 
@@ -28,6 +29,27 @@ class FileUploadResponse(BaseModel):
     content_type: Optional[str] = None
     message: Optional[str] = None
     error: Optional[str] = None
+
+
+class RequirementExtractionResponse(BaseModel):
+    success: bool
+    file_id: str
+    requirements: List[str]
+    error: Optional[str] = None
+
+
+class FileRequirements(BaseModel):
+    file_id: str
+    filename: Optional[str] = None
+    requirements: List[str]
+
+
+class RequirementsAggregateResponse(BaseModel):
+    success: bool
+    total_files: int
+    total_requirements: int
+    items: List[FileRequirements]
+    project_id: Optional[str] = None
 
 
 class FileMetadataResponse(BaseModel):
@@ -269,6 +291,89 @@ async def list_files(
     except Exception as e:
         logger.error(f"Failed to list files: {e}")
         raise HTTPException(status_code=500, detail=f"Failed to list files: {str(e)}")
+
+
+@router.get("/{file_id}/extract", response_model=RequirementExtractionResponse)
+async def extract_requirements_from_file(
+    file_id: str,
+    storage_service: FileStorageService = Depends(get_file_storage_service),
+):
+    """
+    Extract requirements from a single stored file.
+    """
+    try:
+        # Retrieve stored file content
+        file_data = await storage_service.retrieve_file(file_id)
+        if file_data is None:
+            raise HTTPException(status_code=404, detail="File not found")
+
+        document_content = file_data["content"].decode("utf-8", errors="ignore")
+
+        # Extract requirements
+        extractor = RequirementExtractor()
+        reqs = extractor.extract(document_content)
+
+        return RequirementExtractionResponse(
+            success=True,
+            file_id=file_id,
+            requirements=reqs,
+        )
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Failed to extract requirements from file {file_id}: {e}")
+        return RequirementExtractionResponse(
+            success=False,
+            file_id=file_id,
+            requirements=[],
+            error=f"Extraction failed: {str(e)}",
+        )
+
+
+@router.get("/extract-all", response_model=RequirementsAggregateResponse)
+async def extract_requirements_from_all_files(
+    project_id: Optional[str] = Query(None, description="Filter by project ID"),
+    storage_service: FileStorageService = Depends(get_file_storage_service),
+):
+    """
+    Extract requirements from all stored files (optionally filtered by project).
+    Returns grouped results by file.
+    """
+    try:
+        files = await storage_service.list_files(project_id=project_id, limit=1000, offset=0)
+        extractor = RequirementExtractor()
+        items: List[FileRequirements] = []
+        total_requirements = 0
+
+        for meta in files:
+            fid = meta.get("file_id")
+            if not fid:
+                continue
+            data = await storage_service.retrieve_file(fid)
+            if not data or "content" not in data:
+                continue
+            text = data["content"].decode("utf-8", errors="ignore")
+            reqs = extractor.extract(text)
+            if reqs:
+                items.append(
+                    FileRequirements(
+                        file_id=fid,
+                        filename=meta.get("filename"),
+                        requirements=reqs,
+                    )
+                )
+                total_requirements += len(reqs)
+
+        return RequirementsAggregateResponse(
+            success=True,
+            total_files=len(files),
+            total_requirements=total_requirements,
+            items=items,
+            project_id=project_id,
+        )
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Extraction failed: {str(e)}")
 
 
 @router.get("/storage/info")

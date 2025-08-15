@@ -81,6 +81,19 @@ async def ontology_editor():
         )
 
 
+@app.get("/requirements.html", response_class=HTMLResponse)
+async def requirements_page():
+    """Serves the requirements viewer page."""
+    try:
+        with open("frontend/requirements.html", "r") as f:
+            return HTMLResponse(content=f.read())
+    except FileNotFoundError:
+        return HTMLResponse(
+            content="<h1>Requirements page not found</h1>",
+            status_code=404,
+        )
+
+
 @app.post("/api/ontology/push-turtle")
 async def push_turtle_to_fuseki(turtle_content: str = Body(...)):
     """Push turtle RDF content to Fuseki - bypasses authentication issues"""
