@@ -1,7 +1,6 @@
 import re
 from typing import List
 
-
 SHALL_PATTERN = re.compile(r"\b(shall|should|must|will)\b", re.IGNORECASE)
 
 
@@ -13,7 +12,3 @@ class RequirementExtractor:
         sentences = re.split(r"(?<=[.!?])\s+", text)
         reqs = [s.strip() for s in sentences if s and SHALL_PATTERN.search(s)]
         return reqs
-
-
-
-
