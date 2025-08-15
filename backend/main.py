@@ -12,6 +12,7 @@ from fastapi.responses import HTMLResponse
 from .services.config import Settings
 # Import API routers
 from backend.api.files import router as files_router
+from backend.api.requirements import router as requirements_router
 from backend.api.ontology import router as ontology_router
 from backend.test_review_endpoint import router as test_router
 
@@ -21,6 +22,7 @@ app = FastAPI(title="ODRAS API", version="0.1.0")
 app.include_router(test_router)
 app.include_router(ontology_router)
 app.include_router(files_router)
+app.include_router(requirements_router)
 
 # Configuration instance
 settings = Settings()

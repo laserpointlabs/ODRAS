@@ -153,8 +153,8 @@
             </div>
 
             <div class="form-group" style="display:flex; gap:10px; flex-wrap:wrap;">
-                <button class="btn" onclick="extractAllRequirements()">
-                    <i class="fas fa-folder-open"></i> Extract Requirements
+                <button class="btn" onclick="loadRequirements()">
+                    <i class="fas fa-folder-open"></i> Load Requirements
                 </button>
             </div>
 
@@ -177,23 +177,23 @@
             return out;
         };
 
-        async function extractAllRequirements() {
+        async function loadRequirements() {
             const statusDiv = document.getElementById('status');
             const listDiv = document.getElementById('requirements-list');
             const project = document.getElementById('project-filter').value.trim();
 
-            statusDiv.innerHTML = `<div class="status info">Extracting ${project ? 'from project files...' : 'from all files...'}</div>`;
+            statusDiv.innerHTML = `<div class="status info">Loading ${project ? 'project requirements...' : 'requirements across all projects...'}</div>`;
             listDiv.innerHTML = '';
 
             try {
-                const url = project ? `/api/files/extract-all?project_id=${encodeURIComponent(project)}` : '/api/files/extract-all';
+                const url = project ? `/api/requirements?project_id=${encodeURIComponent(project)}` : '/api/requirements';
                 const response = await fetch(url);
                 const result = await response.json();
                 if (response.ok && result.success) {
                     statusDiv.innerHTML = '';
                     displayAggregate(result);
                 } else {
-                    statusDiv.innerHTML = `<div class="status error">Extraction failed: ${result.error || 'Unknown error'}</div>`;
+                    statusDiv.innerHTML = `<div class="status error">Load failed: ${result.error || 'Unknown error'}</div>`;
                 }
             } catch (error) {
                 statusDiv.innerHTML = `<div class="status error">An error occurred: ${error.message}</div>`;
@@ -213,7 +213,7 @@
             let html = `<h2>Extracted Requirements (${total})</h2>`;
             items.forEach(item => {
                 html += `<div class="file-group">`;
-                html += `<div class="file-title">${item.filename || item.file_id}</div>`;
+                html += `<div class="file-title">${item.source_filename || item.source_file_id}</div>`;
                 html += '<ol class="requirements">';
                 (item.requirements || []).forEach(req => {
                     html += `<li class="requirement-item">${highlight(req)}</li>`;
