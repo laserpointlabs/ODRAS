@@ -19,7 +19,13 @@ class PersistenceLayer:
         self.collection = settings.collection_name
         self._ensure_qdrant_collection()
 
-    def _ensure_qdrant_collection(self):
+    def _ensure_qdrant_collection(self) -> None:
+        """
+        Ensure the Qdrant collection exists, creating it if necessary.
+        
+        Creates a collection with 384-dimensional vectors using cosine distance.
+        Silently fails if Qdrant is not available (for offline development).
+        """
         try:
             if self.collection not in [c.name for c in self.qdrant.get_collections().collections]:
                 self.qdrant.recreate_collection(
@@ -31,6 +37,16 @@ class PersistenceLayer:
             pass
 
     def upsert_vector_records(self, embeddings: List[List[float]], payloads: List[Dict[str, Any]]) -> None:
+        """
+        Upsert vector embeddings with metadata into Qdrant.
+        
+        Args:
+            embeddings: List of vector embeddings (each a list of floats)
+            payloads: List of metadata dictionaries corresponding to each embedding
+            
+        Note:
+            Silently fails if Qdrant is not available (for offline development).
+        """
         try:
             points = []
             for idx, (vec, pl) in enumerate(zip(embeddings, payloads)):
@@ -41,6 +57,15 @@ class PersistenceLayer:
             pass
 
     def write_graph(self, triples: List[Tuple[str, str, str]]) -> None:
+        """
+        Write RDF triples to Neo4j graph database.
+        
+        Args:
+            triples: List of (subject, predicate, object) tuples to store as graph relationships
+            
+        Note:
+            Creates Entity nodes and REL relationships in Neo4j.
+        """
         with self.neo4j.session() as session:
             for subj, pred, obj in triples:
                 session.run(

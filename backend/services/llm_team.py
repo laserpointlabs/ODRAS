@@ -49,6 +49,17 @@ class LLMTeam:
         return merged
 
     async def _call_model(self, requirement_text: str, system_prompt: str, schema: Dict[str, Any]) -> Dict[str, Any]:
+        """
+        Call the configured LLM provider to analyze a requirement.
+        
+        Args:
+            requirement_text: The requirement text to analyze
+            system_prompt: The system prompt to use for the LLM
+            schema: The JSON schema for the expected response format
+            
+        Returns:
+            Dict containing the analyzed requirement in JSON format
+        """
         provider = self.settings.llm_provider.lower()
         if provider == "openai":
             return await self._call_openai(requirement_text, system_prompt, schema)
@@ -64,6 +75,17 @@ class LLMTeam:
             }
 
     async def _call_openai(self, text: str, system_prompt: str, schema: Dict[str, Any]) -> Dict[str, Any]:
+        """
+        Call OpenAI API to analyze a requirement text.
+        
+        Args:
+            text: The requirement text to analyze
+            system_prompt: The system prompt for the OpenAI model
+            schema: The JSON schema for the expected response format
+            
+        Returns:
+            Dict containing the analyzed requirement from OpenAI
+        """
         api_key = self.settings.openai_api_key or os.getenv("OPENAI_API_KEY")
         if not api_key:
             # No key in dev: return stub
@@ -106,6 +128,17 @@ class LLMTeam:
                 return {"text": text, "state": "Draft", "originates_from": "parse-error"}
 
     async def _call_ollama(self, text: str, system_prompt: str, schema: Dict[str, Any]) -> Dict[str, Any]:
+        """
+        Call Ollama local LLM to analyze a requirement text.
+        
+        Args:
+            text: The requirement text to analyze
+            system_prompt: The system prompt for the Ollama model
+            schema: The JSON schema for the expected response format
+            
+        Returns:
+            Dict containing the analyzed requirement from Ollama
+        """
         base = self.settings.ollama_url.rstrip("/")
         url = f"{base}/v1/chat/completions"
         payload = {
@@ -137,6 +170,18 @@ class LLMTeam:
                 return {"text": text, "state": "Draft", "originates_from": "parse-error"}
 
     def _merge_json(self, outputs: List[Dict[str, Any]]) -> Dict[str, Any]:
+        """
+        Merge multiple JSON outputs from different personas.
+        
+        Simple merge strategy: prefer fields present in majority; 
+        otherwise take first non-null value.
+        
+        Args:
+            outputs: List of JSON dictionaries from different LLM personas
+            
+        Returns:
+            Merged dictionary containing the best fields from all outputs
+        """
         if not outputs:
             return {}
         merged: Dict[str, Any] = {}
