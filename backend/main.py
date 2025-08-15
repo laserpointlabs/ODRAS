@@ -3,6 +3,7 @@ import time
 from typing import Dict, List, Optional
 
 import httpx
+from pathlib import Path
 import requests
 import uvicorn
 from fastapi import Body, FastAPI, File, Form, HTTPException, UploadFile
@@ -590,7 +591,9 @@ async def deploy_bpmn_if_needed() -> Optional[str]:
 
     # Deploy BPMN
     try:
-        bpmn_file_path = "../bpmn/odras_requirements_analysis.bpmn"
+        # Resolve BPMN path relative to project root, regardless of CWD
+        project_root = Path(__file__).resolve().parents[1]
+        bpmn_file_path = project_root / "bpmn" / "odras_requirements_analysis.bpmn"
         with open(bpmn_file_path, "rb") as f:
             files = {"file": ("odras_requirements_analysis.bpmn", f, "application/xml")}
             data = {"deployment-name": "odras-requirements-analysis"}
