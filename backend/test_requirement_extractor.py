@@ -26,5 +26,33 @@ class TestRequirementExtractor(unittest.TestCase):
         expected = []
         self.assertEqual(self.extractor.extract(text), expected)
 
+    def test_markdown_lists_and_links(self):
+        md = (
+            """# Requirements
+
+- The service SHALL respond within 200ms.
+- The client should retry at most 3 times.
+- See [API spec](https://example.com) for details.
+```
+Code blocks must not influence extraction and may contain shall or must.
+```
+"""
+        )
+        result = self.extractor.extract(md)
+        # Order preserved by lines; sentence boundaries by punctuation or line breaks
+        self.assertIn("The service SHALL respond within 200ms.", result)
+        self.assertIn("The client should retry at most 3 times.", result)
+        # Link-only line has no modal verb → not included
+        self.assertTrue(all("API spec" not in r for r in result))
+
+    def test_markdown_inline_code_and_images(self):
+        md = (
+            "The module must handle `NULL` values correctly.\n"
+            "An image: ![alt](image.png) should not be included.\n"
+        )
+        result = self.extractor.extract(md)
+        # Inline code removed, whitespace collapsed
+        self.assertIn("The module must handle values correctly.", result)
+
 if __name__ == "__main__":
     unittest.main()
