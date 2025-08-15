@@ -1,5 +1,5 @@
 import hashlib
-from typing import Any, Dict, List
+from typing import Any, Dict, List, Optional, Tuple
 
 import numpy as np
 from neo4j import GraphDatabase
@@ -30,7 +30,7 @@ class PersistenceLayer:
             # Allow offline dev when qdrant is not up yet
             pass
 
-    def upsert_vector_records(self, embeddings: List[List[float]], payloads: List[Dict[str, Any]]):
+    def upsert_vector_records(self, embeddings: List[List[float]], payloads: List[Dict[str, Any]]) -> None:
         try:
             points = []
             for idx, (vec, pl) in enumerate(zip(embeddings, payloads)):
@@ -40,7 +40,7 @@ class PersistenceLayer:
         except Exception:
             pass
 
-    def write_graph(self, triples: List[tuple[str, str, str]]):
+    def write_graph(self, triples: List[Tuple[str, str, str]]) -> None:
         with self.neo4j.session() as session:
             for subj, pred, obj in triples:
                 session.run(
@@ -50,7 +50,7 @@ class PersistenceLayer:
                     p=pred,
                 )
 
-    def write_rdf(self, ttl: str):
+    def write_rdf(self, ttl: str) -> None:
         """
         Write Turtle content to Fuseki.
 

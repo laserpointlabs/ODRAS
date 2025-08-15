@@ -2,7 +2,7 @@ import json
 import os
 import random
 import time
-from typing import Dict, List, Tuple
+from typing import Any, Dict, List, Optional, Tuple
 
 import httpx
 
@@ -21,10 +21,10 @@ class LLMTeam:
     async def analyze_requirement(
         self,
         requirement_text: str,
-        ontology_json_schema: dict,
-        custom_personas: List[Dict] = None,
-        custom_prompts: List[Dict] = None,
-    ) -> Dict:
+        ontology_json_schema: Dict[str, Any],
+        custom_personas: Optional[List[Dict[str, Any]]] = None,
+        custom_prompts: Optional[List[Dict[str, Any]]] = None,
+    ) -> Dict[str, Any]:
         """Call configured personas and ensemble their JSON outputs by simple voting/merging.
         Returns JSON object adhering to `ontology_json_schema` best-effort.
         """
@@ -48,7 +48,7 @@ class LLMTeam:
         merged = self._merge_json(outputs)
         return merged
 
-    async def _call_model(self, requirement_text: str, system_prompt: str, schema: dict) -> Dict:
+    async def _call_model(self, requirement_text: str, system_prompt: str, schema: Dict[str, Any]) -> Dict[str, Any]:
         provider = self.settings.llm_provider.lower()
         if provider == "openai":
             return await self._call_openai(requirement_text, system_prompt, schema)
@@ -63,7 +63,7 @@ class LLMTeam:
                 "originates_from": "unknown",
             }
 
-    async def _call_openai(self, text: str, system_prompt: str, schema: dict) -> Dict:
+    async def _call_openai(self, text: str, system_prompt: str, schema: Dict[str, Any]) -> Dict[str, Any]:
         api_key = self.settings.openai_api_key or os.getenv("OPENAI_API_KEY")
         if not api_key:
             # No key in dev: return stub
@@ -105,7 +105,7 @@ class LLMTeam:
             except Exception:
                 return {"text": text, "state": "Draft", "originates_from": "parse-error"}
 
-    async def _call_ollama(self, text: str, system_prompt: str, schema: dict) -> Dict:
+    async def _call_ollama(self, text: str, system_prompt: str, schema: Dict[str, Any]) -> Dict[str, Any]:
         base = self.settings.ollama_url.rstrip("/")
         url = f"{base}/v1/chat/completions"
         payload = {
@@ -136,10 +136,10 @@ class LLMTeam:
             except Exception:
                 return {"text": text, "state": "Draft", "originates_from": "parse-error"}
 
-    def _merge_json(self, outputs: List[Dict]) -> Dict:
+    def _merge_json(self, outputs: List[Dict[str, Any]]) -> Dict[str, Any]:
         if not outputs:
             return {}
-        merged: Dict = {}
+        merged: Dict[str, Any] = {}
         for obj in outputs:
             for k, v in obj.items():
                 if v in (None, "", [], {}):
