@@ -835,6 +835,7 @@ async def index():
               <option value="">Select a model...</option>
             </select>
             <button type="submit">Start BPMN Analysis</button>
+            <button type="button" onclick="singleRun()">Start Single Run (Extract & Review)</button>
           </form>
           <div id="result"></div>
         </div>
@@ -965,6 +966,20 @@ async def index():
             }
           }, 2000);
         });
+
+        async function singleRun(){
+          const data = new FormData(form);
+          // Force single iteration and clear optional provider/model
+          data.set('iterations', '1');
+          data.delete('llm_provider');
+          data.delete('llm_model');
+          result.innerHTML = '<div class="status running">Starting single-run process...</div>';
+          const res = await fetch('/api/upload', { method: 'POST', body: data });
+          const json = await res.json();
+          if (!res.ok) { result.innerHTML = `<div class="status error">Error: ${JSON.stringify(json)}</div>`; return; }
+          result.innerHTML = `<div class="status running">BPMN process started: ${json.process_id}</div>`;
+          refreshRuns();
+        }
 
         providerSelect.addEventListener('change', async () => {
           console.log('Provider changed to:', providerSelect.value);
