@@ -14,6 +14,8 @@ The Ontology-Driven Requirements Analysis System (ODRAS) is an advanced evolutio
 
 Building on the proven reqFLO architecture (PDF extraction → LLM analysis → Neo4j/Qdrant storage), ODRAS adds user-driven question-based extraction, ontology-guided chunking, probabilistic uncertainty quantification, temporal modeling, and multi-variant conceptual solution generation with sensitivity studies.
 
+Critically, ODRAS implements a closed-loop document improvement capability that generates structured change proposals and redlines back to source documents (e.g., CDDs), routes them through SME review and adjudication, and synchronizes accepted changes. This ensures bidirectional flow between documents and conceptual models so requirements and designs co-evolve.
+
 ---
 
 ## 1. System Architecture Overview
@@ -81,6 +83,16 @@ graph TD
         SOLUTIONS[Solution Options]
         REPORTS[Analysis Reports]
         RECOMMENDATIONS[Improvement Recommendations]
+        CHANGE_PROPOSALS[Change Proposals]
+        REDLINES[Redlines/ReqIF Packages]
+    end
+
+    subgraph "Feedback & Governance"
+        PROPOSER[Change Proposal Generator]
+        REDLINE[Redline/ReqIF Generator]
+        REVIEW[SME Review & Adjudication]
+        SYNC[Repository/DOORS Sync]
+        AUDIT[Audit & Traceability]
     end
     
     DOC --> PARSER
@@ -114,6 +126,17 @@ graph TD
     SENSITIVITY --> SOLUTIONS
     IMPACT --> REPORTS
     QA --> RECOMMENDATIONS
+
+    RECOMMENDATIONS --> PROPOSER
+    MODELS --> PROPOSER
+    PROPOSER --> CHANGE_PROPOSALS
+    PROPOSER --> REDLINE
+    REDLINE --> REVIEW
+    REVIEW --> SYNC
+    SYNC --> DOC
+    SYNC --> CDD
+    SYNC --> AUDIT
+    AUDIT --> REPORTS
 ```
 
 ---
@@ -552,6 +575,77 @@ class ImpactAnalyzer:
         return impact_analysis
 ```
 
+### 2.7 Closed-Loop Document Feedback & Governance
+
+- **Purpose**: Turn analysis insights into high-quality improvements to source documents (e.g., CDDs, ICDs) via a governed, human-in-the-loop workflow.
+- **Outcomes**: Structured change proposals, redline packages, SME adjudications, synchronized updates to authoritative repositories (e.g., DOORS via ReqIF), and full auditability.
+- **Key Capabilities**:
+  - **Change proposal generation**: Drafts precise edits with rationale, evidence, and confidence.
+  - **Redline/ReqIF packaging**: Produces tracked changes for DOCX/PDF and ReqIF payloads for RM tools.
+  - **SME review and adjudication**: Human approval/rejection with comments through BPMN user tasks.
+  - **Synchronization**: Applies accepted changes to the authoritative document store and RM tools.
+  - **Traceability and audit**: Links every proposal to requirements, ontology elements, and models.
+
+**2.7.1 Proposed Change Schema**
+```python
+from typing import List, Optional, Literal
+from pydantic import BaseModel
+from datetime import datetime
+
+class ProposedChange(BaseModel):
+    id: str
+    source_document_id: str
+    source_locator: str  # e.g., 'Section 3.2.1, paragraph 2' or structural path
+    change_type: Literal['add', 'edit', 'delete', 'clarify']
+    original_text: Optional[str] = None
+    proposed_text: str
+    rationale: str
+    evidence_snippets: List[str]
+    ontology_links: List[str]  # IRIs/IDs of entities/relationships
+    model_links: List[str]     # conceptual model IDs/nodes
+    confidence: float
+    status: Literal['proposed', 'accepted', 'rejected', 'applied'] = 'proposed'
+    created_by: str
+    created_at: datetime
+    redline_artifact_uri: Optional[str] = None
+    reqif_payload_uri: Optional[str] = None
+    audit_trail_id: Optional[str] = None
+```
+
+**2.7.2 Document Feedback Manager**
+```python
+class DocumentFeedbackManager:
+    def __init__(self, redline_engine, reqif_exporter, repository_client):
+        self.redline = redline_engine
+        self.reqif = reqif_exporter
+        self.repo = repository_client
+
+    def generate_proposals(self, analysis_results) -> List[ProposedChange]:
+        # Create proposals from recommendations, impact analysis, and model gaps
+        return self._draft_changes(analysis_results)
+
+    def create_redlines(self, document_path: str, proposals: List[ProposedChange]) -> str:
+        # Produce a DOCX/PDF with tracked changes
+        return self.redline.apply_tracked_changes(document_path, proposals)
+
+    def export_reqif(self, proposals: List[ProposedChange]) -> str:
+        # Build ReqIF package for DOORS/Polarion/Integrity import
+        return self.reqif.create_package(proposals)
+
+    def apply_changes(self, document_id: str, accepted: List[ProposedChange]) -> str:
+        # Commit accepted changes to authoritative repository (versioned)
+        return self.repo.commit_changes(document_id, accepted)
+```
+
+**2.7.3 BPMN Workflow (Conceptual)**
+- Event: Recommendation ready → Service Task: Generate Proposals → Service Task: Redline/ReqIF → User Task: SME Review/Adjudication → Gateway: Accepted? → Service Task: Sync to Repo/DOORS → End.
+
+### 2.8 Traceability & Provenance
+
+- **Bidirectional traceability**: Proposal ↔ requirement ↔ ontology element ↔ conceptual model ↔ decision record.
+- **Versioned links**: Every applied change maintains pointers to document version and graph snapshot.
+- **Query support**: "Show all requirements changed due to Model X trade study" or "Which CDD sections implement Capability Y?".
+
 ---
 
 ## 3. Technical Implementation Specifications
@@ -789,6 +883,51 @@ async def validate_ontology():
     return {"validation": validation_results}
 ```
 
+**3.4.2 Feedback & Governance Endpoints**
+```python
+from typing import List, Dict
+
+@app.post("/feedback/{analysis_id}/proposals")
+async def generate_feedback_proposals(analysis_id: str) -> Dict:
+    """
+    Generate structured change proposals from analysis outputs
+    """
+    proposals = await feedback_manager.generate_proposals_for_analysis(analysis_id)
+    return {"status": "success", "proposals": [p.model_dump() for p in proposals]}
+
+@app.post("/feedback/{document_id}/redline")
+async def create_redline(document_id: str, proposal_ids: List[str]) -> Dict:
+    """
+    Create tracked-changes redline artifact for specified proposals
+    """
+    artifact_uri = await feedback_manager.create_redlines_for_document(document_id, proposal_ids)
+    return {"status": "success", "redline_uri": artifact_uri}
+
+@app.post("/feedback/{document_id}/reqif")
+async def export_reqif(document_id: str, proposal_ids: List[str]) -> Dict:
+    """
+    Export proposals as a ReqIF package for RM tools (e.g., DOORS)
+    """
+    reqif_uri = await feedback_manager.export_reqif_for_document(document_id, proposal_ids)
+    return {"status": "success", "reqif_uri": reqif_uri}
+
+@app.post("/feedback/review")
+async def review_proposals(reviews: List[Dict]) -> Dict:
+    """
+    Submit SME adjudications for proposals (accept/reject with comments)
+    """
+    result = await feedback_manager.record_reviews(reviews)
+    return {"status": "success", "review_result": result}
+
+@app.post("/feedback/{document_id}/apply")
+async def apply_accepted_changes(document_id: str, proposal_ids: List[str]) -> Dict:
+    """
+    Apply accepted changes to authoritative repository and sync RM tools
+    """
+    commit_uri = await feedback_manager.apply_changes(document_id, proposal_ids)
+    return {"status": "success", "commit_uri": commit_uri}
+```
+
 ---
 
 ## 4. Output Specifications
@@ -901,6 +1040,31 @@ async def validate_ontology():
         "rationale": "Added measurable criteria and reliability specification"
       }
     ]
+  },
+
+  "document_feedback": {
+    "proposals": [
+      {
+        "id": "chg_0001",
+        "source_document_id": "cdd_v1",
+        "source_locator": "Section 3.2.1, paragraph 2",
+        "change_type": "clarify",
+        "original_text": "The system should be fast",
+        "proposed_text": "The system shall respond within 100ms with 95% reliability",
+        "rationale": "Ambiguity reduction and measurability",
+        "evidence_snippets": ["See latency analysis in model_001"],
+        "ontology_links": ["ont:Requirement#Latency"],
+        "model_links": ["model_001/node/latency"],
+        "confidence": 0.9,
+        "status": "proposed",
+        "redline_artifact_uri": "s3://bucket/redlines/cdd_v1_chg_0001.docx",
+        "reqif_payload_uri": "s3://bucket/reqif/cdd_v1_chg_0001.reqifz"
+      }
+    ],
+    "audit": {
+      "applied_commit_uri": null,
+      "review_summary": null
+    }
   }
 }
 ```
@@ -954,6 +1118,12 @@ async def validate_ontology():
 - **Week 15**: User feedback integration
 - **Week 16**: Final documentation and release
 
+### 5.5 Phase 5: Closed-Loop Feedback Enablement (Weeks 17-20)
+- **Week 17**: Feedback schema and proposal generation service
+- **Week 18**: Redline/ReqIF generation and repository sync
+- **Week 19**: SME review/adjudication workflows in BPMN
+- **Week 20**: End-to-end traceability, audit, and governance reporting
+
 ---
 
 ## 6. Validation and Testing Strategy
@@ -969,6 +1139,9 @@ async def validate_ontology():
 - **Ontology Mapping**: Correctness of entity/relationship extraction
 - **Model Quality**: Expert evaluation of conceptual models
 - **Sensitivity Validation**: Comparison with expert analysis
+- **Feedback Quality**: SME acceptance rate of proposals, time-to-adjudication, defect leakage (post-application issues)
+- **Traceability Completeness**: Percentage of proposals with full links to requirements, ontology elements, and models
+- **Synchronization Integrity**: Consistency between document repository/RM tools and internal knowledge graph after apply
 
 ### 6.3 Performance Benchmarks
 - **Processing Speed**: Documents per hour
@@ -998,7 +1171,7 @@ async def validate_ontology():
 
 The Ontology-Driven Requirements Analysis System (ODRAS) represents a significant evolution from the foundational reqFLO system, integrating our comprehensive SE ontology series to provide intelligent, probabilistic analysis of complex requirements documents. By combining question-driven extraction, ontology-guided processing, and advanced sensitivity analysis, ODRAS enables engineers and decision-makers to navigate the complexity of modern system requirements with confidence and rigor.
 
-The system's modular architecture ensures scalability and maintainability while the probabilistic foundation provides realistic uncertainty quantification essential for risk-aware decision making. Integration with our established SE ontology trilogy ensures theoretical rigor grounded in practical application, maintaining the 95% application focus that has driven this research.
+The system's modular architecture ensures scalability and maintainability while the probabilistic foundation provides realistic uncertainty quantification essential for risk-aware decision making. Integration with our established SE ontology trilogy ensures theoretical rigor grounded in practical application, maintaining the 95% application focus that has driven this research. Crucially, the closed-loop document improvement capability ensures requirements do not remain static: insights discovered during conceptualization are flowed back into authoritative documents via governed SME review, keeping the requirements baseline synchronized with design reality.
 
 **Key Innovation**: The fusion of user questions, ontological reasoning, and probabilistic analysis creates a uniquely powerful tool for transforming document-based requirements into actionable, risk-quantified system solutions.
 
