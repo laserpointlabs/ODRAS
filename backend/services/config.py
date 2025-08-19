@@ -1,6 +1,6 @@
 from typing import Optional
 
-from pydantic_settings import BaseSettings
+from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
 class Settings(BaseSettings):
@@ -46,7 +46,10 @@ class Settings(BaseSettings):
     api_base_url: str = "http://localhost:8000"
     environment: str = "development"
     log_level: str = "INFO"
-
-    class Config:
-        env_file = ".env"
-        case_sensitive = False
+    
+    # Pydantic v2 settings configuration
+    model_config = SettingsConfigDict(
+        env_file=".env",
+        case_sensitive=False,
+        extra="ignore",  # ignore unrelated environment variables
+    )

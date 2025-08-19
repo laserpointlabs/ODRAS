@@ -1,0 +1,1034 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <title>ODRAS — UI Restart</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <style>
+    :root {
+      --bg: #0f172a;
+      --panel: #111827;
+      --panel-2: #0b1220;
+      --text: #e5e7eb;
+      --muted: #9ca3af;
+      --accent: #60a5fa;
+      --border: #1f2937;
+      --warn: #f59e0b;
+      --ok: #10b981;
+      --err: #ef4444;
+      --iconbar-w: 56px;
+      --tree-w: 320px;
+      --tree-w-min: 220px;
+      --tree-w-max: 520px;
+      --onto-iconbar-w: 56px;
+      --onto-tree-w: 300px;
+      --onto-tree-w-min: 180px;
+      --onto-tree-w-max: 520px;
+      --onto-tree-collapsed-w: 40px;
+      --toolbar-h: 48px;
+      --bottombar-h: 32px;
+    }
+    * { box-sizing: border-box; }
+    html, body { height: 100%; margin: 0; background: var(--bg); color: var(--text); font-family: system-ui, sans-serif; }
+    .layout {
+      display: grid;
+      grid-template-rows: var(--toolbar-h) 1fr var(--bottombar-h);
+      height: 100vh;
+    }
+    .topbar, .bottombar {
+      display: flex; align-items: center; gap: 12px; padding: 0 12px;
+      background: var(--panel); border-bottom: 1px solid var(--border);
+    }
+    .bottombar { border-top: 1px solid var(--border); border-bottom: none; color: var(--muted); gap: 16px; }
+    .brand { font-weight: 600; letter-spacing: .5px; }
+    .spacer { flex: 1; }
+    .btn, select {
+      background: #0b1220; color: var(--text); border: 1px solid var(--border);
+      padding: 6px 10px; border-radius: 6px; cursor: pointer;
+    }
+    select { padding: 6px; }
+    .content {
+      display: grid; grid-template-columns: var(--iconbar-w) var(--tree-w) 6px 1fr; height: 100%;
+    }
+    .iconbar {
+      background: var(--panel); border-right: 1px solid var(--border);
+      display: flex; flex-direction: column; align-items: center; padding: 8px 6px; gap: 8px;
+    }
+    .icon {
+      width: 40px; height: 40px; border-radius: 8px; border: 1px solid var(--border);
+      background: var(--panel-2); display: grid; place-items: center; color: var(--muted);
+      cursor: pointer;
+    }
+    .icon svg { width: 22px; height: 22px; stroke: currentColor; }
+    .icon.active { color: var(--accent); border-color: var(--accent); }
+    .tree {
+      border-right: 1px solid var(--border); background: var(--panel-2);
+      display: grid; grid-template-rows: auto 1fr; min-width: var(--tree-w-min); max-width: var(--tree-w-max);
+      width: var(--tree-w);
+    }
+    .tree-header { padding: 10px; border-bottom: 1px solid var(--border); display: flex; gap: 8px; align-items: center; }
+    .tree-scroll { overflow: auto; padding: 8px; }
+    /* CAD-like tree view */
+    .treeview [role="tree"] { list-style: none; margin: 0; padding: 4px; }
+    .treeview [role="group"] { list-style: none; margin: 0; padding-left: 16px; border-left: 1px dashed var(--border); }
+    .treeview li[role="treeitem"] { margin: 2px 0; outline: none; }
+    .treeview li[role="treeitem"][aria-expanded="false"] > ul[role="group"] { display: none; }
+    .node-row { display: flex; align-items: center; gap: 6px; padding: 4px 6px; border: 1px solid transparent; border-radius: 6px; cursor: default; }
+    .node-row:hover { background: #0d1426; border-color: var(--border); }
+    .node-row.selected { background: #0f1a33; border-color: var(--accent); }
+    .twist { width: 12px; text-align: center; color: var(--muted); user-select: none; }
+    li[role="treeitem"][aria-expanded="false"] > .node-row .twist::before { content: '▸'; }
+    li[role="treeitem"][aria-expanded="true"] > .node-row .twist::before { content: '▾'; }
+    li[role="treeitem"]:not([aria-expanded]) > .node-row .twist::before { content: '•'; opacity: .25; }
+    .node-icon { width: 14px; height: 14px; border: 1px solid var(--border); border-radius: 3px; background: #0a1120; }
+    .node-icon.folder { background: linear-gradient(180deg, #0f1a33, #0c1529); }
+    .node-icon.req { background: #1b2a45; }
+    .node-icon.doc { background: #1b2a45; border-style: dashed; }
+    .node-icon.out { background: #1b2a45; border-color: #2a3b5f; }
+    .node-icon.docreq { background: #263b61; border-color: #3b5a8f; }
+    .node-icon.docknow { background: #2a3f5f; border-color: #4a6a9a; }
+    .node-icon.onto { background: #22304f; border-color: #39507a; }
+    .node-label { flex: 1; min-width: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .resizer {
+      width: 6px; cursor: col-resize; background: transparent; position: relative;
+    }
+    .resizer::after { content: ""; position: absolute; inset: 0; }
+    .main {
+      padding: 12px; overflow: auto;
+    }
+    .workbench { display: none; }
+    .workbench.active { display: block; }
+    .status-dot { display: inline-block; width: 8px; height: 8px; border-radius: 50%; margin-right: 6px; }
+    .ok { background: var(--ok); } .warn { background: var(--warn); } .err { background: var(--err); }
+    .muted { color: var(--muted); }
+    /* Ontology Workbench */
+    .ontology-toolbar { display: flex; gap: 8px; align-items: center; margin: 8px 0 12px 0; }
+    #cy { width: 100%; height: calc(100vh - var(--toolbar-h) - var(--bottombar-h) - 140px); min-height: 360px; border: 1px solid var(--border); border-radius: 8px; background: #0a0f1f; }
+    .onto-layout { display: grid; grid-template-columns: var(--onto-tree-w) 6px var(--onto-iconbar-w) 1fr; gap: 0; align-items: stretch; }
+    .onto-iconbar { background: var(--panel); border: 1px solid var(--border); border-radius: 8px; padding: 8px 6px; display: flex; flex-direction: column; align-items: center; gap: 8px; height: calc(100vh - var(--toolbar-h) - var(--bottombar-h) - 140px); }
+    .onto-icon { width: 40px; height: 40px; border-radius: 8px; border: 1px solid var(--border); background: var(--panel-2); display: grid; place-items: center; color: var(--muted); cursor: grab; }
+    .onto-icon svg { width: 22px; height: 22px; stroke: currentColor; }
+    .onto-tree { border: 1px solid var(--border); background: var(--panel-2); border-radius: 8px; display: grid; grid-template-rows: auto 1fr; min-width: 0; }
+    .onto-tree-header { padding: 8px; border-bottom: 1px solid var(--border); display: flex; gap: 8px; align-items: center; position: sticky; top: 0; z-index: 1; background: var(--panel-2); }
+    .onto-tree-scroll { overflow: auto; padding: 8px; }
+    .onto-treeview [role="tree"] { list-style: none; margin: 0; padding: 4px; }
+    .onto-treeview [role="group"] { list-style: none; margin: 0; padding-left: 16px; border-left: 1px dashed var(--border); }
+    .onto-treeview li[role="treeitem"] { margin: 2px 0; outline: none; }
+    .onto-treeview li[role="treeitem"][aria-expanded="false"] > ul[role="group"] { display: none; }
+    .onto-node-row { display: flex; align-items: center; gap: 6px; padding: 4px 6px; border: 1px solid transparent; border-radius: 6px; cursor: pointer; }
+    .onto-node-row:hover { background: #0d1426; border-color: var(--border); }
+    .onto-node-row.selected { background: #0f1a33; border-color: var(--accent); }
+    .onto-twist { width: 12px; text-align: center; color: var(--muted); user-select: none; }
+    li[role="treeitem"][aria-expanded="false"] > .onto-node-row .onto-twist::before { content: '▸'; }
+    li[role="treeitem"][aria-expanded="true"] > .onto-node-row .onto-twist::before { content: '▾'; }
+    li[role="treeitem"]:not([aria-expanded]) > .onto-node-row .onto-twist::before { content: '•'; opacity: .25; }
+    .onto-node-label { flex: 1; min-width: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .onto-resizer { width: 6px; cursor: col-resize; background: transparent; position: relative; }
+    .onto-resizer::after { content: ""; position: absolute; inset: 0; }
+    /* Collapsed tree mode */
+    #wb-ontology.onto-tree-collapsed .onto-tree {
+      width: var(--onto-tree-collapsed-w);
+      min-width: var(--onto-tree-collapsed-w);
+      max-width: var(--onto-tree-collapsed-w);
+    }
+    #wb-ontology.onto-tree-collapsed .onto-tree-header .muted { display: none; }
+    #wb-ontology.onto-tree-collapsed .onto-tree-scroll { display: none; }
+    #wb-ontology.onto-tree-collapsed #ontoResizer { display: none; }
+    #wb-ontology.onto-tree-collapsed .onto-layout { grid-template-columns: var(--onto-tree-collapsed-w) var(--onto-iconbar-w) 1fr; }
+    .iconbtn { background: #0b1220; color: var(--text); border: 1px solid var(--border); width: 28px; height: 28px; border-radius: 8px; display: grid; place-items: center; cursor: pointer; }
+    .iconbtn svg { width: 16px; height: 16px; stroke: currentColor; transition: transform 160ms ease; }
+    #wb-ontology.onto-tree-collapsed #ontoTreeToggleIcon { transform: rotate(-90deg); }
+    #wb-ontology.onto-tree-collapsed .onto-tree-header { padding: 4px !important; justify-content: center !important; }
+    .login {
+      display: grid; place-items: center; height: calc(100vh - var(--toolbar-h) - var(--bottombar-h));
+    }
+    .card { background: var(--panel); border: 1px solid var(--border); border-radius: 12px; padding: 16px; width: 360px; }
+    .row { display: grid; gap: 6px; margin-bottom: 10px; }
+    input[type="text"], input[type="password"] {
+      background: #0b1220; color: var(--text); border: 1px solid var(--border); padding: 8px; border-radius: 6px;
+    }
+  </style>
+  <script src="https://unpkg.com/cytoscape@3.28.1/dist/cytoscape.min.js"></script>
+  <script src="https://unpkg.com/cytoscape-edgehandles@4.0.1/cytoscape-edgehandles.min.js"></script>
+  </head>
+  <body>
+  <div id="app" class="layout">
+    <div class="topbar">
+      <div class="brand">ODRAS</div>
+      <div class="spacer"></div>
+      <select id="projectSelect" title="Active project"></select>
+      <button class="btn" id="newProjectBtn">New Project</button>
+      <div class="spacer"></div>
+      <div id="userMenu" class="muted"></div>
+      <button class="btn" id="logoutBtn">Logout</button>
+    </div>
+
+    <div id="authView" class="login" style="display:none;">
+      <div class="card">
+        <h3 style="margin:0 0 8px 0;">Sign in</h3>
+        <div class="row"><label>Username</label><input id="u" type="text" /></div>
+        <div class="row"><label>Password</label><input id="p" type="password" /></div>
+        <button class="btn" id="loginBtn">Login</button>
+        <div id="loginMsg" class="muted" style="margin-top:8px;"></div>
+      </div>
+    </div>
+
+    <div id="mainView" class="content" style="display:none;">
+      <nav class="iconbar" aria-label="Workbench">
+        <div class="icon active" data-wb="ontology" title="Ontology" aria-label="Ontology">
+          <svg viewBox="0 0 24 24" fill="none" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round">
+            <circle cx="6" cy="6" r="2"/>
+            <circle cx="18" cy="6" r="2"/>
+            <circle cx="6" cy="18" r="2"/>
+            <circle cx="18" cy="18" r="2"/>
+            <path d="M8 6h8M6 8v8M18 8v8M8 18h8"/>
+          </svg>
+        </div>
+        <div class="icon" data-wb="files" title="Files" aria-label="Files">
+          <svg viewBox="0 0 24 24" fill="none" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M3 7h5l2 2h11v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V7z"/>
+          </svg>
+        </div>
+        <div class="icon" data-wb="embedding" title="Embedding" aria-label="Embedding">
+          <svg viewBox="0 0 24 24" fill="none" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M12 3l8 4-8 4-8-4 8-4z"/>
+            <path d="M4 12l8 4 8-4"/>
+            <path d="M4 16l8 4 8-4"/>
+          </svg>
+        </div>
+        <div class="icon" data-wb="requirements" title="Requirements" aria-label="Requirements">
+          <svg viewBox="0 0 24 24" fill="none" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M9 7h11M9 12h11M9 17h11"/>
+            <path d="M4 7l1 1 2-2M4 12l1 1 2-2M4 17l1 1 2-2"/>
+          </svg>
+        </div>
+        <div class="icon" data-wb="graph" title="GraphDB" aria-label="GraphDB">
+          <svg viewBox="0 0 24 24" fill="none" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round">
+            <ellipse cx="12" cy="5" rx="8" ry="3"/>
+            <path d="M4 5v10c0 1.7 3.6 3 8 3s8-1.3 8-3V5"/>
+            <path d="M4 12c0 1.7 3.6 3 8 3s8-1.3 8-3"/>
+          </svg>
+        </div>
+        <div class="icon" data-wb="rag" title="RAG" aria-label="RAG">
+          <svg viewBox="0 0 24 24" fill="none" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round">
+            <circle cx="11" cy="11" r="6"/>
+            <path d="M20 20l-4-4"/>
+          </svg>
+        </div>
+        <div class="icon" data-wb="process" title="Process" aria-label="Process">
+          <svg viewBox="0 0 24 24" fill="none" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round">
+            <rect x="4" y="4" width="8" height="6" rx="1"/>
+            <rect x="12" y="14" width="8" height="6" rx="1"/>
+            <path d="M8 10v4M8 14h8M16 14v-4"/>
+          </svg>
+        </div>
+        <div class="icon" data-wb="thread" title="Thread" aria-label="Thread">
+          <svg viewBox="0 0 24 24" fill="none" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round">
+            <rect x="4" y="4" width="16" height="12" rx="2"/>
+            <path d="M8 16l-4 4v-4"/>
+            <path d="M8 8h8M8 12h6"/>
+          </svg>
+        </div>
+        <div class="icon" data-wb="playground" title="Playground" aria-label="Playground">
+          <svg viewBox="0 0 24 24" fill="none" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M9 3h6"/>
+            <path d="M10 3v4l-5 9a3 3 0 0 0 3 5h8a3 3 0 0 0 3-5l-5-9V3"/>
+            <path d="M8 15h8"/>
+          </svg>
+        </div>
+        <div class="icon" data-wb="admin" title="Admin" aria-label="Admin">
+          <svg viewBox="0 0 24 24" fill="none" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M12 3l8 4v6c0 5-5 8-8 8s-8-3-8-8V7l8-4z"/>
+          </svg>
+        </div>
+      </nav>
+
+      <aside class="tree" id="treePanel" aria-label="Project Tree">
+        <div class="tree-header">
+          <select id="projectSelect2" title="Active project"></select>
+          <button class="btn" id="addNodeBtn" title="Add item">＋</button>
+        </div>
+        <div class="tree-scroll">
+          <nav class="treeview" aria-label="Project">
+            <ul role="tree" id="treeRoot" aria-label="Project tree"></ul>
+          </nav>
+        </div>
+      </aside>
+
+      <div class="resizer" id="resizer" aria-hidden="true"></div>
+
+      <main class="main">
+        <section id="wb-ontology" class="workbench active">
+          <h2>Ontology Workbench</h2>
+          <div class="ontology-toolbar">
+            <div class="spacer"></div>
+            <button class="btn" id="ontoLayoutBtn" title="Auto layout">Layout</button>
+            <button class="btn" id="ontoImportBtn" title="Import graph JSON">Import</button>
+            <button class="btn" id="ontoExportBtn" title="Export graph JSON">Export</button>
+            <input type="file" id="ontoImportFile" accept="application/json" style="display:none" />
+          </div>
+          <div class="onto-layout">
+            <aside class="onto-tree" aria-label="Ontology Tree">
+              <div class="onto-tree-header" id="ontoTreeHeader" style="display:flex; justify-content:space-between; align-items:center;">
+                <div class="muted">Ontology</div>
+                <button class="iconbtn" id="ontoTreeToggle" title="Collapse">
+                  <svg id="ontoTreeToggleIcon" viewBox="0 0 24 24" fill="none" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M6 9l6 6 6-6"/></svg>
+                </button>
+              </div>
+              <div class="onto-tree-scroll">
+                <nav class="onto-treeview" aria-label="Ontology">
+                  <ul role="tree" id="ontoTreeRoot" aria-label="Ontology tree"></ul>
+                </nav>
+              </div>
+            </aside>
+            <div class="onto-resizer" id="ontoResizer" aria-hidden="true"></div>
+            <aside class="onto-iconbar" aria-label="Ontology Tools">
+              <div class="onto-icon" draggable="true" data-onto-type="class" title="Class">
+                <svg viewBox="0 0 24 24" fill="none" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><rect x="6" y="6" width="12" height="12" rx="2"/></svg>
+              </div>
+              <div class="onto-icon" draggable="true" data-onto-type="objectProperty" title="Object Property">
+                <svg viewBox="0 0 24 24" fill="none" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><circle cx="7" cy="12" r="3"/><circle cx="17" cy="12" r="3"/><path d="M10 12h4"/></svg>
+              </div>
+              <div class="onto-icon" draggable="true" data-onto-type="dataProperty" title="Data Property">
+                <svg viewBox="0 0 24 24" fill="none" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><circle cx="7" cy="12" r="3"/><rect x="14" y="9" width="6" height="6" rx="1"/></svg>
+              </div>
+              <div class="onto-icon" draggable="true" data-onto-type="note" title="Note">
+                <svg viewBox="0 0 24 24" fill="none" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M4 4h12l4 4v12H4z"/><path d="M16 4v4h4"/></svg>
+              </div>
+            </aside>
+            <div id="cy" role="application" aria-label="Ontology Graph Canvas"></div>
+          </div>
+        </section>
+        <section id="wb-files" class="workbench">
+          <h2>File Management</h2>
+          <div class="muted">Upload requirements and knowledge docs (MinIO).</div>
+        </section>
+        <section id="wb-embedding" class="workbench">
+          <h2>Embedding</h2>
+          <div class="muted">Chunking, overlap, embedding model, storage settings.</div>
+        </section>
+        <section id="wb-requirements" class="workbench">
+          <h2>Requirements</h2>
+          <div class="muted">Extraction rules, SME review, LLM critique.</div>
+        </section>
+        <section id="wb-graph" class="workbench">
+          <h2>Graph Explorer</h2>
+          <div class="muted">Quick look into RDF store (SPARQL).
+            <button class="btn" id="btnRefreshSummary" style="margin-left:8px;">Refresh Summary</button>
+          </div>
+          <div id="graphSummary" class="card" style="margin-top:10px;"></div>
+          <div class="card" style="margin-top:10px;">
+            <div class="muted">Run SPARQL (SELECT):</div>
+            <textarea id="sparqlInput" rows="6" style="width:100%; background:#0b1220; color:#e5e7eb; border:1px solid var(--border); border-radius:6px; padding:8px;">SELECT ?s ?p ?o WHERE { ?s ?p ?o } LIMIT 25</textarea>
+            <div style="margin-top:6px; display:flex; gap:8px; align-items:center;">
+              <button class="btn" id="btnRunSparql">Run</button>
+              <span id="sparqlStatus" class="muted"></span>
+            </div>
+            <pre id="sparqlResult" style="margin-top:8px; white-space:pre-wrap;"></pre>
+          </div>
+        </section>
+        <section id="wb-rag" class="workbench">
+          <h2>RAG</h2>
+          <div class="muted">Develop/test BPMN workflows with LLM help.</div>
+        </section>
+        <section id="wb-process" class="workbench">
+          <h2>Process</h2>
+          <div class="muted">Manage extraction BPMN processes.</div>
+        </section>
+        <section id="wb-thread" class="workbench">
+          <h2>Thread Workbench</h2>
+          <div class="muted">Chronological, project-scoped thread of tasks, user actions, and system events.</div>
+        </section>
+        <section id="wb-playground" class="workbench">
+          <h2>LLM Playground</h2>
+          <div class="muted">Ask questions, generate white papers, save to project.</div>
+        </section>
+        <section id="wb-admin" class="workbench">
+          <h2>Admin</h2>
+          <div class="muted">Users, projects overview (read-only for MVP).</div>
+        </section>
+      </main>
+    </div>
+
+    <div class="bottombar">
+      <span><span class="status-dot ok"></span>Camunda</span>
+      <span><span class="status-dot ok"></span>Fuseki</span>
+      <span><span class="status-dot ok"></span>Vector</span>
+      <span class="spacer"></span>
+      <span class="muted">UI Restart Prototype</span>
+    </div>
+  </div>
+
+  <script>
+    const qs = (s, r = document) => r.querySelector(s);
+    const qsa = (s, r = document) => Array.from(r.querySelectorAll(s));
+
+    // Ontology workbench state
+    const ontoState = { cy: null, eh: null, connectMode: false, clickConnectFrom: null, nextId: 1, currentPredicateType: 'objectProperty' };
+    function ensureOntologyInitialized() {
+      if (ontoState.cy) return;
+      const container = qs('#cy');
+      if (!container) return;
+      try {
+        if (window.cytoscape && (window.cytoscapeEdgehandles || window.edgehandles)) {
+          const plugin = window.cytoscapeEdgehandles || window.edgehandles;
+          if (plugin && typeof plugin === 'function') window.cytoscape.use(plugin);
+        }
+      } catch (_) {}
+      ontoState.cy = cytoscape({
+        container,
+        layout: { name: 'grid', padding: 10, avoidOverlap: true },
+        style: [
+          { selector: 'node', style: {
+            'shape': 'round-rectangle',
+            'background-color': '#1b2a45',
+            'border-color': '#2a3b5f',
+            'border-width': 1,
+            'label': 'data(label)',
+            'color': '#e5e7eb',
+            'font-size': 12,
+            'text-wrap': 'wrap',
+            'text-max-width': 140,
+            'text-valign': 'center',
+            'text-halign': 'center'
+          }},
+          { selector: 'edge', style: {
+            'curve-style': 'bezier',
+            'width': 2,
+            'line-color': '#3b4a6b',
+            'target-arrow-shape': 'triangle',
+            'target-arrow-color': '#3b4a6b',
+            'arrow-scale': 1,
+            'label': 'data(predicate)',
+            'font-size': 10,
+            'text-rotation': 'autorotate',
+            'text-background-color': '#0b1220',
+            'text-background-opacity': 0.6,
+            'text-background-padding': 2
+          }},
+          { selector: 'node[type = "note"], .note', style: {
+            'shape': 'round-rectangle',
+            'background-color': '#2a1f0a',
+            'border-color': '#8b5a1e',
+            'border-style': 'dashed',
+            'border-width': 1,
+            'label': 'data(label)',
+            'color': '#f5e6cc',
+            'font-size': 12,
+            'text-wrap': 'wrap',
+            'text-max-width': 180,
+            'text-valign': 'center',
+            'text-halign': 'center'
+          }},
+          { selector: ':selected', style: {
+            'border-color': '#60a5fa',
+            'border-width': 2,
+            'line-color': '#60a5fa',
+            'target-arrow-color': '#60a5fa'
+          }}
+        ],
+        elements: [
+          { data: { id: 'Class1', label: 'Class 1', type: 'class' } },
+          { data: { id: 'Class2', label: 'Class 2', type: 'class' } },
+          { data: { id: 'rel1', source: 'Class1', target: 'Class2', predicate: 'relatedTo' } }
+        ]
+      });
+      window._cy = ontoState.cy;
+      ontoState.nextId = 3;
+
+      if (typeof ontoState.cy.edgehandles === 'function') {
+        ontoState.eh = ontoState.cy.edgehandles({
+          handleSize: 8,
+          toggleOffOnLeave: true,
+          enabled: false,
+          edgeParams: () => ({ data: { predicate: 'relatedTo', type: ontoState.currentPredicateType } })
+        });
+        ontoState.cy.on('ehcomplete', (event, sourceNode, targetNode, addedEdge) => {
+          // Update tree when an edge is created
+          requestAnimationFrame(refreshOntologyTree);
+        });
+      } else {
+        ontoState.cy.on('tap', 'node', (ev) => {
+          if (!ontoState.connectMode) return;
+          const node = ev.target;
+          if (!ontoState.clickConnectFrom) {
+            ontoState.clickConnectFrom = node.id();
+          } else {
+            const from = ontoState.clickConnectFrom;
+            const to = node.id();
+            if (from !== to) {
+              ontoState.cy.add({ group: 'edges', data: { id: `e${Date.now()}`, source: from, target: to, predicate: 'relatedTo', type: 'objectProperty' } });
+              refreshOntologyTree();
+            }
+            ontoState.clickConnectFrom = null;
+          }
+        });
+      }
+
+      // Drag-and-drop from tool icons
+      const icons = Array.from(document.querySelectorAll('.onto-icon'));
+      icons.forEach(icon => {
+        icon.addEventListener('dragstart', (ev) => {
+          ev.dataTransfer.setData('text/onto-type', icon.getAttribute('data-onto-type') || 'class');
+        });
+      });
+
+      container.addEventListener('dragover', (ev) => { ev.preventDefault(); });
+      container.addEventListener('drop', (ev) => {
+        ev.preventDefault();
+        const ontoType = ev.dataTransfer.getData('text/onto-type') || 'class';
+        const rect = container.getBoundingClientRect();
+        const renderedPos = { x: ev.clientX - rect.left, y: ev.clientY - rect.top };
+        const pan = ontoState.cy.pan();
+        const zoom = ontoState.cy.zoom();
+        const pos = { x: (renderedPos.x - pan.x) / zoom, y: (renderedPos.y - pan.y) / zoom };
+        if (ontoType === 'class') {
+          const label = prompt('Class label', `Class ${ontoState.nextId}`) || `Class ${ontoState.nextId}`;
+          addClassNodeAt(label, pos);
+        } else if (ontoType === 'objectProperty') {
+          ontoState.currentPredicateType = 'objectProperty';
+          setConnectMode(true);
+          alert('Object Property: now draw a connection between two classes using the edge handles.');
+        } else if (ontoType === 'dataProperty') {
+          const sel = ontoState.cy.nodes(':selected').filter(n => (n.data('type') || 'class') === 'class');
+          if (sel.length !== 1) { alert('Select one class to attach a Data Property.'); return; }
+          const prop = prompt('Data property name'); if (!prop) return;
+          const pid = `DP${Date.now()}`;
+          ontoState.cy.add({ group: 'nodes', data: { id: pid, label: prop, type: 'dataProperty' }, position: pos });
+          ontoState.cy.add({ group: 'edges', data: { id: `edp${Date.now()}`, source: sel[0].id(), target: pid, predicate: prop, type: 'dataProperty' } });
+          refreshOntologyTree();
+        } else if (ontoType === 'note') {
+          const text = prompt('Note text'); if (!text) return;
+          const nid = `Note${Date.now()}`;
+          ontoState.cy.add({ group: 'nodes', data: { id: nid, label: text, type: 'note' }, position: pos, classes: 'note' });
+          refreshOntologyTree();
+        }
+      });
+    }
+
+    function addClassNode(label) {
+      ensureOntologyInitialized();
+      const id = `Class${ontoState.nextId++}`;
+      const x = 100 + Math.random() * 400;
+      const y = 100 + Math.random() * 300;
+      ontoState.cy.add({ group: 'nodes', data: { id, label, type: 'class' }, position: { x, y } });
+      refreshOntologyTree();
+    }
+
+    function addClassNodeAt(label, position) {
+      ensureOntologyInitialized();
+      const id = `Class${ontoState.nextId++}`;
+      ontoState.cy.add({ group: 'nodes', data: { id, label, type: 'class' }, position });
+      refreshOntologyTree();
+    }
+
+    function runAutoLayout() {
+      ensureOntologyInitialized();
+      const layout = ontoState.cy.layout({ name: 'cose', animate: 'end', animationDuration: 200 });
+      layout.run();
+    }
+
+    function setConnectMode(enabled) {
+      ensureOntologyInitialized();
+      ontoState.connectMode = !!enabled;
+      const btn = qs('#ontoConnectBtn');
+      if (btn) btn.style.borderColor = enabled ? '#60a5fa' : 'var(--border)';
+      if (ontoState.eh) {
+        if (enabled) ontoState.eh.enableDrawMode(); else ontoState.eh.disableDrawMode();
+      } else {
+        if (!enabled) ontoState.clickConnectFrom = null;
+      }
+    }
+
+    function exportOntologyJSON() {
+      ensureOntologyInitialized();
+      const nodes = ontoState.cy.nodes().map(n => ({ data: n.data(), position: n.position() }));
+      const edges = ontoState.cy.edges().map(e => ({ data: e.data() }));
+      const payload = { nodes, edges };
+      const blob = new Blob([JSON.stringify(payload, null, 2)], { type: 'application/json' });
+      const a = document.createElement('a');
+      a.href = URL.createObjectURL(blob);
+      a.download = 'ontology.json';
+      document.body.appendChild(a);
+      a.click();
+      URL.revokeObjectURL(a.href);
+      a.remove();
+    }
+
+    function importOntologyJSON(obj) {
+      ensureOntologyInitialized();
+      if (!obj || !Array.isArray(obj.nodes) || !Array.isArray(obj.edges)) return;
+      ontoState.cy.elements().remove();
+      ontoState.cy.add(obj.nodes.map(n => ({ group: 'nodes', data: n.data, position: n.position })));
+      ontoState.cy.add(obj.edges.map(e => ({ group: 'edges', data: e.data })));
+      ontoState.cy.fit();
+      refreshOntologyTree();
+    }
+
+    // Auth/UI gating
+    const tokenKey = 'odras_token';
+    const userKey = 'odras_user';
+    function showAuth(show) {
+      qs('#authView').style.display = show ? 'grid' : 'none';
+      qs('#mainView').style.display = show ? 'none' : 'grid';
+    }
+    async function initAuth() {
+      const token = localStorage.getItem(tokenKey);
+      if (!token) { showAuth(true); return; }
+      const me = await fetch('/api/auth/me', { headers: { Authorization: 'Bearer ' + token }}).then(r=>r.json()).catch(()=>null);
+      if (!me || me.error) { showAuth(true); return; }
+      qs('#userMenu').textContent = me.username + (me.is_admin ? ' (admin)' : '');
+      showAuth(false);
+      await loadProjects();
+      ensureOntologyInitialized();
+      refreshOntologyTree();
+      // Restore ontology tree collapsed state
+      try {
+        const collapsed = localStorage.getItem('onto_tree_collapsed') === '1';
+        if (collapsed) {
+          const sec = qs('#wb-ontology');
+          if (sec && !sec.classList.contains('onto-tree-collapsed')) sec.classList.add('onto-tree-collapsed');
+          const icon = qs('#ontoTreeToggleIcon');
+          if (icon) icon.innerHTML = '<path d="M9 6l6 6-6 6"/>';
+        }
+      } catch(_) {}
+    }
+    qs('#loginBtn').onclick = async () => {
+      const username = qs('#u').value.trim();
+      const password = qs('#p').value;
+      qs('#loginMsg').textContent = 'Signing in...';
+      const res = await fetch('/api/auth/login', { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ username, password }) });
+      const json = await res.json();
+      if (res.ok && json.token) {
+        localStorage.setItem(tokenKey, json.token);
+        localStorage.setItem(userKey, username);
+        qs('#loginMsg').textContent = '';
+        initAuth();
+      } else {
+        qs('#loginMsg').textContent = json.error || 'Login failed';
+      }
+    };
+    qs('#logoutBtn').onclick = () => { localStorage.removeItem(tokenKey); localStorage.removeItem(userKey); showAuth(true); };
+
+    // Projects
+    async function loadProjects() {
+      const token = localStorage.getItem(tokenKey);
+      const res = await fetch('/api/projects', { headers: { Authorization: 'Bearer ' + token }});
+      const json = await res.json();
+      const list = json.projects || [];
+      const selects = [qs('#projectSelect'), qs('#projectSelect2')];
+      if (list.length) {
+        selects.forEach(sel => { sel.innerHTML = list.map(p => `<option value="${p.id}">${p.name}</option>`).join(''); });
+        renderTree(list[0]);
+      } else {
+        const sample = getSampleProject();
+        selects.forEach(sel => { sel.innerHTML = `<option value="${sample.id}">${sample.name} (demo)</option>`; });
+        renderTree(sample);
+      }
+    }
+    qs('#newProjectBtn').onclick = async () => {
+      const name = prompt('Project name'); if (!name) return;
+      const token = localStorage.getItem(tokenKey);
+      const res = await fetch('/api/projects', { method:'POST', headers:{'Content-Type':'application/json', Authorization: 'Bearer ' + token}, body: JSON.stringify({ name }) });
+      if (res.ok) loadProjects();
+    };
+    ['#projectSelect', '#projectSelect2'].forEach(id => {
+      qs(id).addEventListener('change', async (e) => {
+        const pid = e.target.value;
+        const token = localStorage.getItem(tokenKey);
+        const res = await fetch('/api/projects', { headers: { Authorization: 'Bearer ' + token }});
+        const json = await res.json();
+        const proj = (json.projects || []).find(p => p.id === pid);
+        if (proj) renderTree(proj);
+      });
+    });
+
+    // Workbench switching
+    qsa('.icon').forEach(el => el.onclick = () => {
+      qsa('.icon').forEach(i => i.classList.remove('active')); el.classList.add('active');
+      const wb = el.getAttribute('data-wb');
+      qsa('.workbench').forEach(w => w.classList.remove('active'));
+      qs('#wb-' + wb).classList.add('active');
+      if (wb === 'graph') refreshGraphSummary();
+      if (wb === 'ontology') { ensureOntologyInitialized(); if (ontoState.cy) ontoState.cy.resize(); }
+    });
+
+    // Tree collapsible sections
+    qsa('.section > button').forEach(btn => {
+      btn.onclick = (e) => {
+        const sec = e.currentTarget.parentElement;
+        const expanded = sec.getAttribute('aria-expanded') !== 'false';
+        sec.setAttribute('aria-expanded', expanded ? 'false' : 'true');
+      };
+    });
+
+    // Resizer
+    (function(){
+      const res = qs('#resizer');
+      const panel = qs('#treePanel');
+      let dragging = false;
+      res.addEventListener('mousedown', () => dragging = true);
+      window.addEventListener('mouseup', () => dragging = false);
+      window.addEventListener('mousemove', (e) => {
+        if (!dragging) return;
+        const min = parseInt(getComputedStyle(document.documentElement).getPropertyValue('--tree-w-min'));
+        const max = parseInt(getComputedStyle(document.documentElement).getPropertyValue('--tree-w-max'));
+        let w = e.clientX - parseInt(getComputedStyle(document.documentElement).getPropertyValue('--iconbar-w'));
+        w = Math.max(min, Math.min(max, w));
+        document.documentElement.style.setProperty('--tree-w', w + 'px');
+        if (ontoState.cy) ontoState.cy.resize();
+      });
+    })();
+
+    // Ontology panel resizer
+    (function(){
+      const res = qs('#ontoResizer');
+      const panelWidthProp = '--onto-tree-w';
+      let dragging = false;
+      if (!res) return;
+      res.addEventListener('mousedown', () => dragging = true);
+      window.addEventListener('mouseup', () => dragging = false);
+      window.addEventListener('mousemove', (e) => {
+        if (!dragging) return;
+        const leftOffset = parseInt(getComputedStyle(document.documentElement).getPropertyValue('--onto-iconbar-w'));
+        let w = e.clientX - leftOffset - qs('#wb-ontology .ontology-toolbar').getBoundingClientRect().left; // relative after toolbar margin
+        const min = parseInt(getComputedStyle(document.documentElement).getPropertyValue('--onto-tree-w-min'));
+        const max = parseInt(getComputedStyle(document.documentElement).getPropertyValue('--onto-tree-w-max'));
+        w = Math.max(min, Math.min(max, w));
+        document.documentElement.style.setProperty(panelWidthProp, w + 'px');
+        if (ontoState.cy) ontoState.cy.resize();
+      });
+    })();
+
+    function renderTree(project) {
+      const root = qs('#treeRoot');
+      const makeItem = (id, label, iconCls, children = []) => {
+        const hasChildren = children && children.length > 0;
+        const li = document.createElement('li');
+        li.setAttribute('role', 'treeitem');
+        if (hasChildren) li.setAttribute('aria-expanded', 'true');
+        li.dataset.nodeId = id;
+
+        const row = document.createElement('div');
+        row.className = 'node-row';
+        row.tabIndex = 0;
+        row.onclick = (e) => selectNode(li);
+        row.onkeydown = (e) => handleKey(e, li);
+
+        const twist = document.createElement('span'); twist.className = 'twist';
+        if (hasChildren) {
+          twist.onclick = (e) => { e.stopPropagation(); toggleNode(li); };
+        }
+        row.appendChild(twist);
+
+        const icon = document.createElement('span'); icon.className = 'node-icon ' + iconCls; row.appendChild(icon);
+        const text = document.createElement('span'); text.className = 'node-label'; text.textContent = label; row.appendChild(text);
+        li.appendChild(row);
+
+        if (hasChildren) {
+          const ul = document.createElement('ul'); ul.setAttribute('role', 'group');
+          children.forEach(ch => ul.appendChild(ch));
+          li.appendChild(ul);
+        }
+        return li;
+      };
+
+      const reqItems = (project.requirements || []).map((r, idx) => {
+        const rid = r.id || `SP-${String(idx + 1).padStart(3, '0')}`;
+        const label = rid; // ID only
+        return makeItem(rid, label, 'req');
+      });
+      const docReqItems = (project.documents && project.documents.requirements ? project.documents.requirements : []).map(d => makeItem(d.id || d.name, d.name || d.id, 'docreq'));
+      const docKnowItems = (project.documents && project.documents.knowledge ? project.documents.knowledge : []).map(d => makeItem(d.id || d.name, d.name || d.id, 'docknow'));
+      const outItems = (project.artifacts || project.outputs || []).map(o => makeItem(o.id || o.name, o.name || o.id, 'out'));
+
+      // Ontology tree: Base and Systems Ontology (with Imports)
+      const ontoBaseItems = (project.ontology && project.ontology.base ? [project.ontology.base] : [])
+        .flatMap(b => {
+          const versions = b.versions || [];
+          if (versions.length) {
+            return versions.map(v => makeItem(`onto-base-${b.id || b.name}-${v}`, `${b.name || b.id} v${v}`, 'onto'));
+          }
+          return [makeItem(b.id || b.name, b.name || b.id, 'onto')];
+        });
+      const systemsBaseItems = (project.ontology && project.ontology.systems && project.ontology.systems.base ? [project.ontology.systems.base] : [])
+        .flatMap(b => {
+          const versions = b.versions || [];
+          if (versions.length) {
+            return versions.map(v => makeItem(`onto-sys-base-${b.id || b.name}-${v}`, `Base Systems Ontology v${v}`, 'onto'));
+          }
+          return [makeItem(b.id || b.name, 'Base Systems Ontology', 'onto')];
+        });
+      const systemsImportedItems = (project.ontology && project.ontology.systems && Array.isArray(project.ontology.systems.imports) ? project.ontology.systems.imports : (Array.isArray(project.ontology?.imports) ? project.ontology.imports : []))
+        .map((imp, idx) => {
+          const childVersions = (imp.versions || []).map(v => makeItem(`onto-imp-${imp.id || imp.name}-${v}`, `${imp.name || imp.id} v${v}`, 'onto'));
+          const label = imp.name || imp.id || `Imported ${idx + 1}`;
+          return childVersions.length ? makeItem(`ontology-import-${imp.id || idx}`, label, 'folder', childVersions)
+                                      : makeItem(imp.id || label, label, 'onto');
+        });
+      const systemsChildren = [];
+      if (systemsBaseItems.length) systemsChildren.push(makeItem('ontology-systems-base', 'Base Systems Ontology', 'folder', systemsBaseItems));
+      if (systemsImportedItems.length) systemsChildren.push(makeItem('ontology-systems-imports', 'Imports', 'folder', systemsImportedItems));
+      const systemsNode = (systemsChildren.length ? makeItem('ontology-systems', 'Systems Ontology', 'folder', systemsChildren) : null);
+      const ontoChildren = [];
+      if (ontoBaseItems.length) ontoChildren.push(makeItem('ontology-base-section', 'Base', 'folder', ontoBaseItems));
+      if (systemsNode) ontoChildren.push(systemsNode);
+      const ontologyNode = (ontoChildren.length ? makeItem('ontology', 'Ontology', 'folder', ontoChildren) : null);
+
+      const projectInfo = makeItem('project-info', `ID: ${project.id}`, 'folder');
+      const docsReqNode = makeItem('documents-requirements', 'Requirements Documents', 'folder', docReqItems);
+      const docsKnowNode = makeItem('documents-knowledge', 'Knowledge Documents', 'folder', docKnowItems);
+      const docsChildren = [];
+      if (docReqItems.length) docsChildren.push(docsReqNode);
+      if (docKnowItems.length) docsChildren.push(docsKnowNode);
+      const docsNode = makeItem('documents', 'Documents', 'folder', docsChildren);
+      const reqNode = makeItem('requirements', 'Extracted Requirements', 'folder', reqItems);
+      const outNode = makeItem('artifacts', 'Artifacts', 'folder', outItems);
+
+      root.innerHTML = '';
+      [projectInfo, ontologyNode, docsNode, reqNode, outNode].filter(Boolean).forEach(n => root.appendChild(n));
+    }
+
+    async function refreshGraphSummary() {
+      const el = qs('#graphSummary'); if (!el) return;
+      el.textContent = 'Loading summary...';
+      try {
+        const res = await fetch('/api/ontology/summary');
+        const json = await res.json();
+        if (json.rows) {
+          el.innerHTML = json.rows.map(r => `<div class="row"><span class="muted">${r.type}</span> — ${r.count}</div>`).join('') || '<div class="muted">No data</div>';
+        } else {
+          el.textContent = json.error || 'No data';
+        }
+      } catch (e) { el.textContent = 'Error loading summary'; }
+    }
+    (function(){
+      const btnS = () => qs('#btnRefreshSummary');
+      const btnQ = () => qs('#btnRunSparql');
+      document.addEventListener('click', async (e) => {
+        if (e.target === btnS()) {
+          refreshGraphSummary();
+        } else if (e.target === btnQ()) {
+          const q = (qs('#sparqlInput')?.value) || '';
+          const st = qs('#sparqlStatus'); const out = qs('#sparqlResult');
+          st.textContent = 'Running...'; out.textContent = '';
+          try {
+            const res = await fetch('/api/ontology/sparql', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ query: q }) });
+            const json = await res.json();
+            if (res.ok) { out.textContent = JSON.stringify(json, null, 2); st.textContent = 'OK'; }
+            else { out.textContent = JSON.stringify(json, null, 2); st.textContent = 'Error'; }
+          } catch (err) { out.textContent = String(err); st.textContent = 'Error'; }
+        }
+      });
+    })();
+
+    function refreshOntologyTree() {
+      const root = qs('#ontoTreeRoot');
+      if (!root || !ontoState.cy) return;
+      const classes = ontoState.cy.nodes().filter(n => (n.data('type') || 'class') === 'class');
+      const notes = ontoState.cy.nodes().filter(n => (n.data('type') || '') === 'note');
+      // Simple grouping: Classes as top-level; edges shown under a "Relationships" group per class
+      root.innerHTML = '';
+      const makeItem = (label, expanded = true, children = []) => {
+        const li = document.createElement('li');
+        li.setAttribute('role', 'treeitem');
+        if (children.length) li.setAttribute('aria-expanded', expanded ? 'true' : 'false');
+        const row = document.createElement('div'); row.className = 'onto-node-row';
+        const twist = document.createElement('span'); twist.className = 'onto-twist'; if (children.length) twist.onclick = (e)=>{ e.stopPropagation(); li.setAttribute('aria-expanded', li.getAttribute('aria-expanded') === 'true' ? 'false' : 'true'); };
+        const text = document.createElement('span'); text.className = 'onto-node-label'; text.textContent = label;
+        row.appendChild(twist); row.appendChild(text); li.appendChild(row);
+        if (children.length) {
+          const ul = document.createElement('ul'); ul.setAttribute('role', 'group');
+          children.forEach(c => ul.appendChild(c));
+          li.appendChild(ul);
+        }
+        return li;
+      };
+      const items = [];
+      classes.forEach(cls => {
+        const label = cls.data('label') || cls.id();
+        const outEdges = cls.outgoers('edge');
+        const rels = outEdges.map(e => {
+          const other = e.target();
+          const pred = e.data('predicate') || 'relatedTo';
+          const type = e.data('type') || 'objectProperty';
+          return makeItem(`${pred} → ${(other.data('label') || other.id())} (${type})`, false, []);
+        });
+        items.push(makeItem(label, false, rels));
+      });
+      if (notes.length) {
+        const noteChildren = notes.map(n => makeItem(n.data('label') || n.id(), false, []));
+        items.push(makeItem('Notes', true, noteChildren));
+      }
+      const ul = document.createElement('ul'); ul.setAttribute('role', 'group');
+      items.forEach(i => ul.appendChild(i));
+      // Root level
+      const rootItem = document.createElement('li'); rootItem.setAttribute('role', 'treeitem'); rootItem.setAttribute('aria-expanded', 'true');
+      const row = document.createElement('div'); row.className = 'onto-node-row';
+      const twist = document.createElement('span'); twist.className = 'onto-twist'; twist.onclick = (e)=>{ e.stopPropagation(); rootItem.setAttribute('aria-expanded', rootItem.getAttribute('aria-expanded') === 'true' ? 'false' : 'true'); };
+      const text = document.createElement('span'); text.className = 'onto-node-label'; text.textContent = 'Ontology';
+      row.appendChild(twist); row.appendChild(text); rootItem.appendChild(row); rootItem.appendChild(ul);
+      root.innerHTML = '';
+      root.appendChild(rootItem);
+    }
+
+    // Ontology toolbar events and import handling
+    (function(){
+      document.addEventListener('click', async (e) => {
+        if (e.target === qs('#ontoLayoutBtn')) {
+          runAutoLayout();
+        } else if (e.target === qs('#ontoExportBtn')) {
+          exportOntologyJSON();
+        } else if (e.target === qs('#ontoImportBtn')) {
+          const inp = qs('#ontoImportFile'); if (inp) inp.click();
+        } else if (e.target === qs('#ontoTreeToggle') || e.target === qs('#ontoTreeToggleIcon')) {
+          const sec = qs('#wb-ontology');
+          if (!sec) return;
+          const collapsed = sec.classList.toggle('onto-tree-collapsed');
+          const icon = qs('#ontoTreeToggleIcon');
+          if (icon) {
+            // Down chevron when expanded, right chevron when collapsed
+            icon.innerHTML = collapsed
+              ? '<path d="M9 6l6 6-6 6"/>'
+              : '<path d="M6 9l6 6 6-6"/>';
+          }
+          try { localStorage.setItem('onto_tree_collapsed', collapsed ? '1' : '0'); } catch(_) {}
+          if (ontoState.cy) ontoState.cy.resize();
+        }
+      });
+      const header = qs('#ontoTreeHeader');
+      if (header) header.addEventListener('dblclick', (e) => {
+        const toggleBtn = qs('#ontoTreeToggle');
+        if (toggleBtn) toggleBtn.click();
+      });
+      const fileInput = () => qs('#ontoImportFile');
+      document.addEventListener('change', async (e) => {
+        if (e.target === fileInput()) {
+          const file = e.target.files && e.target.files[0];
+          if (!file) return;
+          try {
+            const text = await file.text();
+            const json = JSON.parse(text);
+            importOntologyJSON(json);
+          } catch (_) {
+            alert('Invalid ontology JSON');
+          } finally {
+            e.target.value = '';
+          }
+        }
+      });
+    })();
+
+    window.addEventListener('resize', () => { if (ontoState.cy) ontoState.cy.resize(); });
+
+    function getSampleProject() {
+      return {
+        id: 'demo',
+        name: 'Sample Project',
+        ontology: {
+          base: { id: 'BASE-ONTO', name: 'Base Ontology', versions: ['1.0', '1.1'] },
+          systems: {
+            base: { id: 'SYS-BASE', name: 'Systems Ontology', versions: ['0.1', '0.2'] },
+            imports: [
+              { id: 'GEO', name: 'Geo Ontology', versions: ['2023-09', '2024-02'] },
+              { id: 'RELY', name: 'Reliability Ontology', versions: ['1.0'] },
+              { id: 'ORG', name: 'Organization Ontology', versions: ['0.9'] }
+            ]
+          }
+        },
+        requirements: [
+          { id: 'R-001', title: 'The system shall ingest documents and extract requirements.' },
+          { id: 'R-002', title: 'The system should support ontology-based tagging of entities.' },
+          { id: 'R-003', title: 'The system must store outputs in RDF, GraphDB, and Vector Store.' }
+        ],
+        documents: {
+          requirements: [
+            { id: 'RD-01', name: 'Concept of Operations.pdf' },
+            { id: 'RD-02', name: 'Capabilities Development Document.docx' }
+          ],
+          knowledge: [
+            { id: 'KD-01', name: 'Requirements Development Instructions.md' },
+            { id: 'KD-02', name: 'Industry Spec MIL-STD-961E.pdf' }
+          ]
+        },
+        artifacts: [
+          { id: 'ART-01', name: 'White Paper - Initial Draft.md' },
+          { id: 'ART-02', name: 'System Architecture Diagram.png' }
+        ]
+      };
+    }
+
+    function toggleNode(li) {
+      const exp = li.getAttribute('aria-expanded');
+      if (exp === null) return;
+      li.setAttribute('aria-expanded', exp === 'true' ? 'false' : 'true');
+    }
+
+    function selectNode(li) {
+      qsa('.node-row').forEach(r => r.classList.remove('selected'));
+      const row = li.querySelector('.node-row');
+      if (row) row.classList.add('selected');
+    }
+
+    function handleKey(e, li) {
+      const LEFT = 37, UP = 38, RIGHT = 39, DOWN = 40, ENTER = 13, SPACE = 32;
+      const exp = li.getAttribute('aria-expanded');
+      switch (e.keyCode) {
+        case LEFT:
+          if (exp === 'true') { toggleNode(li); } else { focusParent(li); }
+          e.preventDefault(); break;
+        case RIGHT:
+          if (exp === 'false') { toggleNode(li); } else { focusFirstChild(li); }
+          e.preventDefault(); break;
+        case UP:
+          focusPrev(li); e.preventDefault(); break;
+        case DOWN:
+          focusNext(li); e.preventDefault(); break;
+        case ENTER:
+        case SPACE:
+          selectNode(li); e.preventDefault(); break;
+      }
+    }
+
+    function focusParent(li) {
+      const parentLi = li.parentElement.closest('li[role="treeitem"]');
+      if (parentLi) (parentLi.querySelector('.node-row') || parentLi).focus();
+    }
+    function focusFirstChild(li) {
+      const child = li.querySelector('ul[role="group"] > li[role="treeitem"] .node-row');
+      if (child) child.focus();
+    }
+    function visibleTreeItems() {
+      const acc = [];
+      function addVisible(container) {
+        const items = Array.from(container.children).filter(n => n.matches('li[role="treeitem"]'));
+        items.forEach(li => {
+          acc.push(li);
+          const exp = li.getAttribute('aria-expanded');
+          if (exp === 'true') {
+            const group = li.querySelector('ul[role="group"]');
+            if (group) addVisible(group);
+          }
+        });
+      }
+      addVisible(qs('#treeRoot'));
+      return acc;
+    }
+    function focusPrev(li) {
+      const list = visibleTreeItems();
+      const idx = list.indexOf(li);
+      if (idx > 0) (list[idx - 1].querySelector('.node-row') || list[idx - 1]).focus();
+    }
+    function focusNext(li) {
+      const list = visibleTreeItems();
+      const idx = list.indexOf(li);
+      if (idx >= 0 && idx < list.length - 1) (list[idx + 1].querySelector('.node-row') || list[idx + 1]).focus();
+    }
+
+    // Boot
+    initAuth();
+  </script>
+</body>
+</html>
+
+

@@ -5,8 +5,9 @@ from typing import Dict, List, Optional
 import httpx
 import requests
 import uvicorn
-from fastapi import Body, FastAPI, File, Form, HTTPException, UploadFile
+from fastapi import Body, FastAPI, File, Form, HTTPException, UploadFile, Depends, Header
 from fastapi.responses import HTMLResponse
+import secrets
 
 # Import services using relative imports
 from .services.config import Settings
@@ -61,6 +62,56 @@ PROMPTS: List[Dict] = [
     }
 ]
 
+# MVP in-memory auth and projects (to be replaced with persistent store)
+TOKENS: Dict[str, Dict] = {}
+PROJECTS: List[Dict] = []
+
+def get_user(authorization: Optional[str] = Header(None)):
+    if not authorization or not authorization.startswith("Bearer "):
+        raise HTTPException(status_code=401, detail="Unauthorized")
+    token = authorization.split(" ", 1)[1]
+    user = TOKENS.get(token)
+    if not user:
+        raise HTTPException(status_code=401, detail="Invalid token")
+    return user
+
+@app.get("/app", response_class=HTMLResponse)
+def ui_restart():
+    try:
+        with open("frontend/app.html", "r") as f:
+            return HTMLResponse(content=f.read())
+    except FileNotFoundError:
+        return HTMLResponse(content="<h1>App not found</h1>", status_code=404)
+
+@app.post("/api/auth/login")
+def login(body: Dict):
+    username = (body.get("username") or "").strip()
+    password = body.get("password") or ""
+    if not username:
+        raise HTTPException(status_code=400, detail="Username required")
+    token = secrets.token_hex(16)
+    user = {"username": username, "is_admin": username.lower() == "admin", "projects": []}
+    TOKENS[token] = user
+    return {"token": token}
+
+@app.get("/api/auth/me")
+def me(user=Depends(get_user)):
+    return user
+
+@app.get("/api/projects")
+def list_projects(user=Depends(get_user)):
+    return {"projects": [p for p in PROJECTS if p.get("owner") == user["username"]]}
+
+@app.post("/api/projects")
+def create_project(body: Dict, user=Depends(get_user)):
+    name = (body.get("name") or "").strip()
+    if not name:
+        raise HTTPException(status_code=400, detail="Name required")
+    pid = f"p_{secrets.token_hex(6)}"
+    proj = {"id": pid, "name": name, "owner": user["username"], "requirements": [], "knowledge": [], "outputs": []}
+    PROJECTS.append(proj)
+    return {"project": proj}
+
 
 @app.on_event("startup")
 async def on_startup():
@@ -113,6 +164,56 @@ async def push_turtle_to_fuseki(turtle_content: str = Body(...)):
         except Exception as e2:
             return {"success": False, "error": f"Failed to push to Fuseki: {str(e2)}"}
 
+
+@app.get("/api/ontology/summary")
+async def ontology_summary():
+    """Return simple class counts summary from Fuseki via SPARQL."""
+    try:
+        s = Settings()
+        base = s.fuseki_url.rstrip("/")
+        query_url = f"{base}/query"
+        sparql = (
+            "SELECT ?type (COUNT(?s) AS ?count) WHERE { ?s a ?type } GROUP BY ?type ORDER BY DESC(?count) LIMIT 100"
+        )
+        headers = {"Accept": "application/sparql-results+json"}
+        params = {"query": sparql}
+        async with httpx.AsyncClient(timeout=20) as client:
+            r = await client.get(query_url, params=params, headers=headers)
+            r.raise_for_status()
+            data = r.json()
+            # Normalize to { rows: [{ type, count }] }
+            vars_ = data.get("head", {}).get("vars", [])
+            rows = []
+            for b in data.get("results", {}).get("bindings", []):
+                type_val = b.get("type", {}).get("value") if "type" in b else None
+                count_val = b.get("count", {}).get("value") if "count" in b else None
+                rows.append({"type": type_val, "count": int(count_val) if count_val and count_val.isdigit() else count_val})
+            return {"rows": rows, "vars": vars_}
+    except Exception as e:
+        return {"error": str(e)}
+
+
+@app.post("/api/ontology/sparql")
+async def ontology_sparql(body: Dict):
+    """Run a SPARQL SELECT query against Fuseki and return JSON results."""
+    query = body.get("query") if isinstance(body, dict) else None
+    if not query:
+        raise HTTPException(status_code=400, detail="Query required")
+    try:
+        s = Settings()
+        base = s.fuseki_url.rstrip("/")
+        query_url = f"{base}/query"
+        headers = {"Accept": "application/sparql-results+json", "Content-Type": "application/sparql-query"}
+        # Prefer POST for longer queries
+        async with httpx.AsyncClient(timeout=60) as client:
+            r = await client.post(query_url, content=query.encode("utf-8"), headers=headers)
+            r.raise_for_status()
+            return r.json()
+    except httpx.HTTPStatusError as he:
+        detail = he.response.text if he.response is not None else str(he)
+        raise HTTPException(status_code=500, detail=f"SPARQL error: {detail}")
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"SPARQL error: {str(e)}")
 
 @app.get("/user-review", response_class=HTMLResponse)
 async def user_review_interface(taskId: Optional[str] = None, process_instance_id: Optional[str] = None):
