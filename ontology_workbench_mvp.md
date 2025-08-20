@@ -237,6 +237,41 @@ Notes: For MVP, full replacement is acceptable. Later, adopt diff-based updates 
 - GET /layout?graph=<iri> → 200 JSON or 404
 - PUT /layout?graph=<iri> (body: JSON) → 200
 
+## Ontology discovery & registry (MVP)
+Source the main ontology tree from Fuseki, not placeholders.
+
+- Discovery (baseline): list named graphs that contain an `owl:Ontology` declaration.
+- Registry (recommended): maintain a small metadata graph to categorize Base vs Imports.
+
+Discovery query:
+```sparql
+SELECT DISTINCT ?graph ?ontology ?label WHERE {
+  GRAPH ?graph {
+    ?ontology a owl:Ontology .
+    OPTIONAL { ?ontology rdfs:label ?label }
+  }
+}
+```
+
+Fallback (any non-empty named graph):
+```sparql
+SELECT DISTINCT ?graph WHERE { GRAPH ?graph { ?s ?p ?o } }
+```
+
+Registry graph (example): `GRAPH <http://odras.local/meta/ontologies>`
+```turtle
+@prefix odras: <http://odras.local/ns#> .
+
+[] odras:graphIri <http://odras.local/onto/{project}/systems> ;
+   odras:projectId "{project}" ;
+   odras:role "base" ;              # base | import
+   odras:label "Systems Ontology" .
+```
+
+New endpoints:
+- GET /ontologies?project=<id> → 200 [{ graphIri, label, role: base|import|unknown, tripleCount? }]
+- PUT /ontologies/registry (body: entries) → 200 (set base/import per project)
+
 ## Implementation checklist
 - Load active base ontology from the main tree into the workbench.
 - Map triples → elements (classes → nodes, object properties → edges, data properties → small nodes/edges).
@@ -259,9 +294,16 @@ Notes: For MVP, full replacement is acceptable. Later, adopt diff-based updates 
 ## MVP TODO checklist (Ontology Workbench)
 
 - [ ] OW-0: Wire workbench route and selection
-  - [ ] Create `Ontology Workbench` route/page and mount under the existing layout
-  - [ ] Read the active ontology IRI from the project-scoped tree/selection
+  - [x] Create `Ontology Workbench` route/page and mount under the existing layout
+  - [x] Read the active ontology IRI from the project-scoped tree/selection
   - [ ] Show empty state with selected IRI
+
+- [ ] OW-0.5: Ontology discovery and registry
+  - [ ] API: GET `/ontologies?project=<id>` lists named graphs with `owl:Ontology` (+label)
+  - [ ] API: optional registry in meta graph to tag `role=base|import`
+  - [ ] UI: populate main ontology tree from discovery results
+  - [ ] UI: allow selecting base ontology and imports from discovered list
+  - [ ] Persist selection per project
 
 - [ ] OW-1: API contracts and adapters
   - [ ] Implement/finalize `GET /ontology?graph=<iri>` (SPARQL CONSTRUCT passthrough)

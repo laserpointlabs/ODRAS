@@ -288,6 +288,7 @@
         <section id="wb-ontology" class="workbench active">
           <h2>Ontology Workbench</h2>
           <div class="ontology-toolbar">
+            <span id="ontoGraphLabel" class="muted" style="max-width:55%; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">No graph selected</span>
             <div class="spacer"></div>
             <button class="btn" id="ontoLayoutBtn" title="Auto layout">Layout</button>
             <button class="btn" id="ontoImportBtn" title="Import graph JSON">Import</button>
@@ -427,6 +428,61 @@
 
     // Ontology workbench state
     const ontoState = { cy: null, eh: null, connectMode: false, clickConnectFrom: null, nextId: 1, currentPredicateType: 'objectProperty' };
+    let activeProject = null;
+    let activeOntologyIri = null;
+
+    function updateOntoGraphLabel() {
+      const el = qs('#ontoGraphLabel');
+      if (!el) return;
+      if (activeOntologyIri) {
+        el.textContent = 'Graph: ' + activeOntologyIri;
+        el.title = activeOntologyIri;
+      } else {
+        el.textContent = 'No graph selected';
+        el.title = '';
+      }
+    }
+
+    function slugify(str) {
+      try {
+        return String(str || '')
+          .toLowerCase()
+          .replace(/[^a-z0-9]+/g, '-')
+          .replace(/^-+|-+$/g, '') || 'ontology';
+      } catch (_) { return 'ontology'; }
+    }
+
+    function computeOntologyIri(projectId, name, version) {
+      const pid = encodeURIComponent(projectId || 'project');
+      const n = slugify(name || 'ontology');
+      const ver = version ? ('/v' + encodeURIComponent(version)) : '';
+      return `http://odras.local/onto/${pid}/${n}${ver}`;
+    }
+
+    function handleTreeSelection(li) {
+      if (!li || !li.dataset) return;
+      const type = li.dataset.nodeType || '';
+      if (type === 'ontology') {
+        const iri = li.dataset.iri;
+        if (iri) {
+          activeOntologyIri = iri;
+          try { localStorage.setItem('onto_active_iri', iri); } catch(_) {}
+          updateOntoGraphLabel();
+          // Switch to Ontology workbench view
+          const ico = document.querySelector('.icon[data-wb="ontology"]');
+          if (ico && !document.querySelector('#wb-ontology.workbench.active')) {
+            ico.click();
+          }
+          // Reflect in hash for deep-linking
+          try {
+            const params = new URLSearchParams(location.hash.replace(/^#/, ''));
+            params.set('wb', 'ontology');
+            params.set('graph', encodeURIComponent(iri));
+            location.hash = params.toString();
+          } catch(_) {}
+        }
+      }
+    }
     function ensureOntologyInitialized() {
       if (ontoState.cy) return;
       const container = qs('#cy');
@@ -834,18 +890,20 @@
     })();
 
     function renderTree(project) {
+      activeProject = project;
       const root = qs('#treeRoot');
-      const makeItem = (id, label, iconCls, children = []) => {
+      const makeItem = (id, label, iconCls, children = [], dataAttrs = {}) => {
         const hasChildren = children && children.length > 0;
         const li = document.createElement('li');
         li.setAttribute('role', 'treeitem');
         if (hasChildren) li.setAttribute('aria-expanded', 'true');
         li.dataset.nodeId = id;
+        Object.keys(dataAttrs || {}).forEach(k => { li.dataset[k] = dataAttrs[k]; });
 
         const row = document.createElement('div');
         row.className = 'node-row';
         row.tabIndex = 0;
-        row.onclick = (e) => selectNode(li);
+        row.onclick = (e) => { selectNode(li); handleTreeSelection(li); };
         row.onkeydown = (e) => handleKey(e, li);
 
         const twist = document.createElement('span'); twist.className = 'twist';
@@ -879,25 +937,58 @@
       const ontoBaseItems = (project.ontology && project.ontology.base ? [project.ontology.base] : [])
         .flatMap(b => {
           const versions = b.versions || [];
+          const baseName = b.name || b.id || 'Base Ontology';
           if (versions.length) {
-            return versions.map(v => makeItem(`onto-base-${b.id || b.name}-${v}`, `${b.name || b.id} v${v}`, 'onto'));
+            return versions.map(v => makeItem(
+              `onto-base-${b.id || baseName}-${v}`,
+              `${baseName} v${v}`,
+              'onto',
+              [],
+              { nodeType: 'ontology', iri: computeOntologyIri(project.id, baseName, v) }
+            ));
           }
-          return [makeItem(b.id || b.name, b.name || b.id, 'onto')];
+          return [makeItem(
+            b.id || baseName,
+            baseName,
+            'onto',
+            [],
+            { nodeType: 'ontology', iri: computeOntologyIri(project.id, baseName, null) }
+          )];
         });
       const systemsBaseItems = (project.ontology && project.ontology.systems && project.ontology.systems.base ? [project.ontology.systems.base] : [])
         .flatMap(b => {
           const versions = b.versions || [];
+          const baseName = b.name || 'Base Systems Ontology';
           if (versions.length) {
-            return versions.map(v => makeItem(`onto-sys-base-${b.id || b.name}-${v}`, `Base Systems Ontology v${v}`, 'onto'));
+            return versions.map(v => makeItem(
+              `onto-sys-base-${b.id || baseName}-${v}`,
+              `Base Systems Ontology v${v}`,
+              'onto',
+              [],
+              { nodeType: 'ontology', iri: computeOntologyIri(project.id, baseName, v) }
+            ));
           }
-          return [makeItem(b.id || b.name, 'Base Systems Ontology', 'onto')];
+          return [makeItem(
+            b.id || baseName,
+            'Base Systems Ontology',
+            'onto',
+            [],
+            { nodeType: 'ontology', iri: computeOntologyIri(project.id, baseName, null) }
+          )];
         });
       const systemsImportedItems = (project.ontology && project.ontology.systems && Array.isArray(project.ontology.systems.imports) ? project.ontology.systems.imports : (Array.isArray(project.ontology?.imports) ? project.ontology.imports : []))
         .map((imp, idx) => {
-          const childVersions = (imp.versions || []).map(v => makeItem(`onto-imp-${imp.id || imp.name}-${v}`, `${imp.name || imp.id} v${v}`, 'onto'));
           const label = imp.name || imp.id || `Imported ${idx + 1}`;
-          return childVersions.length ? makeItem(`ontology-import-${imp.id || idx}`, label, 'folder', childVersions)
-                                      : makeItem(imp.id || label, label, 'onto');
+          const childVersions = (imp.versions || []).map(v => makeItem(
+            `onto-imp-${imp.id || label}-${v}`,
+            `${label} v${v}`,
+            'onto',
+            [],
+            { nodeType: 'ontology', iri: computeOntologyIri(project.id, label, v) }
+          ));
+          return childVersions.length
+            ? makeItem(`ontology-import-${imp.id || idx}`, label, 'folder', childVersions)
+            : makeItem(imp.id || label, label, 'onto', [], { nodeType: 'ontology', iri: computeOntologyIri(project.id, label, null) });
         });
       const systemsChildren = [];
       if (systemsBaseItems.length) systemsChildren.push(makeItem('ontology-systems-base', 'Base Systems Ontology', 'folder', systemsBaseItems));
@@ -1203,7 +1294,7 @@
           focusNext(li); e.preventDefault(); break;
         case ENTER:
         case SPACE:
-          selectNode(li); e.preventDefault(); break;
+          selectNode(li); handleTreeSelection(li); e.preventDefault(); break;
       }
     }
 
@@ -1244,6 +1335,8 @@
 
     // Boot
     initAuth();
+    // Restore previously selected graph label
+    try { const iri = localStorage.getItem('onto_active_iri'); if (iri) { activeOntologyIri = iri; updateOntoGraphLabel(); } } catch(_) {}
   </script>
 </body>
 </html>
