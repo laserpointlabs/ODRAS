@@ -7,6 +7,7 @@ import requests
 import uvicorn
 from fastapi import Body, FastAPI, File, Form, HTTPException, UploadFile, Depends, Header
 from fastapi.responses import HTMLResponse
+from fastapi import Request
 import secrets
 
 # Import services using relative imports
@@ -307,6 +308,39 @@ async def relabel_ontology(body: Dict):
         raise HTTPException(status_code=500, detail=f"Fuseki returned {r.status_code}: {r.text}")
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Failed to relabel ontology: {str(e)}")
+
+
+@app.post("/api/ontology/save")
+async def save_ontology(graph: str, request: Request):
+    """Save Turtle content to a specific named graph in Fuseki (Graph Store Protocol)."""
+    if not graph:
+        raise HTTPException(status_code=400, detail="graph parameter required")
+    try:
+        ttl_bytes = await request.body()
+        if not ttl_bytes:
+            raise HTTPException(status_code=400, detail="Empty body; expected Turtle content")
+        s = Settings()
+        base = s.fuseki_url.rstrip("/")
+        # First, DROP the target graph to avoid lingering triples
+        try:
+            upd_url = f"{base}/update"
+            upd_headers = {"Content-Type": "application/sparql-update"}
+            drop_q = f"DROP GRAPH <{graph}>"
+            requests.post(upd_url, data=drop_q.encode("utf-8"), headers=upd_headers, timeout=15)
+        except Exception:
+            pass
+        # Then write via Graph Store PUT
+        url = f"{base}/data"
+        headers = {"Content-Type": "text/turtle"}
+        auth = (s.fuseki_user, s.fuseki_password) if s.fuseki_user and s.fuseki_password else None
+        r = requests.put(url, params={"graph": graph}, data=ttl_bytes, headers=headers, timeout=30, auth=auth)
+        if 200 <= r.status_code < 300:
+            return {"success": True, "graphIri": graph, "message": "Saved to Fuseki"}
+        raise HTTPException(status_code=500, detail=f"Fuseki returned {r.status_code}: {r.text}")
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Failed to save ontology: {str(e)}")
 
 
 @app.get("/api/ontology/summary")

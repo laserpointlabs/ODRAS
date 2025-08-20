@@ -295,6 +295,7 @@
             <button class="btn" id="ontoLayoutBtn" title="Auto layout">Layout</button>
             <button class="btn" id="ontoFitBtn" title="Fit to view">Fit</button>
             <button class="btn" id="ontoDeleteBtn" title="Delete selected">Delete</button>
+            <button class="btn" id="ontoSaveBtn" title="Save ontology to Fuseki">Save</button>
             <button class="btn" id="ontoImportBtn" title="Import graph JSON">Import</button>
             <button class="btn" id="ontoExportBtn" title="Export graph JSON">Export</button>
             <input type="file" id="ontoImportFile" accept="application/json" style="display:none" />
@@ -601,8 +602,18 @@
           edgeParams: () => ({ data: { predicate: 'relatedTo', type: ontoState.currentPredicateType } })
         });
         ontoState.cy.on('ehcomplete', (event, sourceNode, targetNode, addedEdge) => {
-          // Update tree when an edge is created
-          requestAnimationFrame(refreshOntologyTree);
+          try {
+            const srcType = (sourceNode.data('type') || 'class');
+            const tgtType = (targetNode.data('type') || 'class');
+            const edgeType = (addedEdge && addedEdge.data('type')) || ontoState.currentPredicateType || 'objectProperty';
+            let invalid = false;
+            // Disallow edges to/from notes
+            if (srcType === 'note' || tgtType === 'note') invalid = true;
+            // For object properties, only allow class→class
+            if (edgeType === 'objectProperty' && (srcType !== 'class' || tgtType !== 'class')) invalid = true;
+            if (invalid && addedEdge) { addedEdge.remove(); return; }
+          } catch(_) {}
+          requestAnimationFrame(() => { refreshOntologyTree(); persistOntologyToLocalStorage(); });
         });
         ontoState.cy.on('select unselect add remove data free', () => {
           updatePropertiesPanelFromSelection();
@@ -618,8 +629,15 @@
             const from = ontoState.clickConnectFrom;
             const to = node.id();
             if (from !== to) {
-              ontoState.cy.add({ group: 'edges', data: { id: `e${Date.now()}`, source: from, target: to, predicate: 'relatedTo', type: 'objectProperty' } });
-              refreshOntologyTree();
+              const src = ontoState.cy.$(`#${from}`)[0];
+              const tgt = ontoState.cy.$(`#${to}`)[0];
+              const srcType = (src && (src.data('type')||'class')) || 'class';
+              const tgtType = (tgt && (tgt.data('type')||'class')) || 'class';
+              if (srcType !== 'note' && tgtType !== 'note' && srcType === 'class' && tgtType === 'class') {
+                ontoState.cy.add({ group: 'edges', data: { id: `e${Date.now()}`, source: from, target: to, predicate: 'relatedTo', type: 'objectProperty' } });
+                refreshOntologyTree();
+                persistOntologyToLocalStorage();
+              }
             }
             ontoState.clickConnectFrom = null;
           }
@@ -770,6 +788,67 @@
       a.click();
       URL.revokeObjectURL(a.href);
       a.remove();
+    }
+
+    function slugId(text) {
+      return String(text||'').toLowerCase().replace(/[^a-z0-9]+/g,'-').replace(/^-+|-+$/g,'');
+    }
+
+    function iriMapKey(graphIri) { return 'onto_iri_map__' + encodeURIComponent(graphIri); }
+    function loadIriMap(graphIri) { try { return JSON.parse(localStorage.getItem(iriMapKey(graphIri))||'{}'); } catch(_) { return {}; } }
+    function saveIriMap(graphIri, map) { try { localStorage.setItem(iriMapKey(graphIri), JSON.stringify(map||{})); } catch(_) {} }
+
+    function toTurtle(graphIri) {
+      // Build per-graph stable id→IRI map
+      const iriMap = loadIriMap(graphIri);
+      const lines = [
+        '@prefix owl: <http://www.w3.org/2002/07/owl#> .',
+        '@prefix rdfs: <http://www.w3.org/2000/01/rdf-schema#> .',
+        `\n<${graphIri}> a owl:Ontology ; rdfs:label "${(localStorage.getItem('onto_model_name')||'').replace(/\\/g,'\\\\').replace(/"/g,'\\"')}" .\n`
+      ];
+      const nodes = ontoState.cy.nodes();
+      const edges = ontoState.cy.edges();
+      function nodeIri(n) {
+        const id = n.id();
+        if (iriMap[id]) return iriMap[id];
+        const base = slugId(n.data('label')||id)||id;
+        const iri = `${graphIri}#${base}`;
+        iriMap[id] = iri;
+        return iri;
+      }
+      // Classes and data properties
+      nodes.forEach(n => {
+        const t = n.data('type')||'class';
+        const iri = nodeIri(n);
+        const label = (n.data('label')||'').replace(/\\/g,'\\\\').replace(/"/g,'\\"');
+        if (t === 'class') {
+          lines.push(`<${iri}> a owl:Class ; rdfs:label "${label}" .`);
+        } else if (t === 'dataProperty') {
+          lines.push(`<${iri}> a owl:DatatypeProperty ; rdfs:label "${label}" .`);
+          const incoming = n.incomers('edge');
+          if (incoming && incoming.length) {
+            const src = incoming[0].source();
+            const srcIri = nodeIri(src);
+            lines.push(`<${iri}> rdfs:domain <${srcIri}> .`);
+            lines.push(`<${iri}> rdfs:range <http://www.w3.org/2001/XMLSchema#string> .`);
+          }
+        }
+      });
+      // Object properties from edges
+      edges.forEach(e => {
+        const s = e.source(); const t = e.target();
+        const pred = (e.data('predicate')||'relatedTo').replace(/\\/g,'\\\\').replace(/"/g,'\\"');
+        const propIri = `${graphIri}#${slugId(pred)}`;
+        const sIri = nodeIri(s); const tIri = nodeIri(t);
+        const isData = (e.data('type')||'objectProperty') === 'dataProperty';
+        const sType = (s.data('type')||'class'); const tType = (t.data('type')||'class');
+        // Only emit object properties for class→class edges
+        if (!isData && sType === 'class' && tType === 'class') {
+          lines.push(`<${propIri}> a owl:ObjectProperty ; rdfs:label "${pred}" ; rdfs:domain <${sIri}> ; rdfs:range <${tIri}> .`);
+        }
+      });
+      saveIriMap(graphIri, iriMap);
+      return lines.join('\n');
     }
 
     function importOntologyJSON(obj) {
@@ -1305,6 +1384,14 @@
           runAutoLayout();
         } else if (e.target === qs('#ontoFitBtn')) {
           try { if (ontoState.cy) ontoState.cy.fit(undefined, 20); } catch(_) {}
+        } else if (e.target === qs('#ontoSaveBtn')) {
+          try {
+            if (!activeOntologyIri) { alert('Select an ontology to save.'); return; }
+            const ttl = toTurtle(activeOntologyIri);
+            const res = await fetch(`/api/ontology/save?graph=${encodeURIComponent(activeOntologyIri)}`, { method: 'POST', headers: { 'Content-Type': 'text/turtle' }, body: ttl });
+            const json = await res.json().catch(()=>({}));
+            if (res.ok) alert('Saved to Fuseki'); else alert('Save failed: ' + (json.detail || res.status));
+          } catch (err) { alert('Save error: ' + err.message); }
         } else if (e.target === qs('#ontoExportBtn')) {
           exportOntologyJSON();
         } else if (e.target === qs('#ontoImportBtn')) {
@@ -1506,6 +1593,19 @@
     initAuth();
     // Restore previously selected graph label
     try { const iri = localStorage.getItem('onto_active_iri'); if (iri) { activeOntologyIri = iri; updateOntoGraphLabel(); } } catch(_) {}
+    // Save shortcut Ctrl/Cmd+S
+    document.addEventListener('keydown', async (e) => {
+      const isSave = (e.key === 's' || e.key === 'S') && (e.ctrlKey || e.metaKey);
+      if (!isSave) return;
+      e.preventDefault();
+      try {
+        if (!activeOntologyIri) { alert('Select an ontology to save.'); return; }
+        const ttl = toTurtle(activeOntologyIri);
+        const res = await fetch(`/api/ontology/save?graph=${encodeURIComponent(activeOntologyIri)}`, { method: 'POST', headers: { 'Content-Type': 'text/turtle' }, body: ttl });
+        const json = await res.json().catch(()=>({}));
+        if (res.ok) alert('Saved to Fuseki'); else alert('Save failed: ' + (json.detail || res.status));
+      } catch (err) { alert('Save error: ' + err.message); }
+    }, false);
 
     // Delete selected canvas entities (nodes/edges) for current ontology only
     function performDelete() {
