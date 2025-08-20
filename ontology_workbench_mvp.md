@@ -299,11 +299,11 @@ New endpoints:
   - [ ] Show empty state with selected IRI
 
 - [ ] OW-0.5: Ontology discovery and registry
-  - [ ] API: GET `/ontologies?project=<id>` lists named graphs with `owl:Ontology` (+label)
+  - [x] API: GET `/ontologies?project=<id>` lists named graphs with `owl:Ontology` (+label)
   - [ ] API: optional registry in meta graph to tag `role=base|import`
-  - [ ] UI: populate main ontology tree from discovery results
-  - [ ] UI: allow selecting base ontology and imports from discovered list
-  - [ ] Persist selection per project
+  - [x] UI: populate main ontology tree from discovery results
+  - [x] UI: allow selecting base ontology and imports from discovered list
+  - [x] Persist selection per project
 
 - [ ] OW-1: API contracts and adapters
   - [ ] Implement/finalize `GET /ontology?graph=<iri>` (SPARQL CONSTRUCT passthrough)

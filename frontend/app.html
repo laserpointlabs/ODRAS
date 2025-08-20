@@ -466,7 +466,10 @@
         const iri = li.dataset.iri;
         if (iri) {
           activeOntologyIri = iri;
-          try { localStorage.setItem('onto_active_iri', iri); } catch(_) {}
+          try {
+            const pid = (activeProject && activeProject.id) ? activeProject.id : 'default';
+            localStorage.setItem(`onto_active_iri__${pid}`, iri);
+          } catch(_) {}
           updateOntoGraphLabel();
           // Switch to Ontology workbench view
           const ico = document.querySelector('.icon[data-wb="ontology"]');
@@ -776,11 +779,11 @@
       const selects = [qs('#projectSelect'), qs('#projectSelect2')];
       if (list.length) {
         selects.forEach(sel => { sel.innerHTML = list.map(p => `<option value="${p.id}">${p.name}</option>`).join(''); });
-        renderTree(list[0]);
+        await renderTree(list[0]);
       } else {
         const sample = getSampleProject();
         selects.forEach(sel => { sel.innerHTML = `<option value="${sample.id}">${sample.name} (demo)</option>`; });
-        renderTree(sample);
+        await renderTree(sample);
       }
     }
     qs('#newProjectBtn').onclick = async () => {
@@ -796,7 +799,7 @@
         const res = await fetch('/api/projects', { headers: { Authorization: 'Bearer ' + token }});
         const json = await res.json();
         const proj = (json.projects || []).find(p => p.id === pid);
-        if (proj) renderTree(proj);
+        if (proj) await renderTree(proj);
       });
     });
 
@@ -889,8 +892,13 @@
       });
     })();
 
-    function renderTree(project) {
+    async function renderTree(project) {
       activeProject = project;
+      // Restore per-project active ontology selection (label only)
+      try {
+        const savedIri = localStorage.getItem(`onto_active_iri__${project.id}`);
+        if (savedIri) { activeOntologyIri = savedIri; updateOntoGraphLabel(); }
+      } catch(_) {}
       const root = qs('#treeRoot');
       const makeItem = (id, label, iconCls, children = [], dataAttrs = {}) => {
         const hasChildren = children && children.length > 0;
@@ -933,71 +941,33 @@
       const docKnowItems = (project.documents && project.documents.knowledge ? project.documents.knowledge : []).map(d => makeItem(d.id || d.name, d.name || d.id, 'docknow'));
       const outItems = (project.artifacts || project.outputs || []).map(o => makeItem(o.id || o.name, o.name || o.id, 'out'));
 
-      // Ontology tree: Base and Systems Ontology (with Imports)
-      const ontoBaseItems = (project.ontology && project.ontology.base ? [project.ontology.base] : [])
-        .flatMap(b => {
-          const versions = b.versions || [];
-          const baseName = b.name || b.id || 'Base Ontology';
-          if (versions.length) {
-            return versions.map(v => makeItem(
-              `onto-base-${b.id || baseName}-${v}`,
-              `${baseName} v${v}`,
-              'onto',
-              [],
-              { nodeType: 'ontology', iri: computeOntologyIri(project.id, baseName, v) }
-            ));
-          }
-          return [makeItem(
-            b.id || baseName,
-            baseName,
-            'onto',
-            [],
-            { nodeType: 'ontology', iri: computeOntologyIri(project.id, baseName, null) }
-          )];
-        });
-      const systemsBaseItems = (project.ontology && project.ontology.systems && project.ontology.systems.base ? [project.ontology.systems.base] : [])
-        .flatMap(b => {
-          const versions = b.versions || [];
-          const baseName = b.name || 'Base Systems Ontology';
-          if (versions.length) {
-            return versions.map(v => makeItem(
-              `onto-sys-base-${b.id || baseName}-${v}`,
-              `Base Systems Ontology v${v}`,
-              'onto',
-              [],
-              { nodeType: 'ontology', iri: computeOntologyIri(project.id, baseName, v) }
-            ));
-          }
-          return [makeItem(
-            b.id || baseName,
-            'Base Systems Ontology',
-            'onto',
-            [],
-            { nodeType: 'ontology', iri: computeOntologyIri(project.id, baseName, null) }
-          )];
-        });
-      const systemsImportedItems = (project.ontology && project.ontology.systems && Array.isArray(project.ontology.systems.imports) ? project.ontology.systems.imports : (Array.isArray(project.ontology?.imports) ? project.ontology.imports : []))
-        .map((imp, idx) => {
-          const label = imp.name || imp.id || `Imported ${idx + 1}`;
-          const childVersions = (imp.versions || []).map(v => makeItem(
-            `onto-imp-${imp.id || label}-${v}`,
-            `${label} v${v}`,
-            'onto',
-            [],
-            { nodeType: 'ontology', iri: computeOntologyIri(project.id, label, v) }
-          ));
-          return childVersions.length
-            ? makeItem(`ontology-import-${imp.id || idx}`, label, 'folder', childVersions)
-            : makeItem(imp.id || label, label, 'onto', [], { nodeType: 'ontology', iri: computeOntologyIri(project.id, label, null) });
-        });
-      const systemsChildren = [];
-      if (systemsBaseItems.length) systemsChildren.push(makeItem('ontology-systems-base', 'Base Systems Ontology', 'folder', systemsBaseItems));
-      if (systemsImportedItems.length) systemsChildren.push(makeItem('ontology-systems-imports', 'Imports', 'folder', systemsImportedItems));
-      const systemsNode = (systemsChildren.length ? makeItem('ontology-systems', 'Systems Ontology', 'folder', systemsChildren) : null);
-      const ontoChildren = [];
-      if (ontoBaseItems.length) ontoChildren.push(makeItem('ontology-base-section', 'Base', 'folder', ontoBaseItems));
-      if (systemsNode) ontoChildren.push(systemsNode);
-      const ontologyNode = (ontoChildren.length ? makeItem('ontology', 'Ontology', 'folder', ontoChildren) : null);
+      // Ontology tree: discover from Fuseki
+      let ontologyNode = null;
+      try {
+        const res = await fetch(`/api/ontologies${project?.id ? `?project=${encodeURIComponent(project.id)}` : ''}`);
+        const json = await res.json();
+        const onts = Array.isArray(json.ontologies) ? json.ontologies : [];
+        const ontoItems = onts.map((o, idx) => makeItem(
+          `ontology-${idx}-${o.graphIri}`,
+          o.label || o.graphIri,
+          'onto',
+          [],
+          { nodeType: 'ontology', iri: o.graphIri }
+        ));
+        if (ontoItems.length) {
+          ontologyNode = makeItem('ontology', 'Ontology', 'folder', ontoItems);
+        } else {
+          // Fallback to sample listing if discovery yields nothing
+          ontologyNode = makeItem('ontology', 'Ontology', 'folder', [
+            makeItem('onto-sample', 'Sample Ontology', 'onto', [], { nodeType: 'ontology', iri: computeOntologyIri(project.id, 'sample', null) })
+          ]);
+        }
+      } catch (_) {
+        // Network/SPARQL error: show a placeholder item
+        ontologyNode = makeItem('ontology', 'Ontology', 'folder', [
+          makeItem('onto-error', 'Discovery unavailable', 'onto')
+        ]);
+      }
 
       const projectInfo = makeItem('project-info', `ID: ${project.id}`, 'folder');
       const docsReqNode = makeItem('documents-requirements', 'Requirements Documents', 'folder', docReqItems);

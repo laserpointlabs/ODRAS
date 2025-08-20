@@ -165,6 +165,73 @@ async def push_turtle_to_fuseki(turtle_content: str = Body(...)):
             return {"success": False, "error": f"Failed to push to Fuseki: {str(e2)}"}
 
 
+@app.get("/api/ontologies")
+async def list_ontologies(project: Optional[str] = None):
+    """Discover available ontologies (named graphs with owl:Ontology) from Fuseki.
+
+    Returns a list of { graphIri, label } entries. Optional project filter limits by substring match in graph IRI.
+    """
+    try:
+        s = Settings()
+        base = s.fuseki_url.rstrip("/")
+        query_url = f"{base}/query"
+        # Baseline discovery: graphs with owl:Ontology
+        filter_clause = ""
+        if project:
+            # naive substring filter; safe for MVP
+            safe = project.replace('"', '\\"')
+            filter_clause = f"FILTER(CONTAINS(STR(?graph), \"{safe}\"))"
+        sparql = (
+            "PREFIX owl: <http://www.w3.org/2002/07/owl#>\n"
+            "PREFIX rdfs: <http://www.w3.org/2000/01/rdf-schema#>\n"
+            "SELECT DISTINCT ?graph ?ontology ?label WHERE {\n"
+            "  GRAPH ?graph {\n"
+            "    ?ontology a owl:Ontology .\n"
+            "    OPTIONAL { ?ontology rdfs:label ?label }\n"
+            f"    {filter_clause}\n"
+            "  }\n"
+            "} ORDER BY LCASE(STR(?label))"
+        )
+        headers = {"Accept": "application/sparql-results+json", "Content-Type": "application/sparql-query"}
+        async with httpx.AsyncClient(timeout=30) as client:
+            r = await client.post(query_url, content=sparql.encode("utf-8"), headers=headers)
+            r.raise_for_status()
+            data = r.json()
+            rows = data.get("results", {}).get("bindings", [])
+            ontologies = []
+            for b in rows:
+                graph = b.get("graph", {}).get("value")
+                label = (b.get("label", {}) or {}).get("value")
+                if not label and graph:
+                    # Fallback label from IRI tail
+                    tail = graph.rsplit("/", 1)[-1]
+                    label = tail or graph
+                if graph:
+                    ontologies.append({"graphIri": graph, "label": label or graph})
+
+            # Fallback: any non-empty named graph if no owl:Ontology found
+            if not ontologies:
+                sparql2 = "SELECT DISTINCT ?graph WHERE { GRAPH ?graph { ?s ?p ?o } } ORDER BY STR(?graph) LIMIT 200"
+                r2 = await client.post(query_url, content=sparql2.encode("utf-8"), headers=headers)
+                r2.raise_for_status()
+                data2 = r2.json()
+                for b in data2.get("results", {}).get("bindings", []):
+                    graph = b.get("graph", {}).get("value")
+                    if not graph:
+                        continue
+                    if project and project not in graph:
+                        continue
+                    tail = graph.rsplit("/", 1)[-1]
+                    ontologies.append({"graphIri": graph, "label": tail or graph})
+
+            return {"ontologies": ontologies}
+    except httpx.HTTPStatusError as he:
+        detail = he.response.text if he.response is not None else str(he)
+        raise HTTPException(status_code=500, detail=f"SPARQL error: {detail}")
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Failed to list ontologies: {str(e)}")
+
+
 @app.get("/api/ontology/summary")
 async def ontology_summary():
     """Return simple class counts summary from Fuseki via SPARQL."""
