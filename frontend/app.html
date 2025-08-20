@@ -148,7 +148,8 @@
     #wb-ontology.onto-tree-collapsed { --onto-tree-w: var(--onto-tree-collapsed-w); --onto-tree-divider-w: 0px; }
     .iconbtn { background: #0b1220; color: var(--text); border: 1px solid var(--border); width: 28px; height: 28px; border-radius: 8px; display: grid; place-items: center; cursor: pointer; }
     .iconbtn svg { width: 16px; height: 16px; stroke: currentColor; transition: transform 160ms ease; }
-    #wb-ontology.onto-tree-collapsed #ontoTreeToggleIcon { transform: rotate(-90deg); }
+    /* Rightward chevron when collapsed, leftward when expanded */
+    #wb-ontology.onto-tree-collapsed #ontoTreeToggleIcon { transform: rotate(0deg); }
     #wb-ontology.onto-tree-collapsed .onto-tree-header { padding: 4px !important; justify-content: center !important; }
 
     /* Properties panel */
@@ -161,7 +162,8 @@
     #wb-ontology.onto-props-collapsed #ontoPropsResizer { display: none; }
     #wb-ontology.onto-props-collapsed { --onto-props-w: var(--onto-props-collapsed-w); --onto-props-divider-w: 0px; }
     #wb-ontology.onto-props-collapsed .onto-props { width: var(--onto-props-collapsed-w); min-width: var(--onto-props-collapsed-w); max-width: var(--onto-props-collapsed-w); }
-    #wb-ontology.onto-props-collapsed #ontoPropsToggleIcon { transform: rotate(90deg); }
+    /* Leftward chevron when collapsed (panel on right), rightward when expanded */
+    #wb-ontology.onto-props-collapsed #ontoPropsToggleIcon { transform: rotate(180deg); }
     .login {
       display: grid; place-items: center; height: calc(100vh - var(--toolbar-h) - var(--bottombar-h));
     }
@@ -295,7 +297,7 @@
               <div class="onto-tree-header" id="ontoTreeHeader" style="display:flex; justify-content:space-between; align-items:center;">
                 <div class="muted">Ontology</div>
                 <button class="iconbtn" id="ontoTreeToggle" title="Collapse">
-                  <svg id="ontoTreeToggleIcon" viewBox="0 0 24 24" fill="none" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M6 9l6 6 6-6"/></svg>
+                  <svg id="ontoTreeToggleIcon" viewBox="0 0 24 24" fill="none" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M9 6l6 6-6 6"/></svg>
                 </button>
               </div>
               <div class="onto-tree-scroll">
@@ -325,7 +327,7 @@
               <div class="onto-props-header" id="ontoPropsHeader">
                 <div class="muted">Properties</div>
                 <button class="iconbtn" id="ontoPropsToggle" title="Collapse">
-                  <svg id="ontoPropsToggleIcon" viewBox="0 0 24 24" fill="none" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M6 9l6 6 6-6"/></svg>
+                  <svg id="ontoPropsToggleIcon" viewBox="0 0 24 24" fill="none" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M15 6l-6 6 6 6"/></svg>
                 </button>
               </div>
               <div class="onto-props-scroll">
@@ -654,6 +656,12 @@
       refreshOntologyTree();
       // Restore ontology tree collapsed state
       try {
+        // Restore left project tree width
+        const uiMainTreeW = parseInt(localStorage.getItem('ui_main_tree_w') || '0', 10);
+        if (uiMainTreeW) document.documentElement.style.setProperty('--tree-w', uiMainTreeW + 'px');
+        // Restore ontology left tree width
+        const ontoTreeW = parseInt(localStorage.getItem('onto_tree_w') || '0', 10);
+        if (ontoTreeW) document.documentElement.style.setProperty('--onto-tree-w', ontoTreeW + 'px');
         const collapsed = localStorage.getItem('onto_tree_collapsed') === '1';
         if (collapsed) {
           const sec = qs('#wb-ontology');
@@ -765,6 +773,7 @@
         let w = e.clientX - parseInt(getComputedStyle(document.documentElement).getPropertyValue('--iconbar-w'));
         w = Math.max(min, Math.min(max, w));
         document.documentElement.style.setProperty('--tree-w', w + 'px');
+        try { localStorage.setItem('ui_main_tree_w', String(w)); } catch(_) {}
         if (ontoState.cy) ontoState.cy.resize();
       });
     })();
@@ -791,6 +800,7 @@
         const max = parseInt(getComputedStyle(document.documentElement).getPropertyValue('--onto-tree-w-max'));
         w = Math.max(min, Math.min(max, w));
         document.documentElement.style.setProperty(panelWidthProp, w + 'px');
+        try { localStorage.setItem('onto_tree_w', String(w)); } catch(_) {}
         if (ontoState.cy) ontoState.cy.resize();
       });
     })();
@@ -1038,10 +1048,10 @@
           const collapsed = sec.classList.toggle('onto-tree-collapsed');
           const icon = qs('#ontoTreeToggleIcon');
           if (icon) {
-            // Down chevron when expanded, right chevron when collapsed
+            // Left panel: show right chevron when collapsed, left chevron when expanded
             icon.innerHTML = collapsed
               ? '<path d="M9 6l6 6-6 6"/>'
-              : '<path d="M6 9l6 6 6-6"/>';
+              : '<path d="M15 6l-6 6 6 6"/>';
           }
           try { localStorage.setItem('onto_tree_collapsed', collapsed ? '1' : '0'); } catch(_) {}
           requestAnimationFrame(() => { if (ontoState.cy) ontoState.cy.resize(); });
@@ -1051,9 +1061,10 @@
           const collapsed = sec.classList.toggle('onto-props-collapsed');
           const icon = qs('#ontoPropsToggleIcon');
           if (icon) {
+            // Right panel: show left chevron when collapsed, right chevron when expanded
             icon.innerHTML = collapsed
               ? '<path d="M15 6l-6 6 6 6"/>'
-              : '<path d="M6 9l6 6 6-6"/>';
+              : '<path d="M9 6l6 6-6 6"/>';
           }
           try { localStorage.setItem('onto_props_collapsed', collapsed ? '1' : '0'); } catch(_) {}
           // Wait for reflow before resizing Cytoscape so it fits the new grid
