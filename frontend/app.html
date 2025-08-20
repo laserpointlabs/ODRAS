@@ -25,6 +25,10 @@
       --onto-tree-w-min: 180px;
       --onto-tree-w-max: 520px;
       --onto-tree-collapsed-w: 40px;
+      --onto-props-w: 300px;
+      --onto-props-w-min: 200px;
+      --onto-props-w-max: 520px;
+      --onto-props-collapsed-w: 40px;
       --toolbar-h: 48px;
       --bottombar-h: 32px;
     }
@@ -103,8 +107,8 @@
     .muted { color: var(--muted); }
     /* Ontology Workbench */
     .ontology-toolbar { display: flex; gap: 8px; align-items: center; margin: 8px 0 12px 0; }
-    #cy { width: 100%; height: calc(100vh - var(--toolbar-h) - var(--bottombar-h) - 140px); min-height: 360px; border: 1px solid var(--border); border-radius: 8px; background: #0a0f1f; }
-    .onto-layout { display: grid; grid-template-columns: var(--onto-tree-w) 6px var(--onto-iconbar-w) 1fr; gap: 0; align-items: stretch; }
+    #cy { width: 100%; min-width: 0; height: calc(100vh - var(--toolbar-h) - var(--bottombar-h) - 140px); min-height: 360px; border: 1px solid var(--border); border-radius: 8px; background: #0a0f1f; }
+    .onto-layout { display: grid; grid-template-columns: var(--onto-tree-w) var(--onto-tree-divider-w, 6px) var(--onto-iconbar-w) 1fr var(--onto-props-divider-w, 6px) var(--onto-props-w); gap: 0; align-items: stretch; overflow: hidden; width: 100%; }
     .onto-iconbar { background: var(--panel); border: 1px solid var(--border); border-radius: 8px; padding: 8px 6px; display: flex; flex-direction: column; align-items: center; gap: 8px; height: calc(100vh - var(--toolbar-h) - var(--bottombar-h) - 140px); }
     .onto-icon { width: 40px; height: 40px; border-radius: 8px; border: 1px solid var(--border); background: var(--panel-2); display: grid; place-items: center; color: var(--muted); cursor: grab; }
     .onto-icon svg { width: 22px; height: 22px; stroke: currentColor; }
@@ -134,11 +138,23 @@
     #wb-ontology.onto-tree-collapsed .onto-tree-header .muted { display: none; }
     #wb-ontology.onto-tree-collapsed .onto-tree-scroll { display: none; }
     #wb-ontology.onto-tree-collapsed #ontoResizer { display: none; }
-    #wb-ontology.onto-tree-collapsed .onto-layout { grid-template-columns: var(--onto-tree-collapsed-w) var(--onto-iconbar-w) 1fr; }
+    #wb-ontology.onto-tree-collapsed { --onto-tree-w: var(--onto-tree-collapsed-w); --onto-tree-divider-w: 0px; }
     .iconbtn { background: #0b1220; color: var(--text); border: 1px solid var(--border); width: 28px; height: 28px; border-radius: 8px; display: grid; place-items: center; cursor: pointer; }
     .iconbtn svg { width: 16px; height: 16px; stroke: currentColor; transition: transform 160ms ease; }
     #wb-ontology.onto-tree-collapsed #ontoTreeToggleIcon { transform: rotate(-90deg); }
     #wb-ontology.onto-tree-collapsed .onto-tree-header { padding: 4px !important; justify-content: center !important; }
+
+    /* Properties panel */
+    .onto-props { border: 1px solid var(--border); background: var(--panel-2); border-radius: 8px; display: grid; grid-template-rows: auto 1fr; min-width: 0; }
+    .onto-props-header { padding: 8px; border-bottom: 1px solid var(--border); display: flex; gap: 8px; align-items: center; position: sticky; top: 0; z-index: 1; background: var(--panel-2); justify-content: space-between; }
+    .onto-props-scroll { overflow: auto; padding: 8px; }
+    #wb-ontology.onto-props-collapsed .onto-props-header .muted { display: none; }
+    #wb-ontology.onto-props-collapsed .onto-props-header { padding: 4px !important; justify-content: center !important; }
+    #wb-ontology.onto-props-collapsed .onto-props-scroll { display: none; }
+    #wb-ontology.onto-props-collapsed #ontoPropsResizer { display: none; }
+    #wb-ontology.onto-props-collapsed { --onto-props-w: var(--onto-props-collapsed-w); --onto-props-divider-w: 0px; }
+    #wb-ontology.onto-props-collapsed .onto-props { width: var(--onto-props-collapsed-w); min-width: var(--onto-props-collapsed-w); max-width: var(--onto-props-collapsed-w); }
+    #wb-ontology.onto-props-collapsed #ontoPropsToggleIcon { transform: rotate(90deg); }
     .login {
       display: grid; place-items: center; height: calc(100vh - var(--toolbar-h) - var(--bottombar-h));
     }
@@ -297,6 +313,41 @@
               </div>
             </aside>
             <div id="cy" role="application" aria-label="Ontology Graph Canvas"></div>
+            <div class="onto-resizer" id="ontoPropsResizer" aria-hidden="true"></div>
+            <aside class="onto-props" aria-label="Properties Panel">
+              <div class="onto-props-header" id="ontoPropsHeader">
+                <div class="muted">Properties</div>
+                <button class="iconbtn" id="ontoPropsToggle" title="Collapse">
+                  <svg id="ontoPropsToggleIcon" viewBox="0 0 24 24" fill="none" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M6 9l6 6 6-6"/></svg>
+                </button>
+              </div>
+              <div class="onto-props-scroll">
+                <form id="ontoPropsForm" style="display:grid; gap:8px;">
+                  <div>
+                    <label class="muted" for="propName">Name</label>
+                    <input id="propName" type="text" style="width:100%; background:#0b1220; color:#e5e7eb; border:1px solid var(--border); border-radius:6px; padding:6px;" />
+                  </div>
+                  <div>
+                    <label class="muted" for="propType">Type</label>
+                    <select id="propType" style="width:100%; background:#0b1220; color:#e5e7eb; border:1px solid var(--border); border-radius:6px; padding:6px;">
+                      <option value="class">Class</option>
+                      <option value="objectProperty">Object Property</option>
+                      <option value="dataProperty">Data Property</option>
+                      <option value="note">Note</option>
+                      <option value="model">Model</option>
+                    </select>
+                  </div>
+                  <div>
+                    <label class="muted" for="propAttrs">Attributes (JSON)</label>
+                    <textarea id="propAttrs" rows="6" style="width:100%; background:#0b1220; color:#e5e7eb; border:1px solid var(--border); border-radius:6px; padding:6px;"></textarea>
+                  </div>
+                  <div style="display:flex; gap:8px;">
+                    <button type="button" class="btn" id="propSaveBtn">Save</button>
+                    <span id="propSaveStatus" class="muted"></span>
+                  </div>
+                </form>
+              </div>
+            </aside>
           </div>
         </section>
         <section id="wb-files" class="workbench">
@@ -447,6 +498,10 @@
           // Update tree when an edge is created
           requestAnimationFrame(refreshOntologyTree);
         });
+        ontoState.cy.on('select unselect add remove data free', () => {
+          updatePropertiesPanelFromSelection();
+          persistOntologyToLocalStorage();
+        });
       } else {
         ontoState.cy.on('tap', 'node', (ev) => {
           if (!ontoState.connectMode) return;
@@ -462,6 +517,10 @@
             }
             ontoState.clickConnectFrom = null;
           }
+        });
+        ontoState.cy.on('select unselect add remove data free', () => {
+          updatePropertiesPanelFromSelection();
+          persistOntologyToLocalStorage();
         });
       }
 
@@ -503,6 +562,7 @@
           ontoState.cy.add({ group: 'nodes', data: { id: nid, label: text, type: 'note' }, position: pos, classes: 'note' });
           refreshOntologyTree();
         }
+        persistOntologyToLocalStorage();
       });
     }
 
@@ -513,6 +573,7 @@
       const y = 100 + Math.random() * 300;
       ontoState.cy.add({ group: 'nodes', data: { id, label, type: 'class' }, position: { x, y } });
       refreshOntologyTree();
+      persistOntologyToLocalStorage();
     }
 
     function addClassNodeAt(label, position) {
@@ -520,6 +581,7 @@
       const id = `Class${ontoState.nextId++}`;
       ontoState.cy.add({ group: 'nodes', data: { id, label, type: 'class' }, position });
       refreshOntologyTree();
+      persistOntologyToLocalStorage();
     }
 
     function runAutoLayout() {
@@ -563,6 +625,7 @@
       ontoState.cy.add(obj.edges.map(e => ({ group: 'edges', data: e.data })));
       ontoState.cy.fit();
       refreshOntologyTree();
+      persistOntologyToLocalStorage();
     }
 
     // Auth/UI gating
@@ -591,6 +654,22 @@
           const icon = qs('#ontoTreeToggleIcon');
           if (icon) icon.innerHTML = '<path d="M9 6l6 6-6 6"/>';
         }
+        const propsCollapsed = localStorage.getItem('onto_props_collapsed') === '1';
+        if (propsCollapsed) {
+          const sec = qs('#wb-ontology');
+          if (sec && !sec.classList.contains('onto-props-collapsed')) sec.classList.add('onto-props-collapsed');
+          const icon = qs('#ontoPropsToggleIcon');
+          if (icon) icon.innerHTML = '<path d="M15 6l-6 6 6 6"/>';
+        }
+        const savedW = parseInt(localStorage.getItem('onto_props_w') || '0', 10);
+        if (savedW) document.documentElement.style.setProperty('--onto-props-w', savedW + 'px');
+        // Restore saved graph if present
+        const savedGraph = localStorage.getItem('onto_graph');
+        if (savedGraph) {
+          try { importOntologyJSON(JSON.parse(savedGraph)); } catch(_) {}
+        }
+        // After applying layout classes/widths, ensure cy fits the visible area
+        requestAnimationFrame(() => { if (ontoState.cy) ontoState.cy.resize(); });
       } catch(_) {}
     }
     qs('#loginBtn').onclick = async () => {
@@ -668,7 +747,10 @@
       const panel = qs('#treePanel');
       let dragging = false;
       res.addEventListener('mousedown', () => dragging = true);
-      window.addEventListener('mouseup', () => dragging = false);
+      window.addEventListener('mouseup', () => {
+        dragging = false;
+        requestAnimationFrame(() => { if (ontoState.cy) ontoState.cy.resize(); });
+      });
       window.addEventListener('mousemove', (e) => {
         if (!dragging) return;
         const min = parseInt(getComputedStyle(document.documentElement).getPropertyValue('--tree-w-min'));
@@ -687,7 +769,10 @@
       let dragging = false;
       if (!res) return;
       res.addEventListener('mousedown', () => dragging = true);
-      window.addEventListener('mouseup', () => dragging = false);
+      window.addEventListener('mouseup', () => {
+        dragging = false;
+        requestAnimationFrame(() => { if (ontoState.cy) ontoState.cy.resize(); });
+      });
       window.addEventListener('mousemove', (e) => {
         if (!dragging) return;
         const leftOffset = parseInt(getComputedStyle(document.documentElement).getPropertyValue('--onto-iconbar-w'));
@@ -696,6 +781,27 @@
         const max = parseInt(getComputedStyle(document.documentElement).getPropertyValue('--onto-tree-w-max'));
         w = Math.max(min, Math.min(max, w));
         document.documentElement.style.setProperty(panelWidthProp, w + 'px');
+        if (ontoState.cy) ontoState.cy.resize();
+      });
+    })();
+
+    // Properties panel resizer
+    (function(){
+      const res = qs('#ontoPropsResizer');
+      let dragging = false;
+      if (!res) return;
+      res.addEventListener('mousedown', () => dragging = true);
+      window.addEventListener('mouseup', () => dragging = false);
+      window.addEventListener('mousemove', (e) => {
+        if (!dragging) return;
+        const layoutRect = qs('#wb-ontology .onto-layout')?.getBoundingClientRect();
+        if (!layoutRect) return;
+        let w = layoutRect.right - e.clientX;
+        const min = parseInt(getComputedStyle(document.documentElement).getPropertyValue('--onto-props-w-min'));
+        const max = parseInt(getComputedStyle(document.documentElement).getPropertyValue('--onto-props-w-max'));
+        w = Math.max(min, Math.min(max, w));
+        document.documentElement.style.setProperty('--onto-props-w', w + 'px');
+        try { localStorage.setItem('onto_props_w', String(w)); } catch(_) {}
         if (ontoState.cy) ontoState.cy.resize();
       });
     })();
@@ -872,6 +978,41 @@
       root.appendChild(rootItem);
     }
 
+    function updatePropertiesPanelFromSelection() {
+      const form = qs('#ontoPropsForm'); if (!form || !ontoState.cy) return;
+      const sel = ontoState.cy.$(':selected');
+      const nameEl = qs('#propName');
+      const typeEl = qs('#propType');
+      const attrsEl = qs('#propAttrs');
+      if (sel.length === 1 && sel[0].isNode()) {
+        const n = sel[0];
+        nameEl.value = n.data('label') || n.id();
+        typeEl.value = n.data('type') || 'class';
+        attrsEl.value = JSON.stringify(n.data('attrs') || {}, null, 2);
+      } else if (sel.length === 1 && sel[0].isEdge()) {
+        const e = sel[0];
+        nameEl.value = e.data('predicate') || e.id();
+        typeEl.value = e.data('type') || 'objectProperty';
+        attrsEl.value = JSON.stringify(e.data('attrs') || {}, null, 2);
+      } else {
+        nameEl.value = localStorage.getItem('onto_model_name') || 'Ontology Model';
+        typeEl.value = 'model';
+        try {
+          const json = JSON.parse(localStorage.getItem('onto_model_attrs') || '{}');
+          attrsEl.value = JSON.stringify(json, null, 2);
+        } catch(_) { attrsEl.value = '{}'; }
+      }
+    }
+
+    function persistOntologyToLocalStorage() {
+      if (!ontoState.cy) return;
+      try {
+        const nodes = ontoState.cy.nodes().map(n => ({ data: n.data(), position: n.position() }));
+        const edges = ontoState.cy.edges().map(e => ({ data: e.data() }));
+        localStorage.setItem('onto_graph', JSON.stringify({ nodes, edges }));
+      } catch(_) {}
+    }
+
     // Ontology toolbar events and import handling
     (function(){
       document.addEventListener('click', async (e) => {
@@ -894,11 +1035,59 @@
           }
           try { localStorage.setItem('onto_tree_collapsed', collapsed ? '1' : '0'); } catch(_) {}
           if (ontoState.cy) ontoState.cy.resize();
+        } else if (e.target === qs('#ontoPropsToggle') || e.target.closest('#ontoPropsToggle')) {
+          const sec = qs('#wb-ontology');
+          if (!sec) return;
+          const collapsed = sec.classList.toggle('onto-props-collapsed');
+          const icon = qs('#ontoPropsToggleIcon');
+          if (icon) {
+            icon.innerHTML = collapsed
+              ? '<path d="M15 6l-6 6 6 6"/>'
+              : '<path d="M6 9l6 6 6-6"/>';
+          }
+          try { localStorage.setItem('onto_props_collapsed', collapsed ? '1' : '0'); } catch(_) {}
+          // Wait for reflow before resizing Cytoscape so it fits the new grid
+          requestAnimationFrame(() => { if (ontoState.cy) ontoState.cy.resize(); });
+        } else if (e.target === qs('#propSaveBtn')) {
+          // Save properties
+          try {
+            if (!ontoState.cy) return;
+            const sel = ontoState.cy.$(':selected');
+            const nameEl = qs('#propName');
+            const typeEl = qs('#propType');
+            const attrsEl = qs('#propAttrs');
+            if (sel.length === 1 && sel[0].isNode()) {
+              const n = sel[0];
+              n.data('label', nameEl.value.trim() || n.data('label'));
+              n.data('type', typeEl.value || n.data('type'));
+              const parsed = JSON.parse(attrsEl.value || '{}');
+              n.data('attrs', parsed);
+            } else if (sel.length === 1 && sel[0].isEdge()) {
+              const ed = sel[0];
+              ed.data('predicate', nameEl.value.trim() || ed.data('predicate'));
+              ed.data('type', typeEl.value || ed.data('type'));
+              const parsed = JSON.parse(attrsEl.value || '{}');
+              ed.data('attrs', parsed);
+            } else {
+              localStorage.setItem('onto_model_name', nameEl.value.trim() || 'Ontology Model');
+              try { localStorage.setItem('onto_model_attrs', JSON.stringify(JSON.parse(attrsEl.value || '{}'))); } catch(_) { localStorage.setItem('onto_model_attrs', '{}'); }
+            }
+            refreshOntologyTree();
+            persistOntologyToLocalStorage();
+            const st = qs('#propSaveStatus'); if (st) { st.textContent = 'Saved'; setTimeout(()=>{ const s=qs('#propSaveStatus'); if (s) s.textContent=''; }, 1000); }
+          } catch (_) {
+            const st = qs('#propSaveStatus'); if (st) { st.textContent = 'Error'; setTimeout(()=>{ const s=qs('#propSaveStatus'); if (s) s.textContent=''; }, 1200); }
+          }
         }
       });
       const header = qs('#ontoTreeHeader');
       if (header) header.addEventListener('dblclick', (e) => {
         const toggleBtn = qs('#ontoTreeToggle');
+        if (toggleBtn) toggleBtn.click();
+      });
+      const propsHeader = qs('#ontoPropsHeader');
+      if (propsHeader) propsHeader.addEventListener('dblclick', (e) => {
+        const toggleBtn = qs('#ontoPropsToggle');
         if (toggleBtn) toggleBtn.click();
       });
       const fileInput = () => qs('#ontoImportFile');
