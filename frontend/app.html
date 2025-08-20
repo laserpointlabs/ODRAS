@@ -300,6 +300,7 @@
             <button class="btn" id="ontoLayoutBtn" title="Auto layout">Layout</button>
             <button class="btn" id="ontoFitBtn" title="Fit to view">Fit</button>
             <button class="btn" id="ontoDeleteBtn" title="Delete selected">Delete</button>
+            <button class="btn" id="ontoLinkIdenticalBtn" title="Link identical classes">Link</button>
             <button class="btn" id="ontoSaveBtn" title="Save ontology to Fuseki">Save</button>
             <button class="btn" id="ontoImportBtn" title="Import graph JSON">Import</button>
             <button class="btn" id="ontoExportBtn" title="Export graph JSON">Export</button>
@@ -574,6 +575,9 @@
             'text-background-color': '#0b1220',
             'text-background-opacity': 0.6,
             'text-background-padding': 2
+          }},
+          { selector: '.imported', style: {
+            'opacity': 0.55
           }},
           { selector: 'node[type = "note"], .note', style: {
             'shape': 'round-rectangle',
@@ -910,6 +914,11 @@
         '@prefix rdfs: <http://www.w3.org/2000/01/rdf-schema#> .',
         `\n<${graphIri}> a owl:Ontology ; rdfs:label "${(localStorage.getItem('onto_model_name')||'').replace(/\\/g,'\\\\').replace(/"/g,'\\"')}" .\n`
       ];
+      // Include owl:imports from local storage
+      try {
+        const imports = JSON.parse(localStorage.getItem('onto_imports__' + encodeURIComponent(graphIri)) || '[]');
+        imports.forEach(imp => { lines.push(`<${graphIri}> <http://www.w3.org/2002/07/owl#imports> <${imp}> .`); });
+      } catch(_) {}
       const nodes = ontoState.cy.nodes();
       const edges = ontoState.cy.edges();
       function nodeIri(n) {
@@ -953,9 +962,15 @@
             // Emit as annotation on target element
             const text = (s.data('label')||'').replace(/\\/g,'\\\\').replace(/"/g,'\\"');
             lines.push(`<${tIri}> rdfs:comment "${text}" .`);
+          } else if (pred === 'linked_by') {
+            lines.push(`<${sIri}> <${graphIri}#linked_by> <${tIri}> .`);
           }
         }
       });
+      // Declare linked_by object property if used
+      if (lines.some(l => l.includes('#linked_by'))) {
+        lines.push(`<${graphIri}#linked_by> a owl:ObjectProperty ; rdfs:label "linked_by" .`);
+      }
       saveIriMap(graphIri, iriMap);
       return lines.join('\n');
     }
@@ -1266,13 +1281,24 @@
         const res = await fetch(`/api/ontologies${project?.id ? `?project=${encodeURIComponent(project.id)}` : ''}`);
         const json = await res.json();
         const onts = Array.isArray(json.ontologies) ? json.ontologies : [];
-        const ontoItems = onts.map((o, idx) => makeItem(
-          `ontology-${idx}-${o.graphIri}`,
-          o.label || o.graphIri,
-          'onto',
-          [],
-          { nodeType: 'ontology', iri: o.graphIri, label: (o.label || o.graphIri) }
-        ));
+        const ontoItems = onts.map((o, idx) => {
+          const li = makeItem(
+            `ontology-${idx}-${o.graphIri}`,
+            o.label || o.graphIri,
+            'onto',
+            [],
+            { nodeType: 'ontology', iri: o.graphIri, label: (o.label || o.graphIri) }
+          );
+          // Enable dragging this ontology into the Imports node
+          const row = li.querySelector('.node-row');
+          if (row) {
+            row.setAttribute('draggable', 'true');
+            row.addEventListener('dragstart', (ev) => {
+              try { ev.dataTransfer.setData('text/graph-iri', o.graphIri); ev.dataTransfer.effectAllowed = 'copy'; } catch(_) {}
+            });
+          }
+          return li;
+        });
         if (ontoItems.length) {
           ontologyNode = makeItem('ontology', 'Ontology', 'folder', ontoItems);
         } else {
@@ -1392,8 +1418,9 @@
     function refreshOntologyTree() {
       const root = qs('#ontoTreeRoot');
       if (!root || !ontoState.cy) return;
-      const classes = ontoState.cy.nodes().filter(n => (n.data('type') || 'class') === 'class');
-      const notes = ontoState.cy.nodes().filter(n => (n.data('type') || '') === 'note');
+      const classes = ontoState.cy.nodes().filter(n => (n.data('type') || 'class') === 'class' && !n.hasClass('imported'));
+      const importedClasses = ontoState.cy.nodes().filter(n => (n.data('type') || 'class') === 'class' && n.hasClass('imported'));
+      const notes = ontoState.cy.nodes().filter(n => (n.data('type') || '') === 'note' && !n.hasClass('imported'));
       // Simple grouping: Classes as top-level; edges shown under a "Relationships" group per class
       root.innerHTML = '';
       const makeItem = (label, expanded = true, children = []) => {
@@ -1423,6 +1450,10 @@
         });
         items.push(makeItem(label, false, rels));
       });
+      if (importedClasses.length) {
+        const importedChildren = importedClasses.map(cls => makeItem((cls.data('label')||cls.id()) + ' (imported)', false, []));
+        items.push(makeItem('Imported Classes', true, importedChildren));
+      }
       if (notes.length) {
         const noteChildren = notes.map(n => makeItem(n.data('label') || n.id(), false, []));
         items.push(makeItem('Notes', true, noteChildren));
@@ -1437,6 +1468,44 @@
       row.appendChild(twist); row.appendChild(text); rootItem.appendChild(row); rootItem.appendChild(ul);
       root.innerHTML = '';
       root.appendChild(rootItem);
+
+      // Imports node specific to current ontology
+      try {
+        const importsKey = 'onto_imports__' + encodeURIComponent(activeOntologyIri || '');
+        const imports = JSON.parse(localStorage.getItem(importsKey) || '[]');
+        const importsRoot = document.createElement('li'); importsRoot.setAttribute('role','treeitem'); importsRoot.setAttribute('aria-expanded','true');
+        const row = document.createElement('div'); row.className = 'onto-node-row'; const tw = document.createElement('span'); tw.className = 'onto-twist'; const lbl = document.createElement('span'); lbl.className='onto-node-label'; lbl.textContent='Imports'; row.appendChild(tw); row.appendChild(lbl); importsRoot.appendChild(row);
+        const ul = document.createElement('ul'); ul.setAttribute('role','group');
+        function removeImport(iri) {
+          const key = 'onto_imports__' + encodeURIComponent(activeOntologyIri || '');
+          try {
+            const curr = new Set(JSON.parse(localStorage.getItem(key) || '[]'));
+            if (curr.has(iri)) { curr.delete(iri); localStorage.setItem(key, JSON.stringify(Array.from(curr))); refreshOntologyTree(); }
+          } catch(_) {}
+        }
+        imports.forEach(g => {
+          const li = document.createElement('li'); li.setAttribute('role','treeitem'); li.dataset.importIri = g;
+          const r=document.createElement('div'); r.className='onto-node-row'; r.tabIndex = 0;
+          const t=document.createElement('span'); t.className='onto-twist';
+          const l=document.createElement('span'); l.className='onto-node-label'; l.textContent=g;
+          r.onclick = (e)=>{ Array.from(ul.querySelectorAll('.onto-node-row')).forEach(n=>n.classList.remove('selected')); r.classList.add('selected'); };
+          r.onkeydown = (e)=>{ const key=e.key||e.code; if (key==='Delete' || key==='Backspace') { e.preventDefault(); removeImport(g); } };
+          r.appendChild(t); r.appendChild(l);
+          li.appendChild(r); ul.appendChild(li);
+        });
+        importsRoot.appendChild(ul);
+        root.appendChild(importsRoot);
+        // Enable drop to import
+        row.addEventListener('dragover', (e)=>{ e.preventDefault(); });
+        row.addEventListener('drop', async (e)=>{
+          e.preventDefault();
+          const draggedIri = e.dataTransfer.getData('text/graph-iri');
+          if (!draggedIri) return;
+          const list = new Set(imports);
+          if (!list.has(draggedIri)) { list.add(draggedIri); localStorage.setItem(importsKey, JSON.stringify(Array.from(list))); refreshOntologyTree(); }
+          // Overlay imported classes (placeholder: we only list; loading remote triples is OW-2)
+        });
+      } catch(_) {}
     }
 
     // (empty-state banner removed)
@@ -1520,6 +1589,27 @@
             const json = await res.json().catch(()=>({}));
             if (res.ok) alert('Saved to Fuseki'); else alert('Save failed: ' + (json.detail || res.status));
           } catch (err) { alert('Save error: ' + err.message); }
+        } else if (e.target === qs('#ontoLinkIdenticalBtn')) {
+          // Link identical classes by label/local name between base and imports
+          try {
+            if (!activeOntologyIri || !ontoState.cy) return;
+            const imports = JSON.parse(localStorage.getItem('onto_imports__' + encodeURIComponent(activeOntologyIri)) || '[]');
+            if (!imports.length) { alert('No imports for this ontology'); return; }
+            // Build maps
+            const baseClasses = ontoState.cy.nodes().filter(n => (n.data('type')||'class')==='class' && !n.hasClass('imported'));
+            const imported = ontoState.cy.nodes().filter(n => (n.data('type')||'class')==='class' && n.hasClass('imported'));
+            const baseByKey = new Map();
+            baseClasses.forEach(n => { const key = (n.data('label')||n.id()).toLowerCase(); baseByKey.set(key, n); });
+            let linked = 0;
+            imported.forEach(n => {
+              const key = (n.data('label')||n.id()).toLowerCase();
+              const base = baseByKey.get(key);
+              if (base) {
+                ontoState.cy.add({ group: 'edges', data: { id: `lk${Date.now()}${++linked}`, source: base.id(), target: n.id(), predicate: 'linked_by', type: 'objectProperty' } });
+              }
+            });
+            if (linked) { refreshOntologyTree(); persistOntologyToLocalStorage(); alert(`Linked ${linked} classes`); } else { alert('No identical classes found'); }
+          } catch (err) { console.error(err); alert('Link failed'); }
         } else if (e.target === qs('#ontoExportBtn')) {
           exportOntologyJSON();
         } else if (e.target === qs('#ontoImportBtn')) {
