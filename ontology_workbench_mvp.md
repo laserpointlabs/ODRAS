@@ -255,3 +255,71 @@ Notes: For MVP, full replacement is acceptable. Later, adopt diff-based updates 
 - Easy rollback: re-load from Fuseki.
 - Minimal surface area: one ontology at a time; no heavy import logic yet.
 - Straightforward API contract and SPARQL operations.
+
+## MVP TODO checklist (Ontology Workbench)
+
+- [ ] OW-0: Wire workbench route and selection
+  - [ ] Create `Ontology Workbench` route/page and mount under the existing layout
+  - [ ] Read the active ontology IRI from the project-scoped tree/selection
+  - [ ] Show empty state with selected IRI
+
+- [ ] OW-1: API contracts and adapters
+  - [ ] Implement/finalize `GET /ontology?graph=<iri>` (SPARQL CONSTRUCT passthrough)
+  - [ ] Implement/finalize `PUT /ontology?graph=<iri>` (DROP+INSERT DATA)
+  - [ ] Implement `GET/PUT /layout?graph=<iri>` (JSON store; 404 allowed on GET)
+  - [ ] Create a thin client `ontologyApi` and `layoutApi` with error handling and timeouts
+
+- [ ] OW-2: RDF parsing and mapping
+  - [ ] Parse Turtle/JSON-LD into in-memory model for classes, object props, datatype props
+  - [ ] Map classes → nodes; object props → edges; data props → mini-nodes/edges
+  - [ ] Derive display labels from `rdfs:label` or local name fallback
+
+- [ ] OW-3: Canvas (Cytoscape) baseline
+  - [ ] Initialize Cytoscape with base styles and grid/snap options
+  - [ ] Render nodes/edges from the mapped model
+  - [ ] Support pan/zoom; fit-to-view; auto-layout action
+
+- [ ] OW-4: Layout persistence
+  - [ ] On load: fetch layout JSON; apply positions/zoom/pan; fallback to auto-layout if 404
+  - [ ] On save: persist node positions + zoom/pan via `PUT /layout?graph=<iri>`
+
+- [ ] OW-5: Direct manipulation editing
+  - [ ] Palette: drag-to-create Class and Data Property (node appears under cursor, selected)
+  - [ ] Edge handles: connect classes to create Object Property (edge appears, selected)
+  - [ ] Inline rename (nodes/edges): click/F2 to edit; Enter/Esc to commit/cancel
+  - [ ] Keyboard: Delete removes selection; Esc cancels edit; Ctrl/Cmd+S saves ontology+layout
+  - [ ] Drag to reposition; selection/multiselect via shift-click
+
+- [ ] OW-6: Properties panel
+  - [ ] Bind selection to panel; show/edit `rdfs:label`, `rdfs:domain`, `rdfs:range`, `rdf:type`, `attrs(JSON)`
+  - [ ] Keep inline edits and panel fields in sync
+  - [ ] Background (no selection): show model metadata summary
+
+- [ ] OW-7: IRI minting and validation
+  - [ ] Generate new IRIs in base namespace `<base#Name>`; ensure uniqueness
+  - [ ] Validate domain/range completeness on object/data properties (warn if missing)
+
+- [ ] OW-8: Serialization and save flow
+  - [ ] Serialize UI model → RDF triples (Turtle/JSON-LD)
+  - [ ] Save: `PUT /ontology?graph=<iri>` (DROP+INSERT DATA)
+  - [ ] Save layout JSON
+  - [ ] Dirty indicator and navigation guard for unsaved changes
+
+- [ ] OW-9: Undo/redo and UX polish
+  - [ ] In-memory undo/redo for recent operations
+  - [ ] Hover hints/tooltips; error toasts; non-blocking warnings
+  - [ ] Basic performance check on 500+ elements
+
+- [ ] OW-10: Tests and acceptance
+  - [ ] Unit tests for RDF map/serialize round-trip
+  - [ ] Contract tests against Fuseki for load/save
+  - [ ] UI smoke test: create/rename/connect/save/reload cycle
+  - [ ] Acceptance criteria checklist below passes
+
+### Acceptance criteria (MVP)
+- Load/render from a Fuseki named graph and apply stored layout (or auto-layout if absent).
+- Create classes, datatype/object properties via direct manipulation; rename inline.
+- Edit labels/domain/range/types in the properties panel; changes reflect immediately.
+- Save writes both triples (DROP+INSERT) and layout JSON; reload reproduces the view.
+- IRI minting uses base namespace and guarantees uniqueness; integrity warnings shown.
+- Keyboard shortcuts work; undo/redo available for recent steps; dirty indicator present.
