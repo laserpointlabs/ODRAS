@@ -468,6 +468,13 @@
       if (type === 'ontology') {
         const iri = li.dataset.iri;
         if (iri) {
+          // Save previous active ontology canvas before switching
+          const prevIri = activeOntologyIri;
+          ensureOntologyInitialized();
+          if (ontoState.cy && prevIri) {
+            saveGraphToLocal(prevIri);
+          }
+          // Switch active ontology
           activeOntologyIri = iri;
           try {
             const pid = (activeProject && activeProject.id) ? activeProject.id : 'default';
@@ -483,12 +490,9 @@
             localStorage.setItem('onto_model_attrs', JSON.stringify(attrs));
           } catch(_) {}
           updateOntoGraphLabel();
-          // Clear current graph for new selection (until Fuseki load is wired)
-          ensureOntologyInitialized();
+          // Load new graph from local storage if present
           if (ontoState.cy) {
-            ontoState.cy.elements().remove();
-            refreshOntologyTree();
-            persistOntologyToLocalStorage();
+            loadGraphFromLocal(iri);
           }
           // Show model-level props when nothing selected
           updatePropertiesPanelFromSelection();
@@ -812,11 +816,12 @@
         if (propsIcon && !propsCollapsed) propsIcon.innerHTML = '<path d="M9 6l6 6-6 6"/>';
         const savedW = parseInt(localStorage.getItem('onto_props_w') || '0', 10);
         if (savedW) document.documentElement.style.setProperty('--onto-props-w', savedW + 'px');
-        // Restore saved graph if present
-        const savedGraph = localStorage.getItem('onto_graph');
-        if (savedGraph) {
-          try { importOntologyJSON(JSON.parse(savedGraph)); } catch(_) {}
-        }
+        // Load saved graph for active ontology if present
+        try {
+          const attrs = JSON.parse(localStorage.getItem('onto_model_attrs') || '{}');
+          const iri = attrs.graphIri || activeOntologyIri;
+          if (iri) loadGraphFromLocal(iri);
+        } catch(_) {}
         // After applying layout classes/widths, ensure cy fits the visible area
         requestAnimationFrame(() => { if (ontoState.cy) ontoState.cy.resize(); });
       } catch(_) {}
@@ -1247,8 +1252,37 @@
       try {
         const nodes = ontoState.cy.nodes().map(n => ({ data: n.data(), position: n.position() }));
         const edges = ontoState.cy.edges().map(e => ({ data: e.data() }));
-        localStorage.setItem('onto_graph', JSON.stringify({ nodes, edges }));
+        const key = graphKeyForActive();
+        if (key) localStorage.setItem(key, JSON.stringify({ nodes, edges }));
       } catch(_) {}
+    }
+
+    function graphKeyForActive() {
+      const iri = activeOntologyIri || (attrsFromModel().graphIri || null);
+      if (!iri) return null;
+      return 'onto_graph__' + encodeURIComponent(iri);
+    }
+    function attrsFromModel() {
+      try { return JSON.parse(localStorage.getItem('onto_model_attrs') || '{}'); } catch(_) { return {}; }
+    }
+    function saveGraphToLocal(graphIri) {
+      if (!ontoState.cy) return;
+      try {
+        const nodes = ontoState.cy.nodes().map(n => ({ data: n.data(), position: n.position() }));
+        const edges = ontoState.cy.edges().map(e => ({ data: e.data() }));
+        localStorage.setItem('onto_graph__' + encodeURIComponent(graphIri), JSON.stringify({ nodes, edges }));
+      } catch(_) {}
+    }
+    function loadGraphFromLocal(graphIri) {
+      try {
+        const json = localStorage.getItem('onto_graph__' + encodeURIComponent(graphIri));
+        ontoState.cy.elements().remove();
+        if (json) {
+          importOntologyJSON(JSON.parse(json));
+        } else {
+          refreshOntologyTree();
+        }
+      } catch(_) { ontoState.cy.elements().remove(); refreshOntologyTree(); }
     }
 
     // Ontology toolbar events and import handling
