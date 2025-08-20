@@ -111,6 +111,11 @@
     .onto-layout { display: grid; grid-template-columns: var(--onto-tree-w) var(--onto-tree-divider-w, 6px) var(--onto-iconbar-w) minmax(0, 1fr) var(--onto-props-divider-w, 6px) var(--onto-props-w); gap: 0; align-items: stretch; overflow: hidden; width: 100%; }
     /* Inline editor for canvas labels */
     #ontoInlineEdit { position: fixed; z-index: 9999; display: none; background: #0b1220; color: #e5e7eb; border: 1px solid var(--accent); border-radius: 6px; padding: 4px 6px; font: inherit; }
+    /* Context menu */
+    .onto-menu { position: fixed; z-index: 9999; display: none; min-width: 160px; background: #0b1220; color: #e5e7eb; border: 1px solid var(--border); border-radius: 8px; box-shadow: 0 8px 24px rgba(0,0,0,.4); }
+    .onto-menu button { width: 100%; background: transparent; color: #e5e7eb; border: none; text-align: left; padding: 8px 10px; cursor: pointer; }
+    .onto-menu button:hover { background: #0f172a; }
+    .connect-source { outline: 2px dashed var(--accent); outline-offset: 2px; }
     /* Pin children to explicit grid columns so hiding resizers doesn't shift layout */
     .onto-layout > .onto-tree { grid-column: 1; }
     .onto-layout > #ontoResizer { grid-column: 2; }
@@ -367,6 +372,11 @@
             </aside>
           </div>
           <input id="ontoInlineEdit" type="text" />
+          <div id="ontoContextMenu" class="onto-menu">
+            <button id="menuAddRel">Add relationship</button>
+            <button id="menuAddDataProp">Add data property</button>
+            <button id="menuCancel">Cancel</button>
+          </div>
         </section>
         <section id="wb-files" class="workbench">
           <h2>File Management</h2>
@@ -544,7 +554,12 @@
             'text-halign': 'center'
           }},
           { selector: 'node[type = "class"]', style: { 'width': 180, 'height': 56 } },
-          { selector: 'node[type = "dataProperty"]', style: { 'width': 160, 'height': 48 } },
+          { selector: 'node[type = "dataProperty"]', style: {
+            'width': 160,
+            'height': 48,
+            'background-color': '#154e5a',
+            'border-color': '#2ea3b0'
+          } },
           { selector: 'edge', style: {
             'curve-style': 'bezier',
             'width': 2,
@@ -597,9 +612,13 @@
       if (typeof ontoState.cy.edgehandles === 'function') {
         ontoState.eh = ontoState.cy.edgehandles({
           handleSize: 8,
+          handleNodes: 'node[type = "class"], node[type = "note"]',
+          handleColor: '#60a5fa',
+          handleOutlineColor: '#0b1220',
+          handleOutlineWidth: 2,
           toggleOffOnLeave: true,
-          enabled: false,
-          edgeParams: () => ({ data: { predicate: 'relatedTo', type: ontoState.currentPredicateType } })
+          enabled: true,
+          edgeParams: () => ({ data: { predicate: 'relatedTo', type: 'objectProperty' } })
         });
         ontoState.cy.on('ehcomplete', (event, sourceNode, targetNode, addedEdge) => {
           try {
@@ -607,11 +626,22 @@
             const tgtType = (targetNode.data('type') || 'class');
             const edgeType = (addedEdge && addedEdge.data('type')) || ontoState.currentPredicateType || 'objectProperty';
             let invalid = false;
-            // Disallow edges to/from notes
-            if (srcType === 'note' || tgtType === 'note') invalid = true;
-            // For object properties, only allow class→class
-            if (edgeType === 'objectProperty' && (srcType !== 'class' || tgtType !== 'class')) invalid = true;
-            if (invalid && addedEdge) { addedEdge.remove(); return; }
+            // Allow note -> class as 'note_for' (reverse if class->note used)
+            if ((srcType === 'note' && (tgtType === 'class' || tgtType === 'dataProperty')) || ((srcType === 'class' || srcType === 'dataProperty') && tgtType === 'note')) {
+              // Ensure direction note -> class
+              if ((srcType === 'class' || srcType === 'dataProperty') && tgtType === 'note') {
+                addedEdge.data('source', targetNode.id());
+                addedEdge.data('target', sourceNode.id());
+              }
+              addedEdge.data('predicate', 'note_for');
+              addedEdge.data('type', 'note');
+            } else {
+              // For object properties, only allow class→class
+              if (edgeType === 'objectProperty' && (srcType !== 'class' || tgtType !== 'class')) invalid = true;
+              // Disallow any other note edges
+              if (srcType === 'note' || tgtType === 'note') invalid = true;
+              if (invalid && addedEdge) { addedEdge.remove(); return; }
+            }
           } catch(_) {}
           requestAnimationFrame(() => { refreshOntologyTree(); persistOntologyToLocalStorage(); });
         });
@@ -653,12 +683,31 @@
         if (ev.target === ontoState.cy) {
           ontoState.cy.$(':selected').unselect();
           updatePropertiesPanelFromSelection();
+          hideMenu();
+          clearConnectState();
         }
       });
 
       // Inline label editor on F2 or Enter when focused
-      ontoState.cy.on('cxttap', 'node,edge', (ev) => {
-        // Right-click could be used later for context menu
+      ontoState.cy.on('cxttap', 'node', (ev) => {
+        const n = ev.target; const t = (n.data('type')||'class');
+        const rect = qs('#cy').getBoundingClientRect();
+        const rp = ev.renderedPosition || n.renderedPosition();
+        // Configure menu per node type
+        const menu = qs('#ontoContextMenu');
+        if (!menu) return;
+        const btnRel = qs('#menuAddRel');
+        const btnDP = qs('#menuAddDataProp');
+        if (t === 'note') {
+          if (btnRel) btnRel.textContent = 'Link to class/property';
+          if (btnDP) btnDP.style.display = 'none';
+        } else {
+          if (btnRel) btnRel.textContent = 'Add relationship';
+          if (btnDP) btnDP.style.display = 'block';
+        }
+        showMenuAt(rect.left + rp.x + 6, rect.top + rp.y + 6);
+        menu.dataset.nodeId = n.id();
+        menu.dataset.nodeType = t;
       });
       function showInlineEditor(target) {
         const input = qs('#ontoInlineEdit'); if (!input) return;
@@ -694,15 +743,63 @@
       // Double-click to edit
       ontoState.cy.on('dblclick', 'node,edge', (ev) => showInlineEditor(ev.target));
 
+      // Context menu actions
+      document.addEventListener('click', (e) => {
+        const menu = qs('#ontoContextMenu');
+        if (!menu) return;
+        if (e.target === qs('#menuCancel')) { hideMenu(); return; }
+        if (e.target === qs('#menuAddRel')) {
+          hideMenu();
+          const id = menu.dataset.nodeId; if (!id) return;
+          const node = ontoState.cy.$('#' + id)[0]; if (!node) return;
+          const t = menu.dataset.nodeType || 'class';
+          clearConnectState(); startConnectFrom(node); cmState.sourceType = t;
+          return;
+        }
+        if (e.target === qs('#menuAddDataProp')) {
+          hideMenu();
+          const id = menu.dataset.nodeId; if (!id) return;
+          const node = ontoState.cy.$('#' + id)[0]; if (!node) return;
+          // Add a default data property node near the class
+          const pos = node.position();
+          const pid = `DP${Date.now()}`;
+          const label = `Data Property ${Date.now()%1000}`;
+          ontoState.cy.add({ group: 'nodes', data: { id: pid, label, type: 'dataProperty' }, position: { x: pos.x + 120, y: pos.y } });
+          ontoState.cy.add({ group: 'edges', data: { id: `edp${Date.now()}`, source: id, target: pid, predicate: label, type: 'dataProperty' } });
+          refreshOntologyTree(); persistOntologyToLocalStorage();
+          return;
+        }
+      });
+      // Clicking a target after 'Add relationship' completes the edge
+      ontoState.cy.on('tap', 'node', (ev) => {
+        const target = ev.target; if (!cmState.sourceId) return;
+        const tgtType = (target.data('type')||'class');
+        const source = ontoState.cy.$('#' + cmState.sourceId)[0]; if (!source) { clearConnectState(); return; }
+        const srcType = cmState.sourceType || (source.data('type')||'class');
+        if (source.id() !== target.id()) {
+          if (srcType === 'note' && (tgtType === 'class' || tgtType === 'dataProperty')) {
+            ontoState.cy.add({ group: 'edges', data: { id: `enote${Date.now()}`, source: source.id(), target: target.id(), predicate: 'note_for', type: 'note' } });
+            refreshOntologyTree(); persistOntologyToLocalStorage();
+          } else if (srcType === 'class' && tgtType === 'class') {
+            ontoState.cy.add({ group: 'edges', data: { id: `e${Date.now()}`, source: source.id(), target: target.id(), predicate: 'relatedTo', type: 'objectProperty' } });
+            refreshOntologyTree(); persistOntologyToLocalStorage();
+          }
+        }
+        source.removeClass('connect-source');
+        clearConnectState();
+      });
+
       // Drag-and-drop from tool icons
       const icons = Array.from(document.querySelectorAll('.onto-icon'));
       icons.forEach(icon => {
         icon.addEventListener('dragstart', (ev) => {
           ev.dataTransfer.setData('text/onto-type', icon.getAttribute('data-onto-type') || 'class');
+          try { ev.dataTransfer.effectAllowed = 'copy'; } catch(_) {}
         });
       });
 
-      container.addEventListener('dragover', (ev) => { ev.preventDefault(); ontoState.isCanvasActive = true; });
+      container.addEventListener('dragenter', (ev) => { ev.preventDefault(); });
+      container.addEventListener('dragover', (ev) => { ev.preventDefault(); ontoState.isCanvasActive = true; try { ev.dataTransfer.dropEffect = 'copy'; } catch(_) {} });
       container.addEventListener('drop', (ev) => {
         ev.preventDefault();
         ontoState.isCanvasActive = true;
@@ -719,7 +816,7 @@
         } else if (ontoType === 'objectProperty') {
           ontoState.currentPredicateType = 'objectProperty';
           setConnectMode(true);
-          // no alerts; user draws connection
+          // With edgehandles enabled, user can drag handle from a class to another class
         } else if (ontoType === 'dataProperty') {
           const sel = ontoState.cy.nodes(':selected').filter(n => (n.data('type') || 'class') === 'class');
           if (sel.length !== 1) { return; }
@@ -732,7 +829,12 @@
           const nid = `Note${Date.now()}`;
           const text = `Note ${nid.slice(-4)}`;
           ontoState.cy.add({ group: 'nodes', data: { id: nid, label: text, type: 'note' }, position: pos, classes: 'note' });
-          refreshOntologyTree();
+          // If exactly one class is selected, auto-link note -> class
+          const sel = ontoState.cy.nodes(':selected').filter(n => (n.data('type')||'class') === 'class');
+          if (sel && sel.length === 1) {
+            ontoState.cy.add({ group: 'edges', data: { id: `enote${Date.now()}`, source: nid, target: sel[0].id(), predicate: 'note_for', type: 'note' } });
+          }
+          refreshOntologyTree(); persistOntologyToLocalStorage();
         }
         persistOntologyToLocalStorage();
       });
@@ -842,13 +944,37 @@
         const sIri = nodeIri(s); const tIri = nodeIri(t);
         const isData = (e.data('type')||'objectProperty') === 'dataProperty';
         const sType = (s.data('type')||'class'); const tType = (t.data('type')||'class');
-        // Only emit object properties for class→class edges
-        if (!isData && sType === 'class' && tType === 'class') {
-          lines.push(`<${propIri}> a owl:ObjectProperty ; rdfs:label "${pred}" ; rdfs:domain <${sIri}> ; rdfs:range <${tIri}> .`);
+        if (!isData) {
+          if (sType === 'class' && tType === 'class') {
+            lines.push(`<${propIri}> a owl:ObjectProperty ; rdfs:label "${pred}" ; rdfs:domain <${sIri}> ; rdfs:range <${tIri}> .`);
+          } else if (sType === 'note' && (tType === 'class' || tType === 'dataProperty') && pred === 'note_for') {
+            // Emit as annotation on target element
+            const text = (s.data('label')||'').replace(/\\/g,'\\\\').replace(/"/g,'\\"');
+            lines.push(`<${tIri}> rdfs:comment "${text}" .`);
+          }
         }
       });
       saveIriMap(graphIri, iriMap);
       return lines.join('\n');
+    }
+
+    // Context menu helpers
+    let cmState = { visible: false, sourceId: null };
+    function showMenuAt(x, y) {
+      const m = qs('#ontoContextMenu'); if (!m) return;
+      m.style.left = x + 'px'; m.style.top = y + 'px'; m.style.display = 'block'; cmState.visible = true;
+    }
+    function hideMenu() { const m = qs('#ontoContextMenu'); if (!m) return; m.style.display = 'none'; cmState.visible = false; }
+    function startConnectFrom(node) {
+      cmState.sourceId = node.id();
+      node.addClass('connect-source');
+    }
+    function clearConnectState() {
+      if (cmState.sourceId && ontoState.cy) {
+        const n = ontoState.cy.$('#' + cmState.sourceId);
+        if (n) n.removeClass('connect-source');
+      }
+      cmState.sourceId = null;
     }
 
     function importOntologyJSON(obj) {
