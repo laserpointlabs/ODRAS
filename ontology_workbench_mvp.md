@@ -296,7 +296,7 @@ New endpoints:
 - [ ] OW-0: Wire workbench route and selection
   - [x] Create `Ontology Workbench` route/page and mount under the existing layout
   - [x] Read the active ontology IRI from the project-scoped tree/selection
-  - [ ] Show empty state with selected IRI
+  - [x] Show empty state with selected IRI
 
 - [ ] OW-0.5: Ontology discovery and registry
   - [x] API: GET `/ontologies?project=<id>` lists named graphs with `owl:Ontology` (+label)
@@ -357,6 +357,25 @@ New endpoints:
   - [ ] Contract tests against Fuseki for load/save
   - [ ] UI smoke test: create/rename/connect/save/reload cycle
   - [ ] Acceptance criteria checklist below passes
+
+- Notes 
+    - [] add importable ontology from a URL ir URI 
+
+- [ ] OW-0.6: Ontology functionality
+  - [ ] API: create/delete/rename ontologies
+    - [ ] Create: POST `/ontologies` (project, name) → mint graph IRI `http://odras.local/onto/{project}/{name}`; write `owl:Ontology` + `rdfs:label`
+    - [ ] Delete: DELETE `/ontologies?graph=<iri>` (drop named graph)
+    - [ ] Rename: PUT `/ontologies/label?graph=<iri>` (update `rdfs:label` only for MVP; do not change IRI)
+  - [ ] UI: main tree
+    - [ ] Add new empty ontology from tree header (inline name or quick input); selects it
+    - [ ] Delete ontology: select in tree and press Delete key (no modal; provide toast/undo later)
+    - [ ] Rename ontology: double-click label in tree → inline edit (Enter/Esc)
+  - [ ] UI: canvas interactions (no popups)
+    - [ ] Drag Class/Data Property to canvas creates element with default name (e.g., `Class 1`) and selects it
+    - [ ] Inline rename on node/edge label when selected; fallback to properties panel if inline not available
+    - [ ] Create Object Property by selecting start→end (edgehandles or click-connect); no dialogs; default label; editable inline
+  - [ ] Save & layout
+    - [ ] Save writes triples to selected ontology graph and preserves layout (positions, zoom/pan) per graph IRI
 
 ### Acceptance criteria (MVP)
 - Load/render from a Fuseki named graph and apply stored layout (or auto-layout if absent).

@@ -232,6 +232,83 @@ async def list_ontologies(project: Optional[str] = None):
         raise HTTPException(status_code=500, detail=f"Failed to list ontologies: {str(e)}")
 
 
+@app.post("/api/ontologies")
+async def create_ontology(body: Dict):
+    """Create a new empty ontology as a named graph with owl:Ontology and rdfs:label.
+
+    Body: { project: string, name: string, label?: string }
+    Returns: { graphIri, label }
+    """
+    project = (body.get("project") or "").strip()
+    name = (body.get("name") or "").strip().strip("/")
+    label = (body.get("label") or name or "New Ontology").strip()
+    if not project or not name:
+        raise HTTPException(status_code=400, detail="project and name are required")
+    graph_iri = f"http://odras.local/onto/{project}/{name}"
+    turtle = f"""
+@prefix owl: <http://www.w3.org/2002/07/owl#> .
+@prefix rdfs: <http://www.w3.org/2000/01/rdf-schema#> .
+
+<{graph_iri}> a owl:Ontology ; rdfs:label \"{label}\" .
+""".strip()
+    try:
+        s = Settings()
+        base = s.fuseki_url.rstrip("/")
+        url = f"{base}/data?graph={graph_iri}"
+        headers = {"Content-Type": "text/turtle"}
+        auth = (s.fuseki_user, s.fuseki_password) if s.fuseki_user and s.fuseki_password else None
+        resp = requests.put(url, data=turtle.encode("utf-8"), headers=headers, auth=auth, timeout=20)
+        if 200 <= resp.status_code < 300:
+            return {"graphIri": graph_iri, "label": label}
+        raise HTTPException(status_code=500, detail=f"Fuseki returned {resp.status_code}: {resp.text}")
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Failed to create ontology: {str(e)}")
+
+
+@app.delete("/api/ontologies")
+async def delete_ontology(graph: str):
+    """Delete a named graph (drop ontology)."""
+    if not graph:
+        raise HTTPException(status_code=400, detail="graph parameter required")
+    try:
+        s = Settings()
+        update_url = f"{s.fuseki_url.rstrip('/')}/update"
+        query = f"DROP GRAPH <{graph}>"
+        headers = {"Content-Type": "application/sparql-update"}
+        r = requests.post(update_url, data=query.encode("utf-8"), headers=headers, timeout=20)
+        if 200 <= r.status_code < 300:
+            return {"deleted": graph}
+        raise HTTPException(status_code=500, detail=f"Fuseki returned {r.status_code}: {r.text}")
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Failed to delete ontology: {str(e)}")
+
+
+@app.put("/api/ontologies/label")
+async def relabel_ontology(body: Dict):
+    """Update rdfs:label of the ontology node inside the named graph (IRI unchanged)."""
+    graph = (body.get("graph") or "").strip()
+    label = (body.get("label") or "").strip()
+    if not graph or not label:
+        raise HTTPException(status_code=400, detail="graph and label are required")
+    try:
+        s = Settings()
+        update_url = f"{s.fuseki_url.rstrip('/')}/update"
+        sparql = (
+            "PREFIX owl: <http://www.w3.org/2002/07/owl#>\n"
+            "PREFIX rdfs: <http://www.w3.org/2000/01/rdf-schema#>\n"
+            f"DELETE {{ GRAPH <{graph}> {{ ?o rdfs:label ?old }} }}\n"
+            f"INSERT {{ GRAPH <{graph}> {{ ?o rdfs:label \"{label.replace('\\', '\\\\').replace('\"', '\\\"')}\" }} }}\n"
+            f"WHERE  {{ GRAPH <{graph}> {{ ?o a owl:Ontology . OPTIONAL {{ ?o rdfs:label ?old }} }} }}\n"
+        )
+        headers = {"Content-Type": "application/sparql-update"}
+        r = requests.post(update_url, data=sparql.encode("utf-8"), headers=headers, timeout=20)
+        if 200 <= r.status_code < 300:
+            return {"graphIri": graph, "label": label}
+        raise HTTPException(status_code=500, detail=f"Fuseki returned {r.status_code}: {r.text}")
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Failed to relabel ontology: {str(e)}")
+
+
 @app.get("/api/ontology/summary")
 async def ontology_summary():
     """Return simple class counts summary from Fuseki via SPARQL."""
