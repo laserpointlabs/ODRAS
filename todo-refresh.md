@@ -8,10 +8,24 @@ This document tracks the MVP-critical tasks for the UI restart. We will not comm
 - Graph DB: Graph Explorer with SPARQL summary and ad‑hoc queries
 
 ## Missing for MVP
-- Ontology Workbench
-  - Inline JSON editor
-  - "Push to Fuseki" (per project)
-  - Basic validation
+- Ontology Workbench (Cytoscape-based editor)
+  - Load/save ontology from/to Fuseki named graph (per selected ontology in main tree)
+    - Load: CONSTRUCT GRAPH <iri> → UI model; Load layout JSON if present
+    - Save: DROP GRAPH <iri>; INSERT DATA { GRAPH <iri> { ... } } and PUT layout JSON
+  - Separate layout persistence (node positions, zoom/pan) per graph IRI
+  - Simple, direct manipulation editing (no popups)
+    - Drag from palette to create Class/Data Property
+    - Edge-handles to create Object Property
+    - Inline rename of node/edge labels (click/F2 → input → Enter/Esc)
+    - Keyboard: Delete removes selection; Ctrl/Cmd+S saves; Esc cancels inline edit
+    - Drag to reposition; pan/zoom; auto-layout
+  - Properties panel
+    - Show/edit rdfs:label, rdfs:domain, rdfs:range, type, attrs (JSON)
+    - Sync with inline edits; background shows model metadata
+  - IRI minting & validation
+    - Create IRIs in base namespace; ensure uniqueness; basic integrity checks
+  - Imports (defer)
+    - Read-only overlays in later iteration; hidden in MVP
 
 - Files Workbench
   - Upload/list with categories
@@ -78,11 +92,11 @@ This document tracks the MVP-critical tasks for the UI restart. We will not comm
   - Enforce scoping on backend
 
 ## Suggested next 5 tasks (to hit MVP)
-1. Ontology editor in Ontology Workbench with "Push to Fuseki".
-2. Files Workbench: upload/list with "document type" toggle; update tree live.
-3. Requirements Workbench: hook to existing review flow (start, poll, edit/approve).
-4. Status bar: wire live checks to existing status APIs.
-5. Playground: button to create/save a "White Paper" artifact and reflect in tree.
+1. Ontology editor in Ontology Workbench with load/save to Fuseki and layout persistence.
+2. Files Workbench: upload/list Requirements and Knowledge; embed Knowledge to vector store; update tree live.
+3. Requirements Workbench: review using RAG (retrieve Knowledge), confirm/save structured requirements.
+4. Conceptualization loop (single pass): given extracted requirements, create RDF individuals + relations and mirror to Neo4j; show review summary.
+5. Playground: interactions area with context selectors (Requirements/Knowledge/Ontology); actions to add/link individuals; seed artifacts.
 
 ## Notes
 - Keep changes small, review diffs before commit.
