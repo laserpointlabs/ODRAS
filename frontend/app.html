@@ -148,8 +148,9 @@
     #wb-ontology.onto-tree-collapsed { --onto-tree-w: var(--onto-tree-collapsed-w); --onto-tree-divider-w: 0px; }
     .iconbtn { background: #0b1220; color: var(--text); border: 1px solid var(--border); width: 28px; height: 28px; border-radius: 8px; display: grid; place-items: center; cursor: pointer; }
     .iconbtn svg { width: 16px; height: 16px; stroke: currentColor; transition: transform 160ms ease; }
-    /* Rightward chevron when collapsed, leftward when expanded */
+    /* Left panel chevron: right when collapsed, left when expanded */
     #wb-ontology.onto-tree-collapsed #ontoTreeToggleIcon { transform: rotate(0deg); }
+    #wb-ontology:not(.onto-tree-collapsed) #ontoTreeToggleIcon { transform: rotate(180deg); }
     #wb-ontology.onto-tree-collapsed .onto-tree-header { padding: 4px !important; justify-content: center !important; }
 
     /* Properties panel */
@@ -162,8 +163,9 @@
     #wb-ontology.onto-props-collapsed #ontoPropsResizer { display: none; }
     #wb-ontology.onto-props-collapsed { --onto-props-w: var(--onto-props-collapsed-w); --onto-props-divider-w: 0px; }
     #wb-ontology.onto-props-collapsed .onto-props { width: var(--onto-props-collapsed-w); min-width: var(--onto-props-collapsed-w); max-width: var(--onto-props-collapsed-w); }
-    /* Leftward chevron when collapsed (panel on right), rightward when expanded */
+    /* Right panel chevron: left when collapsed, right when expanded */
     #wb-ontology.onto-props-collapsed #ontoPropsToggleIcon { transform: rotate(180deg); }
+    #wb-ontology:not(.onto-props-collapsed) #ontoPropsToggleIcon { transform: rotate(0deg); }
     .login {
       display: grid; place-items: center; height: calc(100vh - var(--toolbar-h) - var(--bottombar-h));
     }
@@ -327,7 +329,7 @@
               <div class="onto-props-header" id="ontoPropsHeader">
                 <div class="muted">Properties</div>
                 <button class="iconbtn" id="ontoPropsToggle" title="Collapse">
-                  <svg id="ontoPropsToggleIcon" viewBox="0 0 24 24" fill="none" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M15 6l-6 6 6 6"/></svg>
+                  <svg id="ontoPropsToggleIcon" viewBox="0 0 24 24" fill="none" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M9 6l6 6-6 6"/></svg>
                 </button>
               </div>
               <div class="onto-props-scroll">
@@ -662,8 +664,8 @@
         // Restore ontology left tree width
         const ontoTreeW = parseInt(localStorage.getItem('onto_tree_w') || '0', 10);
         if (ontoTreeW) document.documentElement.style.setProperty('--onto-tree-w', ontoTreeW + 'px');
-        const collapsed = localStorage.getItem('onto_tree_collapsed') === '1';
-        if (collapsed) {
+        const treeCollapsed = localStorage.getItem('onto_tree_collapsed') === '1';
+        if (treeCollapsed) {
           const sec = qs('#wb-ontology');
           if (sec && !sec.classList.contains('onto-tree-collapsed')) sec.classList.add('onto-tree-collapsed');
           const icon = qs('#ontoTreeToggleIcon');
@@ -676,6 +678,11 @@
           const icon = qs('#ontoPropsToggleIcon');
           if (icon) icon.innerHTML = '<path d="M15 6l-6 6 6 6"/>';
         }
+        // Ensure icon SVGs match classes and allow CSS rotation animation to apply
+        const treeIcon = qs('#ontoTreeToggleIcon');
+        if (treeIcon && !treeCollapsed) treeIcon.innerHTML = '<path d="M15 6l-6 6 6 6"/>';
+        const propsIcon = qs('#ontoPropsToggleIcon');
+        if (propsIcon && !propsCollapsed) propsIcon.innerHTML = '<path d="M9 6l6 6-6 6"/>';
         const savedW = parseInt(localStorage.getItem('onto_props_w') || '0', 10);
         if (savedW) document.documentElement.style.setProperty('--onto-props-w', savedW + 'px');
         // Restore saved graph if present
