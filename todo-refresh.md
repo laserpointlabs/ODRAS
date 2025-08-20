@@ -12,6 +12,24 @@ This document tracks the MVP-critical tasks for the UI restart. We will not comm
   - Load/save ontology from/to Fuseki named graph (per selected ontology in main tree)
     - Load: CONSTRUCT GRAPH <iri> → UI model; Load layout JSON if present
     - Save: DROP GRAPH <iri>; INSERT DATA { GRAPH <iri> { ... } } and PUT layout JSON
+    - Save to Fuseki (MVP steps)
+      - Frontend
+        - Add Save button and Ctrl/Cmd+S to trigger save for the active ontology
+        - Serialize canvas → Turtle (MVP)
+          - Classes: <graph#ClassName> a owl:Class; rdfs:label "Label"
+          - Object properties: <graph#prop> a owl:ObjectProperty; rdfs:label "name"; rdfs:domain <graph#Source>; rdfs:range <graph#Target>
+          - Datatype properties: <graph#prop> a owl:DatatypeProperty; rdfs:label "name"; rdfs:domain <graph#Class>; (range: xsd:string for MVP)
+          - Notes are UI-only; exclude from Turtle
+        - Mint stable IRIs per graph (slug from label) and persist a per-graph id→IRI map in localStorage so IRIs don’t churn on rename
+        - POST text/turtle to backend `/api/ontology/save?graph=<iri>`; on success show toast and clear dirty flag
+      - Backend
+        - Implement POST `/api/ontology/save?graph=<iri>` (body: text/turtle)
+          - Validate `graph` param; PUT to Fuseki Graph Store `/data?graph=<iri>` with `Content-Type: text/turtle`
+          - Handle auth/timeouts; return 200/4xx/5xx with message
+        - Optional: `PUT /layout?graph=<iri>` to persist layout JSON (positions, zoom/pan)
+      - Tests/UX
+        - Save separate models in `base_se_v1` and `base_se_v2`; verify isolation and no cross-bleed
+        - Error toasts on failure; retry path; confirm saved triple counts later
   - Separate layout persistence (node positions, zoom/pan) per graph IRI
   - Simple, direct manipulation editing (no popups)
     - Drag from palette to create Class/Data Property
