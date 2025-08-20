@@ -293,6 +293,7 @@
             <span id="ontoGraphLabel" class="muted" style="max-width:55%; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">No graph selected</span>
             <div class="spacer"></div>
             <button class="btn" id="ontoLayoutBtn" title="Auto layout">Layout</button>
+            <button class="btn" id="ontoDeleteBtn" title="Delete selected">Delete</button>
             <button class="btn" id="ontoImportBtn" title="Import graph JSON">Import</button>
             <button class="btn" id="ontoExportBtn" title="Export graph JSON">Export</button>
             <input type="file" id="ontoImportFile" accept="application/json" style="display:none" />
@@ -430,7 +431,7 @@
     const qsa = (s, r = document) => Array.from(r.querySelectorAll(s));
 
     // Ontology workbench state
-    const ontoState = { cy: null, eh: null, connectMode: false, clickConnectFrom: null, nextId: 1, currentPredicateType: 'objectProperty' };
+    const ontoState = { cy: null, eh: null, connectMode: false, clickConnectFrom: null, nextId: 1, currentPredicateType: 'objectProperty', isCanvasActive: false };
     let activeProject = null;
     let activeOntologyIri = null;
 
@@ -515,6 +516,8 @@
       if (ontoState.cy) return;
       const container = qs('#cy');
       if (!container) return;
+      // Make canvas focusable for keyboard events (Delete)
+      try { container.setAttribute('tabindex', '0'); container.style.outline = 'none'; } catch(_) {}
       try {
         if (window.cytoscape && (window.cytoscapeEdgehandles || window.edgehandles)) {
           const plugin = window.cytoscapeEdgehandles || window.edgehandles;
@@ -580,6 +583,12 @@
       });
       window._cy = ontoState.cy;
       ontoState.nextId = 1;
+      // Focus canvas on interaction so Delete works reliably
+      ontoState.cy.on('tap', () => { try { container.focus(); } catch(_) {} });
+      try { container.addEventListener('keydown', handleDeleteKey); } catch(_) {}
+
+      // Mark canvas active on any interaction
+      ontoState.cy.on('tap', () => { ontoState.isCanvasActive = true; });
 
       if (typeof ontoState.cy.edgehandles === 'function') {
         ontoState.eh = ontoState.cy.edgehandles({
@@ -672,9 +681,10 @@
         });
       });
 
-      container.addEventListener('dragover', (ev) => { ev.preventDefault(); });
+      container.addEventListener('dragover', (ev) => { ev.preventDefault(); ontoState.isCanvasActive = true; });
       container.addEventListener('drop', (ev) => {
         ev.preventDefault();
+        ontoState.isCanvasActive = true;
         const ontoType = ev.dataTransfer.getData('text/onto-type') || 'class';
         const rect = container.getBoundingClientRect();
         const renderedPos = { x: ev.clientX - rect.left, y: ev.clientY - rect.top };
@@ -1491,6 +1501,37 @@
     initAuth();
     // Restore previously selected graph label
     try { const iri = localStorage.getItem('onto_active_iri'); if (iri) { activeOntologyIri = iri; updateOntoGraphLabel(); } } catch(_) {}
+
+    // Delete selected canvas entities (nodes/edges) for current ontology only
+    function performDelete() {
+      if (!(qs('#wb-ontology') && qs('#wb-ontology').classList.contains('active'))) return false;
+      if (!ontoState.cy) return false;
+      const sel = ontoState.cy.$(':selected');
+      if (!sel || sel.length === 0) return false;
+      ontoState.cy.remove(sel);
+      refreshOntologyTree();
+      persistOntologyToLocalStorage();
+      return true;
+    }
+    function handleDeleteKey(e) {
+      const key = e.key || e.code;
+      const tgt = e.target;
+      const isTyping = tgt && (tgt.tagName === 'INPUT' || tgt.tagName === 'TEXTAREA' || tgt.isContentEditable);
+      const inline = qs('#ontoInlineEdit');
+      if (isTyping || (inline && inline.style.display !== 'none')) return;
+      if ((key === 'Delete' || key === 'Backspace') && ontoState.cy) {
+        const ok = performDelete();
+        if (ok) { e.preventDefault(); e.stopPropagation(); }
+      }
+    }
+    document.addEventListener('keydown', handleDeleteKey, false);
+    window.addEventListener('keydown', handleDeleteKey, true);
+    // Toolbar delete
+    document.addEventListener('click', (e) => {
+      if (e.target === qs('#ontoDeleteBtn')) {
+        performDelete();
+      }
+    });
   </script>
 </body>
 </html>
