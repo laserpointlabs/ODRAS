@@ -108,7 +108,14 @@
     /* Ontology Workbench */
     .ontology-toolbar { display: flex; gap: 8px; align-items: center; margin: 8px 0 12px 0; }
     #cy { width: 100%; min-width: 0; height: calc(100vh - var(--toolbar-h) - var(--bottombar-h) - 140px); min-height: 360px; border: 1px solid var(--border); border-radius: 8px; background: #0a0f1f; }
-    .onto-layout { display: grid; grid-template-columns: var(--onto-tree-w) var(--onto-tree-divider-w, 6px) var(--onto-iconbar-w) 1fr var(--onto-props-divider-w, 6px) var(--onto-props-w); gap: 0; align-items: stretch; overflow: hidden; width: 100%; }
+    .onto-layout { display: grid; grid-template-columns: var(--onto-tree-w) var(--onto-tree-divider-w, 6px) var(--onto-iconbar-w) minmax(0, 1fr) var(--onto-props-divider-w, 6px) var(--onto-props-w); gap: 0; align-items: stretch; overflow: hidden; width: 100%; }
+    /* Pin children to explicit grid columns so hiding resizers doesn't shift layout */
+    .onto-layout > .onto-tree { grid-column: 1; }
+    .onto-layout > #ontoResizer { grid-column: 2; }
+    .onto-layout > .onto-iconbar { grid-column: 3; }
+    .onto-layout > #cy { grid-column: 4; }
+    .onto-layout > #ontoPropsResizer { grid-column: 5; }
+    .onto-layout > .onto-props { grid-column: 6; }
     .onto-iconbar { background: var(--panel); border: 1px solid var(--border); border-radius: 8px; padding: 8px 6px; display: flex; flex-direction: column; align-items: center; gap: 8px; height: calc(100vh - var(--toolbar-h) - var(--bottombar-h) - 140px); }
     .onto-icon { width: 40px; height: 40px; border-radius: 8px; border: 1px solid var(--border); background: var(--panel-2); display: grid; place-items: center; color: var(--muted); cursor: grab; }
     .onto-icon svg { width: 22px; height: 22px; stroke: currentColor; }
@@ -130,14 +137,14 @@
     .onto-resizer { width: 6px; cursor: col-resize; background: transparent; position: relative; }
     .onto-resizer::after { content: ""; position: absolute; inset: 0; }
     /* Collapsed tree mode */
-    #wb-ontology.onto-tree-collapsed .onto-tree {
-      width: var(--onto-tree-collapsed-w);
-      min-width: var(--onto-tree-collapsed-w);
-      max-width: var(--onto-tree-collapsed-w);
-    }
+    #wb-ontology.onto-tree-collapsed .onto-tree { overflow: hidden; }
     #wb-ontology.onto-tree-collapsed .onto-tree-header .muted { display: none; }
     #wb-ontology.onto-tree-collapsed .onto-tree-scroll { display: none; }
+    /* Keep the collapse chevron visible and prevent overlap */
+    #wb-ontology.onto-tree-collapsed .onto-tree { z-index: 2; }
+    .onto-iconbar { z-index: 1; }
     #wb-ontology.onto-tree-collapsed #ontoResizer { display: none; }
+    /* Collapse behavior: shrink tree width to rail without affecting tools/canvas/props */
     #wb-ontology.onto-tree-collapsed { --onto-tree-w: var(--onto-tree-collapsed-w); --onto-tree-divider-w: 0px; }
     .iconbtn { background: #0b1220; color: var(--text); border: 1px solid var(--border); width: 28px; height: 28px; border-radius: 8px; display: grid; place-items: center; cursor: pointer; }
     .iconbtn svg { width: 16px; height: 16px; stroke: currentColor; transition: transform 160ms ease; }
@@ -775,8 +782,11 @@
       });
       window.addEventListener('mousemove', (e) => {
         if (!dragging) return;
-        const leftOffset = parseInt(getComputedStyle(document.documentElement).getPropertyValue('--onto-iconbar-w'));
-        let w = e.clientX - leftOffset - qs('#wb-ontology .ontology-toolbar').getBoundingClientRect().left; // relative after toolbar margin
+        const layout = qs('#wb-ontology .onto-layout'); if (!layout) return;
+        const layoutRect = layout.getBoundingClientRect();
+        // Grid columns: [tree][divider][iconbar][canvas][divider][props]
+        // If tree is collapsed, divider width is 0; math still uses layout left
+        let w = e.clientX - layoutRect.left;
         const min = parseInt(getComputedStyle(document.documentElement).getPropertyValue('--onto-tree-w-min'));
         const max = parseInt(getComputedStyle(document.documentElement).getPropertyValue('--onto-tree-w-max'));
         w = Math.max(min, Math.min(max, w));
@@ -1034,7 +1044,7 @@
               : '<path d="M6 9l6 6 6-6"/>';
           }
           try { localStorage.setItem('onto_tree_collapsed', collapsed ? '1' : '0'); } catch(_) {}
-          if (ontoState.cy) ontoState.cy.resize();
+          requestAnimationFrame(() => { if (ontoState.cy) ontoState.cy.resize(); });
         } else if (e.target === qs('#ontoPropsToggle') || e.target.closest('#ontoPropsToggle')) {
           const sec = qs('#wb-ontology');
           if (!sec) return;
