@@ -293,6 +293,7 @@
             <span id="ontoGraphLabel" class="muted" style="max-width:55%; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">No graph selected</span>
             <div class="spacer"></div>
             <button class="btn" id="ontoLayoutBtn" title="Auto layout">Layout</button>
+            <button class="btn" id="ontoFitBtn" title="Fit to view">Fit</button>
             <button class="btn" id="ontoDeleteBtn" title="Delete selected">Delete</button>
             <button class="btn" id="ontoImportBtn" title="Import graph JSON">Import</button>
             <button class="btn" id="ontoExportBtn" title="Export graph JSON">Export</button>
@@ -551,6 +552,7 @@
             'target-arrow-color': '#3b4a6b',
             'arrow-scale': 1,
             'label': 'data(predicate)',
+            'color': '#e5e7eb',
             'font-size': 10,
             'text-rotation': 'autorotate',
             'text-background-color': '#0b1220',
@@ -585,6 +587,7 @@
       ontoState.nextId = 1;
       // Focus canvas on interaction so Delete works reliably
       ontoState.cy.on('tap', () => { try { container.focus(); } catch(_) {} });
+      ontoState.cy.on('select', () => { try { container.focus(); } catch(_) {} });
       try { container.addEventListener('keydown', handleDeleteKey); } catch(_) {}
 
       // Mark canvas active on any interaction
@@ -1300,6 +1303,8 @@
       document.addEventListener('click', async (e) => {
         if (e.target === qs('#ontoLayoutBtn')) {
           runAutoLayout();
+        } else if (e.target === qs('#ontoFitBtn')) {
+          try { if (ontoState.cy) ontoState.cy.fit(undefined, 20); } catch(_) {}
         } else if (e.target === qs('#ontoExportBtn')) {
           exportOntologyJSON();
         } else if (e.target === qs('#ontoImportBtn')) {
@@ -1526,6 +1531,8 @@
     }
     document.addEventListener('keydown', handleDeleteKey, false);
     window.addEventListener('keydown', handleDeleteKey, true);
+    // Keyup fallback in case keydown is intercepted by browser/OS
+    document.addEventListener('keyup', handleDeleteKey, false);
     // Toolbar delete
     document.addEventListener('click', (e) => {
       if (e.target === qs('#ontoDeleteBtn')) {
