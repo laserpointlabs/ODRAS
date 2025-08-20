@@ -765,7 +765,8 @@
           const pid = `DP${Date.now()}`;
           const label = `Data Property ${Date.now()%1000}`;
           ontoState.cy.add({ group: 'nodes', data: { id: pid, label, type: 'dataProperty' }, position: { x: pos.x + 120, y: pos.y } });
-          ontoState.cy.add({ group: 'edges', data: { id: `edp${Date.now()}`, source: id, target: pid, predicate: label, type: 'dataProperty' } });
+          // Use objectProperty for the visual connector edge
+          ontoState.cy.add({ group: 'edges', data: { id: `edp${Date.now()}`, source: id, target: pid, predicate: label, type: 'objectProperty' } });
           refreshOntologyTree(); persistOntologyToLocalStorage();
           return;
         }
@@ -823,7 +824,8 @@
           const prop = `Data Property ${Date.now()%1000}`;
           const pid = `DP${Date.now()}`;
           ontoState.cy.add({ group: 'nodes', data: { id: pid, label: prop, type: 'dataProperty' }, position: pos });
-          ontoState.cy.add({ group: 'edges', data: { id: `edp${Date.now()}`, source: sel[0].id(), target: pid, predicate: prop, type: 'dataProperty' } });
+          // Link edge is a visual connector; keep it as objectProperty for consistency
+          ontoState.cy.add({ group: 'edges', data: { id: `edp${Date.now()}`, source: sel[0].id(), target: pid, predicate: prop, type: 'objectProperty' } });
           refreshOntologyTree();
         } else if (ontoType === 'note') {
           const nid = `Note${Date.now()}`;
