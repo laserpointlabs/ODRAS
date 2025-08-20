@@ -317,20 +317,20 @@ New endpoints:
   - [ ] Derive display labels from `rdfs:label` or local name fallback
 
 - [ ] OW-3: Canvas (Cytoscape) baseline
-  - [ ] Initialize Cytoscape with base styles and grid/snap options
-  - [ ] Render nodes/edges from the mapped model
-  - [ ] Support pan/zoom; fit-to-view; auto-layout action
+  - [x] Initialize Cytoscape with base styles and grid/snap options
+  - [x] Render nodes/edges from the mapped model (MVP placeholders; mapping pending)
+  - [x] Support pan/zoom; fit-to-view; auto-layout action
 
 - [ ] OW-4: Layout persistence
   - [ ] On load: fetch layout JSON; apply positions/zoom/pan; fallback to auto-layout if 404
   - [ ] On save: persist node positions + zoom/pan via `PUT /layout?graph=<iri>`
 
 - [ ] OW-5: Direct manipulation editing
-  - [ ] Palette: drag-to-create Class and Data Property (node appears under cursor, selected)
-  - [ ] Edge handles: connect classes to create Object Property (edge appears, selected)
-  - [ ] Inline rename (nodes/edges): click/F2 to edit; Enter/Esc to commit/cancel
-  - [ ] Keyboard: Delete removes selection; Esc cancels edit; Ctrl/Cmd+S saves ontology+layout
-  - [ ] Drag to reposition; selection/multiselect via shift-click
+  - [x] Palette: drag-to-create Class and Data Property (node appears under cursor, selected)
+  - [x] Edge handles: connect classes to create Object Property (edge appears, selected)
+  - [x] Inline rename (nodes/edges): double-click/F2 to edit; Enter/Esc to commit/cancel
+  - [x] Keyboard: Delete removes selection (and toolbar Delete)
+  - [x] Drag to reposition; selection/multiselect via shift-click
 
 - [ ] OW-6: Properties panel
   - [ ] Bind selection to panel; show/edit `rdfs:label`, `rdfs:domain`, `rdfs:range`, `rdf:type`, `attrs(JSON)`
@@ -362,18 +362,19 @@ New endpoints:
     - [] add importable ontology from a URL ir URI 
 
 - [ ] OW-0.6: Ontology functionality
-  - [ ] API: create/delete/rename ontologies
-    - [ ] Create: POST `/ontologies` (project, name) → mint graph IRI `http://odras.local/onto/{project}/{name}`; write `owl:Ontology` + `rdfs:label`
-    - [ ] Delete: DELETE `/ontologies?graph=<iri>` (drop named graph)
-    - [ ] Rename: PUT `/ontologies/label?graph=<iri>` (update `rdfs:label` only for MVP; do not change IRI)
-  - [ ] UI: main tree
-    - [ ] Add new empty ontology from tree header (inline name or quick input); selects it
-    - [ ] Delete ontology: select in tree and press Delete key (no modal; provide toast/undo later)
-    - [ ] Rename ontology: double-click label in tree → inline edit (Enter/Esc)
-  - [ ] UI: canvas interactions (no popups)
-    - [ ] Drag Class/Data Property to canvas creates element with default name (e.g., `Class 1`) and selects it
-    - [ ] Inline rename on node/edge label when selected; fallback to properties panel if inline not available
-    - [ ] Create Object Property by selecting start→end (edgehandles or click-connect); no dialogs; default label; editable inline
+  - [x] API: create/delete/rename ontologies
+    - [x] Create: POST `/ontologies` (project, name) → mint graph IRI `http://odras.local/onto/{project}/{name}`; write `owl:Ontology` + `rdfs:label`
+    - [x] Delete: DELETE `/ontologies?graph=<iri>` (drop named graph)
+    - [x] Rename: PUT `/ontologies/label?graph=<iri>` (update `rdfs:label` only for MVP; do not change IRI)
+  - [x] UI: main tree
+    - [x] Add new empty ontology from tree header (plus button; derives IRI from display label); selects it
+    - [x] Delete ontology: select in tree and press Delete key (implemented)
+    - [x] Rename ontology: double-click label in tree → inline edit
+  - [x] UI: canvas interactions (no popups)
+    - [x] Drag Class/Data Property to canvas creates element with default name (selected)
+    - [x] Inline rename on node/edge label when selected
+    - [x] Create Object Property by selecting start→end (edgehandles or click-connect); default label; editable inline
+  - [x] Local persistence per ontology: cache canvas state per graph IRI while switching
   - [ ] Save & layout
     - [ ] Save writes triples to selected ontology graph and preserves layout (positions, zoom/pan) per graph IRI
 
