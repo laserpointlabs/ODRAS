@@ -1841,7 +1841,8 @@
       const tgt = e.target;
       const isTyping = tgt && (tgt.tagName === 'INPUT' || tgt.tagName === 'TEXTAREA' || tgt.isContentEditable);
       const inline = qs('#ontoInlineEdit');
-      if (isTyping || (inline && inline.style.display !== 'none')) return;
+      const inlineVisible = inline ? (getComputedStyle(inline).display !== 'none') : false;
+      if (isTyping || inlineVisible) return;
       if ((key === 'Delete' || key === 'Backspace') && ontoState.cy) {
         const ok = performDelete();
         if (ok) { e.preventDefault(); e.stopPropagation(); }
