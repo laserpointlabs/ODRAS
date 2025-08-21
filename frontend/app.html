@@ -953,7 +953,7 @@
         }
       });
       // Object properties from edges
-      const existingLinked = new Set();
+      const existingEquiv = new Set();
       edges.forEach(e => {
         const s = e.source(); const t = e.target();
         const pred = (e.data('predicate')||'relatedTo').replace(/\\/g,'\\\\').replace(/"/g,'\\"');
@@ -963,37 +963,36 @@
         const sType = (s.data('type')||'class'); const tType = (t.data('type')||'class');
         if (!isData) {
           if (sType === 'class' && tType === 'class') {
-            lines.push(`<${propIri}> a owl:ObjectProperty ; rdfs:label "${pred}" ; rdfs:domain <${sIri}> ; rdfs:range <${tIri}> .`);
+            // Treat special case for equivalence edges represented in UI as predicate 'equivalentClass'
+            if (pred === 'equivalentClass' || pred === 'linked_by') {
+              const key = `${sIri}|${tIri}`;
+              if (!existingEquiv.has(key)) {
+                existingEquiv.add(key);
+                lines.push(`<${sIri}> owl:equivalentClass <${tIri}> .`);
+              }
+            } else {
+              lines.push(`<${propIri}> a owl:ObjectProperty ; rdfs:label "${pred}" ; rdfs:domain <${sIri}> ; rdfs:range <${tIri}> .`);
+            }
           } else if (sType === 'note' && (tType === 'class' || tType === 'dataProperty') && pred === 'note_for') {
             // Emit as annotation on target element
             const text = (s.data('label')||'').replace(/\\/g,'\\\\').replace(/"/g,'\\"');
             lines.push(`<${tIri}> rdfs:comment "${text}" .`);
-          } else if (pred === 'linked_by') {
-            const key = `${sIri}|${tIri}`;
-            if (!existingLinked.has(key)) {
-              existingLinked.add(key);
-              lines.push(`<${sIri}> <${graphIri}#linked_by> <${tIri}> .`);
-            }
           }
         }
       });
-      // Add auto-computed linked_by pairs (no UI edges) if provided
+      // Add auto-computed equivalence pairs (no UI edges) if provided
       if (Array.isArray(linkedPairsOpt)) {
         linkedPairsOpt.forEach(p => {
           try {
             const n = p.baseNode; const targetIri = p.importIri;
             const sIri = nodeIri(n);
             const key = `${sIri}|${targetIri}`;
-            if (!existingLinked.has(key)) {
-              existingLinked.add(key);
-              lines.push(`<${sIri}> <${graphIri}#linked_by> <${targetIri}> .`);
+            if (!existingEquiv.has(key)) {
+              existingEquiv.add(key);
+              lines.push(`<${sIri}> owl:equivalentClass <${targetIri}> .`);
             }
           } catch(_) {}
         });
-      }
-      // Declare linked_by object property if used
-      if (lines.some(l => l.includes('#linked_by'))) {
-        lines.push(`<${graphIri}#linked_by> a owl:ObjectProperty ; rdfs:label "linked_by" .`);
       }
       saveIriMap(graphIri, iriMap);
       return lines.join('\n');
@@ -1541,11 +1540,47 @@
             if (curr.has(iri)) { curr.delete(iri); localStorage.setItem(key, JSON.stringify(Array.from(curr))); refreshOntologyTree(); }
           } catch(_) {}
         }
-        imports.forEach(g => {
+        async function friendlyImportName(iri) {
+          try {
+            const q = `PREFIX owl: <http://www.w3.org/2002/07/owl#>\nPREFIX rdfs: <http://www.w3.org/2000/01/rdf-schema#>\nSELECT ?label WHERE { GRAPH <${iri}> { <${iri}> a owl:Ontology . OPTIONAL { <${iri}> rdfs:label ?label } } }`;
+            const res = await fetch('/api/ontology/sparql', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ query: q }) });
+            if (!res.ok) throw new Error('sparql');
+            const json = await res.json();
+            const b = json.results && json.results.bindings && json.results.bindings[0];
+            const lbl = b && b.label && b.label.value;
+            return (lbl && lbl.trim()) || (iri.split('/').pop() || iri);
+          } catch(_) { return iri.split('/').pop() || iri; }
+        }
+        async function importEquivCount(importIri) {
+          try {
+            if (!ontoState.cy) return 0;
+            const norm = s => String(s||'').trim().toLowerCase();
+            const baseClasses = ontoState.cy.nodes().filter(n => (n.data('type')||'class') === 'class' && !n.hasClass('imported'));
+            const baseByLabel = new Map();
+            baseClasses.forEach(n => { baseByLabel.set(norm(n.data('label')||n.id()), n); });
+            const q = `PREFIX owl: <http://www.w3.org/2002/07/owl#>\nPREFIX rdfs: <http://www.w3.org/2000/01/rdf-schema#>\nSELECT ?c ?label WHERE { GRAPH <${importIri}> { ?c a owl:Class . OPTIONAL { ?c rdfs:label ?label } } }`;
+            const res = await fetch('/api/ontology/sparql', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ query: q }) });
+            if (!res.ok) return 0;
+            const json = await res.json();
+            const rows = (json && json.results && json.results.bindings) ? json.results.bindings : [];
+            const matched = new Set();
+            rows.forEach(b => {
+              const iri = b.c && b.c.value; const label = b.label && b.label.value;
+              const local = iri ? (iri.includes('#') ? iri.split('#').pop() : iri.split('/').pop()) : '';
+              const key = norm(label || local);
+              if (baseByLabel.has(key) && iri) matched.add(iri);
+            });
+            return matched.size;
+          } catch(_) { return 0; }
+        }
+        imports.forEach(async g => {
           const li = document.createElement('li'); li.setAttribute('role','treeitem'); li.dataset.importIri = g;
           const r=document.createElement('div'); r.className='onto-node-row'; r.tabIndex = 0;
           const t=document.createElement('span'); t.className='onto-twist';
-          const l=document.createElement('span'); l.className='onto-node-label'; l.textContent=g;
+          const l=document.createElement('span'); l.className='onto-node-label';
+          const name = await friendlyImportName(g);
+          const cnt = await importEquivCount(g);
+          l.textContent = `${name}${cnt ? ` (${cnt})` : ''}`;
           r.onclick = (e)=>{ Array.from(ul.querySelectorAll('.onto-node-row')).forEach(n=>n.classList.remove('selected')); r.classList.add('selected'); };
           r.onkeydown = (e)=>{ const key=e.key||e.code; if (key==='Delete' || key==='Backspace') { e.preventDefault(); removeImport(g); } };
           r.appendChild(t); r.appendChild(l);
@@ -1659,27 +1694,14 @@
             const json = await res.json().catch(()=>({}));
             if (res.ok) alert('Saved to Fuseki'); else alert('Save failed: ' + (json.detail || res.status));
           } catch (err) { alert('Save error: ' + err.message); }
-        } else if (e.target === qs('#ontoLinkIdenticalBtn')) {
-          // Link identical classes by label/local name between base and imports
+        } else if (e.target.closest && e.target.closest('#ontoLinkIdenticalBtn')) {
+          // Preview: count equivalent class links that will be saved (no UI edges yet)
           try {
             if (!activeOntologyIri || !ontoState.cy) return;
-            const imports = JSON.parse(localStorage.getItem('onto_imports__' + encodeURIComponent(activeOntologyIri)) || '[]');
-            if (!imports.length) { alert('No imports for this ontology'); return; }
-            // Build maps
-            const baseClasses = ontoState.cy.nodes().filter(n => (n.data('type')||'class')==='class' && !n.hasClass('imported'));
-            const imported = ontoState.cy.nodes().filter(n => (n.data('type')||'class')==='class' && n.hasClass('imported'));
-            const baseByKey = new Map();
-            baseClasses.forEach(n => { const key = (n.data('label')||n.id()).toLowerCase(); baseByKey.set(key, n); });
-            let linked = 0;
-            imported.forEach(n => {
-              const key = (n.data('label')||n.id()).toLowerCase();
-              const base = baseByKey.get(key);
-              if (base) {
-                ontoState.cy.add({ group: 'edges', data: { id: `lk${Date.now()}${++linked}`, source: base.id(), target: n.id(), predicate: 'linked_by', type: 'objectProperty' } });
-              }
-            });
-            if (linked) { refreshOntologyTree(); persistOntologyToLocalStorage(); alert(`Linked ${linked} classes`); } else { alert('No identical classes found'); }
-          } catch (err) { console.error(err); alert('Link failed'); }
+            const pairs = await computeLinkedByPairs(activeOntologyIri);
+            if (pairs.length) alert(`Will save ${pairs.length} owl:equivalentClass links on Save.`);
+            else alert('No identical classes found');
+          } catch (err) { console.error(err); alert('Link check failed'); }
         } else if (e.target === qs('#ontoExportBtn')) {
           exportOntologyJSON();
         } else if (e.target === qs('#ontoImportBtn')) {
