@@ -666,6 +666,26 @@
           updatePropertiesPanelFromSelection();
           persistOntologyToLocalStorage();
         });
+        // Persist overlay positions when moved
+        ontoState.cy.on('free', 'node.imported', (ev) => {
+          try {
+            const n = ev.target; const imp = n.data('importSource');
+            if (!imp || !activeOntologyIri) return;
+            const curr = loadOverlayPositions(activeOntologyIri, imp);
+            curr[n.id()] = n.position();
+            saveOverlayPositions(activeOntologyIri, imp, curr);
+          } catch(_) {}
+        });
+        // Persist overlay positions when moved
+        ontoState.cy.on('free', 'node.imported', (ev) => {
+          try {
+            const n = ev.target; const imp = n.data('importSource');
+            if (!imp || !activeOntologyIri) return;
+            const curr = loadOverlayPositions(activeOntologyIri, imp);
+            curr[n.id()] = n.position();
+            saveOverlayPositions(activeOntologyIri, imp, curr);
+          } catch(_) {}
+        });
       } else {
         ontoState.cy.on('tap', 'node', (ev) => {
           if (!ontoState.connectMode) return;
@@ -1045,6 +1065,11 @@
     function loadVisibleImports(graphIri) { try { return new Set(JSON.parse(localStorage.getItem(visibleImportsKey(graphIri)) || '[]')); } catch(_) { return new Set(); } }
     function saveVisibleImports(graphIri, set) { try { localStorage.setItem(visibleImportsKey(graphIri), JSON.stringify(Array.from(set || []))); } catch(_) {} }
 
+    // Persist per-import overlay node positions
+    function overlayPositionsKey(baseIri, importIri) { return 'onto_import_positions__' + encodeURIComponent(baseIri || '') + '__' + encodeURIComponent(importIri || ''); }
+    function loadOverlayPositions(baseIri, importIri) { try { return JSON.parse(localStorage.getItem(overlayPositionsKey(baseIri, importIri)) || '{}'); } catch(_) { return {}; } }
+    function saveOverlayPositions(baseIri, importIri, obj) { try { localStorage.setItem(overlayPositionsKey(baseIri, importIri), JSON.stringify(obj || {})); } catch(_) {} }
+
     async function fetchImportGraphSnapshot(importIri) {
       try {
         const qClasses = `PREFIX owl: <http://www.w3.org/2002/07/owl#>\nPREFIX rdfs: <http://www.w3.org/2000/01/rdf-schema#>\nSELECT ?c ?label WHERE { GRAPH <${importIri}> { ?c a owl:Class . OPTIONAL { ?c rdfs:label ?label } } }`;
@@ -1068,19 +1093,45 @@
       try {
         if (!ontoState.cy || !activeOntologyIri) return;
         const visible = loadVisibleImports(activeOntologyIri);
+        const visibleList = Array.from(visible);
+        // Before removing overlays, snapshot positions for imports being hidden
+        ontoState.cy.nodes('.imported').forEach(n => {
+          const imp = n.data('importSource') || '';
+          if (!visible.has(imp)) {
+            const curr = loadOverlayPositions(activeOntologyIri, imp);
+            curr[n.id()] = n.position();
+            saveOverlayPositions(activeOntologyIri, imp, curr);
+          }
+        });
         // Remove overlays for imports no longer visible
         ontoState.cy.elements('.imported, .imported-equivalence').forEach(el => { if (!visible.has(el.data('importSource') || '')) el.remove(); });
         // Add overlays for newly visible imports
-        for (const imp of Array.from(visible)) {
+        for (const imp of visibleList) {
           const existing = ontoState.cy.elements('.imported').filter(e => (e.data('importSource') || '') === imp);
           if (existing && existing.length) continue;
           const snap = await fetchImportGraphSnapshot(imp);
           const added = [];
-          // Add class nodes
+          // Compute a simple cluster origin to the right of the base graph to avoid overlap (notes included)
+          const baseBBox = ontoState.cy.nodes(':not(.imported)').boundingBox();
+          const orderIndex = Math.max(0, visibleList.indexOf(imp));
+          const padX = 200, padY = 40, jitterX = orderIndex * 100, jitterY = orderIndex * 60;
+          const safe = (n, f)=> (Number.isFinite(n) ? n : f);
+          const originX = safe(baseBBox.x2, 0) + padX + jitterX;
+          const originY = safe(baseBBox.y1, 0) + jitterY;
+          const total = Math.max(1, snap.classes.length);
+          const cols = Math.ceil(Math.sqrt(total));
+          const spacing = 160;
+          let nextIdx = 0;
+          function nextPos() {
+            const col = nextIdx % cols; const row = Math.floor(nextIdx / cols); nextIdx += 1;
+            return { x: originX + col * spacing, y: originY + row * spacing };
+          }
+          // Add class nodes in a simple grid within the cluster; apply saved positions if available
+          const savedPos = loadOverlayPositions(activeOntologyIri, imp);
           snap.classes.forEach(c => {
             const id = `imp:${imp}#${c.iri}`;
             if (ontoState.cy.$(`#${CSS.escape(id)}`).length) return;
-            const pos = { x: Math.random()*400 + 100, y: Math.random()*300 + 100 };
+            const pos = savedPos[id] ? savedPos[id] : nextPos();
             added.push(ontoState.cy.add({ group: 'nodes', data: { id, iri: c.iri, label: c.label, type: 'class', importSource: imp }, position: pos, classes: 'imported' }));
           });
           // Add edges where both endpoints available; create missing nodes on demand
@@ -1090,16 +1141,26 @@
             const tid = `imp:${imp}#${e.targetIri}`;
             if (!ontoState.cy.$(`#${CSS.escape(sid)}`).length) {
               const label = e.sourceIri.includes('#') ? e.sourceIri.split('#').pop() : e.sourceIri.split('/').pop();
-              added.push(ontoState.cy.add({ group: 'nodes', data: { id: sid, iri: e.sourceIri, label, type: 'class', importSource: imp }, classes: 'imported' }));
+              const pos = savedPos[sid] ? savedPos[sid] : nextPos();
+              added.push(ontoState.cy.add({ group: 'nodes', data: { id: sid, iri: e.sourceIri, label, type: 'class', importSource: imp }, position: pos, classes: 'imported' }));
             }
             if (!ontoState.cy.$(`#${CSS.escape(tid)}`).length) {
               const label = e.targetIri.includes('#') ? e.targetIri.split('#').pop() : e.targetIri.split('/').pop();
-              added.push(ontoState.cy.add({ group: 'nodes', data: { id: tid, iri: e.targetIri, label, type: 'class', importSource: imp }, classes: 'imported' }));
+              const pos = savedPos[tid] ? savedPos[tid] : nextPos();
+              added.push(ontoState.cy.add({ group: 'nodes', data: { id: tid, iri: e.targetIri, label, type: 'class', importSource: imp }, position: pos, classes: 'imported' }));
             }
             added.push(ontoState.cy.add({ group: 'edges', data: { id: `impE${Date.now()}_${idx++}`, source: sid, target: tid, predicate: e.label, type: 'objectProperty', importSource: imp }, classes: 'imported' }));
           });
-          // Make overlays non-interactive
-          added.forEach(el => { try { el.selectable(false); el.grabbable(false); el.locked(true); } catch(_) {} });
+          // Make overlays semi-interactive for positioning: allow drag, but don't select or edit
+          added.forEach(el => {
+            try {
+              if (el.isNode && el.isNode()) {
+                el.selectable(false); el.grabbable(true); el.locked(false);
+              } else {
+                el.selectable(false); el.grabbable(false); el.locked(true);
+              }
+            } catch(_) {}
+          });
 
           // Add owl:equivalentClass visual links between base and imported nodes (by label/local name)
           try {
