@@ -1464,7 +1464,9 @@
       const rootItem = document.createElement('li'); rootItem.setAttribute('role', 'treeitem'); rootItem.setAttribute('aria-expanded', 'true');
       const row = document.createElement('div'); row.className = 'onto-node-row';
       const twist = document.createElement('span'); twist.className = 'onto-twist'; twist.onclick = (e)=>{ e.stopPropagation(); rootItem.setAttribute('aria-expanded', rootItem.getAttribute('aria-expanded') === 'true' ? 'false' : 'true'); };
-      const text = document.createElement('span'); text.className = 'onto-node-label'; text.textContent = 'Ontology';
+      const text = document.createElement('span'); text.className = 'onto-node-label';
+      const modelName = (localStorage.getItem('onto_model_name') || '').trim() || 'Ontology';
+      text.textContent = modelName;
       row.appendChild(twist); row.appendChild(text); rootItem.appendChild(row); rootItem.appendChild(ul);
       root.innerHTML = '';
       root.appendChild(rootItem);
