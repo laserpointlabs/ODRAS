@@ -293,7 +293,7 @@ New endpoints:
 
 ## MVP TODO checklist (Ontology Workbench)
 
-- [ ] OW-0: Wire workbench route and selection
+- [x] OW-0: Wire workbench route and selection
   - [x] Create `Ontology Workbench` route/page and mount under the existing layout
   - [x] Read the active ontology IRI from the project-scoped tree/selection
   - [x] Show empty state with selected IRI
@@ -316,7 +316,7 @@ New endpoints:
   - [ ] Map classes → nodes; object props → edges; data props → mini-nodes/edges
   - [ ] Derive display labels from `rdfs:label` or local name fallback
 
-- [ ] OW-3: Canvas (Cytoscape) baseline
+- [x] OW-3: Canvas (Cytoscape) baseline
   - [x] Initialize Cytoscape with base styles and grid/snap options
   - [x] Render nodes/edges from the mapped model (MVP placeholders; mapping pending)
   - [x] Support pan/zoom; fit-to-view; auto-layout action
@@ -325,7 +325,7 @@ New endpoints:
   - [ ] On load: fetch layout JSON; apply positions/zoom/pan; fallback to auto-layout if 404
   - [ ] On save: persist node positions + zoom/pan via `PUT /layout?graph=<iri>`
 
-- [ ] OW-5: Direct manipulation editing
+- [x] OW-5: Direct manipulation editing
   - [x] Palette: drag-to-create Class and Data Property (node appears under cursor, selected)
   - [x] Edge handles: connect classes to create Object Property (edge appears, selected)
   - [x] Inline rename (nodes/edges): double-click/F2 to edit; Enter/Esc to commit/cancel
@@ -343,6 +343,7 @@ New endpoints:
 
 - [ ] OW-8: Serialization and save flow
   - [ ] Serialize UI model → RDF triples (Turtle/JSON-LD)
+  - [x] Serialize UI model → RDF triples (Turtle/JSON-LD)
   - [ ] Save: `PUT /ontology?graph=<iri>` (DROP+INSERT DATA)
   - [ ] Save layout JSON
   - [ ] Dirty indicator and navigation guard for unsaved changes

@@ -909,7 +909,7 @@
     function loadIriMap(graphIri) { try { return JSON.parse(localStorage.getItem(iriMapKey(graphIri))||'{}'); } catch(_) { return {}; } }
     function saveIriMap(graphIri, map) { try { localStorage.setItem(iriMapKey(graphIri), JSON.stringify(map||{})); } catch(_) {} }
 
-    function toTurtle(graphIri) {
+    function toTurtle(graphIri, linkedPairsOpt) {
       // Build per-graph stable id→IRI map
       const iriMap = loadIriMap(graphIri);
       const lines = [
@@ -927,6 +927,8 @@
       function nodeIri(n) {
         const id = n.id();
         if (iriMap[id]) return iriMap[id];
+        const explicit = n.data('iri');
+        if (explicit) { iriMap[id] = explicit; return explicit; }
         const base = slugId(n.data('label')||id)||id;
         const iri = `${graphIri}#${base}`;
         iriMap[id] = iri;
@@ -951,6 +953,7 @@
         }
       });
       // Object properties from edges
+      const existingLinked = new Set();
       edges.forEach(e => {
         const s = e.source(); const t = e.target();
         const pred = (e.data('predicate')||'relatedTo').replace(/\\/g,'\\\\').replace(/"/g,'\\"');
@@ -966,16 +969,66 @@
             const text = (s.data('label')||'').replace(/\\/g,'\\\\').replace(/"/g,'\\"');
             lines.push(`<${tIri}> rdfs:comment "${text}" .`);
           } else if (pred === 'linked_by') {
-            lines.push(`<${sIri}> <${graphIri}#linked_by> <${tIri}> .`);
+            const key = `${sIri}|${tIri}`;
+            if (!existingLinked.has(key)) {
+              existingLinked.add(key);
+              lines.push(`<${sIri}> <${graphIri}#linked_by> <${tIri}> .`);
+            }
           }
         }
       });
+      // Add auto-computed linked_by pairs (no UI edges) if provided
+      if (Array.isArray(linkedPairsOpt)) {
+        linkedPairsOpt.forEach(p => {
+          try {
+            const n = p.baseNode; const targetIri = p.importIri;
+            const sIri = nodeIri(n);
+            const key = `${sIri}|${targetIri}`;
+            if (!existingLinked.has(key)) {
+              existingLinked.add(key);
+              lines.push(`<${sIri}> <${graphIri}#linked_by> <${targetIri}> .`);
+            }
+          } catch(_) {}
+        });
+      }
       // Declare linked_by object property if used
       if (lines.some(l => l.includes('#linked_by'))) {
         lines.push(`<${graphIri}#linked_by> a owl:ObjectProperty ; rdfs:label "linked_by" .`);
       }
       saveIriMap(graphIri, iriMap);
       return lines.join('\n');
+    }
+
+    // Compute linked_by pairs between base classes and imported graphs by label/local name
+    async function computeLinkedByPairs(graphIri) {
+      try {
+        const imports = JSON.parse(localStorage.getItem('onto_imports__' + encodeURIComponent(graphIri)) || '[]');
+        if (!imports || !imports.length || !ontoState.cy) return [];
+        const baseClasses = ontoState.cy.nodes().filter(n => (n.data('type')||'class') === 'class' && !n.hasClass('imported'));
+        const norm = (s) => String(s||'').trim().toLowerCase();
+        const baseByLabel = new Map();
+        baseClasses.forEach(n => { baseByLabel.set(norm(n.data('label')||n.id()), n); });
+        const pairs = [];
+        for (const imp of imports) {
+          const q = `PREFIX owl: <http://www.w3.org/2002/07/owl#>\nPREFIX rdfs: <http://www.w3.org/2000/01/rdf-schema#>\nSELECT ?c ?label WHERE { GRAPH <${imp}> { ?c a owl:Class . OPTIONAL { ?c rdfs:label ?label } } }`;
+          const res = await fetch('/api/ontology/sparql', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ query: q }) });
+          if (!res.ok) continue;
+          const json = await res.json();
+          const rows = (json && json.results && json.results.bindings) ? json.results.bindings : [];
+          rows.forEach(b => {
+            const iri = b.c && b.c.value; const label = b.label && b.label.value;
+            const local = iri ? (iri.includes('#') ? iri.split('#').pop() : iri.split('/').pop()) : '';
+            const key = norm(label || local);
+            const base = baseByLabel.get(key);
+            if (base && iri) pairs.push({ baseNode: base, importIri: iri });
+          });
+        }
+        // Deduplicate pairs by base id + target iri
+        const out = [];
+        const seen = new Set();
+        pairs.forEach(p => { const k = p.baseNode.id() + '|' + p.importIri; if (!seen.has(k)) { seen.add(k); out.push(p); } });
+        return out;
+      } catch(_) { return []; }
     }
 
     // Context menu helpers
@@ -1599,7 +1652,9 @@
         } else if (e.target === qs('#ontoSaveBtn')) {
           try {
             if (!activeOntologyIri) { alert('Select an ontology to save.'); return; }
-            const ttl = toTurtle(activeOntologyIri);
+            // Compute auto linked_by pairs from imports
+            const pairs = await computeLinkedByPairs(activeOntologyIri);
+            const ttl = toTurtle(activeOntologyIri, pairs);
             const res = await fetch(`/api/ontology/save?graph=${encodeURIComponent(activeOntologyIri)}`, { method: 'POST', headers: { 'Content-Type': 'text/turtle' }, body: ttl });
             const json = await res.json().catch(()=>({}));
             if (res.ok) alert('Saved to Fuseki'); else alert('Save failed: ' + (json.detail || res.status));
