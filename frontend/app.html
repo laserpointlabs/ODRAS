@@ -945,7 +945,11 @@
       const lines = [
         '@prefix owl: <http://www.w3.org/2002/07/owl#> .',
         '@prefix rdfs: <http://www.w3.org/2000/01/rdf-schema#> .',
-        `\n<${graphIri}> a owl:Ontology ; rdfs:label "${(localStorage.getItem('onto_model_name')||'').replace(/\\/g,'\\\\').replace(/"/g,'\\"')}" .\n`
+        (()=>{ try {
+          const labels = loadOntologyLabelMap();
+          const lbl = labels[graphIri] || (activeOntologyIri === graphIri ? (localStorage.getItem('onto_model_name')||'') : (graphIri.split('/').pop()||graphIri));
+          return `\n<${graphIri}> a owl:Ontology ; rdfs:label "${String(lbl||'').replace(/\\/g,'\\\\').replace(/"/g,'\\"')}" .\n`;
+        } catch(_) { return `\n<${graphIri}> a owl:Ontology .\n`; } })()
       ];
       // Include owl:imports from local storage
       try {
@@ -1461,10 +1465,12 @@
             const name = prompt('Rename ontology label', current);
             if (!name || name.trim() === current) return;
             try {
-              fetch('/api/ontologies/label', { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ graph: li.dataset.iri, label: name.trim() }) })
-                .then(()=>{
+              const payload = { graph: li.dataset.iri, label: name.trim() };
+              fetch('/api/ontologies/label', { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) })
+                .then(async (res) => {
+                  if (!res.ok) throw new Error('rename failed');
                   const newLabel = name.trim();
-                  row.querySelector('.node-label').textContent = newLabel; li.dataset.label = newLabel;
+                  row.querySelector('.node-label').textContent = newLabel; li.dataset.label = newLabel; saveOntologyLabel(li.dataset.iri, newLabel);
                   if (activeOntologyIri === li.dataset.iri) {
                     localStorage.setItem('onto_model_name', newLabel);
                     try {
@@ -1473,10 +1479,14 @@
                       attrs.displayLabel = newLabel;
                       localStorage.setItem('onto_model_attrs', JSON.stringify(attrs));
                     } catch(_) {}
+                    updateOntoGraphLabel();
+                    // Immediately reflect in Ontology tree view without a full refresh
+                    try { refreshOntologyTree(); } catch(_) {}
                   }
-                  updateOntoGraphLabel();
+                  // Refresh discovery so main tree picks up new label from Fuseki
+                  await renderTree(project);
                 })
-                .catch(()=>{});
+                .catch(()=>{ alert('Rename failed'); });
             } catch(_) {}
           }
         };
@@ -1514,13 +1524,14 @@
         const res = await fetch(`/api/ontologies${project?.id ? `?project=${encodeURIComponent(project.id)}` : ''}`);
         const json = await res.json();
         const onts = Array.isArray(json.ontologies) ? json.ontologies : [];
+        const labelsMap = loadOntologyLabelMap();
         const ontoItems = onts.map((o, idx) => {
           const li = makeItem(
             `ontology-${idx}-${o.graphIri}`,
-            o.label || o.graphIri,
+            (labelsMap[o.graphIri] || o.label || o.graphIri),
             'onto',
             [],
-            { nodeType: 'ontology', iri: o.graphIri, label: (o.label || o.graphIri) }
+            { nodeType: 'ontology', iri: o.graphIri, label: (labelsMap[o.graphIri] || o.label || o.graphIri) }
           );
           // Enable dragging this ontology into the Imports node
           const row = li.querySelector('.node-row');
@@ -1832,6 +1843,10 @@
     }
     function attrsFromModel() {
       try { return JSON.parse(localStorage.getItem('onto_model_attrs') || '{}'); } catch(_) { return {}; }
+    }
+    function loadOntologyLabelMap() { try { return JSON.parse(localStorage.getItem('onto_label_map') || '{}'); } catch(_) { return {}; } }
+    function saveOntologyLabel(graphIri, label) {
+      try { const m = loadOntologyLabelMap(); m[graphIri] = label; localStorage.setItem('onto_label_map', JSON.stringify(m)); } catch(_) {}
     }
     function saveGraphToLocal(graphIri) {
       if (!ontoState.cy) return;

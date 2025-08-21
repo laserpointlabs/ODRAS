@@ -302,7 +302,8 @@ async def relabel_ontology(body: Dict):
             f"WHERE  {{ GRAPH <{graph}> {{ ?o a owl:Ontology . OPTIONAL {{ ?o rdfs:label ?old }} }} }}\n"
         )
         headers = {"Content-Type": "application/sparql-update"}
-        r = requests.post(update_url, data=sparql.encode("utf-8"), headers=headers, timeout=20)
+        auth = (s.fuseki_user, s.fuseki_password) if s.fuseki_user and s.fuseki_password else None
+        r = requests.post(update_url, data=sparql.encode("utf-8"), headers=headers, timeout=20, auth=auth)
         if 200 <= r.status_code < 300:
             return {"graphIri": graph, "label": label}
         raise HTTPException(status_code=500, detail=f"Fuseki returned {r.status_code}: {r.text}")
