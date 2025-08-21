@@ -1069,7 +1069,7 @@
         if (!ontoState.cy || !activeOntologyIri) return;
         const visible = loadVisibleImports(activeOntologyIri);
         // Remove overlays for imports no longer visible
-        ontoState.cy.elements('.imported').forEach(el => { if (!visible.has(el.data('importSource') || '')) el.remove(); });
+        ontoState.cy.elements('.imported, .imported-equivalence').forEach(el => { if (!visible.has(el.data('importSource') || '')) el.remove(); });
         // Add overlays for newly visible imports
         for (const imp of Array.from(visible)) {
           const existing = ontoState.cy.elements('.imported').filter(e => (e.data('importSource') || '') === imp);
@@ -1100,6 +1100,23 @@
           });
           // Make overlays non-interactive
           added.forEach(el => { try { el.selectable(false); el.grabbable(false); el.locked(true); } catch(_) {} });
+
+          // Add owl:equivalentClass visual links between base and imported nodes (by label/local name)
+          try {
+            const baseClasses = ontoState.cy.nodes().filter(n => (n.data('type')||'class')==='class' && !n.hasClass('imported'));
+            const imported = ontoState.cy.nodes().filter(n => (n.data('type')||'class')==='class' && n.hasClass('imported') && (n.data('importSource')||'')===imp);
+            const byKey = (s)=>String(s||'').trim().toLowerCase();
+            const baseMap = new Map(); baseClasses.forEach(n => baseMap.set(byKey(n.data('label')||n.id()), n));
+            let idx2 = 0;
+            imported.forEach(n => {
+              const key = byKey(n.data('label')||n.id());
+              const base = baseMap.get(key);
+              if (base) {
+                const eid = `impEq${Date.now()}_${idx2++}`;
+                ontoState.cy.add({ group: 'edges', data: { id: eid, source: base.id(), target: n.id(), predicate: 'equivalentClass', type: 'objectProperty', importSource: imp }, classes: 'imported imported-equivalence' });
+              }
+            });
+          } catch(_) {}
         }
         // Do not persist imported overlays to base local storage
         refreshOntologyTree();
