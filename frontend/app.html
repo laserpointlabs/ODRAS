@@ -964,8 +964,9 @@
         iriMap[id] = iri;
         return iri;
       }
-      // Classes and data properties
+      // Classes and data properties (exclude imported overlays)
       nodes.forEach(n => {
+        if (n.hasClass && n.hasClass('imported')) return;
         const t = n.data('type')||'class';
         const iri = nodeIri(n);
         const label = (n.data('label')||'').replace(/\\/g,'\\\\').replace(/"/g,'\\"');
@@ -985,6 +986,7 @@
       // Object properties from edges
       const existingEquiv = new Set();
       edges.forEach(e => {
+        if (e.hasClass && (e.hasClass('imported') || e.hasClass('imported-equivalence'))) return;
         const s = e.source(); const t = e.target();
         const pred = (e.data('predicate')||'relatedTo').replace(/\\/g,'\\\\').replace(/"/g,'\\"');
         const propIri = `${graphIri}#${slugId(pred)}`;
@@ -1206,9 +1208,31 @@
     function importOntologyJSON(obj) {
       ensureOntologyInitialized();
       if (!obj || !Array.isArray(obj.nodes) || !Array.isArray(obj.edges)) return;
-      ontoState.cy.elements().remove();
-      ontoState.cy.add(obj.nodes.map(n => ({ group: 'nodes', data: n.data, position: n.position })));
-      ontoState.cy.add(obj.edges.map(e => ({ group: 'edges', data: e.data })));
+      // Clear only base elements, keep imported overlays intact
+      ontoState.cy.elements(':not(.imported):not(.imported-equivalence)').remove();
+      // Migration guard: filter out any overlays accidentally saved to JSON
+      const isOverlayNode = (n) => {
+        try {
+          const d = (n && n.data) ? n.data : {};
+          const id = String(d.id || '');
+          const cls = String(n.classes || d.classes || '');
+          return !!d.importSource || id.startsWith('imp:') || cls.includes('imported');
+        } catch(_) { return false; }
+      };
+      const baseNodes = (obj.nodes || []).filter(n => !isOverlayNode(n));
+      const baseNodeIds = new Set(baseNodes.map(n => (n.data && n.data.id) || ''));
+      const baseEdges = (obj.edges || []).filter(e => {
+        try {
+          const d = (e && e.data) ? e.data : {};
+          const cls = String(e.classes || d.classes || '');
+          if (d.importSource || cls.includes('imported')) return false;
+          if (String(d.predicate || '').toLowerCase() === 'equivalentclass') return false;
+          return baseNodeIds.has(d.source) && baseNodeIds.has(d.target);
+        } catch(_) { return false; }
+      });
+      // Add back base nodes and edges only
+      ontoState.cy.add(baseNodes.map(n => ({ group: 'nodes', data: n.data, position: n.position })));
+      ontoState.cy.add(baseEdges.map(e => ({ group: 'edges', data: e.data })));
       ontoState.cy.fit();
       refreshOntologyTree();
       persistOntologyToLocalStorage();
