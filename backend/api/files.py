@@ -15,6 +15,7 @@ from pydantic import BaseModel, Field
 from ..services.config import Settings
 from ..services.file_storage import FileStorageService
 from ..services.persistence import PersistenceLayer
+from ..main import get_user  # reuse auth dependency
 
 logger = logging.getLogger(__name__)
 
@@ -87,6 +88,7 @@ async def upload_file(
     project_id: Optional[str] = Form(None),
     tags: Optional[str] = Form(None),  # JSON string of tags
     storage_service: FileStorageService = Depends(get_file_storage_service),
+    user: Dict = Depends(get_user),
 ):
     """
     Upload a file to the storage backend.
@@ -114,12 +116,14 @@ async def upload_file(
                 logger.warning(f"Invalid JSON in tags parameter: {tags}")
 
         # Store file
+        # Attach minimal ownership metadata
+        owner = user.get("username") if isinstance(user, dict) else None
         result = await storage_service.store_file(
             content=content,
             filename=file.filename or "unknown",
             content_type=file.content_type,
             project_id=project_id,
-            tags=file_tags,
+            tags={**file_tags, "doc_type": "requirements", "owner": owner},
         )
 
         if result["success"]:
