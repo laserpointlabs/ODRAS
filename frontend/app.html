@@ -385,6 +385,39 @@
         <section id="wb-files" class="workbench">
           <h2>File Management</h2>
           <div class="muted">Upload requirements and knowledge docs (MinIO).</div>
+          <div class="files-toolbar" style="display:flex; gap:8px; align-items:center; margin:10px 0; flex-wrap:wrap;">
+            <label class="muted" for="filesDocType">Type</label>
+            <select id="filesDocType" style="background:#0b1220; color:#e5e7eb; border:1px solid var(--border); border-radius:6px; padding:6px;">
+              <option value="">All</option>
+              <option value="requirements">Requirements</option>
+              <option value="knowledge">Knowledge</option>
+              <option value="unknown">Unknown</option>
+            </select>
+            <label class="muted" for="filesStatus">Status</label>
+            <select id="filesStatus" style="background:#0b1220; color:#e5e7eb; border:1px solid var(--border); border-radius:6px; padding:6px;">
+              <option value="">Any</option>
+              <option value="new">New</option>
+              <option value="ingested">Ingested</option>
+              <option value="embedded">Embedded</option>
+            </select>
+            <input id="filesTags" type="text" placeholder="tags (comma)" style="background:#0b1220; color:#e5e7eb; border:1px solid var(--border); border-radius:6px; padding:6px; min-width:200px;" />
+            <button class="btn" id="filesRefreshBtn" title="Refresh">Refresh</button>
+          </div>
+
+          <div class="card" style="margin-top:8px;">
+            <div class="muted">Upload or import by URL</div>
+            <div style="display:flex; gap:8px; align-items:center; margin-top:8px; flex-wrap:wrap;">
+              <input type="file" id="fileUploadInput" multiple />
+              <input id="fileUrlInput" type="url" placeholder="https://example.com/doc.pdf" style="background:#0b1220; color:#e5e7eb; border:1px solid var(--border); border-radius:6px; padding:6px; min-width:320px;" />
+              <button class="btn" id="fileUrlImportBtn">Import URL</button>
+            </div>
+            <div id="uploadPreview" class="muted" style="margin-top:6px;"></div>
+          </div>
+
+          <div class="card" style="margin-top:10px;">
+            <div class="muted" style="margin-bottom:6px;">Library</div>
+            <div id="filesList" style="display:grid; gap:6px;"></div>
+          </div>
         </section>
         <section id="wb-embedding" class="workbench">
           <h2>Embedding</h2>
