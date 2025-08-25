@@ -289,6 +289,11 @@
           </nav>
         </div>
       </aside>
+      <!-- Project context menu -->
+      <div id="projectContextMenu" style="position:absolute; display:none; background: var(--panel); border: 1px solid var(--border); border-radius: 8px; padding:4px; z-index: 9999; min-width: 180px;">
+        <button id="projArchiveBtn" class="btn" style="width:100%; text-align:left; background:none; border:none; padding:8px; color:var(--text);">Archive Project</button>
+        <button id="projDeleteBtn" class="btn" style="width:100%; text-align:left; background:none; border:none; padding:8px; color:#ef4444;">Delete Project</button>
+      </div>
 
       <div class="resizer" id="resizer" aria-hidden="true"></div>
 
@@ -1417,15 +1422,27 @@
         const name = prompt('Project name'); if (!name) return;
         const token = localStorage.getItem(tokenKey);
         const res = await fetch('/api/projects', { method:'POST', headers:{'Content-Type':'application/json', Authorization: 'Bearer ' + token}, body: JSON.stringify({ name }) });
-        try {
-          if (res.ok) {
-            const js = await res.json().catch(()=>({}));
-            const proj = js.project || js;
-            const pid = (proj && (proj.id || proj.project_id || proj.projectId)) || '';
-            if (pid) localStorage.setItem('active_project_id', pid);
-          }
-        } catch(_) {}
-        await loadProjects();
+        let pid = '';
+        let pname = name;
+        if (res.ok) {
+          const js = await res.json().catch(()=>({}));
+          const proj = js.project || js;
+          pid = (proj && (proj.id || proj.project_id || proj.projectId)) || '';
+          pname = (proj && proj.name) || name;
+          if (pid) try { localStorage.setItem('active_project_id', pid); } catch(_) {}
+        }
+        // Reload projects, select the created one, and render it
+        const pr = await fetch('/api/projects', { headers: { Authorization: 'Bearer ' + token }}).then(r=>r.json()).catch(()=>({projects:[]}));
+        const raw = pr.projects || [];
+        const list = raw.map(p => ({ id: p.id || p.project_id || p.projectId, name: p.name || p.project_name || 'Project' })).filter(p => !!p.id);
+        const sel = qs('#projectSelect2');
+        if (sel) {
+          sel.innerHTML = list.map(p => `<option value="${p.id}">${p.name}</option>`).join('');
+          if (pid && list.find(p => p.id === pid)) sel.value = pid; else if (list.length) sel.value = list[0].id;
+          sel.disabled = !list.length;
+        }
+        const selected = pid ? { id: pid, name: pname } : (list[0] || { id: null, name: '' });
+        await renderTree(selected);
       };
     })();
     ['#projectSelect2'].forEach(id => {
@@ -1459,10 +1476,14 @@
           const sel = qs('#projectSelect2');
           if (sel && list.length) {
             sel.innerHTML = list.map(p => `<option value="${p.id}">${p.name}</option>`).join('');
-            sel.value = list[list.length - 1].id;
-            try { localStorage.setItem('active_project_id', list[list.length - 1].id); } catch(_) {}
+            const js = await res.json().catch(()=>({}));
+            const proj = js.project || js;
+            const pid = (proj && (proj.id || proj.project_id || proj.projectId)) || list[list.length - 1].id;
+            sel.value = pid;
+            try { localStorage.setItem('active_project_id', pid); } catch(_) {}
             sel.disabled = false;
-            await renderTree(list[list.length - 1]);
+            const selected = list.find(p => p.id === pid) || list[list.length - 1];
+            await renderTree(selected);
           }
         }
       });
@@ -1695,6 +1716,57 @@
 
       const projectDisplay = (project && (project.name || project.id)) ? (project.name || project.id) : '';
       const projectInfo = makeItem('project-info', `Project: ${projectDisplay}`, 'folder');
+      // Enable delete on main tree top node when project is selected
+      try {
+        const row = projectInfo.querySelector('.node-row');
+        if (row && project && (project.id || project.project_id)) {
+          // Context menu binding
+          row.oncontextmenu = (ev) => {
+            ev.preventDefault();
+            const menu = qs('#projectContextMenu'); if (!menu) return;
+            menu.style.display = 'block';
+            menu.style.left = ev.pageX + 'px';
+            menu.style.top = ev.pageY + 'px';
+            const hide = () => { menu.style.display = 'none'; document.removeEventListener('click', hide, { capture: true }); };
+            setTimeout(() => { document.addEventListener('click', hide, { capture: true }); }, 0);
+            const pid = project.id || project.project_id;
+            const token = localStorage.getItem(tokenKey);
+            const archiveBtn = qs('#projArchiveBtn');
+            const deleteBtn = qs('#projDeleteBtn');
+            if (archiveBtn) archiveBtn.onclick = async () => {
+              try {
+                const res = await fetch(`/api/projects/${encodeURIComponent(pid)}/archive`, { method: 'POST', headers: { Authorization: 'Bearer ' + token }});
+                if (res.ok) { try { localStorage.removeItem('active_project_id'); } catch(_) {} await loadProjects(); }
+                else { const t = await res.text().catch(()=>String(res.status)); alert('Archive failed: ' + t); }
+              } finally { hide(); }
+            };
+            if (deleteBtn) deleteBtn.onclick = async () => {
+              try {
+                if (!confirm('Delete this project? This does not delete external artifacts.')) return;
+                const res = await fetch(`/api/projects/${encodeURIComponent(pid)}`, { method: 'DELETE', headers: { Authorization: 'Bearer ' + token }});
+                if (res.ok) { try { localStorage.removeItem('active_project_id'); } catch(_) {} await loadProjects(); }
+                else { const t = await res.text().catch(()=>String(res.status)); alert('Delete failed: ' + t); }
+              } finally { hide(); }
+            };
+          };
+          row.onkeydown = async (e) => {
+            if (e.key === 'Delete' || e.key === 'Backspace') {
+              e.preventDefault();
+              const pid = project.id || project.project_id;
+              const token = localStorage.getItem(tokenKey);
+              if (!confirm('Delete this project? This does not delete external artifacts.')) return;
+              const res = await fetch(`/api/projects/${encodeURIComponent(pid)}`, { method: 'DELETE', headers: { Authorization: 'Bearer ' + token }});
+              if (res.ok) {
+                try { localStorage.removeItem('active_project_id'); } catch(_) {}
+                await loadProjects();
+              } else {
+                const t = await res.text().catch(()=>String(res.status));
+                alert('Delete failed: ' + t);
+              }
+            }
+          };
+        }
+      } catch(_) {}
       const docsReqNode = makeItem('documents-requirements', 'Requirements Documents', 'folder', docReqItems);
       const docsKnowNode = makeItem('documents-knowledge', 'Knowledge Documents', 'folder', docKnowItems);
       const docsChildren = [];
@@ -1884,6 +1956,7 @@
         } catch(_) { text.textContent = 'Ontology'; }
       })();
       row.appendChild(twist); row.appendChild(text); rootItem.appendChild(row); rootItem.appendChild(ul);
+      // (Do not delete projects here; project deletion is handled in the main tree top node in renderTree)
       root.innerHTML = '';
       root.appendChild(rootItem);
 

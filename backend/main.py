@@ -126,6 +126,46 @@ def create_project(body: Dict, user=Depends(get_user)):
         raise HTTPException(status_code=500, detail=str(e))
 
 
+@app.delete("/api/projects/{project_id}")
+def delete_project(project_id: str, user=Depends(get_user)):
+    """Hard delete a project and memberships. Does NOT delete external artifacts.
+
+    For now, we perform a hard delete from the DB (projects, memberships). Artifacts like ontologies are not deleted;
+    they will simply not show in the user's project tree anymore. We can later implement a migration step to reassign
+    artifacts to the user or an archive space.
+    """
+    try:
+        # Ensure user is a member/owner; for now, require any membership
+        if not db.is_user_member(project_id=project_id, user_id=user["user_id"]):
+            raise HTTPException(status_code=403, detail="Not a member of project")
+        conn = db._conn()
+        try:
+            with conn.cursor() as cur:
+                cur.execute("DELETE FROM public.project_members WHERE project_id = %s", (project_id,))
+                cur.execute("DELETE FROM public.projects WHERE project_id = %s", (project_id,))
+                conn.commit()
+        finally:
+            db._return(conn)
+        return {"deleted": project_id}
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@app.post("/api/projects/{project_id}/archive")
+def archive_project(project_id: str, user=Depends(get_user)):
+    try:
+        if not db.is_user_member(project_id=project_id, user_id=user["user_id"]):
+            raise HTTPException(status_code=403, detail="Not a member of project")
+        db.archive_project(project_id)
+        return {"archived": project_id}
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
 @app.on_event("startup")
 async def on_startup():
     # Ensure services are initialized lazily via Settings

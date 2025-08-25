@@ -116,6 +116,15 @@ class DatabaseService:
         finally:
             self._return(conn)
 
+    def archive_project(self, project_id: str) -> None:
+        conn = self._conn()
+        try:
+            with conn.cursor() as cur:
+                cur.execute("UPDATE public.projects SET is_active = FALSE WHERE project_id = %s", (project_id,))
+                conn.commit()
+        finally:
+            self._return(conn)
+
     # Ontologies registry
     def add_ontology(self, project_id: str, graph_iri: str, label: Optional[str], role: str = "base") -> Dict[str, Any]:
         conn = self._conn()
