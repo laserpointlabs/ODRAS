@@ -577,6 +577,7 @@
           if (ontoState.cy) {
             // Always clear canvas when switching; then load saved if present
             try { ontoState.cy.elements().remove(); } catch(_) {}
+            // If no saved local graph, create a minimal empty model name node into properties state only
             loadGraphFromLocal(iri);
           }
           // Show model-level props when nothing selected
@@ -1451,6 +1452,8 @@
         const pid = e.target.value;
         try { localStorage.setItem('active_project_id', pid); } catch(_) {}
         const token = localStorage.getItem(tokenKey);
+        // Save current ontology canvas before switching projects
+        try { if (ontoState && ontoState.cy && activeOntologyIri) saveGraphToLocal(activeOntologyIri); } catch(_) {}
         const res = await fetch('/api/projects', { headers: { Authorization: 'Bearer ' + token }});
         const json = await res.json();
         const raw = json.projects || [];
@@ -1482,6 +1485,8 @@
             sel.value = pid;
             try { localStorage.setItem('active_project_id', pid); } catch(_) {}
             sel.disabled = false;
+            // Save current ontology canvas before switching projects
+            try { if (ontoState && ontoState.cy && activeOntologyIri) saveGraphToLocal(activeOntologyIri); } catch(_) {}
             const selected = list.find(p => p.id === pid) || list[list.length - 1];
             await renderTree(selected);
           }
@@ -1589,7 +1594,12 @@
       try {
         const pid = project && (project.id || project.project_id);
         const savedIri = localStorage.getItem(`onto_active_iri__${pid}`);
-        if (savedIri) { activeOntologyIri = savedIri; updateOntoGraphLabel(); }
+        if (savedIri) {
+          activeOntologyIri = savedIri;
+          updateOntoGraphLabel();
+          // Attempt to load saved canvas for this active IRI
+          try { if (ontoState.cy) { ontoState.cy.elements().remove(); loadGraphFromLocal(savedIri); } } catch(_) {}
+        }
       } catch(_) {}
       const root = qs('#treeRoot');
       const makeItem = (id, label, iconCls, children = [], dataAttrs = {}) => {
