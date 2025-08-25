@@ -294,11 +294,12 @@ async def relabel_ontology(body: Dict):
     try:
         s = Settings()
         update_url = f"{s.fuseki_url.rstrip('/')}/update"
+        safe_label = label.replace("\\", "\\\\").replace('"', '\\"')
         sparql = (
             "PREFIX owl: <http://www.w3.org/2002/07/owl#>\n"
             "PREFIX rdfs: <http://www.w3.org/2000/01/rdf-schema#>\n"
             f"DELETE {{ GRAPH <{graph}> {{ ?o rdfs:label ?old }} }}\n"
-            f"INSERT {{ GRAPH <{graph}> {{ ?o rdfs:label \"{label.replace('\\', '\\\\').replace('\"', '\\\"')}\" }} }}\n"
+            f"INSERT {{ GRAPH <{graph}> {{ ?o rdfs:label \"{safe_label}\" }} }}\n"
             f"WHERE  {{ GRAPH <{graph}> {{ ?o a owl:Ontology . OPTIONAL {{ ?o rdfs:label ?old }} }} }}\n"
         )
         headers = {"Content-Type": "application/sparql-update"}
