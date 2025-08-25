@@ -25,6 +25,10 @@
       --onto-tree-w-min: 180px;
       --onto-tree-w-max: 520px;
       --onto-tree-collapsed-w: 40px;
+      --onto-props-w: 300px;
+      --onto-props-w-min: 200px;
+      --onto-props-w-max: 520px;
+      --onto-props-collapsed-w: 40px;
       --toolbar-h: 48px;
       --bottombar-h: 32px;
     }
@@ -103,8 +107,24 @@
     .muted { color: var(--muted); }
     /* Ontology Workbench */
     .ontology-toolbar { display: flex; gap: 8px; align-items: center; margin: 8px 0 12px 0; }
-    #cy { width: 100%; height: calc(100vh - var(--toolbar-h) - var(--bottombar-h) - 140px); min-height: 360px; border: 1px solid var(--border); border-radius: 8px; background: #0a0f1f; }
-    .onto-layout { display: grid; grid-template-columns: var(--onto-tree-w) 6px var(--onto-iconbar-w) 1fr; gap: 0; align-items: stretch; }
+    #cy { width: 100%; min-width: 0; height: calc(100vh - var(--toolbar-h) - var(--bottombar-h) - 140px); min-height: 360px; border: 1px solid var(--border); border-radius: 8px; background: #0a0f1f; }
+    .onto-layout { display: grid; grid-template-columns: var(--onto-tree-w) var(--onto-tree-divider-w, 6px) var(--onto-iconbar-w) minmax(0, 1fr) var(--onto-props-divider-w, 6px) var(--onto-props-w); gap: 0; align-items: stretch; overflow: hidden; width: 100%; }
+    /* Inline editor for canvas labels */
+    #ontoInlineEdit { position: fixed; z-index: 9999; display: none; background: #0b1220; color: #e5e7eb; border: 1px solid var(--accent); border-radius: 6px; padding: 4px 6px; font: inherit; }
+    /* Fullscreen adjustments */
+    #wb-ontology:fullscreen #cy { height: calc(100vh - 140px); }
+    /* Context menu */
+    .onto-menu { position: fixed; z-index: 9999; display: none; min-width: 160px; background: #0b1220; color: #e5e7eb; border: 1px solid var(--border); border-radius: 8px; box-shadow: 0 8px 24px rgba(0,0,0,.4); }
+    .onto-menu button { width: 100%; background: transparent; color: #e5e7eb; border: none; text-align: left; padding: 8px 10px; cursor: pointer; }
+    .onto-menu button:hover { background: #0f172a; }
+    .connect-source { outline: 2px dashed var(--accent); outline-offset: 2px; }
+    /* Pin children to explicit grid columns so hiding resizers doesn't shift layout */
+    .onto-layout > .onto-tree { grid-column: 1; }
+    .onto-layout > #ontoResizer { grid-column: 2; }
+    .onto-layout > .onto-iconbar { grid-column: 3; }
+    .onto-layout > #cy { grid-column: 4; }
+    .onto-layout > #ontoPropsResizer { grid-column: 5; }
+    .onto-layout > .onto-props { grid-column: 6; }
     .onto-iconbar { background: var(--panel); border: 1px solid var(--border); border-radius: 8px; padding: 8px 6px; display: flex; flex-direction: column; align-items: center; gap: 8px; height: calc(100vh - var(--toolbar-h) - var(--bottombar-h) - 140px); }
     .onto-icon { width: 40px; height: 40px; border-radius: 8px; border: 1px solid var(--border); background: var(--panel-2); display: grid; place-items: center; color: var(--muted); cursor: grab; }
     .onto-icon svg { width: 22px; height: 22px; stroke: currentColor; }
@@ -126,19 +146,35 @@
     .onto-resizer { width: 6px; cursor: col-resize; background: transparent; position: relative; }
     .onto-resizer::after { content: ""; position: absolute; inset: 0; }
     /* Collapsed tree mode */
-    #wb-ontology.onto-tree-collapsed .onto-tree {
-      width: var(--onto-tree-collapsed-w);
-      min-width: var(--onto-tree-collapsed-w);
-      max-width: var(--onto-tree-collapsed-w);
-    }
+    #wb-ontology.onto-tree-collapsed .onto-tree { overflow: hidden; }
     #wb-ontology.onto-tree-collapsed .onto-tree-header .muted { display: none; }
     #wb-ontology.onto-tree-collapsed .onto-tree-scroll { display: none; }
+    /* Keep the collapse chevron visible and prevent overlap */
+    #wb-ontology.onto-tree-collapsed .onto-tree { z-index: 2; }
+    .onto-iconbar { z-index: 1; }
     #wb-ontology.onto-tree-collapsed #ontoResizer { display: none; }
-    #wb-ontology.onto-tree-collapsed .onto-layout { grid-template-columns: var(--onto-tree-collapsed-w) var(--onto-iconbar-w) 1fr; }
+    /* Collapse behavior: shrink tree width to rail without affecting tools/canvas/props */
+    #wb-ontology.onto-tree-collapsed { --onto-tree-w: var(--onto-tree-collapsed-w); --onto-tree-divider-w: 0px; }
     .iconbtn { background: #0b1220; color: var(--text); border: 1px solid var(--border); width: 28px; height: 28px; border-radius: 8px; display: grid; place-items: center; cursor: pointer; }
     .iconbtn svg { width: 16px; height: 16px; stroke: currentColor; transition: transform 160ms ease; }
-    #wb-ontology.onto-tree-collapsed #ontoTreeToggleIcon { transform: rotate(-90deg); }
+    /* Left panel chevron: right when collapsed, left when expanded */
+    #wb-ontology.onto-tree-collapsed #ontoTreeToggleIcon { transform: rotate(0deg); }
+    #wb-ontology:not(.onto-tree-collapsed) #ontoTreeToggleIcon { transform: rotate(180deg); }
     #wb-ontology.onto-tree-collapsed .onto-tree-header { padding: 4px !important; justify-content: center !important; }
+
+    /* Properties panel */
+    .onto-props { border: 1px solid var(--border); background: var(--panel-2); border-radius: 8px; display: grid; grid-template-rows: auto 1fr; min-width: 0; }
+    .onto-props-header { padding: 8px; border-bottom: 1px solid var(--border); display: flex; gap: 8px; align-items: center; position: sticky; top: 0; z-index: 1; background: var(--panel-2); justify-content: space-between; }
+    .onto-props-scroll { overflow: auto; padding: 8px; }
+    #wb-ontology.onto-props-collapsed .onto-props-header .muted { display: none; }
+    #wb-ontology.onto-props-collapsed .onto-props-header { padding: 4px !important; justify-content: center !important; }
+    #wb-ontology.onto-props-collapsed .onto-props-scroll { display: none; }
+    #wb-ontology.onto-props-collapsed #ontoPropsResizer { display: none; }
+    #wb-ontology.onto-props-collapsed { --onto-props-w: var(--onto-props-collapsed-w); --onto-props-divider-w: 0px; }
+    #wb-ontology.onto-props-collapsed .onto-props { width: var(--onto-props-collapsed-w); min-width: var(--onto-props-collapsed-w); max-width: var(--onto-props-collapsed-w); }
+    /* Right panel chevron: left when collapsed, right when expanded */
+    #wb-ontology.onto-props-collapsed #ontoPropsToggleIcon { transform: rotate(180deg); }
+    #wb-ontology:not(.onto-props-collapsed) #ontoPropsToggleIcon { transform: rotate(0deg); }
     .login {
       display: grid; place-items: center; height: calc(100vh - var(--toolbar-h) - var(--bottombar-h));
     }
@@ -261,18 +297,24 @@
         <section id="wb-ontology" class="workbench active">
           <h2>Ontology Workbench</h2>
           <div class="ontology-toolbar">
+            <span id="ontoGraphLabel" class="muted" style="max-width:55%; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">No graph selected</span>
             <div class="spacer"></div>
             <button class="btn" id="ontoLayoutBtn" title="Auto layout">Layout</button>
+            <button class="btn" id="ontoFitBtn" title="Fit to view">Fit</button>
+            <button class="btn" id="ontoFullscreenBtn" title="Enter fullscreen">Fullscreen</button>
+            <button class="btn" id="ontoDeleteBtn" title="Delete selected">Delete</button>
+            <button class="btn" id="ontoLinkIdenticalBtn" title="Link identical classes">Link</button>
+            <button class="btn" id="ontoSaveBtn" title="Save ontology to Fuseki">Save</button>
             <button class="btn" id="ontoImportBtn" title="Import graph JSON">Import</button>
             <button class="btn" id="ontoExportBtn" title="Export graph JSON">Export</button>
             <input type="file" id="ontoImportFile" accept="application/json" style="display:none" />
           </div>
-          <div class="onto-layout">
+          <div class="onto-layout" id="ontoLayoutSection">
             <aside class="onto-tree" aria-label="Ontology Tree">
               <div class="onto-tree-header" id="ontoTreeHeader" style="display:flex; justify-content:space-between; align-items:center;">
                 <div class="muted">Ontology</div>
                 <button class="iconbtn" id="ontoTreeToggle" title="Collapse">
-                  <svg id="ontoTreeToggleIcon" viewBox="0 0 24 24" fill="none" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M6 9l6 6 6-6"/></svg>
+                  <svg id="ontoTreeToggleIcon" viewBox="0 0 24 24" fill="none" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M9 6l6 6-6 6"/></svg>
                 </button>
               </div>
               <div class="onto-tree-scroll">
@@ -297,6 +339,47 @@
               </div>
             </aside>
             <div id="cy" role="application" aria-label="Ontology Graph Canvas"></div>
+            <div class="onto-resizer" id="ontoPropsResizer" aria-hidden="true"></div>
+            <aside class="onto-props" aria-label="Properties Panel">
+              <div class="onto-props-header" id="ontoPropsHeader">
+                <div class="muted">Properties</div>
+                <button class="iconbtn" id="ontoPropsToggle" title="Collapse">
+                  <svg id="ontoPropsToggleIcon" viewBox="0 0 24 24" fill="none" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M9 6l6 6-6 6"/></svg>
+                </button>
+              </div>
+              <div class="onto-props-scroll">
+                <form id="ontoPropsForm" style="display:grid; gap:8px;">
+                  <div>
+                    <label class="muted" for="propName">Name</label>
+                    <input id="propName" type="text" style="width:100%; background:#0b1220; color:#e5e7eb; border:1px solid var(--border); border-radius:6px; padding:6px;" />
+                  </div>
+                  <div>
+                    <label class="muted" for="propType">Type</label>
+                    <select id="propType" style="width:100%; background:#0b1220; color:#e5e7eb; border:1px solid var(--border); border-radius:6px; padding:6px;">
+                      <option value="class">Class</option>
+                      <option value="objectProperty">Object Property</option>
+                      <option value="dataProperty">Data Property</option>
+                      <option value="note">Note</option>
+                      <option value="model">Model</option>
+                    </select>
+                  </div>
+                  <div>
+                    <label class="muted" for="propAttrs">Attributes (JSON)</label>
+                    <textarea id="propAttrs" rows="6" style="width:100%; background:#0b1220; color:#e5e7eb; border:1px solid var(--border); border-radius:6px; padding:6px;"></textarea>
+                  </div>
+                  <div style="display:flex; gap:8px;">
+                    <button type="button" class="btn" id="propSaveBtn">Save</button>
+                    <span id="propSaveStatus" class="muted"></span>
+                  </div>
+                </form>
+              </div>
+            </aside>
+          </div>
+          <input id="ontoInlineEdit" type="text" />
+          <div id="ontoContextMenu" class="onto-menu">
+            <button id="menuAddRel">Add relationship</button>
+            <button id="menuAddDataProp">Add data property</button>
+            <button id="menuCancel">Cancel</button>
           </div>
         </section>
         <section id="wb-files" class="workbench">
@@ -364,11 +447,93 @@
     const qsa = (s, r = document) => Array.from(r.querySelectorAll(s));
 
     // Ontology workbench state
-    const ontoState = { cy: null, eh: null, connectMode: false, clickConnectFrom: null, nextId: 1, currentPredicateType: 'objectProperty' };
+    const ontoState = { cy: null, eh: null, connectMode: false, clickConnectFrom: null, nextId: 1, currentPredicateType: 'objectProperty', isCanvasActive: false };
+    let activeProject = null;
+    let activeOntologyIri = null;
+
+    function updateOntoGraphLabel() {
+      const el = qs('#ontoGraphLabel');
+      if (!el) return;
+      if (activeOntologyIri) {
+        el.textContent = 'Graph: ' + activeOntologyIri;
+        el.title = activeOntologyIri;
+      } else {
+        el.textContent = 'No graph selected';
+        el.title = '';
+      }
+    }
+
+    function slugify(str) {
+      try {
+        return String(str || '')
+          .toLowerCase()
+          .replace(/[^a-z0-9]+/g, '-')
+          .replace(/^-+|-+$/g, '') || 'ontology';
+      } catch (_) { return 'ontology'; }
+    }
+
+    function computeOntologyIri(projectId, name, version) {
+      const pid = encodeURIComponent(projectId || 'project');
+      const n = slugify(name || 'ontology');
+      const ver = version ? ('/v' + encodeURIComponent(version)) : '';
+      return `http://odras.local/onto/${pid}/${n}${ver}`;
+    }
+
+    function handleTreeSelection(li) {
+      if (!li || !li.dataset) return;
+      const type = li.dataset.nodeType || '';
+      if (type === 'ontology') {
+        const iri = li.dataset.iri;
+        if (iri) {
+          // Save previous active ontology canvas before switching
+          const prevIri = activeOntologyIri;
+          ensureOntologyInitialized();
+          if (ontoState.cy && prevIri) {
+            saveGraphToLocal(prevIri);
+          }
+          // Switch active ontology
+          activeOntologyIri = iri;
+          try {
+            const pid = (activeProject && activeProject.id) ? activeProject.id : 'default';
+            localStorage.setItem(`onto_active_iri__${pid}`, iri);
+            // Set model name for properties panel based on discovered label or IRI tail
+            const friendly = (li.dataset.label && li.dataset.label.trim()) || iri.split('/').pop() || iri;
+            localStorage.setItem('onto_model_name', friendly);
+            // Also store display label and graph in model attributes
+            let attrs = {};
+            try { attrs = JSON.parse(localStorage.getItem('onto_model_attrs') || '{}'); } catch(_) { attrs = {}; }
+            attrs.displayLabel = friendly;
+            attrs.graphIri = iri;
+            localStorage.setItem('onto_model_attrs', JSON.stringify(attrs));
+          } catch(_) {}
+          updateOntoGraphLabel();
+          // Load new graph from local storage if present
+          if (ontoState.cy) {
+            loadGraphFromLocal(iri);
+          }
+          // Show model-level props when nothing selected
+          updatePropertiesPanelFromSelection();
+          // Switch to Ontology workbench view
+          const ico = document.querySelector('.icon[data-wb="ontology"]');
+          if (ico && !document.querySelector('#wb-ontology.workbench.active')) {
+            ico.click();
+          }
+          // Reflect in hash for deep-linking
+          try {
+            const params = new URLSearchParams(location.hash.replace(/^#/, ''));
+            params.set('wb', 'ontology');
+            params.set('graph', encodeURIComponent(iri));
+            location.hash = params.toString();
+          } catch(_) {}
+        }
+      }
+    }
     function ensureOntologyInitialized() {
       if (ontoState.cy) return;
       const container = qs('#cy');
       if (!container) return;
+      // Make canvas focusable for keyboard events (Delete)
+      try { container.setAttribute('tabindex', '0'); container.style.outline = 'none'; } catch(_) {}
       try {
         if (window.cytoscape && (window.cytoscapeEdgehandles || window.edgehandles)) {
           const plugin = window.cytoscapeEdgehandles || window.edgehandles;
@@ -388,10 +553,17 @@
             'color': '#e5e7eb',
             'font-size': 12,
             'text-wrap': 'wrap',
-            'text-max-width': 140,
+            'text-max-width': 180,
             'text-valign': 'center',
             'text-halign': 'center'
           }},
+          { selector: 'node[type = "class"]', style: { 'width': 180, 'height': 56 } },
+          { selector: 'node[type = "dataProperty"]', style: {
+            'width': 160,
+            'height': 48,
+            'background-color': '#154e5a',
+            'border-color': '#2ea3b0'
+          } },
           { selector: 'edge', style: {
             'curve-style': 'bezier',
             'width': 2,
@@ -400,12 +572,26 @@
             'target-arrow-color': '#3b4a6b',
             'arrow-scale': 1,
             'label': 'data(predicate)',
+            'color': '#e5e7eb',
             'font-size': 10,
             'text-rotation': 'autorotate',
             'text-background-color': '#0b1220',
             'text-background-opacity': 0.6,
             'text-background-padding': 2
           }},
+          { selector: '.imported', style: {
+            'opacity': 0.55
+          }},
+          { selector: 'edge.imported', style: { 'line-style': 'dashed' } },
+          { selector: 'edge.imported-equivalence', style: {
+            'line-style': 'dotted',
+            'width': 1.5,
+            'line-color': '#60a5fa',
+            'label': '≡',
+            'color': '#9ca3af',
+            'font-size': 9,
+            'text-background-opacity': 0
+          } },
           { selector: 'node[type = "note"], .note', style: {
             'shape': 'round-rectangle',
             'background-color': '#2a1f0a',
@@ -416,9 +602,10 @@
             'color': '#f5e6cc',
             'font-size': 12,
             'text-wrap': 'wrap',
-            'text-max-width': 180,
+            'text-max-width': 220,
             'text-valign': 'center',
-            'text-halign': 'center'
+            'text-halign': 'center',
+            'width': 220, 'height': 80
           }},
           { selector: ':selected', style: {
             'border-color': '#60a5fa',
@@ -427,25 +614,77 @@
             'target-arrow-color': '#60a5fa'
           }}
         ],
-        elements: [
-          { data: { id: 'Class1', label: 'Class 1', type: 'class' } },
-          { data: { id: 'Class2', label: 'Class 2', type: 'class' } },
-          { data: { id: 'rel1', source: 'Class1', target: 'Class2', predicate: 'relatedTo' } }
-        ]
+        elements: []
       });
       window._cy = ontoState.cy;
-      ontoState.nextId = 3;
+      ontoState.nextId = 1;
+      // Focus canvas on interaction so Delete works reliably
+      ontoState.cy.on('tap', () => { try { container.focus(); } catch(_) {} });
+      ontoState.cy.on('select', () => { try { container.focus(); } catch(_) {} });
+      try { container.addEventListener('keydown', handleDeleteKey); } catch(_) {}
+
+      // Mark canvas active on any interaction
+      ontoState.cy.on('tap', () => { ontoState.isCanvasActive = true; });
 
       if (typeof ontoState.cy.edgehandles === 'function') {
         ontoState.eh = ontoState.cy.edgehandles({
           handleSize: 8,
+          handleNodes: 'node[type = "class"], node[type = "note"]',
+          handleColor: '#60a5fa',
+          handleOutlineColor: '#0b1220',
+          handleOutlineWidth: 2,
           toggleOffOnLeave: true,
-          enabled: false,
-          edgeParams: () => ({ data: { predicate: 'relatedTo', type: ontoState.currentPredicateType } })
+          enabled: true,
+          edgeParams: () => ({ data: { predicate: 'relatedTo', type: 'objectProperty' } })
         });
         ontoState.cy.on('ehcomplete', (event, sourceNode, targetNode, addedEdge) => {
-          // Update tree when an edge is created
-          requestAnimationFrame(refreshOntologyTree);
+          try {
+            const srcType = (sourceNode.data('type') || 'class');
+            const tgtType = (targetNode.data('type') || 'class');
+            const edgeType = (addedEdge && addedEdge.data('type')) || ontoState.currentPredicateType || 'objectProperty';
+            let invalid = false;
+            // Allow note -> class as 'note_for' (reverse if class->note used)
+            if ((srcType === 'note' && (tgtType === 'class' || tgtType === 'dataProperty')) || ((srcType === 'class' || srcType === 'dataProperty') && tgtType === 'note')) {
+              // Ensure direction note -> class
+              if ((srcType === 'class' || srcType === 'dataProperty') && tgtType === 'note') {
+                addedEdge.data('source', targetNode.id());
+                addedEdge.data('target', sourceNode.id());
+              }
+              addedEdge.data('predicate', 'note_for');
+              addedEdge.data('type', 'note');
+            } else {
+              // For object properties, only allow class→class
+              if (edgeType === 'objectProperty' && (srcType !== 'class' || tgtType !== 'class')) invalid = true;
+              // Disallow any other note edges
+              if (srcType === 'note' || tgtType === 'note') invalid = true;
+              if (invalid && addedEdge) { addedEdge.remove(); return; }
+            }
+          } catch(_) {}
+          requestAnimationFrame(() => { refreshOntologyTree(); persistOntologyToLocalStorage(); });
+        });
+        ontoState.cy.on('select unselect add remove data free', () => {
+          updatePropertiesPanelFromSelection();
+          persistOntologyToLocalStorage();
+        });
+        // Persist overlay positions when moved
+        ontoState.cy.on('free', 'node.imported', (ev) => {
+          try {
+            const n = ev.target; const imp = n.data('importSource');
+            if (!imp || !activeOntologyIri) return;
+            const curr = loadOverlayPositions(activeOntologyIri, imp);
+            curr[n.id()] = n.position();
+            saveOverlayPositions(activeOntologyIri, imp, curr);
+          } catch(_) {}
+        });
+        // Persist overlay positions when moved
+        ontoState.cy.on('free', 'node.imported', (ev) => {
+          try {
+            const n = ev.target; const imp = n.data('importSource');
+            if (!imp || !activeOntologyIri) return;
+            const curr = loadOverlayPositions(activeOntologyIri, imp);
+            curr[n.id()] = n.position();
+            saveOverlayPositions(activeOntologyIri, imp, curr);
+          } catch(_) {}
         });
       } else {
         ontoState.cy.on('tap', 'node', (ev) => {
@@ -457,25 +696,151 @@
             const from = ontoState.clickConnectFrom;
             const to = node.id();
             if (from !== to) {
-              ontoState.cy.add({ group: 'edges', data: { id: `e${Date.now()}`, source: from, target: to, predicate: 'relatedTo', type: 'objectProperty' } });
-              refreshOntologyTree();
+              const src = ontoState.cy.$(`#${from}`)[0];
+              const tgt = ontoState.cy.$(`#${to}`)[0];
+              const srcType = (src && (src.data('type')||'class')) || 'class';
+              const tgtType = (tgt && (tgt.data('type')||'class')) || 'class';
+              if (srcType !== 'note' && tgtType !== 'note' && srcType === 'class' && tgtType === 'class') {
+                ontoState.cy.add({ group: 'edges', data: { id: `e${Date.now()}`, source: from, target: to, predicate: 'relatedTo', type: 'objectProperty' } });
+                refreshOntologyTree();
+                persistOntologyToLocalStorage();
+              }
             }
             ontoState.clickConnectFrom = null;
           }
         });
+        ontoState.cy.on('select unselect add remove data free', () => {
+          updatePropertiesPanelFromSelection();
+          persistOntologyToLocalStorage();
+        });
       }
+
+      // Background click clears selection and shows model-level props
+      ontoState.cy.on('tap', (ev) => {
+        if (ev.target === ontoState.cy) {
+          ontoState.cy.$(':selected').unselect();
+          updatePropertiesPanelFromSelection();
+          hideMenu();
+          clearConnectState();
+        }
+      });
+
+      // Inline label editor on F2 or Enter when focused
+      ontoState.cy.on('cxttap', 'node', (ev) => {
+        const n = ev.target; const t = (n.data('type')||'class');
+        const rect = qs('#cy').getBoundingClientRect();
+        const rp = ev.renderedPosition || n.renderedPosition();
+        // Configure menu per node type
+        const menu = qs('#ontoContextMenu');
+        if (!menu) return;
+        const btnRel = qs('#menuAddRel');
+        const btnDP = qs('#menuAddDataProp');
+        if (t === 'note') {
+          if (btnRel) btnRel.textContent = 'Link to class/property';
+          if (btnDP) btnDP.style.display = 'none';
+        } else {
+          if (btnRel) btnRel.textContent = 'Add relationship';
+          if (btnDP) btnDP.style.display = 'block';
+        }
+        showMenuAt(rect.left + rp.x + 6, rect.top + rp.y + 6);
+        menu.dataset.nodeId = n.id();
+        menu.dataset.nodeType = t;
+      });
+      function showInlineEditor(target) {
+        const input = qs('#ontoInlineEdit'); if (!input) return;
+        const pos = target.renderedPosition();
+        const rect = qs('#cy').getBoundingClientRect();
+        const current = target.isNode() ? (target.data('label') || '') : (target.data('predicate') || '');
+        input.value = current;
+        input.style.left = (rect.left + pos.x - Math.min(100, rect.width*0.2)) + 'px';
+        input.style.top = (rect.top + pos.y - 12) + 'px';
+        input.style.display = 'block';
+        input.focus();
+        input.select();
+        function commit(save) {
+          if (save) {
+            const v = input.value.trim();
+            if (target.isNode()) target.data('label', v || current);
+            else target.data('predicate', v || current);
+            refreshOntologyTree();
+            persistOntologyToLocalStorage();
+          }
+          input.style.display = 'none';
+          input.onkeydown = null; input.onblur = null;
+        }
+        input.onkeydown = (e) => {
+          if (e.key === 'Enter') commit(true);
+          else if (e.key === 'Escape') commit(false);
+        };
+        input.onblur = () => commit(true);
+      }
+      ontoState.cy.on('keydown', 'node,edge', (ev) => {
+        if (ev.originalEvent && ev.originalEvent.key === 'F2') showInlineEditor(ev.target);
+      });
+      // Double-click to edit
+      ontoState.cy.on('dblclick', 'node,edge', (ev) => showInlineEditor(ev.target));
+
+      // Context menu actions
+      document.addEventListener('click', (e) => {
+        const menu = qs('#ontoContextMenu');
+        if (!menu) return;
+        if (e.target === qs('#menuCancel')) { hideMenu(); return; }
+        if (e.target === qs('#menuAddRel')) {
+          hideMenu();
+          const id = menu.dataset.nodeId; if (!id) return;
+          const node = ontoState.cy.$('#' + id)[0]; if (!node) return;
+          const t = menu.dataset.nodeType || 'class';
+          clearConnectState(); startConnectFrom(node); cmState.sourceType = t;
+          return;
+        }
+        if (e.target === qs('#menuAddDataProp')) {
+          hideMenu();
+          const id = menu.dataset.nodeId; if (!id) return;
+          const node = ontoState.cy.$('#' + id)[0]; if (!node) return;
+          // Add a default data property node near the class
+          const pos = node.position();
+          const pid = `DP${Date.now()}`;
+          const label = `Data Property ${Date.now()%1000}`;
+          ontoState.cy.add({ group: 'nodes', data: { id: pid, label, type: 'dataProperty' }, position: { x: pos.x + 120, y: pos.y } });
+          // Use objectProperty for the visual connector edge
+          ontoState.cy.add({ group: 'edges', data: { id: `edp${Date.now()}`, source: id, target: pid, predicate: label, type: 'objectProperty' } });
+          refreshOntologyTree(); persistOntologyToLocalStorage();
+          return;
+        }
+      });
+      // Clicking a target after 'Add relationship' completes the edge
+      ontoState.cy.on('tap', 'node', (ev) => {
+        const target = ev.target; if (!cmState.sourceId) return;
+        const tgtType = (target.data('type')||'class');
+        const source = ontoState.cy.$('#' + cmState.sourceId)[0]; if (!source) { clearConnectState(); return; }
+        const srcType = cmState.sourceType || (source.data('type')||'class');
+        if (source.id() !== target.id()) {
+          if (srcType === 'note' && (tgtType === 'class' || tgtType === 'dataProperty')) {
+            ontoState.cy.add({ group: 'edges', data: { id: `enote${Date.now()}`, source: source.id(), target: target.id(), predicate: 'note_for', type: 'note' } });
+            refreshOntologyTree(); persistOntologyToLocalStorage();
+          } else if (srcType === 'class' && tgtType === 'class') {
+            ontoState.cy.add({ group: 'edges', data: { id: `e${Date.now()}`, source: source.id(), target: target.id(), predicate: 'relatedTo', type: 'objectProperty' } });
+            refreshOntologyTree(); persistOntologyToLocalStorage();
+          }
+        }
+        source.removeClass('connect-source');
+        clearConnectState();
+      });
 
       // Drag-and-drop from tool icons
       const icons = Array.from(document.querySelectorAll('.onto-icon'));
       icons.forEach(icon => {
         icon.addEventListener('dragstart', (ev) => {
           ev.dataTransfer.setData('text/onto-type', icon.getAttribute('data-onto-type') || 'class');
+          try { ev.dataTransfer.effectAllowed = 'copy'; } catch(_) {}
         });
       });
 
-      container.addEventListener('dragover', (ev) => { ev.preventDefault(); });
+      container.addEventListener('dragenter', (ev) => { ev.preventDefault(); });
+      container.addEventListener('dragover', (ev) => { ev.preventDefault(); ontoState.isCanvasActive = true; try { ev.dataTransfer.dropEffect = 'copy'; } catch(_) {} });
       container.addEventListener('drop', (ev) => {
         ev.preventDefault();
+        ontoState.isCanvasActive = true;
         const ontoType = ev.dataTransfer.getData('text/onto-type') || 'class';
         const rect = container.getBoundingClientRect();
         const renderedPos = { x: ev.clientX - rect.left, y: ev.clientY - rect.top };
@@ -483,26 +848,34 @@
         const zoom = ontoState.cy.zoom();
         const pos = { x: (renderedPos.x - pan.x) / zoom, y: (renderedPos.y - pan.y) / zoom };
         if (ontoType === 'class') {
-          const label = prompt('Class label', `Class ${ontoState.nextId}`) || `Class ${ontoState.nextId}`;
-          addClassNodeAt(label, pos);
+          const label = `Class ${ontoState.nextId}`;
+          const id = addClassNodeAt(label, pos);
+          if (id) { ontoState.cy.$('#' + id).select(); }
         } else if (ontoType === 'objectProperty') {
           ontoState.currentPredicateType = 'objectProperty';
           setConnectMode(true);
-          alert('Object Property: now draw a connection between two classes using the edge handles.');
+          // With edgehandles enabled, user can drag handle from a class to another class
         } else if (ontoType === 'dataProperty') {
           const sel = ontoState.cy.nodes(':selected').filter(n => (n.data('type') || 'class') === 'class');
-          if (sel.length !== 1) { alert('Select one class to attach a Data Property.'); return; }
-          const prop = prompt('Data property name'); if (!prop) return;
+          if (sel.length !== 1) { return; }
+          const prop = `Data Property ${Date.now()%1000}`;
           const pid = `DP${Date.now()}`;
           ontoState.cy.add({ group: 'nodes', data: { id: pid, label: prop, type: 'dataProperty' }, position: pos });
-          ontoState.cy.add({ group: 'edges', data: { id: `edp${Date.now()}`, source: sel[0].id(), target: pid, predicate: prop, type: 'dataProperty' } });
+          // Link edge is a visual connector; keep it as objectProperty for consistency
+          ontoState.cy.add({ group: 'edges', data: { id: `edp${Date.now()}`, source: sel[0].id(), target: pid, predicate: prop, type: 'objectProperty' } });
           refreshOntologyTree();
         } else if (ontoType === 'note') {
-          const text = prompt('Note text'); if (!text) return;
           const nid = `Note${Date.now()}`;
+          const text = `Note ${nid.slice(-4)}`;
           ontoState.cy.add({ group: 'nodes', data: { id: nid, label: text, type: 'note' }, position: pos, classes: 'note' });
-          refreshOntologyTree();
+          // If exactly one class is selected, auto-link note -> class
+          const sel = ontoState.cy.nodes(':selected').filter(n => (n.data('type')||'class') === 'class');
+          if (sel && sel.length === 1) {
+            ontoState.cy.add({ group: 'edges', data: { id: `enote${Date.now()}`, source: nid, target: sel[0].id(), predicate: 'note_for', type: 'note' } });
+          }
+          refreshOntologyTree(); persistOntologyToLocalStorage();
         }
+        persistOntologyToLocalStorage();
       });
     }
 
@@ -513,6 +886,7 @@
       const y = 100 + Math.random() * 300;
       ontoState.cy.add({ group: 'nodes', data: { id, label, type: 'class' }, position: { x, y } });
       refreshOntologyTree();
+      persistOntologyToLocalStorage();
     }
 
     function addClassNodeAt(label, position) {
@@ -520,6 +894,8 @@
       const id = `Class${ontoState.nextId++}`;
       ontoState.cy.add({ group: 'nodes', data: { id, label, type: 'class' }, position });
       refreshOntologyTree();
+      persistOntologyToLocalStorage();
+      return id;
     }
 
     function runAutoLayout() {
@@ -555,14 +931,315 @@
       a.remove();
     }
 
+    function slugId(text) {
+      return String(text||'').toLowerCase().replace(/[^a-z0-9]+/g,'-').replace(/^-+|-+$/g,'');
+    }
+
+    function iriMapKey(graphIri) { return 'onto_iri_map__' + encodeURIComponent(graphIri); }
+    function loadIriMap(graphIri) { try { return JSON.parse(localStorage.getItem(iriMapKey(graphIri))||'{}'); } catch(_) { return {}; } }
+    function saveIriMap(graphIri, map) { try { localStorage.setItem(iriMapKey(graphIri), JSON.stringify(map||{})); } catch(_) {} }
+
+    function toTurtle(graphIri, linkedPairsOpt) {
+      // Build per-graph stable id→IRI map
+      const iriMap = loadIriMap(graphIri);
+      const lines = [
+        '@prefix owl: <http://www.w3.org/2002/07/owl#> .',
+        '@prefix rdfs: <http://www.w3.org/2000/01/rdf-schema#> .',
+        (()=>{ try {
+          const labels = loadOntologyLabelMap();
+          const lbl = labels[graphIri] || (activeOntologyIri === graphIri ? (localStorage.getItem('onto_model_name')||'') : (graphIri.split('/').pop()||graphIri));
+          return `\n<${graphIri}> a owl:Ontology ; rdfs:label "${String(lbl||'').replace(/\\/g,'\\\\').replace(/"/g,'\\"')}" .\n`;
+        } catch(_) { return `\n<${graphIri}> a owl:Ontology .\n`; } })()
+      ];
+      // Include owl:imports from local storage
+      try {
+        const imports = JSON.parse(localStorage.getItem('onto_imports__' + encodeURIComponent(graphIri)) || '[]');
+        imports.forEach(imp => { lines.push(`<${graphIri}> <http://www.w3.org/2002/07/owl#imports> <${imp}> .`); });
+      } catch(_) {}
+      const nodes = ontoState.cy.nodes();
+      const edges = ontoState.cy.edges();
+      function nodeIri(n) {
+        const id = n.id();
+        if (iriMap[id]) return iriMap[id];
+        const explicit = n.data('iri');
+        if (explicit) { iriMap[id] = explicit; return explicit; }
+        const base = slugId(n.data('label')||id)||id;
+        const iri = `${graphIri}#${base}`;
+        iriMap[id] = iri;
+        return iri;
+      }
+      // Classes and data properties (exclude imported overlays)
+      nodes.forEach(n => {
+        if (n.hasClass && n.hasClass('imported')) return;
+        const t = n.data('type')||'class';
+        const iri = nodeIri(n);
+        const label = (n.data('label')||'').replace(/\\/g,'\\\\').replace(/"/g,'\\"');
+        if (t === 'class') {
+          lines.push(`<${iri}> a owl:Class ; rdfs:label "${label}" .`);
+        } else if (t === 'dataProperty') {
+          lines.push(`<${iri}> a owl:DatatypeProperty ; rdfs:label "${label}" .`);
+          const incoming = n.incomers('edge');
+          if (incoming && incoming.length) {
+            const src = incoming[0].source();
+            const srcIri = nodeIri(src);
+            lines.push(`<${iri}> rdfs:domain <${srcIri}> .`);
+            lines.push(`<${iri}> rdfs:range <http://www.w3.org/2001/XMLSchema#string> .`);
+          }
+        }
+      });
+      // Object properties from edges
+      const existingEquiv = new Set();
+      edges.forEach(e => {
+        if (e.hasClass && (e.hasClass('imported') || e.hasClass('imported-equivalence'))) return;
+        const s = e.source(); const t = e.target();
+        const pred = (e.data('predicate')||'relatedTo').replace(/\\/g,'\\\\').replace(/"/g,'\\"');
+        const propIri = `${graphIri}#${slugId(pred)}`;
+        const sIri = nodeIri(s); const tIri = nodeIri(t);
+        const isData = (e.data('type')||'objectProperty') === 'dataProperty';
+        const sType = (s.data('type')||'class'); const tType = (t.data('type')||'class');
+        if (!isData) {
+          if (sType === 'class' && tType === 'class') {
+            // Treat special case for equivalence edges represented in UI as predicate 'equivalentClass'
+            if (pred === 'equivalentClass' || pred === 'linked_by') {
+              const key = `${sIri}|${tIri}`;
+              if (!existingEquiv.has(key)) {
+                existingEquiv.add(key);
+                lines.push(`<${sIri}> owl:equivalentClass <${tIri}> .`);
+              }
+            } else {
+              lines.push(`<${propIri}> a owl:ObjectProperty ; rdfs:label "${pred}" ; rdfs:domain <${sIri}> ; rdfs:range <${tIri}> .`);
+            }
+          } else if (sType === 'note' && (tType === 'class' || tType === 'dataProperty') && pred === 'note_for') {
+            // Emit as annotation on target element
+            const text = (s.data('label')||'').replace(/\\/g,'\\\\').replace(/"/g,'\\"');
+            lines.push(`<${tIri}> rdfs:comment "${text}" .`);
+          }
+        }
+      });
+      // Add auto-computed equivalence pairs (no UI edges) if provided
+      if (Array.isArray(linkedPairsOpt)) {
+        linkedPairsOpt.forEach(p => {
+          try {
+            const n = p.baseNode; const targetIri = p.importIri;
+            const sIri = nodeIri(n);
+            const key = `${sIri}|${targetIri}`;
+            if (!existingEquiv.has(key)) {
+              existingEquiv.add(key);
+              lines.push(`<${sIri}> owl:equivalentClass <${targetIri}> .`);
+            }
+          } catch(_) {}
+        });
+      }
+      saveIriMap(graphIri, iriMap);
+      return lines.join('\n');
+    }
+
+    // Compute linked_by pairs between base classes and imported graphs by label/local name
+    async function computeLinkedByPairs(graphIri) {
+      try {
+        const imports = JSON.parse(localStorage.getItem('onto_imports__' + encodeURIComponent(graphIri)) || '[]');
+        if (!imports || !imports.length || !ontoState.cy) return [];
+        const baseClasses = ontoState.cy.nodes().filter(n => (n.data('type')||'class') === 'class' && !n.hasClass('imported'));
+        const norm = (s) => String(s||'').trim().toLowerCase();
+        const baseByLabel = new Map();
+        baseClasses.forEach(n => { baseByLabel.set(norm(n.data('label')||n.id()), n); });
+        const pairs = [];
+        for (const imp of imports) {
+          const q = `PREFIX owl: <http://www.w3.org/2002/07/owl#>\nPREFIX rdfs: <http://www.w3.org/2000/01/rdf-schema#>\nSELECT ?c ?label WHERE { GRAPH <${imp}> { ?c a owl:Class . OPTIONAL { ?c rdfs:label ?label } } }`;
+          const res = await fetch('/api/ontology/sparql', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ query: q }) });
+          if (!res.ok) continue;
+          const json = await res.json();
+          const rows = (json && json.results && json.results.bindings) ? json.results.bindings : [];
+          rows.forEach(b => {
+            const iri = b.c && b.c.value; const label = b.label && b.label.value;
+            const local = iri ? (iri.includes('#') ? iri.split('#').pop() : iri.split('/').pop()) : '';
+            const key = norm(label || local);
+            const base = baseByLabel.get(key);
+            if (base && iri) pairs.push({ baseNode: base, importIri: iri });
+          });
+        }
+        // Deduplicate pairs by base id + target iri
+        const out = [];
+        const seen = new Set();
+        pairs.forEach(p => { const k = p.baseNode.id() + '|' + p.importIri; if (!seen.has(k)) { seen.add(k); out.push(p); } });
+        return out;
+      } catch(_) { return []; }
+    }
+
+    // Imported overlay visibility persistence
+    function visibleImportsKey(graphIri) { return 'onto_imports_visible__' + encodeURIComponent(graphIri || ''); }
+    function loadVisibleImports(graphIri) { try { return new Set(JSON.parse(localStorage.getItem(visibleImportsKey(graphIri)) || '[]')); } catch(_) { return new Set(); } }
+    function saveVisibleImports(graphIri, set) { try { localStorage.setItem(visibleImportsKey(graphIri), JSON.stringify(Array.from(set || []))); } catch(_) {} }
+
+    // Persist per-import overlay node positions
+    function overlayPositionsKey(baseIri, importIri) { return 'onto_import_positions__' + encodeURIComponent(baseIri || '') + '__' + encodeURIComponent(importIri || ''); }
+    function loadOverlayPositions(baseIri, importIri) { try { return JSON.parse(localStorage.getItem(overlayPositionsKey(baseIri, importIri)) || '{}'); } catch(_) { return {}; } }
+    function saveOverlayPositions(baseIri, importIri, obj) { try { localStorage.setItem(overlayPositionsKey(baseIri, importIri), JSON.stringify(obj || {})); } catch(_) {} }
+
+    async function fetchImportGraphSnapshot(importIri) {
+      try {
+        const qClasses = `PREFIX owl: <http://www.w3.org/2002/07/owl#>\nPREFIX rdfs: <http://www.w3.org/2000/01/rdf-schema#>\nSELECT ?c ?label WHERE { GRAPH <${importIri}> { ?c a owl:Class . OPTIONAL { ?c rdfs:label ?label } } }`;
+        const qProps = `PREFIX owl: <http://www.w3.org/2002/07/owl#>\nPREFIX rdfs: <http://www.w3.org/2000/01/rdf-schema#>\nSELECT ?p ?pl ?d ?r WHERE { GRAPH <${importIri}> { ?p a owl:ObjectProperty . OPTIONAL { ?p rdfs:label ?pl } OPTIONAL { ?p rdfs:domain ?d } OPTIONAL { ?p rdfs:range ?r } } }`;
+        const classesRes = await fetch('/api/ontology/sparql', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ query: qClasses }) });
+        const propsRes = await fetch('/api/ontology/sparql', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ query: qProps }) });
+        const classesJson = classesRes.ok ? await classesRes.json() : { results: { bindings: [] } };
+        const propsJson = propsRes.ok ? await propsRes.json() : { results: { bindings: [] } };
+        const cls = (classesJson.results?.bindings || []).map(b => ({ iri: b.c.value, label: (b.label && b.label.value) || (b.c.value.includes('#') ? b.c.value.split('#').pop() : b.c.value.split('/').pop()) }));
+        const edges = [];
+        (propsJson.results?.bindings || []).forEach(b => {
+          const d = b.d && b.d.value; const r = b.r && b.r.value; if (!d || !r) return;
+          const label = (b.pl && b.pl.value) || (b.p && b.p.value ? (b.p.value.includes('#') ? b.p.value.split('#').pop() : b.p.value.split('/').pop()) : 'relatedTo');
+          edges.push({ sourceIri: d, targetIri: r, label });
+        });
+        return { classes: cls, edges };
+      } catch(_) { return { classes: [], edges: [] }; }
+    }
+
+    async function overlayImportsRefresh() {
+      try {
+        if (!ontoState.cy || !activeOntologyIri) return;
+        const visible = loadVisibleImports(activeOntologyIri);
+        const visibleList = Array.from(visible);
+        // Before removing overlays, snapshot positions for imports being hidden
+        ontoState.cy.nodes('.imported').forEach(n => {
+          const imp = n.data('importSource') || '';
+          if (!visible.has(imp)) {
+            const curr = loadOverlayPositions(activeOntologyIri, imp);
+            curr[n.id()] = n.position();
+            saveOverlayPositions(activeOntologyIri, imp, curr);
+          }
+        });
+        // Remove overlays for imports no longer visible
+        ontoState.cy.elements('.imported, .imported-equivalence').forEach(el => { if (!visible.has(el.data('importSource') || '')) el.remove(); });
+        // Add overlays for newly visible imports
+        for (const imp of visibleList) {
+          const existing = ontoState.cy.elements('.imported').filter(e => (e.data('importSource') || '') === imp);
+          if (existing && existing.length) continue;
+          const snap = await fetchImportGraphSnapshot(imp);
+          const added = [];
+          // Compute a simple cluster origin to the right of the base graph to avoid overlap (notes included)
+          const baseBBox = ontoState.cy.nodes(':not(.imported)').boundingBox();
+          const orderIndex = Math.max(0, visibleList.indexOf(imp));
+          const padX = 200, padY = 40, jitterX = orderIndex * 100, jitterY = orderIndex * 60;
+          const safe = (n, f)=> (Number.isFinite(n) ? n : f);
+          const originX = safe(baseBBox.x2, 0) + padX + jitterX;
+          const originY = safe(baseBBox.y1, 0) + jitterY;
+          const total = Math.max(1, snap.classes.length);
+          const cols = Math.ceil(Math.sqrt(total));
+          const spacing = 160;
+          let nextIdx = 0;
+          function nextPos() {
+            const col = nextIdx % cols; const row = Math.floor(nextIdx / cols); nextIdx += 1;
+            return { x: originX + col * spacing, y: originY + row * spacing };
+          }
+          // Add class nodes in a simple grid within the cluster; apply saved positions if available
+          const savedPos = loadOverlayPositions(activeOntologyIri, imp);
+          snap.classes.forEach(c => {
+            const id = `imp:${imp}#${c.iri}`;
+            if (ontoState.cy.$(`#${CSS.escape(id)}`).length) return;
+            const pos = savedPos[id] ? savedPos[id] : nextPos();
+            added.push(ontoState.cy.add({ group: 'nodes', data: { id, iri: c.iri, label: c.label, type: 'class', importSource: imp }, position: pos, classes: 'imported' }));
+          });
+          // Add edges where both endpoints available; create missing nodes on demand
+          let idx = 0;
+          snap.edges.forEach(e => {
+            const sid = `imp:${imp}#${e.sourceIri}`;
+            const tid = `imp:${imp}#${e.targetIri}`;
+            if (!ontoState.cy.$(`#${CSS.escape(sid)}`).length) {
+              const label = e.sourceIri.includes('#') ? e.sourceIri.split('#').pop() : e.sourceIri.split('/').pop();
+              const pos = savedPos[sid] ? savedPos[sid] : nextPos();
+              added.push(ontoState.cy.add({ group: 'nodes', data: { id: sid, iri: e.sourceIri, label, type: 'class', importSource: imp }, position: pos, classes: 'imported' }));
+            }
+            if (!ontoState.cy.$(`#${CSS.escape(tid)}`).length) {
+              const label = e.targetIri.includes('#') ? e.targetIri.split('#').pop() : e.targetIri.split('/').pop();
+              const pos = savedPos[tid] ? savedPos[tid] : nextPos();
+              added.push(ontoState.cy.add({ group: 'nodes', data: { id: tid, iri: e.targetIri, label, type: 'class', importSource: imp }, position: pos, classes: 'imported' }));
+            }
+            added.push(ontoState.cy.add({ group: 'edges', data: { id: `impE${Date.now()}_${idx++}`, source: sid, target: tid, predicate: e.label, type: 'objectProperty', importSource: imp }, classes: 'imported' }));
+          });
+          // Make overlays semi-interactive for positioning: allow drag, but don't select or edit
+          added.forEach(el => {
+            try {
+              if (el.isNode && el.isNode()) {
+                el.selectable(false); el.grabbable(true); el.locked(false);
+              } else {
+                el.selectable(false); el.grabbable(false); el.locked(true);
+              }
+            } catch(_) {}
+          });
+
+          // Add owl:equivalentClass visual links between base and imported nodes (by label/local name)
+          try {
+            const baseClasses = ontoState.cy.nodes().filter(n => (n.data('type')||'class')==='class' && !n.hasClass('imported'));
+            const imported = ontoState.cy.nodes().filter(n => (n.data('type')||'class')==='class' && n.hasClass('imported') && (n.data('importSource')||'')===imp);
+            const byKey = (s)=>String(s||'').trim().toLowerCase();
+            const baseMap = new Map(); baseClasses.forEach(n => baseMap.set(byKey(n.data('label')||n.id()), n));
+            let idx2 = 0;
+            imported.forEach(n => {
+              const key = byKey(n.data('label')||n.id());
+              const base = baseMap.get(key);
+              if (base) {
+                const eid = `impEq${Date.now()}_${idx2++}`;
+                ontoState.cy.add({ group: 'edges', data: { id: eid, source: base.id(), target: n.id(), predicate: 'equivalentClass', type: 'objectProperty', importSource: imp }, classes: 'imported imported-equivalence' });
+              }
+            });
+          } catch(_) {}
+        }
+        // Do not persist imported overlays to base local storage
+        refreshOntologyTree();
+      } catch(_) {}
+    }
+
+    // Context menu helpers
+    let cmState = { visible: false, sourceId: null };
+    function showMenuAt(x, y) {
+      const m = qs('#ontoContextMenu'); if (!m) return;
+      m.style.left = x + 'px'; m.style.top = y + 'px'; m.style.display = 'block'; cmState.visible = true;
+    }
+    function hideMenu() { const m = qs('#ontoContextMenu'); if (!m) return; m.style.display = 'none'; cmState.visible = false; }
+    function startConnectFrom(node) {
+      cmState.sourceId = node.id();
+      node.addClass('connect-source');
+    }
+    function clearConnectState() {
+      if (cmState.sourceId && ontoState.cy) {
+        const n = ontoState.cy.$('#' + cmState.sourceId);
+        if (n) n.removeClass('connect-source');
+      }
+      cmState.sourceId = null;
+    }
+
     function importOntologyJSON(obj) {
       ensureOntologyInitialized();
       if (!obj || !Array.isArray(obj.nodes) || !Array.isArray(obj.edges)) return;
-      ontoState.cy.elements().remove();
-      ontoState.cy.add(obj.nodes.map(n => ({ group: 'nodes', data: n.data, position: n.position })));
-      ontoState.cy.add(obj.edges.map(e => ({ group: 'edges', data: e.data })));
+      // Clear only base elements, keep imported overlays intact
+      ontoState.cy.elements(':not(.imported):not(.imported-equivalence)').remove();
+      // Migration guard: filter out any overlays accidentally saved to JSON
+      const isOverlayNode = (n) => {
+        try {
+          const d = (n && n.data) ? n.data : {};
+          const id = String(d.id || '');
+          const cls = String(n.classes || d.classes || '');
+          return !!d.importSource || id.startsWith('imp:') || cls.includes('imported');
+        } catch(_) { return false; }
+      };
+      const baseNodes = (obj.nodes || []).filter(n => !isOverlayNode(n));
+      const baseNodeIds = new Set(baseNodes.map(n => (n.data && n.data.id) || ''));
+      const baseEdges = (obj.edges || []).filter(e => {
+        try {
+          const d = (e && e.data) ? e.data : {};
+          const cls = String(e.classes || d.classes || '');
+          if (d.importSource || cls.includes('imported')) return false;
+          if (String(d.predicate || '').toLowerCase() === 'equivalentclass') return false;
+          return baseNodeIds.has(d.source) && baseNodeIds.has(d.target);
+        } catch(_) { return false; }
+      });
+      // Add back base nodes and edges only
+      ontoState.cy.add(baseNodes.map(n => ({ group: 'nodes', data: n.data, position: n.position })));
+      ontoState.cy.add(baseEdges.map(e => ({ group: 'edges', data: e.data })));
       ontoState.cy.fit();
       refreshOntologyTree();
+      persistOntologyToLocalStorage();
     }
 
     // Auth/UI gating
@@ -584,13 +1261,41 @@
       refreshOntologyTree();
       // Restore ontology tree collapsed state
       try {
-        const collapsed = localStorage.getItem('onto_tree_collapsed') === '1';
-        if (collapsed) {
+        // Restore left project tree width
+        const uiMainTreeW = parseInt(localStorage.getItem('ui_main_tree_w') || '0', 10);
+        if (uiMainTreeW) document.documentElement.style.setProperty('--tree-w', uiMainTreeW + 'px');
+        // Restore ontology left tree width
+        const ontoTreeW = parseInt(localStorage.getItem('onto_tree_w') || '0', 10);
+        if (ontoTreeW) document.documentElement.style.setProperty('--onto-tree-w', ontoTreeW + 'px');
+        const treeCollapsed = localStorage.getItem('onto_tree_collapsed') === '1';
+        if (treeCollapsed) {
           const sec = qs('#wb-ontology');
           if (sec && !sec.classList.contains('onto-tree-collapsed')) sec.classList.add('onto-tree-collapsed');
           const icon = qs('#ontoTreeToggleIcon');
           if (icon) icon.innerHTML = '<path d="M9 6l6 6-6 6"/>';
         }
+        const propsCollapsed = localStorage.getItem('onto_props_collapsed') === '1';
+        if (propsCollapsed) {
+          const sec = qs('#wb-ontology');
+          if (sec && !sec.classList.contains('onto-props-collapsed')) sec.classList.add('onto-props-collapsed');
+          const icon = qs('#ontoPropsToggleIcon');
+          if (icon) icon.innerHTML = '<path d="M15 6l-6 6 6 6"/>';
+        }
+        // Ensure icon SVGs match classes and allow CSS rotation animation to apply
+        const treeIcon = qs('#ontoTreeToggleIcon');
+        if (treeIcon && !treeCollapsed) treeIcon.innerHTML = '<path d="M15 6l-6 6 6 6"/>';
+        const propsIcon = qs('#ontoPropsToggleIcon');
+        if (propsIcon && !propsCollapsed) propsIcon.innerHTML = '<path d="M9 6l6 6-6 6"/>';
+        const savedW = parseInt(localStorage.getItem('onto_props_w') || '0', 10);
+        if (savedW) document.documentElement.style.setProperty('--onto-props-w', savedW + 'px');
+        // Load saved graph for active ontology if present
+        try {
+          const attrs = JSON.parse(localStorage.getItem('onto_model_attrs') || '{}');
+          const iri = attrs.graphIri || activeOntologyIri;
+          if (iri) loadGraphFromLocal(iri);
+        } catch(_) {}
+        // After applying layout classes/widths, ensure cy fits the visible area
+        requestAnimationFrame(() => { if (ontoState.cy) ontoState.cy.resize(); });
       } catch(_) {}
     }
     qs('#loginBtn').onclick = async () => {
@@ -619,11 +1324,11 @@
       const selects = [qs('#projectSelect'), qs('#projectSelect2')];
       if (list.length) {
         selects.forEach(sel => { sel.innerHTML = list.map(p => `<option value="${p.id}">${p.name}</option>`).join(''); });
-        renderTree(list[0]);
+        await renderTree(list[0]);
       } else {
         const sample = getSampleProject();
         selects.forEach(sel => { sel.innerHTML = `<option value="${sample.id}">${sample.name} (demo)</option>`; });
-        renderTree(sample);
+        await renderTree(sample);
       }
     }
     qs('#newProjectBtn').onclick = async () => {
@@ -639,7 +1344,7 @@
         const res = await fetch('/api/projects', { headers: { Authorization: 'Bearer ' + token }});
         const json = await res.json();
         const proj = (json.projects || []).find(p => p.id === pid);
-        if (proj) renderTree(proj);
+        if (proj) await renderTree(proj);
       });
     });
 
@@ -668,7 +1373,10 @@
       const panel = qs('#treePanel');
       let dragging = false;
       res.addEventListener('mousedown', () => dragging = true);
-      window.addEventListener('mouseup', () => dragging = false);
+      window.addEventListener('mouseup', () => {
+        dragging = false;
+        requestAnimationFrame(() => { if (ontoState.cy) ontoState.cy.resize(); });
+      });
       window.addEventListener('mousemove', (e) => {
         if (!dragging) return;
         const min = parseInt(getComputedStyle(document.documentElement).getPropertyValue('--tree-w-min'));
@@ -676,6 +1384,7 @@
         let w = e.clientX - parseInt(getComputedStyle(document.documentElement).getPropertyValue('--iconbar-w'));
         w = Math.max(min, Math.min(max, w));
         document.documentElement.style.setProperty('--tree-w', w + 'px');
+        try { localStorage.setItem('ui_main_tree_w', String(w)); } catch(_) {}
         if (ontoState.cy) ontoState.cy.resize();
       });
     })();
@@ -687,33 +1396,100 @@
       let dragging = false;
       if (!res) return;
       res.addEventListener('mousedown', () => dragging = true);
-      window.addEventListener('mouseup', () => dragging = false);
+      window.addEventListener('mouseup', () => {
+        dragging = false;
+        requestAnimationFrame(() => { if (ontoState.cy) ontoState.cy.resize(); });
+      });
       window.addEventListener('mousemove', (e) => {
         if (!dragging) return;
-        const leftOffset = parseInt(getComputedStyle(document.documentElement).getPropertyValue('--onto-iconbar-w'));
-        let w = e.clientX - leftOffset - qs('#wb-ontology .ontology-toolbar').getBoundingClientRect().left; // relative after toolbar margin
+        const layout = qs('#wb-ontology .onto-layout'); if (!layout) return;
+        const layoutRect = layout.getBoundingClientRect();
+        // Grid columns: [tree][divider][iconbar][canvas][divider][props]
+        // If tree is collapsed, divider width is 0; math still uses layout left
+        let w = e.clientX - layoutRect.left;
         const min = parseInt(getComputedStyle(document.documentElement).getPropertyValue('--onto-tree-w-min'));
         const max = parseInt(getComputedStyle(document.documentElement).getPropertyValue('--onto-tree-w-max'));
         w = Math.max(min, Math.min(max, w));
         document.documentElement.style.setProperty(panelWidthProp, w + 'px');
+        try { localStorage.setItem('onto_tree_w', String(w)); } catch(_) {}
         if (ontoState.cy) ontoState.cy.resize();
       });
     })();
 
-    function renderTree(project) {
+    // Properties panel resizer
+    (function(){
+      const res = qs('#ontoPropsResizer');
+      let dragging = false;
+      if (!res) return;
+      res.addEventListener('mousedown', () => dragging = true);
+      window.addEventListener('mouseup', () => dragging = false);
+      window.addEventListener('mousemove', (e) => {
+        if (!dragging) return;
+        const layoutRect = qs('#wb-ontology .onto-layout')?.getBoundingClientRect();
+        if (!layoutRect) return;
+        let w = layoutRect.right - e.clientX;
+        const min = parseInt(getComputedStyle(document.documentElement).getPropertyValue('--onto-props-w-min'));
+        const max = parseInt(getComputedStyle(document.documentElement).getPropertyValue('--onto-props-w-max'));
+        w = Math.max(min, Math.min(max, w));
+        document.documentElement.style.setProperty('--onto-props-w', w + 'px');
+        try { localStorage.setItem('onto_props_w', String(w)); } catch(_) {}
+        if (ontoState.cy) ontoState.cy.resize();
+      });
+    })();
+
+    async function renderTree(project) {
+      activeProject = project;
+      // Restore per-project active ontology selection (label only)
+      try {
+        const savedIri = localStorage.getItem(`onto_active_iri__${project.id}`);
+        if (savedIri) { activeOntologyIri = savedIri; updateOntoGraphLabel(); }
+      } catch(_) {}
       const root = qs('#treeRoot');
-      const makeItem = (id, label, iconCls, children = []) => {
+      const makeItem = (id, label, iconCls, children = [], dataAttrs = {}) => {
         const hasChildren = children && children.length > 0;
         const li = document.createElement('li');
         li.setAttribute('role', 'treeitem');
         if (hasChildren) li.setAttribute('aria-expanded', 'true');
         li.dataset.nodeId = id;
+        Object.keys(dataAttrs || {}).forEach(k => { li.dataset[k] = dataAttrs[k]; });
 
         const row = document.createElement('div');
         row.className = 'node-row';
         row.tabIndex = 0;
-        row.onclick = (e) => selectNode(li);
+        row.onclick = (e) => { selectNode(li); handleTreeSelection(li); };
         row.onkeydown = (e) => handleKey(e, li);
+        // Inline rename on double-click for ontology nodes
+        row.ondblclick = (e) => {
+          if (li.dataset.nodeType === 'ontology') {
+            const current = (li.dataset.label || row.querySelector('.node-label')?.textContent || '').trim();
+            const name = prompt('Rename ontology label', current);
+            if (!name || name.trim() === current) return;
+            try {
+              const payload = { graph: li.dataset.iri, label: name.trim() };
+              fetch('/api/ontologies/label', { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) })
+                .then(async (res) => {
+                  if (!res.ok) throw new Error('rename failed');
+                  const newLabel = name.trim();
+                  row.querySelector('.node-label').textContent = newLabel; li.dataset.label = newLabel; saveOntologyLabel(li.dataset.iri, newLabel);
+                  if (activeOntologyIri === li.dataset.iri) {
+                    localStorage.setItem('onto_model_name', newLabel);
+                    try {
+                      let attrs = {};
+                      try { attrs = JSON.parse(localStorage.getItem('onto_model_attrs') || '{}'); } catch(_) { attrs = {}; }
+                      attrs.displayLabel = newLabel;
+                      localStorage.setItem('onto_model_attrs', JSON.stringify(attrs));
+                    } catch(_) {}
+                    updateOntoGraphLabel();
+                    // Immediately reflect in Ontology tree view without a full refresh
+                    try { refreshOntologyTree(); } catch(_) {}
+                  }
+                  // Refresh discovery so main tree picks up new label from Fuseki
+                  await renderTree(project);
+                })
+                .catch(()=>{ alert('Rename failed'); });
+            } catch(_) {}
+          }
+        };
 
         const twist = document.createElement('span'); twist.className = 'twist';
         if (hasChildren) {
@@ -742,38 +1518,45 @@
       const docKnowItems = (project.documents && project.documents.knowledge ? project.documents.knowledge : []).map(d => makeItem(d.id || d.name, d.name || d.id, 'docknow'));
       const outItems = (project.artifacts || project.outputs || []).map(o => makeItem(o.id || o.name, o.name || o.id, 'out'));
 
-      // Ontology tree: Base and Systems Ontology (with Imports)
-      const ontoBaseItems = (project.ontology && project.ontology.base ? [project.ontology.base] : [])
-        .flatMap(b => {
-          const versions = b.versions || [];
-          if (versions.length) {
-            return versions.map(v => makeItem(`onto-base-${b.id || b.name}-${v}`, `${b.name || b.id} v${v}`, 'onto'));
+      // Ontology tree: discover from Fuseki
+      let ontologyNode = null;
+      try {
+        const res = await fetch(`/api/ontologies${project?.id ? `?project=${encodeURIComponent(project.id)}` : ''}`);
+        const json = await res.json();
+        const onts = Array.isArray(json.ontologies) ? json.ontologies : [];
+        const labelsMap = loadOntologyLabelMap();
+        const ontoItems = onts.map((o, idx) => {
+          const li = makeItem(
+            `ontology-${idx}-${o.graphIri}`,
+            (labelsMap[o.graphIri] || o.label || o.graphIri),
+            'onto',
+            [],
+            { nodeType: 'ontology', iri: o.graphIri, label: (labelsMap[o.graphIri] || o.label || o.graphIri) }
+          );
+          // Enable dragging this ontology into the Imports node
+          const row = li.querySelector('.node-row');
+          if (row) {
+            row.setAttribute('draggable', 'true');
+            row.addEventListener('dragstart', (ev) => {
+              try { ev.dataTransfer.setData('text/graph-iri', o.graphIri); ev.dataTransfer.effectAllowed = 'copy'; } catch(_) {}
+            });
           }
-          return [makeItem(b.id || b.name, b.name || b.id, 'onto')];
+          return li;
         });
-      const systemsBaseItems = (project.ontology && project.ontology.systems && project.ontology.systems.base ? [project.ontology.systems.base] : [])
-        .flatMap(b => {
-          const versions = b.versions || [];
-          if (versions.length) {
-            return versions.map(v => makeItem(`onto-sys-base-${b.id || b.name}-${v}`, `Base Systems Ontology v${v}`, 'onto'));
-          }
-          return [makeItem(b.id || b.name, 'Base Systems Ontology', 'onto')];
-        });
-      const systemsImportedItems = (project.ontology && project.ontology.systems && Array.isArray(project.ontology.systems.imports) ? project.ontology.systems.imports : (Array.isArray(project.ontology?.imports) ? project.ontology.imports : []))
-        .map((imp, idx) => {
-          const childVersions = (imp.versions || []).map(v => makeItem(`onto-imp-${imp.id || imp.name}-${v}`, `${imp.name || imp.id} v${v}`, 'onto'));
-          const label = imp.name || imp.id || `Imported ${idx + 1}`;
-          return childVersions.length ? makeItem(`ontology-import-${imp.id || idx}`, label, 'folder', childVersions)
-                                      : makeItem(imp.id || label, label, 'onto');
-        });
-      const systemsChildren = [];
-      if (systemsBaseItems.length) systemsChildren.push(makeItem('ontology-systems-base', 'Base Systems Ontology', 'folder', systemsBaseItems));
-      if (systemsImportedItems.length) systemsChildren.push(makeItem('ontology-systems-imports', 'Imports', 'folder', systemsImportedItems));
-      const systemsNode = (systemsChildren.length ? makeItem('ontology-systems', 'Systems Ontology', 'folder', systemsChildren) : null);
-      const ontoChildren = [];
-      if (ontoBaseItems.length) ontoChildren.push(makeItem('ontology-base-section', 'Base', 'folder', ontoBaseItems));
-      if (systemsNode) ontoChildren.push(systemsNode);
-      const ontologyNode = (ontoChildren.length ? makeItem('ontology', 'Ontology', 'folder', ontoChildren) : null);
+        if (ontoItems.length) {
+          ontologyNode = makeItem('ontology', 'Ontology', 'folder', ontoItems);
+        } else {
+          // Fallback to sample listing if discovery yields nothing
+          ontologyNode = makeItem('ontology', 'Ontology', 'folder', [
+            makeItem('onto-sample', 'Sample Ontology', 'onto', [], { nodeType: 'ontology', iri: computeOntologyIri(project.id, 'sample', null) })
+          ]);
+        }
+      } catch (_) {
+        // Network/SPARQL error: show a placeholder item
+        ontologyNode = makeItem('ontology', 'Ontology', 'folder', [
+          makeItem('onto-error', 'Discovery unavailable', 'onto')
+        ]);
+      }
 
       const projectInfo = makeItem('project-info', `ID: ${project.id}`, 'folder');
       const docsReqNode = makeItem('documents-requirements', 'Requirements Documents', 'folder', docReqItems);
@@ -787,6 +1570,60 @@
 
       root.innerHTML = '';
       [projectInfo, ontologyNode, docsNode, reqNode, outNode].filter(Boolean).forEach(n => root.appendChild(n));
+
+      // Add plus button on Ontology section header (right side)
+      try {
+        const ontoSection = Array.from(root.children).find(li => li.querySelector('.node-label')?.textContent === 'Ontology');
+        const headerRow = ontoSection ? ontoSection.querySelector('.node-row') : null;
+        if (headerRow && !headerRow.querySelector('.tree-add-btn')) {
+          const addBtn = document.createElement('button');
+          addBtn.className = 'btn tree-add-btn';
+          addBtn.title = 'New Ontology';
+          addBtn.textContent = '+';
+          addBtn.style.marginLeft = '8px';
+          addBtn.onclick = async (e) => {
+            e.stopPropagation();
+            const disp = prompt('Display label for new ontology'); if (!disp) return;
+            const base = slugify(disp) || `ontology-${Date.now()}`;
+            const label = disp;
+            try {
+              const res = await fetch('/api/ontologies', { method: 'POST', headers: { 'Content-Type':'application/json' }, body: JSON.stringify({ project: project.id, name: base, label }) });
+              const created = await res.json();
+              await renderTree(project);
+              // Ensure label is shown and select the created ontology
+              const newRoot = qs('#treeRoot');
+              const li = Array.from(newRoot.querySelectorAll('li[role="treeitem"]')).find(el => el.dataset && el.dataset.iri === created.graphIri);
+              if (li) {
+                const lbl = li.querySelector('.node-label'); if (lbl) lbl.textContent = created.label || label;
+                li.dataset.label = created.label || label;
+                selectNode(li);
+                handleTreeSelection(li);
+              }
+            } catch(_) {}
+          };
+          headerRow.appendChild(addBtn);
+        }
+      } catch(_) {}
+
+      // Handle Delete key for ontology deletion
+      root.addEventListener('keydown', async (e) => {
+        if (e.key === 'Delete' || e.keyCode === 46) {
+          const sel = root.querySelector('.node-row.selected');
+          if (!sel) return;
+          const li = sel.closest('li[role="treeitem"]');
+          if (!li || li.dataset.nodeType !== 'ontology') return;
+          const iri = li.dataset.iri;
+          if (!iri) return;
+          try {
+            const url = `/api/ontologies?graph=${encodeURIComponent(iri)}`;
+            const res = await fetch(url, { method: 'DELETE' });
+            if (res.ok) {
+              await renderTree(project);
+              if (activeOntologyIri === iri) { activeOntologyIri = null; updateOntoGraphLabel(); ensureOntologyInitialized(); ontoState.cy?.elements().remove(); refreshOntologyTree(); }
+            }
+          } catch(_) {}
+        }
+      });
     }
 
     async function refreshGraphSummary() {
@@ -825,8 +1662,9 @@
     function refreshOntologyTree() {
       const root = qs('#ontoTreeRoot');
       if (!root || !ontoState.cy) return;
-      const classes = ontoState.cy.nodes().filter(n => (n.data('type') || 'class') === 'class');
-      const notes = ontoState.cy.nodes().filter(n => (n.data('type') || '') === 'note');
+      const classes = ontoState.cy.nodes().filter(n => (n.data('type') || 'class') === 'class' && !n.hasClass('imported'));
+      const importedClasses = ontoState.cy.nodes().filter(n => (n.data('type') || 'class') === 'class' && n.hasClass('imported'));
+      const notes = ontoState.cy.nodes().filter(n => (n.data('type') || '') === 'note' && !n.hasClass('imported'));
       // Simple grouping: Classes as top-level; edges shown under a "Relationships" group per class
       root.innerHTML = '';
       const makeItem = (label, expanded = true, children = []) => {
@@ -856,6 +1694,10 @@
         });
         items.push(makeItem(label, false, rels));
       });
+      if (importedClasses.length) {
+        const importedChildren = importedClasses.map(cls => makeItem((cls.data('label')||cls.id()) + ' (imported)', false, []));
+        items.push(makeItem('Imported Classes', true, importedChildren));
+      }
       if (notes.length) {
         const noteChildren = notes.map(n => makeItem(n.data('label') || n.id(), false, []));
         items.push(makeItem('Notes', true, noteChildren));
@@ -866,10 +1708,166 @@
       const rootItem = document.createElement('li'); rootItem.setAttribute('role', 'treeitem'); rootItem.setAttribute('aria-expanded', 'true');
       const row = document.createElement('div'); row.className = 'onto-node-row';
       const twist = document.createElement('span'); twist.className = 'onto-twist'; twist.onclick = (e)=>{ e.stopPropagation(); rootItem.setAttribute('aria-expanded', rootItem.getAttribute('aria-expanded') === 'true' ? 'false' : 'true'); };
-      const text = document.createElement('span'); text.className = 'onto-node-label'; text.textContent = 'Ontology';
+      const text = document.createElement('span'); text.className = 'onto-node-label';
+      const modelName = (localStorage.getItem('onto_model_name') || '').trim() || 'Ontology';
+      text.textContent = modelName;
       row.appendChild(twist); row.appendChild(text); rootItem.appendChild(row); rootItem.appendChild(ul);
       root.innerHTML = '';
       root.appendChild(rootItem);
+
+      // Imports node specific to current ontology
+      try {
+        const importsKey = 'onto_imports__' + encodeURIComponent(activeOntologyIri || '');
+        const imports = JSON.parse(localStorage.getItem(importsKey) || '[]');
+        const importsRoot = document.createElement('li'); importsRoot.setAttribute('role','treeitem'); importsRoot.setAttribute('aria-expanded','true');
+        const row = document.createElement('div'); row.className = 'onto-node-row'; const tw = document.createElement('span'); tw.className = 'onto-twist'; const lbl = document.createElement('span'); lbl.className='onto-node-label'; lbl.textContent='Imports'; row.appendChild(tw); row.appendChild(lbl); importsRoot.appendChild(row);
+        const ul = document.createElement('ul'); ul.setAttribute('role','group');
+        function removeImport(iri) {
+          const key = 'onto_imports__' + encodeURIComponent(activeOntologyIri || '');
+          try {
+            const curr = new Set(JSON.parse(localStorage.getItem(key) || '[]'));
+            if (curr.has(iri)) { curr.delete(iri); localStorage.setItem(key, JSON.stringify(Array.from(curr))); refreshOntologyTree(); }
+          } catch(_) {}
+        }
+        async function friendlyImportName(iri) {
+          try {
+            const q = `PREFIX owl: <http://www.w3.org/2002/07/owl#>\nPREFIX rdfs: <http://www.w3.org/2000/01/rdf-schema#>\nSELECT ?label WHERE { GRAPH <${iri}> { <${iri}> a owl:Ontology . OPTIONAL { <${iri}> rdfs:label ?label } } }`;
+            const res = await fetch('/api/ontology/sparql', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ query: q }) });
+            if (!res.ok) throw new Error('sparql');
+            const json = await res.json();
+            const b = json.results && json.results.bindings && json.results.bindings[0];
+            const lbl = b && b.label && b.label.value;
+            return (lbl && lbl.trim()) || (iri.split('/').pop() || iri);
+          } catch(_) { return iri.split('/').pop() || iri; }
+        }
+        async function importEquivCount(importIri) {
+          try {
+            if (!ontoState.cy) return 0;
+            const norm = s => String(s||'').trim().toLowerCase();
+            const baseClasses = ontoState.cy.nodes().filter(n => (n.data('type')||'class') === 'class' && !n.hasClass('imported'));
+            const baseByLabel = new Map();
+            baseClasses.forEach(n => { baseByLabel.set(norm(n.data('label')||n.id()), n); });
+            const q = `PREFIX owl: <http://www.w3.org/2002/07/owl#>\nPREFIX rdfs: <http://www.w3.org/2000/01/rdf-schema#>\nSELECT ?c ?label WHERE { GRAPH <${importIri}> { ?c a owl:Class . OPTIONAL { ?c rdfs:label ?label } } }`;
+            const res = await fetch('/api/ontology/sparql', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ query: q }) });
+            if (!res.ok) return 0;
+            const json = await res.json();
+            const rows = (json && json.results && json.results.bindings) ? json.results.bindings : [];
+            const matched = new Set();
+            rows.forEach(b => {
+              const iri = b.c && b.c.value; const label = b.label && b.label.value;
+              const local = iri ? (iri.includes('#') ? iri.split('#').pop() : iri.split('/').pop()) : '';
+              const key = norm(label || local);
+              if (baseByLabel.has(key) && iri) matched.add(iri);
+            });
+            return matched.size;
+          } catch(_) { return 0; }
+        }
+        const visibleSet = loadVisibleImports(activeOntologyIri);
+        imports.forEach(async g => {
+          const li = document.createElement('li'); li.setAttribute('role','treeitem'); li.dataset.importIri = g;
+          const r=document.createElement('div'); r.className='onto-node-row'; r.tabIndex = 0;
+          const cb=document.createElement('input'); cb.type='checkbox'; cb.style.marginRight = '6px'; cb.checked = visibleSet.has(g);
+          const t=document.createElement('span'); t.className='onto-twist';
+          const l=document.createElement('span'); l.className='onto-node-label';
+          const name = await friendlyImportName(g);
+          const cnt = await importEquivCount(g);
+          l.textContent = `${name}${cnt ? ` (${cnt})` : ''}`;
+          cb.addEventListener('change', async () => {
+            const vis = loadVisibleImports(activeOntologyIri);
+            if (cb.checked) vis.add(g); else vis.delete(g);
+            saveVisibleImports(activeOntologyIri, vis);
+            await overlayImportsRefresh();
+          });
+          r.onclick = (e)=>{ Array.from(ul.querySelectorAll('.onto-node-row')).forEach(n=>n.classList.remove('selected')); r.classList.add('selected'); };
+          r.onkeydown = (e)=>{ const key=e.key||e.code; if (key==='Delete' || key==='Backspace') { e.preventDefault(); removeImport(g); } };
+          r.appendChild(cb); r.appendChild(t); r.appendChild(l);
+          li.appendChild(r); ul.appendChild(li);
+        });
+        importsRoot.appendChild(ul);
+        root.appendChild(importsRoot);
+        // Enable drop to import
+        row.addEventListener('dragover', (e)=>{ e.preventDefault(); });
+        row.addEventListener('drop', async (e)=>{
+          e.preventDefault();
+          const draggedIri = e.dataTransfer.getData('text/graph-iri');
+          if (!draggedIri) return;
+          const list = new Set(imports);
+          if (!list.has(draggedIri)) { list.add(draggedIri); localStorage.setItem(importsKey, JSON.stringify(Array.from(list))); refreshOntologyTree(); }
+          // Overlay imported classes (placeholder: we only list; loading remote triples is OW-2)
+        });
+      } catch(_) {}
+    }
+
+    // (empty-state banner removed)
+
+    function updatePropertiesPanelFromSelection() {
+      const form = qs('#ontoPropsForm'); if (!form || !ontoState.cy) return;
+      const sel = ontoState.cy.$(':selected');
+      const nameEl = qs('#propName');
+      const typeEl = qs('#propType');
+      const attrsEl = qs('#propAttrs');
+      if (sel.length === 1 && sel[0].isNode()) {
+        const n = sel[0];
+        nameEl.value = n.data('label') || n.id();
+        typeEl.value = n.data('type') || 'class';
+        attrsEl.value = JSON.stringify(n.data('attrs') || {}, null, 2);
+      } else if (sel.length === 1 && sel[0].isEdge()) {
+        const e = sel[0];
+        nameEl.value = e.data('predicate') || e.id();
+        typeEl.value = e.data('type') || 'objectProperty';
+        attrsEl.value = JSON.stringify(e.data('attrs') || {}, null, 2);
+      } else {
+        nameEl.value = localStorage.getItem('onto_model_name') || 'Ontology Model';
+        typeEl.value = 'model';
+        try {
+          const json = JSON.parse(localStorage.getItem('onto_model_attrs') || '{}');
+          attrsEl.value = JSON.stringify(json, null, 2);
+        } catch(_) { attrsEl.value = '{}'; }
+      }
+    }
+
+    function persistOntologyToLocalStorage() {
+      if (!ontoState.cy) return;
+      try {
+        const nodes = ontoState.cy.nodes(':not(.imported)').map(n => ({ data: n.data(), position: n.position() }));
+        const edges = ontoState.cy.edges(':not(.imported)').map(e => ({ data: e.data() }));
+        const key = graphKeyForActive();
+        if (key) localStorage.setItem(key, JSON.stringify({ nodes, edges }));
+      } catch(_) {}
+    }
+
+    function graphKeyForActive() {
+      const iri = activeOntologyIri || (attrsFromModel().graphIri || null);
+      if (!iri) return null;
+      return 'onto_graph__' + encodeURIComponent(iri);
+    }
+    function attrsFromModel() {
+      try { return JSON.parse(localStorage.getItem('onto_model_attrs') || '{}'); } catch(_) { return {}; }
+    }
+    function loadOntologyLabelMap() { try { return JSON.parse(localStorage.getItem('onto_label_map') || '{}'); } catch(_) { return {}; } }
+    function saveOntologyLabel(graphIri, label) {
+      try { const m = loadOntologyLabelMap(); m[graphIri] = label; localStorage.setItem('onto_label_map', JSON.stringify(m)); } catch(_) {}
+    }
+    function saveGraphToLocal(graphIri) {
+      if (!ontoState.cy) return;
+      try {
+        const nodes = ontoState.cy.nodes(':not(.imported)').map(n => ({ data: n.data(), position: n.position() }));
+        const edges = ontoState.cy.edges(':not(.imported)').map(e => ({ data: e.data() }));
+        localStorage.setItem('onto_graph__' + encodeURIComponent(graphIri), JSON.stringify({ nodes, edges }));
+      } catch(_) {}
+    }
+    function loadGraphFromLocal(graphIri) {
+      try {
+        const json = localStorage.getItem('onto_graph__' + encodeURIComponent(graphIri));
+        ontoState.cy.elements().remove();
+        if (json) {
+          importOntologyJSON(JSON.parse(json));
+        } else {
+          refreshOntologyTree();
+        }
+        // After base load, reapply overlays per visibility settings
+        overlayImportsRefresh();
+      } catch(_) { ontoState.cy.elements().remove(); refreshOntologyTree(); }
     }
 
     // Ontology toolbar events and import handling
@@ -877,6 +1875,36 @@
       document.addEventListener('click', async (e) => {
         if (e.target === qs('#ontoLayoutBtn')) {
           runAutoLayout();
+        } else if (e.target === qs('#ontoFitBtn')) {
+          try { if (ontoState.cy) ontoState.cy.fit(undefined, 20); } catch(_) {}
+        } else if (e.target === qs('#ontoFullscreenBtn')) {
+          try {
+            const sec = qs('#wb-ontology');
+            if (!sec) return;
+            if (!document.fullscreenElement) {
+              if (sec.requestFullscreen) await sec.requestFullscreen();
+            } else {
+              if (document.exitFullscreen) await document.exitFullscreen();
+            }
+          } catch(_) {}
+        } else if (e.target === qs('#ontoSaveBtn')) {
+          try {
+            if (!activeOntologyIri) { alert('Select an ontology to save.'); return; }
+            // Compute auto linked_by pairs from imports
+            const pairs = await computeLinkedByPairs(activeOntologyIri);
+            const ttl = toTurtle(activeOntologyIri, pairs);
+            const res = await fetch(`/api/ontology/save?graph=${encodeURIComponent(activeOntologyIri)}`, { method: 'POST', headers: { 'Content-Type': 'text/turtle' }, body: ttl });
+            const json = await res.json().catch(()=>({}));
+            if (res.ok) alert('Saved to Fuseki'); else alert('Save failed: ' + (json.detail || res.status));
+          } catch (err) { alert('Save error: ' + err.message); }
+        } else if (e.target.closest && e.target.closest('#ontoLinkIdenticalBtn')) {
+          // Preview: count equivalent class links that will be saved (no UI edges yet)
+          try {
+            if (!activeOntologyIri || !ontoState.cy) return;
+            const pairs = await computeLinkedByPairs(activeOntologyIri);
+            if (pairs.length) alert(`Will save ${pairs.length} owl:equivalentClass links on Save.`);
+            else alert('No identical classes found');
+          } catch (err) { console.error(err); alert('Link check failed'); }
         } else if (e.target === qs('#ontoExportBtn')) {
           exportOntologyJSON();
         } else if (e.target === qs('#ontoImportBtn')) {
@@ -887,18 +1915,73 @@
           const collapsed = sec.classList.toggle('onto-tree-collapsed');
           const icon = qs('#ontoTreeToggleIcon');
           if (icon) {
-            // Down chevron when expanded, right chevron when collapsed
+            // Left panel: show right chevron when collapsed, left chevron when expanded
             icon.innerHTML = collapsed
               ? '<path d="M9 6l6 6-6 6"/>'
-              : '<path d="M6 9l6 6 6-6"/>';
+              : '<path d="M15 6l-6 6 6 6"/>';
           }
           try { localStorage.setItem('onto_tree_collapsed', collapsed ? '1' : '0'); } catch(_) {}
-          if (ontoState.cy) ontoState.cy.resize();
+          requestAnimationFrame(() => { if (ontoState.cy) ontoState.cy.resize(); });
+        } else if (e.target === qs('#ontoPropsToggle') || e.target.closest('#ontoPropsToggle')) {
+          const sec = qs('#wb-ontology');
+          if (!sec) return;
+          const collapsed = sec.classList.toggle('onto-props-collapsed');
+          const icon = qs('#ontoPropsToggleIcon');
+          if (icon) {
+            // Right panel: show left chevron when collapsed, right chevron when expanded
+            icon.innerHTML = collapsed
+              ? '<path d="M15 6l-6 6 6 6"/>'
+              : '<path d="M9 6l6 6-6 6"/>';
+          }
+          try { localStorage.setItem('onto_props_collapsed', collapsed ? '1' : '0'); } catch(_) {}
+          // Wait for reflow before resizing Cytoscape so it fits the new grid
+          requestAnimationFrame(() => { if (ontoState.cy) ontoState.cy.resize(); });
+        } else if (e.target === qs('#propSaveBtn')) {
+          // Save properties
+          try {
+            if (!ontoState.cy) return;
+            const sel = ontoState.cy.$(':selected');
+            const nameEl = qs('#propName');
+            const typeEl = qs('#propType');
+            const attrsEl = qs('#propAttrs');
+            if (sel.length === 1 && sel[0].isNode()) {
+              const n = sel[0];
+              n.data('label', nameEl.value.trim() || n.data('label'));
+              n.data('type', typeEl.value || n.data('type'));
+              const parsed = JSON.parse(attrsEl.value || '{}');
+              n.data('attrs', parsed);
+            } else if (sel.length === 1 && sel[0].isEdge()) {
+              const ed = sel[0];
+              ed.data('predicate', nameEl.value.trim() || ed.data('predicate'));
+              ed.data('type', typeEl.value || ed.data('type'));
+              const parsed = JSON.parse(attrsEl.value || '{}');
+              ed.data('attrs', parsed);
+            } else {
+              localStorage.setItem('onto_model_name', nameEl.value.trim() || 'Ontology Model');
+              try { localStorage.setItem('onto_model_attrs', JSON.stringify(JSON.parse(attrsEl.value || '{}'))); } catch(_) { localStorage.setItem('onto_model_attrs', '{}'); }
+            }
+            refreshOntologyTree();
+            persistOntologyToLocalStorage();
+            const st = qs('#propSaveStatus'); if (st) { st.textContent = 'Saved'; setTimeout(()=>{ const s=qs('#propSaveStatus'); if (s) s.textContent=''; }, 1000); }
+          } catch (_) {
+            const st = qs('#propSaveStatus'); if (st) { st.textContent = 'Error'; setTimeout(()=>{ const s=qs('#propSaveStatus'); if (s) s.textContent=''; }, 1200); }
+          }
         }
+      });
+      // Keep Cytoscape sized correctly in fullscreen and update button title
+      document.addEventListener('fullscreenchange', () => {
+        const btn = qs('#ontoFullscreenBtn');
+        if (btn) btn.title = document.fullscreenElement ? 'Exit fullscreen' : 'Enter fullscreen';
+        requestAnimationFrame(() => { if (ontoState.cy) ontoState.cy.resize(); });
       });
       const header = qs('#ontoTreeHeader');
       if (header) header.addEventListener('dblclick', (e) => {
         const toggleBtn = qs('#ontoTreeToggle');
+        if (toggleBtn) toggleBtn.click();
+      });
+      const propsHeader = qs('#ontoPropsHeader');
+      if (propsHeader) propsHeader.addEventListener('dblclick', (e) => {
+        const toggleBtn = qs('#ontoPropsToggle');
         if (toggleBtn) toggleBtn.click();
       });
       const fileInput = () => qs('#ontoImportFile');
@@ -986,7 +2069,7 @@
           focusNext(li); e.preventDefault(); break;
         case ENTER:
         case SPACE:
-          selectNode(li); e.preventDefault(); break;
+          selectNode(li); handleTreeSelection(li); e.preventDefault(); break;
       }
     }
 
@@ -1027,6 +2110,55 @@
 
     // Boot
     initAuth();
+    // Restore previously selected graph label
+    try { const iri = localStorage.getItem('onto_active_iri'); if (iri) { activeOntologyIri = iri; updateOntoGraphLabel(); } } catch(_) {}
+    // Save shortcut Ctrl/Cmd+S
+    document.addEventListener('keydown', async (e) => {
+      const isSave = (e.key === 's' || e.key === 'S') && (e.ctrlKey || e.metaKey);
+      if (!isSave) return;
+      e.preventDefault();
+      try {
+        if (!activeOntologyIri) { alert('Select an ontology to save.'); return; }
+        const ttl = toTurtle(activeOntologyIri);
+        const res = await fetch(`/api/ontology/save?graph=${encodeURIComponent(activeOntologyIri)}`, { method: 'POST', headers: { 'Content-Type': 'text/turtle' }, body: ttl });
+        const json = await res.json().catch(()=>({}));
+        if (res.ok) alert('Saved to Fuseki'); else alert('Save failed: ' + (json.detail || res.status));
+      } catch (err) { alert('Save error: ' + err.message); }
+    }, false);
+
+    // Delete selected canvas entities (nodes/edges) for current ontology only
+    function performDelete() {
+      if (!(qs('#wb-ontology') && qs('#wb-ontology').classList.contains('active'))) return false;
+      if (!ontoState.cy) return false;
+      const sel = ontoState.cy.$(':selected');
+      if (!sel || sel.length === 0) return false;
+      ontoState.cy.remove(sel);
+      refreshOntologyTree();
+      persistOntologyToLocalStorage();
+      return true;
+    }
+    function handleDeleteKey(e) {
+      const key = e.key || e.code;
+      const tgt = e.target;
+      const isTyping = tgt && (tgt.tagName === 'INPUT' || tgt.tagName === 'TEXTAREA' || tgt.isContentEditable);
+      const inline = qs('#ontoInlineEdit');
+      const inlineVisible = inline ? (getComputedStyle(inline).display !== 'none') : false;
+      if (isTyping || inlineVisible) return;
+      if ((key === 'Delete' || key === 'Backspace') && ontoState.cy) {
+        const ok = performDelete();
+        if (ok) { e.preventDefault(); e.stopPropagation(); }
+      }
+    }
+    document.addEventListener('keydown', handleDeleteKey, false);
+    window.addEventListener('keydown', handleDeleteKey, true);
+    // Keyup fallback in case keydown is intercepted by browser/OS
+    document.addEventListener('keyup', handleDeleteKey, false);
+    // Toolbar delete
+    document.addEventListener('click', (e) => {
+      if (e.target === qs('#ontoDeleteBtn')) {
+        performDelete();
+      }
+    });
   </script>
 </body>
 </html>
