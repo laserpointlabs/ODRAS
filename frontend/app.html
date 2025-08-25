@@ -503,6 +503,11 @@
   <script>
     const qs = (s, r = document) => r.querySelector(s);
     const qsa = (s, r = document) => Array.from(r.querySelectorAll(s));
+    function debounce(fn, wait) {
+      let t; return function(...args){ clearTimeout(t); t = setTimeout(()=>fn.apply(this,args), wait); };
+    }
+    // Ensure we persist canvas before unload/refresh
+    window.addEventListener('beforeunload', () => { try { if (ontoState && ontoState.cy && activeOntologyIri) persistOntologyToLocalStorage(); } catch(_) {} });
 
     // Ontology workbench state
     const ontoState = { cy: null, eh: null, connectMode: false, clickConnectFrom: null, nextId: 1, currentPredicateType: 'objectProperty', isCanvasActive: false };
@@ -577,10 +582,11 @@
           updateOntoGraphLabel();
           // Load new graph from local storage if present
           if (ontoState.cy) {
-            // Always clear canvas when switching; then load saved if present
+            // Avoid racing autosave during restore
+            ontoState.suspendAutosave = true;
             try { ontoState.cy.elements().remove(); } catch(_) {}
-            // If no saved local graph, create a minimal empty model name node into properties state only
             loadGraphFromLocal(iri);
+            setTimeout(() => { ontoState.suspendAutosave = false; }, 50);
           }
           // Show model-level props when nothing selected
           updatePropertiesPanelFromSelection();
@@ -950,6 +956,12 @@
         }
         persistOntologyToLocalStorage();
       });
+      // Bind autosave on edits (add/remove/data/position)
+      try {
+        const autosave = debounce(() => { try { if (activeOntologyIri) persistOntologyToLocalStorage(); } catch(_) {} }, 250);
+        ontoState.cy.on('add remove data position', autosave);
+        ontoState.autosaveBound = true;
+      } catch(_) {}
     }
 
     function addClassNode(label) {
@@ -1193,7 +1205,7 @@
           const snap = await fetchImportGraphSnapshot(imp);
           const added = [];
           // Compute a simple cluster origin to the right of the base graph to avoid overlap (notes included)
-          const baseBBox = ontoState.cy.nodes(':not(.imported)').boundingBox();
+          const baseBBox = ontoState.cy.nodes().filter(n => !n.hasClass('imported')).boundingBox();
           const orderIndex = Math.max(0, visibleList.indexOf(imp));
           const padX = 200, padY = 40, jitterX = orderIndex * 100, jitterY = orderIndex * 60;
           const safe = (n, f)=> (Number.isFinite(n) ? n : f);
@@ -1288,7 +1300,7 @@
       ensureOntologyInitialized();
       if (!obj || !Array.isArray(obj.nodes) || !Array.isArray(obj.edges)) return;
       // Clear only base elements, keep imported overlays intact
-      ontoState.cy.elements(':not(.imported):not(.imported-equivalence)').remove();
+      ontoState.cy.elements().filter(el => !el.hasClass('imported') && !el.hasClass('imported-equivalence')).remove();
       // Migration guard: filter out any overlays accidentally saved to JSON
       const isOverlayNode = (n) => {
         try {
@@ -1331,8 +1343,9 @@
       if (!me || me.error) { showAuth(true); return; }
       qs('#userMenu').textContent = me.username + (me.is_admin ? ' (admin)' : '');
       showAuth(false);
-      await loadProjects();
+      // Initialize Cytoscape BEFORE loading projects so restore can occur during renderTree
       ensureOntologyInitialized();
+      await loadProjects();
       refreshOntologyTree();
       // Restore ontology tree collapsed state
       try {
@@ -1363,13 +1376,7 @@
         if (propsIcon && !propsCollapsed) propsIcon.innerHTML = '<path d="M9 6l6 6-6 6"/>';
         const savedW = parseInt(localStorage.getItem('onto_props_w') || '0', 10);
         if (savedW) document.documentElement.style.setProperty('--onto-props-w', savedW + 'px');
-        // Load saved graph for active ontology if present
-        try {
-          const attrs = JSON.parse(localStorage.getItem(`onto_model_attrs__${activeProject.id}`) || '{}');
-          const iri = attrs.graphIri || activeOntologyIri;
-          if (iri) loadGraphFromLocal(iri);
-        } catch(_) {}
-        // After applying layout classes/widths, ensure cy fits the visible area
+        // Do not load any graph here; renderTree handles per-project restore safely
         requestAnimationFrame(() => { if (ontoState.cy) ontoState.cy.resize(); });
       } catch(_) {}
     }
@@ -1600,7 +1607,14 @@
           activeOntologyIri = savedIri;
           updateOntoGraphLabel();
           // Attempt to load saved canvas for this active IRI
-          try { if (ontoState.cy) { ontoState.cy.elements().remove(); loadGraphFromLocal(savedIri); } } catch(_) {}
+          try {
+            if (ontoState.cy) {
+              ontoState.suspendAutosave = true;
+              ontoState.cy.elements().remove();
+              loadGraphFromLocal(savedIri);
+              setTimeout(() => { ontoState.suspendAutosave = false; }, 50);
+            }
+          } catch(_) {}
         }
       } catch(_) {}
       const root = qs('#treeRoot');
@@ -1825,6 +1839,41 @@
         [projectInfo, ontologyNode, docsNode, reqNode, outNode].filter(Boolean).forEach(n => root.appendChild(n));
       }
 
+      // Auto-restore previously selected ontology for this project, if available
+      try {
+        const pid = project && (project.id || project.project_id);
+        const savedIri = pid ? localStorage.getItem(`onto_active_iri__${pid}`) : null;
+        const treeEl = qs('#treeRoot');
+        if (savedIri && treeEl) {
+          const li = Array.from(treeEl.querySelectorAll('li[role="treeitem"]')).find(el => el.dataset && el.dataset.iri === savedIri);
+          if (li) {
+            // Restore canvas first (if we have saved content), then select the ontology to sync panels
+            try {
+              if (ontoState.cy) {
+                ontoState.suspendAutosave = true;
+                ontoState.cy.elements().remove();
+                loadGraphFromLocal(savedIri);
+                setTimeout(() => { ontoState.suspendAutosave = false; }, 50);
+              }
+            } catch(_) {}
+            selectNode(li);
+            handleTreeSelection(li);
+          } else {
+            // Saved IRI no longer present; reset to empty state
+            activeOntologyIri = null;
+            updateOntoGraphLabel();
+            try { if (ontoState.cy) ontoState.cy.elements().remove(); } catch(_) {}
+            refreshOntologyTree();
+          }
+        } else {
+          // No saved selection for this project
+          activeOntologyIri = null;
+          updateOntoGraphLabel();
+          try { if (ontoState.cy) ontoState.cy.elements().remove(); } catch(_) {}
+          refreshOntologyTree();
+        }
+      } catch(_) {}
+
       // Add plus button on Ontology section header (right side)
       try {
         const ontoSection = Array.from(root.children).find(li => li.querySelector('.node-label')?.textContent === 'Ontology');
@@ -1940,9 +1989,9 @@
     function refreshOntologyTree() {
       const root = qs('#ontoTreeRoot');
       if (!root || !ontoState.cy) return;
-      const classes = ontoState.cy.nodes().filter(n => (n.data('type') || 'class') === 'class' && !n.hasClass('imported'));
-      const importedClasses = ontoState.cy.nodes().filter(n => (n.data('type') || 'class') === 'class' && n.hasClass('imported'));
-      const notes = ontoState.cy.nodes().filter(n => (n.data('type') || '') === 'note' && !n.hasClass('imported'));
+      const classes = ontoState.cy.nodes().filter(n => n.visible() && (n.data('type') || 'class') === 'class' && !n.hasClass('imported'));
+      const importedClasses = ontoState.cy.nodes().filter(n => n.visible() && (n.data('type') || 'class') === 'class' && n.hasClass('imported'));
+      const notes = ontoState.cy.nodes().filter(n => n.visible() && (n.data('type') || '') === 'note' && !n.hasClass('imported'));
       // Simple grouping: Classes as top-level; edges shown under a "Relationships" group per class
       root.innerHTML = '';
       const makeItem = (label, expanded = true, children = []) => {
@@ -1991,7 +2040,10 @@
         try {
           const labels = loadOntologyLabelMap(activeProject);
           let modelName = 'Ontology';
-          if (activeOntologyIri) {
+          const pid = (activeProject && (activeProject.id || activeProject.project_id)) ? (activeProject.id || activeProject.project_id) : 'default';
+          const scopedName = localStorage.getItem(`onto_model_name__${pid}`) || '';
+          if (scopedName.trim()) modelName = scopedName.trim();
+          else if (activeOntologyIri) {
             modelName = (labels[activeOntologyIri] && String(labels[activeOntologyIri]).trim()) || (activeOntologyIri.split('/').pop() || 'Ontology');
           }
           text.textContent = modelName;
@@ -2116,20 +2168,17 @@
 
     function persistOntologyToLocalStorage() {
       if (!ontoState.cy) return;
+      if (ontoState.suspendAutosave) return;
       try {
-        const nodes = ontoState.cy.nodes(':not(.imported)').map(n => ({ data: n.data(), position: n.position() }));
-        const edges = ontoState.cy.edges(':not(.imported)').map(e => ({ data: e.data() }));
+        const nodes = ontoState.cy.nodes().filter(n => !n.hasClass('imported')).map(n => ({ data: n.data(), position: n.position() }));
+        const edges = ontoState.cy.edges().filter(e => !e.hasClass('imported')).map(e => ({ data: e.data() }));
         if (activeOntologyIri) {
           localStorage.setItem(storageKeyForGraph(activeOntologyIri), JSON.stringify({ nodes, edges }));
         }
       } catch(_) {}
     }
 
-    function graphKeyForActive() {
-      const iri = activeOntologyIri || (attrsFromModel().graphIri || null);
-      if (!iri) return null;
-      return 'onto_graph__' + encodeURIComponent(iri);
-    }
+    // graphKeyForActive not used; per-project keys are used via storageKeyForGraph
     function attrsFromModel() {
       const pid = (activeProject && (activeProject.id || activeProject.project_id)) ? (activeProject.id || activeProject.project_id) : 'default';
       try { return JSON.parse(localStorage.getItem(`onto_model_attrs__${pid}`) || '{}'); } catch(_) { return {}; }
@@ -2406,8 +2455,7 @@
 
     // Boot
     initAuth();
-    // Restore previously selected graph label
-    try { const iri = localStorage.getItem('onto_active_iri'); if (iri) { activeOntologyIri = iri; updateOntoGraphLabel(); } } catch(_) {}
+    // Per-project restore happens inside renderTree; avoid global restore that can clobber state
     // Save shortcut Ctrl/Cmd+S
     document.addEventListener('keydown', async (e) => {
       const isSave = (e.key === 's' || e.key === 'S') && (e.ctrlKey || e.metaKey);
