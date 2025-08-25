@@ -385,6 +385,7 @@
         <section id="wb-files" class="workbench">
           <h2>File Management</h2>
           <div class="muted">Upload requirements and knowledge docs (MinIO).</div>
+          <div id="filesToast" class="muted" style="margin-top:6px;"></div>
           <div class="files-toolbar" style="display:flex; gap:8px; align-items:center; margin:10px 0; flex-wrap:wrap;">
             <label class="muted" for="filesDocType">Type</label>
             <select id="filesDocType" style="background:#0b1220; color:#e5e7eb; border:1px solid var(--border); border-radius:6px; padding:6px;">
@@ -407,14 +408,26 @@
           <div class="card" style="margin-top:8px;">
             <div class="muted">Upload or import by URL</div>
             <div style="display:flex; gap:8px; align-items:center; margin-top:8px; flex-wrap:wrap;">
-              <input type="file" id="fileUploadInput" multiple />
+              <input type="file" id="fileUploadInput" multiple style="display:none" />
+              <button class="btn" id="fileChooseBtn" type="button">Choose Files</button>
               <input id="fileUrlInput" type="url" placeholder="https://example.com/doc.pdf" style="background:#0b1220; color:#e5e7eb; border:1px solid var(--border); border-radius:6px; padding:6px; min-width:320px;" />
               <button class="btn" id="fileUrlImportBtn">Import URL</button>
             </div>
-            <div id="fileDropZone" style="margin-top:10px; border:1px dashed var(--border); border-radius:8px; padding:16px; text-align:center; color:#9aa4b2;">
+            <div id="fileDropZone" tabindex="0" role="button" aria-label="Drop files or click to select" style="margin-top:10px; border:1px dashed var(--border); border-radius:8px; padding:16px; text-align:center; color:#9aa4b2; user-select:none; cursor:pointer;">
               Drag & drop files here, or use the Choose Files button above
             </div>
             <div id="uploadPreview" class="muted" style="margin-top:6px;"></div>
+          </div>
+
+          <div class="card" style="margin-top:10px;">
+            <div style="display:flex; justify-content:space-between; align-items:center; gap:8px;">
+              <div class="muted">Staged files</div>
+              <div style="display:flex; gap:8px; align-items:center;">
+                <button class="btn" id="filesUploadAllBtn" type="button">Upload All</button>
+                <button class="btn" id="filesClearStagedBtn" type="button">Clear</button>
+              </div>
+            </div>
+            <div id="stagedList" style="display:grid; gap:6px; margin-top:6px;"></div>
           </div>
 
           <div class="card" style="margin-top:10px;">
@@ -2198,7 +2211,14 @@
     });
 
     // Files workbench state + helpers
-    const filesState = { initialized: false, lastFiles: [] };
+    const filesState = { initialized: false, lastFiles: [], staged: [] };
+    function toast(msg, isError=false) {
+      const el = qs('#filesToast'); if (!el) return;
+      el.textContent = msg || '';
+      el.style.color = isError ? '#ef4444' : '#9aa4b2';
+      if (!msg) return;
+      setTimeout(()=>{ if (el.textContent === msg) el.textContent=''; }, 3000);
+    }
     function renderFilesList(items) {
       const list = qs('#filesList'); if (!list) return;
       list.innerHTML = '';
@@ -2222,6 +2242,22 @@
         list.appendChild(row);
       });
     }
+    function renderStagedList() {
+      const list = qs('#stagedList'); if (!list) return;
+      list.innerHTML = '';
+      if (!filesState.staged.length) {
+        const div = document.createElement('div'); div.className = 'muted'; div.textContent = 'No staged files.'; list.appendChild(div); return;
+      }
+      filesState.staged.forEach((f, idx) => {
+        const row = document.createElement('div'); row.className = 'card'; row.style.display='grid'; row.style.gridTemplateColumns='1fr auto'; row.style.alignItems='center'; row.style.padding='8px';
+        const left = document.createElement('div'); left.innerHTML = `<strong>${f.name}</strong> <span class="muted">${f.size} bytes</span>`;
+        const actions = document.createElement('div');
+        const rem = document.createElement('button'); rem.className='btn'; rem.textContent='Remove'; rem.onclick=()=>{ filesState.staged.splice(idx,1); renderStagedList(); };
+        actions.appendChild(rem);
+        row.appendChild(left); row.appendChild(actions);
+        list.appendChild(row);
+      });
+    }
     function previewSelectedFiles(fileList) {
       const el = qs('#uploadPreview'); if (!el) return;
       if (!fileList || !fileList.length) { el.textContent = ''; return; }
@@ -2232,6 +2268,7 @@
       if (filesState.initialized) return;
       filesState.initialized = true;
       const input = qs('#fileUploadInput');
+      const choose = qs('#fileChooseBtn');
       const drop = qs('#fileDropZone');
       const urlInput = qs('#fileUrlInput');
       const urlBtn = qs('#fileUrlImportBtn');
@@ -2244,7 +2281,12 @@
           const files = e.target.files;
           previewSelectedFiles(files);
           filesState.lastFiles = Array.from(files || []);
+          filesState.staged.push(...filesState.lastFiles);
+          renderStagedList();
         });
+      }
+      if (choose && input) {
+        choose.addEventListener('click', ()=> input.click());
       }
       if (drop) {
         ;['dragenter','dragover'].forEach(ev => drop.addEventListener(ev, (e)=>{ e.preventDefault(); drop.style.background = '#0f1628'; }));
@@ -2253,15 +2295,31 @@
           const dt = e.dataTransfer; const files = dt && dt.files ? dt.files : [];
           previewSelectedFiles(files);
           filesState.lastFiles = Array.from(files || []);
+          filesState.staged.push(...filesState.lastFiles);
+          renderStagedList();
         });
+        drop.addEventListener('click', ()=>{ if (input) input.click(); });
+        drop.addEventListener('keydown', (e)=>{ if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); if (input) input.click(); } });
       }
       if (urlBtn && urlInput) {
         urlBtn.addEventListener('click', () => {
           const u = (urlInput.value || '').trim();
           const el = qs('#uploadPreview');
-          if (el) el.textContent = u ? `URL ready: ${u}` : '';
+          if (!u) { toast('Please enter a URL', true); if (el) el.textContent=''; return; }
+          try { new URL(u); } catch(_) { toast('Invalid URL', true); return; }
+          if (el) el.textContent = `URL ready: ${u}`;
+          toast('URL staged for import');
         });
       }
+      const uploadAll = qs('#filesUploadAllBtn');
+      const clearStaged = qs('#filesClearStagedBtn');
+      if (clearStaged) clearStaged.addEventListener('click', ()=>{ filesState.staged = []; renderStagedList(); previewSelectedFiles([]); });
+      if (uploadAll) uploadAll.addEventListener('click', ()=>{
+        if (!filesState.staged.length) { toast('Nothing to upload', true); return; }
+        // Placeholder: no backend call yet
+        toast(`Uploading ${filesState.staged.length} file(s)...`);
+        setTimeout(()=>{ toast('Upload complete (placeholder)'); filesState.staged = []; renderStagedList(); }, 800);
+      });
       const triggerRefresh = () => {
         // Placeholder: no backend call yet
         const q = {
@@ -2279,6 +2337,7 @@
       if (tags) tags.addEventListener('keyup', (e)=>{ if (e.key === 'Enter') triggerRefresh(); });
       // Initial empty list
       renderFilesList([]);
+      renderStagedList();
     }
   </script>
 </body>
