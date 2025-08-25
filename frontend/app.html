@@ -290,9 +290,11 @@
         </div>
       </aside>
       <!-- Project context menu -->
-      <div id="projectContextMenu" style="position:absolute; display:none; background: var(--panel); border: 1px solid var(--border); border-radius: 8px; padding:4px; z-index: 9999; min-width: 180px;">
+      <div id="projectContextMenu" style="position:absolute; display:none; background: var(--panel); border: 1px solid var(--border); border-radius: 8px; padding:4px; z-index: 9999; min-width: 220px;">
         <button id="projArchiveBtn" class="btn" style="width:100%; text-align:left; background:none; border:none; padding:8px; color:var(--text);">Archive Project</button>
         <button id="projDeleteBtn" class="btn" style="width:100%; text-align:left; background:none; border:none; padding:8px; color:#ef4444;">Delete Project</button>
+        <hr style="border:none; border-top:1px solid var(--border); margin:6px 0;"/>
+        <button id="projShowArchivedBtn" class="btn" style="width:100%; text-align:left; background:none; border:none; padding:8px; color:var(--text);">Archived…</button>
       </div>
 
       <div class="resizer" id="resizer" aria-hidden="true"></div>
@@ -1743,6 +1745,7 @@
             const token = localStorage.getItem(tokenKey);
             const archiveBtn = qs('#projArchiveBtn');
             const deleteBtn = qs('#projDeleteBtn');
+            const showArchivedBtn = qs('#projShowArchivedBtn');
             if (archiveBtn) archiveBtn.onclick = async () => {
               try {
                 const res = await fetch(`/api/projects/${encodeURIComponent(pid)}/archive`, { method: 'POST', headers: { Authorization: 'Bearer ' + token }});
@@ -1756,6 +1759,35 @@
                 const res = await fetch(`/api/projects/${encodeURIComponent(pid)}`, { method: 'DELETE', headers: { Authorization: 'Bearer ' + token }});
                 if (res.ok) { try { localStorage.removeItem('active_project_id'); } catch(_) {} await loadProjects(); }
                 else { const t = await res.text().catch(()=>String(res.status)); alert('Delete failed: ' + t); }
+              } finally { hide(); }
+            };
+            if (showArchivedBtn) showArchivedBtn.onclick = async () => {
+              try {
+                const res = await fetch('/api/projects?state=archived', { headers: { Authorization: 'Bearer ' + token }});
+                const json = await res.json();
+                const rows = (json.projects || []).map(p => ({ id: p.project_id || p.id, name: p.name || 'Project' })).filter(p => p.id);
+                const overlay = document.createElement('div');
+                overlay.style.position='fixed'; overlay.style.inset='0'; overlay.style.background='rgba(0,0,0,0.4)'; overlay.style.zIndex='9998';
+                const panel = document.createElement('div'); panel.style.position='fixed'; panel.style.top='20%'; panel.style.left='50%'; panel.style.transform='translateX(-50%)'; panel.style.background='var(--panel)'; panel.style.border='1px solid var(--border)'; panel.style.borderRadius='12px'; panel.style.padding='12px'; panel.style.minWidth='420px'; panel.style.zIndex='9999';
+                panel.innerHTML = `<div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:8px;"><strong>Archived Projects</strong><button id="archClose" class="btn">Close</button></div><div id="archList"></div>`;
+                document.body.appendChild(overlay); document.body.appendChild(panel);
+                const close = ()=>{ try { document.body.removeChild(panel); document.body.removeChild(overlay); } catch(_) {} };
+                panel.querySelector('#archClose').onclick = close; overlay.onclick = close;
+                const listEl = panel.querySelector('#archList');
+                if (!rows.length) { listEl.innerHTML = '<div class="muted">No archived projects.</div>'; return; }
+                listEl.innerHTML = rows.map(r => `<div style="display:flex; justify-content:space-between; align-items:center; border:1px solid var(--border); border-radius:8px; padding:8px; margin-bottom:6px;"><span>${r.name}</span><div><button class="btn" data-restore="${r.id}">Restore</button></div></div>`).join('');
+                listEl.addEventListener('click', async (e)=>{
+                  const btn = e.target.closest('button[data-restore]'); if (!btn) return;
+                  const rid = btn.getAttribute('data-restore');
+                  const rr = await fetch(`/api/projects/${encodeURIComponent(rid)}/restore`, { method:'POST', headers:{ Authorization:'Bearer ' + token }});
+                  if (rr.ok) {
+                    try { localStorage.setItem('active_project_id', rid); } catch(_) {}
+                    close();
+                    await loadProjects();
+                  } else {
+                    const t = await rr.text().catch(()=>String(rr.status)); alert('Restore failed: ' + t);
+                  }
+                });
               } finally { hide(); }
             };
           };

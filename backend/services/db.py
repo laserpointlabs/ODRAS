@@ -74,20 +74,32 @@ class DatabaseService:
         finally:
             self._return(conn)
 
-    def list_projects_for_user(self, user_id: str) -> List[Dict[str, Any]]:
+    def list_projects_for_user(self, user_id: str, active: Optional[bool] = True) -> List[Dict[str, Any]]:
         conn = self._conn()
         try:
             with conn.cursor(cursor_factory=RealDictCursor) as cur:
-                cur.execute(
-                    """
-                    SELECT p.project_id, p.name, p.description, p.created_at, p.updated_at, pm.role
-                    FROM public.projects p
-                    JOIN public.project_members pm ON pm.project_id = p.project_id
-                    WHERE pm.user_id = %s AND p.is_active = TRUE
-                    ORDER BY p.created_at DESC
-                    """,
-                    (user_id,),
-                )
+                if active is None:
+                    cur.execute(
+                        """
+                        SELECT p.project_id, p.name, p.description, p.created_at, p.updated_at, p.is_active, pm.role
+                        FROM public.projects p
+                        JOIN public.project_members pm ON pm.project_id = p.project_id
+                        WHERE pm.user_id = %s
+                        ORDER BY p.created_at DESC
+                        """,
+                        (user_id,),
+                    )
+                else:
+                    cur.execute(
+                        """
+                        SELECT p.project_id, p.name, p.description, p.created_at, p.updated_at, p.is_active, pm.role
+                        FROM public.projects p
+                        JOIN public.project_members pm ON pm.project_id = p.project_id
+                        WHERE pm.user_id = %s AND p.is_active = %s
+                        ORDER BY p.created_at DESC
+                        """,
+                        (user_id, active),
+                    )
                 return [dict(r) for r in cur.fetchall()]
         finally:
             self._return(conn)
@@ -121,6 +133,15 @@ class DatabaseService:
         try:
             with conn.cursor() as cur:
                 cur.execute("UPDATE public.projects SET is_active = FALSE WHERE project_id = %s", (project_id,))
+                conn.commit()
+        finally:
+            self._return(conn)
+
+    def restore_project(self, project_id: str) -> None:
+        conn = self._conn()
+        try:
+            with conn.cursor() as cur:
+                cur.execute("UPDATE public.projects SET is_active = TRUE WHERE project_id = %s", (project_id,))
                 conn.commit()
         finally:
             self._return(conn)

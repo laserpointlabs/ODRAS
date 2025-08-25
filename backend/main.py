@@ -107,9 +107,14 @@ def me(user=Depends(get_user)):
     return user
 
 @app.get("/api/projects")
-def list_projects(user=Depends(get_user)):
+def list_projects(state: Optional[str] = None, user=Depends(get_user)):
     try:
-        rows = db.list_projects_for_user(user_id=user["user_id"])
+        active = True
+        if state == "archived":
+            active = False
+        elif state == "all":
+            active = None
+        rows = db.list_projects_for_user(user_id=user["user_id"], active=active)
         return {"projects": rows}
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
@@ -160,6 +165,19 @@ def archive_project(project_id: str, user=Depends(get_user)):
             raise HTTPException(status_code=403, detail="Not a member of project")
         db.archive_project(project_id)
         return {"archived": project_id}
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@app.post("/api/projects/{project_id}/restore")
+def restore_project(project_id: str, user=Depends(get_user)):
+    try:
+        if not db.is_user_member(project_id=project_id, user_id=user["user_id"]):
+            raise HTTPException(status_code=403, detail="Not a member of project")
+        db.restore_project(project_id)
+        return {"restored": project_id}
     except HTTPException:
         raise
     except Exception as e:
