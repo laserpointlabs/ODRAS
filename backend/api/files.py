@@ -8,14 +8,14 @@ import logging
 from typing import Any, Dict, List, Optional
 
 import httpx
-from fastapi import APIRouter, Depends, File, Form, HTTPException, Query, UploadFile
+from fastapi import APIRouter, Depends, File, Form, HTTPException, Query, UploadFile, Header
 from fastapi.responses import JSONResponse, StreamingResponse
 from pydantic import BaseModel, Field
 
 from ..services.config import Settings
+from ..services.db import DatabaseService
 from ..services.file_storage import FileStorageService
 from ..services.persistence import PersistenceLayer
-from ..main import get_user  # reuse auth dependency
 
 logger = logging.getLogger(__name__)
 
@@ -82,13 +82,18 @@ def get_file_storage_service() -> FileStorageService:
     return FileStorageService(settings)
 
 
+def get_db_service() -> DatabaseService:
+    return DatabaseService(Settings())
+
+
 @router.post("/upload", response_model=FileUploadResponse)
 async def upload_file(
     file: UploadFile = File(...),
     project_id: Optional[str] = Form(None),
     tags: Optional[str] = Form(None),  # JSON string of tags
     storage_service: FileStorageService = Depends(get_file_storage_service),
-    user: Dict = Depends(get_user),
+    db: DatabaseService = Depends(get_db_service),
+    authorization: Optional[str] = Header(None),
 ):
     """
     Upload a file to the storage backend.
@@ -102,6 +107,20 @@ async def upload_file(
         Upload result with file metadata
     """
     try:
+        # Validate project membership
+        if not project_id:
+            raise HTTPException(status_code=400, detail="project_id required")
+        # Minimal auth: read user from token (shared in main via services.auth)
+        if not authorization or not authorization.startswith("Bearer "):
+            raise HTTPException(status_code=401, detail="Unauthorized")
+        token = authorization.split(" ", 1)[1]
+        from ..services.auth import TOKENS as AUTH_TOKENS
+        user = AUTH_TOKENS.get(token)
+        if not user:
+            raise HTTPException(status_code=401, detail="Invalid token")
+        if not db.is_user_member(project_id=project_id, user_id=user["user_id"]):
+            raise HTTPException(status_code=403, detail="Not a member of project")
+
         # Read file content
         content = await file.read()
 
@@ -116,14 +135,12 @@ async def upload_file(
                 logger.warning(f"Invalid JSON in tags parameter: {tags}")
 
         # Store file
-        # Attach minimal ownership metadata
-        owner = user.get("username") if isinstance(user, dict) else None
         result = await storage_service.store_file(
             content=content,
             filename=file.filename or "unknown",
             content_type=file.content_type,
             project_id=project_id,
-            tags={**file_tags, "doc_type": "requirements", "owner": owner},
+            tags=file_tags,
         )
 
         if result["success"]:
@@ -248,6 +265,7 @@ async def list_files(
     limit: int = Query(100, description="Maximum number of results"),
     offset: int = Query(0, description="Result offset for pagination"),
     storage_service: FileStorageService = Depends(get_file_storage_service),
+    db: DatabaseService = Depends(get_db_service),
 ):
     """
     List files with optional filtering.
@@ -261,6 +279,7 @@ async def list_files(
         List of files with metadata
     """
     try:
+        # Optional: enforce membership when project filter provided
         files = await storage_service.list_files(project_id, limit, offset)
 
         # Convert to response format

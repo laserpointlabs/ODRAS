@@ -192,8 +192,7 @@
     <div class="topbar">
       <div class="brand">ODRAS</div>
       <div class="spacer"></div>
-      <select id="projectSelect" title="Active project"></select>
-      <button class="btn" id="newProjectBtn">New Project</button>
+      
       <div class="spacer"></div>
       <div id="userMenu" class="muted"></div>
       <button class="btn" id="logoutBtn">Logout</button>
@@ -282,7 +281,7 @@
       <aside class="tree" id="treePanel" aria-label="Project Tree">
         <div class="tree-header">
           <select id="projectSelect2" title="Active project"></select>
-          <button class="btn" id="addNodeBtn" title="Add item">＋</button>
+          <button class="btn" id="addNodeBtn" title="New Project">＋</button>
         </div>
         <div class="tree-scroll">
           <nav class="treeview" aria-label="Project">
@@ -308,6 +307,9 @@
             <button class="btn" id="ontoImportBtn" title="Import graph JSON">Import</button>
             <button class="btn" id="ontoExportBtn" title="Export graph JSON">Export</button>
             <input type="file" id="ontoImportFile" accept="application/json" style="display:none" />
+          </div>
+          <div id="ontoEmpty" class="card" style="margin-top:10px; display:none;">
+            Create or Select an Ontology to begin
           </div>
           <div class="onto-layout" id="ontoLayoutSection">
             <aside class="onto-tree" aria-label="Ontology Tree">
@@ -510,6 +512,14 @@
         el.textContent = 'No graph selected';
         el.title = '';
       }
+      // Toggle empty-state hint
+      const empty = qs('#ontoEmpty');
+      const layout = qs('#ontoLayoutSection');
+      if (empty && layout) {
+        const showEmpty = !activeOntologyIri;
+        empty.style.display = showEmpty ? 'block' : 'none';
+        layout.style.display = showEmpty ? 'none' : 'grid';
+      }
     }
 
     function slugify(str) {
@@ -543,25 +553,31 @@
           // Switch active ontology
           activeOntologyIri = iri;
           try {
-            const pid = (activeProject && activeProject.id) ? activeProject.id : 'default';
+            const pid = (activeProject && (activeProject.id || activeProject.project_id)) ? (activeProject.id || activeProject.project_id) : 'default';
             localStorage.setItem(`onto_active_iri__${pid}`, iri);
             // Set model name for properties panel based on discovered label or IRI tail
             const friendly = (li.dataset.label && li.dataset.label.trim()) || iri.split('/').pop() || iri;
-            localStorage.setItem('onto_model_name', friendly);
+            localStorage.setItem(`onto_model_name__${pid}`, friendly);
             // Also store display label and graph in model attributes
             let attrs = {};
-            try { attrs = JSON.parse(localStorage.getItem('onto_model_attrs') || '{}'); } catch(_) { attrs = {}; }
+            try { attrs = JSON.parse(localStorage.getItem(`onto_model_attrs__${pid}`) || '{}'); } catch(_) { attrs = {}; }
             attrs.displayLabel = friendly;
             attrs.graphIri = iri;
-            localStorage.setItem('onto_model_attrs', JSON.stringify(attrs));
+            localStorage.setItem(`onto_model_attrs__${pid}`, JSON.stringify(attrs));
+            // Keep project-scoped label map in sync so the top node reflects selection
+            try { saveOntologyLabel(iri, friendly); } catch(_) {}
           } catch(_) {}
           updateOntoGraphLabel();
           // Load new graph from local storage if present
           if (ontoState.cy) {
+            // Always clear canvas when switching; then load saved if present
+            try { ontoState.cy.elements().remove(); } catch(_) {}
             loadGraphFromLocal(iri);
           }
           // Show model-level props when nothing selected
           updatePropertiesPanelFromSelection();
+          // Rebuild ontology tree (top node label and contents)
+          try { refreshOntologyTree(); } catch(_) {}
           // Switch to Ontology workbench view
           const ico = document.querySelector('.icon[data-wb="ontology"]');
           if (ico && !document.querySelector('#wb-ontology.workbench.active')) {
@@ -995,8 +1011,10 @@
         '@prefix owl: <http://www.w3.org/2002/07/owl#> .',
         '@prefix rdfs: <http://www.w3.org/2000/01/rdf-schema#> .',
         (()=>{ try {
-          const labels = loadOntologyLabelMap();
-          const lbl = labels[graphIri] || (activeOntologyIri === graphIri ? (localStorage.getItem('onto_model_name')||'') : (graphIri.split('/').pop()||graphIri));
+          const labels = loadOntologyLabelMap(activeProject);
+          const pid = (activeProject && (activeProject.id || activeProject.project_id)) ? (activeProject.id || activeProject.project_id) : null;
+          const scopedName = pid ? (localStorage.getItem(`onto_model_name__${pid}`) || '') : '';
+          const lbl = labels[graphIri] || (activeOntologyIri === graphIri ? scopedName : (graphIri.split('/').pop()||graphIri));
           return `\n<${graphIri}> a owl:Ontology ; rdfs:label "${String(lbl||'').replace(/\\/g,'\\\\').replace(/"/g,'\\"')}" .\n`;
         } catch(_) { return `\n<${graphIri}> a owl:Ontology .\n`; } })()
       ];
@@ -1339,7 +1357,7 @@
         if (savedW) document.documentElement.style.setProperty('--onto-props-w', savedW + 'px');
         // Load saved graph for active ontology if present
         try {
-          const attrs = JSON.parse(localStorage.getItem('onto_model_attrs') || '{}');
+          const attrs = JSON.parse(localStorage.getItem(`onto_model_attrs__${activeProject.id}`) || '{}');
           const iri = attrs.graphIri || activeOntologyIri;
           if (iri) loadGraphFromLocal(iri);
         } catch(_) {}
@@ -1362,40 +1380,93 @@
         qs('#loginMsg').textContent = json.error || 'Login failed';
       }
     };
-    qs('#logoutBtn').onclick = () => { localStorage.removeItem(tokenKey); localStorage.removeItem(userKey); showAuth(true); };
+    qs('#logoutBtn').onclick = () => { localStorage.removeItem(tokenKey); localStorage.removeItem(userKey); activeOntologyIri = null; updateOntoGraphLabel(); try { if (ontoState.cy) ontoState.cy.elements().remove(); } catch(_) {} showAuth(true); };
 
     // Projects
     async function loadProjects() {
       const token = localStorage.getItem(tokenKey);
       const res = await fetch('/api/projects', { headers: { Authorization: 'Bearer ' + token }});
       const json = await res.json();
-      const list = json.projects || [];
-      const selects = [qs('#projectSelect'), qs('#projectSelect2')];
+      const raw = json.projects || [];
+      // Normalize backend shape to { id, name }
+      const list = raw.map(p => ({
+        id: p.id || p.project_id || p.projectId,
+        name: p.name || p.project_name || 'Project'
+      })).filter(p => !!p.id);
+      const selects = [qs('#projectSelect2')];
       if (list.length) {
-        selects.forEach(sel => { sel.innerHTML = list.map(p => `<option value="${p.id}">${p.name}</option>`).join(''); });
-        await renderTree(list[0]);
+        // restore previously selected project if available
+        const savedPid = (localStorage.getItem('active_project_id') || '').trim();
+        let selected = list[0];
+        if (savedPid) {
+          const found = list.find(p => p.id === savedPid);
+          if (found) selected = found;
+        }
+        selects.forEach(sel => { if (sel) { sel.innerHTML = list.map(p => `<option value="${p.id}">${p.name}</option>`).join(''); sel.disabled = false; sel.value = selected.id; } });
+        await renderTree(selected);
       } else {
-        const sample = getSampleProject();
-        selects.forEach(sel => { sel.innerHTML = `<option value="${sample.id}">${sample.name} (demo)</option>`; });
-        await renderTree(sample);
+        // No projects: clear tree and show empty state
+        selects.forEach(sel => { if (sel) { sel.innerHTML = '<option value="" disabled selected>Create Project...</option>'; sel.disabled = true; } });
+        await renderTree({ id: null, name: '' });
       }
     }
-    qs('#newProjectBtn').onclick = async () => {
-      const name = prompt('Project name'); if (!name) return;
-      const token = localStorage.getItem(tokenKey);
-      const res = await fetch('/api/projects', { method:'POST', headers:{'Content-Type':'application/json', Authorization: 'Bearer ' + token}, body: JSON.stringify({ name }) });
-      if (res.ok) loadProjects();
-    };
-    ['#projectSelect', '#projectSelect2'].forEach(id => {
-      qs(id).addEventListener('change', async (e) => {
+    (function(){
+      const npb = qs('#newProjectBtn');
+      if (!npb) return;
+      npb.onclick = async () => {
+        const name = prompt('Project name'); if (!name) return;
+        const token = localStorage.getItem(tokenKey);
+        const res = await fetch('/api/projects', { method:'POST', headers:{'Content-Type':'application/json', Authorization: 'Bearer ' + token}, body: JSON.stringify({ name }) });
+        try {
+          if (res.ok) {
+            const js = await res.json().catch(()=>({}));
+            const proj = js.project || js;
+            const pid = (proj && (proj.id || proj.project_id || proj.projectId)) || '';
+            if (pid) localStorage.setItem('active_project_id', pid);
+          }
+        } catch(_) {}
+        await loadProjects();
+      };
+    })();
+    ['#projectSelect2'].forEach(id => {
+      const sel = qs(id); if (!sel) return;
+      sel.addEventListener('change', async (e) => {
         const pid = e.target.value;
+        try { localStorage.setItem('active_project_id', pid); } catch(_) {}
         const token = localStorage.getItem(tokenKey);
         const res = await fetch('/api/projects', { headers: { Authorization: 'Bearer ' + token }});
         const json = await res.json();
-        const proj = (json.projects || []).find(p => p.id === pid);
-        if (proj) await renderTree(proj);
+        const raw = json.projects || [];
+        const list = raw.map(p => ({ id: p.id || p.project_id || p.projectId, name: p.name || p.project_name || 'Project' }));
+        const proj = list.find(p => p.id === pid);
+        if (proj) { activeOntologyIri = null; updateOntoGraphLabel(); await renderTree(proj); }
       });
     });
+
+    // Plus button near project selector creates a new project
+    (function(){
+      const btn = qs('#addNodeBtn');
+      if (!btn) return;
+      btn.addEventListener('click', async () => {
+        const name = prompt('Project name'); if (!name) return;
+        const token = localStorage.getItem(tokenKey);
+        const res = await fetch('/api/projects', { method:'POST', headers:{'Content-Type':'application/json', Authorization: 'Bearer ' + token}, body: JSON.stringify({ name }) });
+        if (res.ok) {
+          // Reload and select the newly created project
+          const pr = await fetch('/api/projects', { headers: { Authorization: 'Bearer ' + token }}).then(r=>r.json()).catch(()=>({projects:[]}));
+          const raw = pr.projects || [];
+          const list = raw.map(p => ({ id: p.id || p.project_id || p.projectId, name: p.name || p.project_name || 'Project' })).filter(p => !!p.id);
+          const sel = qs('#projectSelect2');
+          if (sel && list.length) {
+            sel.innerHTML = list.map(p => `<option value="${p.id}">${p.name}</option>`).join('');
+            sel.value = list[list.length - 1].id;
+            try { localStorage.setItem('active_project_id', list[list.length - 1].id); } catch(_) {}
+            sel.disabled = false;
+            await renderTree(list[list.length - 1]);
+          }
+        }
+      });
+    })();
 
     // Workbench switching
     qsa('.icon').forEach(el => el.onclick = () => {
@@ -1488,10 +1559,15 @@
     })();
 
     async function renderTree(project) {
-      activeProject = project;
+      activeProject = project && project.id ? project : null;
+      // Reset active ontology when switching context or when no project
+      activeOntologyIri = null;
+      updateOntoGraphLabel();
+      try { if (ontoState.cy) ontoState.cy.elements().remove(); } catch(_) {}
       // Restore per-project active ontology selection (label only)
       try {
-        const savedIri = localStorage.getItem(`onto_active_iri__${project.id}`);
+        const pid = project && (project.id || project.project_id);
+        const savedIri = localStorage.getItem(`onto_active_iri__${pid}`);
         if (savedIri) { activeOntologyIri = savedIri; updateOntoGraphLabel(); }
       } catch(_) {}
       const root = qs('#treeRoot');
@@ -1522,12 +1598,13 @@
                   const newLabel = name.trim();
                   row.querySelector('.node-label').textContent = newLabel; li.dataset.label = newLabel; saveOntologyLabel(li.dataset.iri, newLabel);
                   if (activeOntologyIri === li.dataset.iri) {
-                    localStorage.setItem('onto_model_name', newLabel);
+                    const pid = project.id || project.project_id || 'default';
+                    localStorage.setItem(`onto_model_name__${pid}`, newLabel);
                     try {
                       let attrs = {};
-                      try { attrs = JSON.parse(localStorage.getItem('onto_model_attrs') || '{}'); } catch(_) { attrs = {}; }
+                      try { attrs = JSON.parse(localStorage.getItem(`onto_model_attrs__${pid}`) || '{}'); } catch(_) { attrs = {}; }
                       attrs.displayLabel = newLabel;
-                      localStorage.setItem('onto_model_attrs', JSON.stringify(attrs));
+                      localStorage.setItem(`onto_model_attrs__${pid}`, JSON.stringify(attrs));
                     } catch(_) {}
                     updateOntoGraphLabel();
                     // Immediately reflect in Ontology tree view without a full refresh
@@ -1559,29 +1636,33 @@
         return li;
       };
 
-      const reqItems = (project.requirements || []).map((r, idx) => {
+      const reqItems = ((project && project.requirements) || []).map((r, idx) => {
         const rid = r.id || `SP-${String(idx + 1).padStart(3, '0')}`;
         const label = rid; // ID only
         return makeItem(rid, label, 'req');
       });
-      const docReqItems = (project.documents && project.documents.requirements ? project.documents.requirements : []).map(d => makeItem(d.id || d.name, d.name || d.id, 'docreq'));
-      const docKnowItems = (project.documents && project.documents.knowledge ? project.documents.knowledge : []).map(d => makeItem(d.id || d.name, d.name || d.id, 'docknow'));
-      const outItems = (project.artifacts || project.outputs || []).map(o => makeItem(o.id || o.name, o.name || o.id, 'out'));
+      const docReqItems = (project && project.documents && project.documents.requirements ? project.documents.requirements : []).map(d => makeItem(d.id || d.name, d.name || d.id, 'docreq'));
+      const docKnowItems = (project && project.documents && project.documents.knowledge ? project.documents.knowledge : []).map(d => makeItem(d.id || d.name, d.name || d.id, 'docknow'));
+      const outItems = ((project && (project.artifacts || project.outputs)) || []).map(o => makeItem(o.id || o.name, o.name || o.id, 'out'));
 
       // Ontology tree: discover from Fuseki
       let ontologyNode = null;
       try {
-        const res = await fetch(`/api/ontologies${project?.id ? `?project=${encodeURIComponent(project.id)}` : ''}`);
+        const pid = project && (project.id || project.project_id);
+        const res = await fetch(`/api/ontologies${pid ? `?project=${encodeURIComponent(pid)}` : ''}`);
         const json = await res.json();
         const onts = Array.isArray(json.ontologies) ? json.ontologies : [];
-        const labelsMap = loadOntologyLabelMap();
+        const labelsMap = loadOntologyLabelMap(project);
         const ontoItems = onts.map((o, idx) => {
+          const serverLabel = (o.label && String(o.label).trim()) || '';
+          const fallbackLabel = labelsMap[o.graphIri] || o.graphIri;
+          const displayLabel = serverLabel || fallbackLabel;
           const li = makeItem(
             `ontology-${idx}-${o.graphIri}`,
-            (labelsMap[o.graphIri] || o.label || o.graphIri),
+            displayLabel,
             'onto',
             [],
-            { nodeType: 'ontology', iri: o.graphIri, label: (labelsMap[o.graphIri] || o.label || o.graphIri) }
+            { nodeType: 'ontology', iri: o.graphIri, label: displayLabel }
           );
           // Enable dragging this ontology into the Imports node
           const row = li.querySelector('.node-row');
@@ -1591,15 +1672,19 @@
               try { ev.dataTransfer.setData('text/graph-iri', o.graphIri); ev.dataTransfer.effectAllowed = 'copy'; } catch(_) {}
             });
           }
+          // Keep label map in sync with server
+          if (serverLabel) {
+            try { saveOntologyLabel(o.graphIri, serverLabel); } catch(_) {}
+          }
           return li;
         });
         if (ontoItems.length) {
           ontologyNode = makeItem('ontology', 'Ontology', 'folder', ontoItems);
         } else {
-          // Fallback to sample listing if discovery yields nothing
-          ontologyNode = makeItem('ontology', 'Ontology', 'folder', [
-            makeItem('onto-sample', 'Sample Ontology', 'onto', [], { nodeType: 'ontology', iri: computeOntologyIri(project.id, 'sample', null) })
-          ]);
+          // No ontologies: ensure empty state is shown
+          activeOntologyIri = null;
+          updateOntoGraphLabel();
+          ontologyNode = makeItem('ontology', 'Ontology', 'folder', []);
         }
       } catch (_) {
         // Network/SPARQL error: show a placeholder item
@@ -1608,7 +1693,8 @@
         ]);
       }
 
-      const projectInfo = makeItem('project-info', `ID: ${project.id}`, 'folder');
+      const projectDisplay = (project && (project.name || project.id)) ? (project.name || project.id) : '';
+      const projectInfo = makeItem('project-info', `Project: ${projectDisplay}`, 'folder');
       const docsReqNode = makeItem('documents-requirements', 'Requirements Documents', 'folder', docReqItems);
       const docsKnowNode = makeItem('documents-knowledge', 'Knowledge Documents', 'folder', docKnowItems);
       const docsChildren = [];
@@ -1619,7 +1705,11 @@
       const outNode = makeItem('artifacts', 'Artifacts', 'folder', outItems);
 
       root.innerHTML = '';
-      [projectInfo, ontologyNode, docsNode, reqNode, outNode].filter(Boolean).forEach(n => root.appendChild(n));
+      // If no project, show minimal empty tree
+      root.innerHTML = '';
+      if (project && (project.id || project.project_id)) {
+        [projectInfo, ontologyNode, docsNode, reqNode, outNode].filter(Boolean).forEach(n => root.appendChild(n));
+      }
 
       // Add plus button on Ontology section header (right side)
       try {
@@ -1633,21 +1723,44 @@
           addBtn.style.marginLeft = '8px';
           addBtn.onclick = async (e) => {
             e.stopPropagation();
+            if (!project || !(project.id || project.project_id)) { alert('Create a project first'); return; }
             const disp = prompt('Display label for new ontology'); if (!disp) return;
             const base = slugify(disp) || `ontology-${Date.now()}`;
             const label = disp;
             try {
-              const res = await fetch('/api/ontologies', { method: 'POST', headers: { 'Content-Type':'application/json' }, body: JSON.stringify({ project: project.id, name: base, label }) });
+              const token = localStorage.getItem(tokenKey);
+              const pid2 = project.id || project.project_id;
+              const res = await fetch('/api/ontologies', { method: 'POST', headers: { 'Content-Type':'application/json', Authorization: 'Bearer ' + token }, body: JSON.stringify({ project: pid2, name: base, label }) });
+              if (!res.ok) {
+                const msg = await res.text().catch(()=>String(res.status));
+                alert('Create ontology failed: ' + msg);
+                return;
+              }
               const created = await res.json();
+              if (created && created.graphIri) {
+                try { saveOntologyLabel(created.graphIri, created.label || label); } catch(_) {}
+              }
               await renderTree(project);
-              // Ensure label is shown and select the created ontology
-              const newRoot = qs('#treeRoot');
-              const li = Array.from(newRoot.querySelectorAll('li[role="treeitem"]')).find(el => el.dataset && el.dataset.iri === created.graphIri);
-              if (li) {
-                const lbl = li.querySelector('.node-label'); if (lbl) lbl.textContent = created.label || label;
-                li.dataset.label = created.label || label;
-                selectNode(li);
-                handleTreeSelection(li);
+              // Ensure label is shown and select the created ontology (guard for valid response)
+              if (created && created.graphIri) {
+                const newRoot = qs('#treeRoot');
+                const li = Array.from(newRoot.querySelectorAll('li[role="treeitem"]')).find(el => el.dataset && el.dataset.iri === created.graphIri);
+                // Update top node label immediately
+                try {
+                  const ontoTop = qs('#ontoTreeRoot .onto-node-label');
+                  if (ontoTop) ontoTop.textContent = created.label || label;
+                } catch(_) {}
+                if (li) {
+                  const lbl = li.querySelector('.node-label'); if (lbl) lbl.textContent = created.label || label;
+                  li.dataset.label = created.label || label;
+                  selectNode(li);
+                  handleTreeSelection(li);
+                } else {
+                  // Fallback: set selection and force refresh display
+                  activeOntologyIri = created.graphIri;
+                  updateOntoGraphLabel();
+                  refreshOntologyTree();
+                }
               }
             } catch(_) {}
           };
@@ -1666,7 +1779,8 @@
           if (!iri) return;
           try {
             const url = `/api/ontologies?graph=${encodeURIComponent(iri)}`;
-            const res = await fetch(url, { method: 'DELETE' });
+            const token = localStorage.getItem(tokenKey);
+            const res = await fetch(url, { method: 'DELETE', headers: { Authorization: 'Bearer ' + token } });
             if (res.ok) {
               await renderTree(project);
               if (activeOntologyIri === iri) { activeOntologyIri = null; updateOntoGraphLabel(); ensureOntologyInitialized(); ontoState.cy?.elements().remove(); refreshOntologyTree(); }
@@ -1759,8 +1873,16 @@
       const row = document.createElement('div'); row.className = 'onto-node-row';
       const twist = document.createElement('span'); twist.className = 'onto-twist'; twist.onclick = (e)=>{ e.stopPropagation(); rootItem.setAttribute('aria-expanded', rootItem.getAttribute('aria-expanded') === 'true' ? 'false' : 'true'); };
       const text = document.createElement('span'); text.className = 'onto-node-label';
-      const modelName = (localStorage.getItem('onto_model_name') || '').trim() || 'Ontology';
-      text.textContent = modelName;
+      (function(){
+        try {
+          const labels = loadOntologyLabelMap(activeProject);
+          let modelName = 'Ontology';
+          if (activeOntologyIri) {
+            modelName = (labels[activeOntologyIri] && String(labels[activeOntologyIri]).trim()) || (activeOntologyIri.split('/').pop() || 'Ontology');
+          }
+          text.textContent = modelName;
+        } catch(_) { text.textContent = 'Ontology'; }
+      })();
       row.appendChild(twist); row.appendChild(text); rootItem.appendChild(row); rootItem.appendChild(ul);
       root.innerHTML = '';
       root.appendChild(rootItem);
@@ -1867,10 +1989,11 @@
         typeEl.value = e.data('type') || 'objectProperty';
         attrsEl.value = JSON.stringify(e.data('attrs') || {}, null, 2);
       } else {
-        nameEl.value = localStorage.getItem('onto_model_name') || 'Ontology Model';
+        const pid = (activeProject && (activeProject.id || activeProject.project_id)) ? (activeProject.id || activeProject.project_id) : 'default';
+        nameEl.value = localStorage.getItem(`onto_model_name__${pid}`) || 'Ontology Model';
         typeEl.value = 'model';
         try {
-          const json = JSON.parse(localStorage.getItem('onto_model_attrs') || '{}');
+          const json = JSON.parse(localStorage.getItem(`onto_model_attrs__${pid}`) || '{}');
           attrsEl.value = JSON.stringify(json, null, 2);
         } catch(_) { attrsEl.value = '{}'; }
       }
@@ -1881,8 +2004,9 @@
       try {
         const nodes = ontoState.cy.nodes(':not(.imported)').map(n => ({ data: n.data(), position: n.position() }));
         const edges = ontoState.cy.edges(':not(.imported)').map(e => ({ data: e.data() }));
-        const key = graphKeyForActive();
-        if (key) localStorage.setItem(key, JSON.stringify({ nodes, edges }));
+        if (activeOntologyIri) {
+          localStorage.setItem(storageKeyForGraph(activeOntologyIri), JSON.stringify({ nodes, edges }));
+        }
       } catch(_) {}
     }
 
@@ -1892,32 +2016,39 @@
       return 'onto_graph__' + encodeURIComponent(iri);
     }
     function attrsFromModel() {
-      try { return JSON.parse(localStorage.getItem('onto_model_attrs') || '{}'); } catch(_) { return {}; }
+      const pid = (activeProject && (activeProject.id || activeProject.project_id)) ? (activeProject.id || activeProject.project_id) : 'default';
+      try { return JSON.parse(localStorage.getItem(`onto_model_attrs__${pid}`) || '{}'); } catch(_) { return {}; }
     }
-    function loadOntologyLabelMap() { try { return JSON.parse(localStorage.getItem('onto_label_map') || '{}'); } catch(_) { return {}; } }
+    function loadOntologyLabelMap(project) {
+      const pid = project?.id || project?.project_id || (activeProject && (activeProject.id || activeProject.project_id)) || 'default';
+      try { return JSON.parse(localStorage.getItem(`onto_label_map__${pid}`) || '{}'); } catch(_) { return {}; }
+    }
     function saveOntologyLabel(graphIri, label) {
-      try { const m = loadOntologyLabelMap(); m[graphIri] = label; localStorage.setItem('onto_label_map', JSON.stringify(m)); } catch(_) {}
+      const pid = (activeProject && (activeProject.id || activeProject.project_id)) ? (activeProject.id || activeProject.project_id) : 'default';
+      try { const m = loadOntologyLabelMap(activeProject); m[graphIri] = label; localStorage.setItem(`onto_label_map__${pid}`, JSON.stringify(m)); } catch(_) {}
+    }
+    function storageKeyForGraph(iri) {
+      const pid = (activeProject && (activeProject.id || activeProject.project_id)) ? (activeProject.id || activeProject.project_id) : 'default';
+      return `onto_graph__${pid}__` + encodeURIComponent(iri);
     }
     function saveGraphToLocal(graphIri) {
-      if (!ontoState.cy) return;
       try {
-        const nodes = ontoState.cy.nodes(':not(.imported)').map(n => ({ data: n.data(), position: n.position() }));
-        const edges = ontoState.cy.edges(':not(.imported)').map(e => ({ data: e.data() }));
-        localStorage.setItem('onto_graph__' + encodeURIComponent(graphIri), JSON.stringify({ nodes, edges }));
+        const nodes = ontoState.cy ? ontoState.cy.nodes().jsons() : [];
+        const edges = ontoState.cy ? ontoState.cy.edges().jsons() : [];
+        localStorage.setItem(storageKeyForGraph(graphIri), JSON.stringify({ nodes, edges }));
       } catch(_) {}
     }
     function loadGraphFromLocal(graphIri) {
       try {
-        const json = localStorage.getItem('onto_graph__' + encodeURIComponent(graphIri));
+        const json = localStorage.getItem(storageKeyForGraph(graphIri));
+        if (!json) return;
+        const data = JSON.parse(json);
+        if (!ontoState.cy) return;
         ontoState.cy.elements().remove();
-        if (json) {
-          importOntologyJSON(JSON.parse(json));
-        } else {
-          refreshOntologyTree();
-        }
-        // After base load, reapply overlays per visibility settings
-        overlayImportsRefresh();
-      } catch(_) { ontoState.cy.elements().remove(); refreshOntologyTree(); }
+        ontoState.cy.add(data.nodes || []);
+        ontoState.cy.add(data.edges || []);
+        requestAnimationFrame(()=>{ ontoState.cy.fit(); });
+      } catch(_) {}
     }
 
     // Ontology toolbar events and import handling

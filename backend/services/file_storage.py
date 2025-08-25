@@ -51,7 +51,6 @@ class FileMetadata:
         created_at: datetime,
         updated_at: datetime,
         project_id: Optional[str] = None,
-        owner: Optional[str] = None,
         tags: Optional[Dict] = None,
     ):
         self.file_id = file_id
@@ -64,7 +63,6 @@ class FileMetadata:
         self.created_at = created_at
         self.updated_at = updated_at
         self.project_id = project_id
-        self.owner = owner
         self.tags = tags or {}
 
     def to_dict(self) -> Dict[str, Any]:
@@ -79,7 +77,6 @@ class FileMetadata:
             "created_at": self.created_at.isoformat(),
             "updated_at": self.updated_at.isoformat(),
             "project_id": self.project_id,
-            "owner": self.owner,
             "tags": self.tags,
         }
 
@@ -161,7 +158,6 @@ class MinIOBackend(StorageBackend):
                 metadata={
                     "filename": metadata.filename,
                     "project_id": metadata.project_id or "",
-                    "owner": metadata.owner or "",
                     "created_at": metadata.created_at.isoformat(),
                     "hash_md5": metadata.hash_md5,
                     "hash_sha256": metadata.hash_sha256,
@@ -626,7 +622,6 @@ class FileStorageService:
         content_type: Optional[str] = None,
         project_id: Optional[str] = None,
         tags: Optional[Dict] = None,
-        owner: Optional[str] = None,
     ) -> Dict[str, Any]:
         """
         Store a file and return metadata.
@@ -666,7 +661,6 @@ class FileStorageService:
                 created_at=now,
                 updated_at=now,
                 project_id=project_id,
-                owner=owner,
                 tags=tags or {},
             )
 

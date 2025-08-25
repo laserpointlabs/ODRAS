@@ -48,6 +48,34 @@ CREATE TABLE IF NOT EXISTS public.projects (
     is_active BOOLEAN DEFAULT TRUE
 );
 
+-- Users table (simple user directory)
+CREATE TABLE IF NOT EXISTS public.users (
+    user_id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    username VARCHAR(255) UNIQUE NOT NULL,
+    display_name VARCHAR(255),
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+);
+
+-- Project membership table (user to project with role)
+CREATE TABLE IF NOT EXISTS public.project_members (
+    project_id UUID REFERENCES public.projects(project_id) ON DELETE CASCADE,
+    user_id UUID REFERENCES public.users(user_id) ON DELETE CASCADE,
+    role VARCHAR(50) DEFAULT 'owner', -- owner | editor | viewer
+    added_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+    PRIMARY KEY (project_id, user_id)
+);
+
+-- Ontologies registry per project
+CREATE TABLE IF NOT EXISTS public.ontologies_registry (
+    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    project_id UUID REFERENCES public.projects(project_id) ON DELETE CASCADE,
+    graph_iri TEXT UNIQUE NOT NULL,
+    label TEXT,
+    role VARCHAR(20) DEFAULT 'base', -- base | import | unknown
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+    updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+);
+
 -- Requirements extraction jobs table
 CREATE TABLE IF NOT EXISTS public.extraction_jobs (
     job_id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
@@ -130,6 +158,9 @@ CREATE TRIGGER update_file_metadata_updated_at BEFORE UPDATE ON file_storage.fil
     FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
 
 CREATE TRIGGER update_projects_updated_at BEFORE UPDATE ON public.projects
+    FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
+
+CREATE TRIGGER update_ontologies_registry_updated_at BEFORE UPDATE ON public.ontologies_registry
     FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
 
 CREATE TRIGGER update_extraction_jobs_updated_at BEFORE UPDATE ON public.extraction_jobs
