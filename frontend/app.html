@@ -411,6 +411,9 @@
               <input id="fileUrlInput" type="url" placeholder="https://example.com/doc.pdf" style="background:#0b1220; color:#e5e7eb; border:1px solid var(--border); border-radius:6px; padding:6px; min-width:320px;" />
               <button class="btn" id="fileUrlImportBtn">Import URL</button>
             </div>
+            <div id="fileDropZone" style="margin-top:10px; border:1px dashed var(--border); border-radius:8px; padding:16px; text-align:center; color:#9aa4b2;">
+              Drag & drop files here, or use the Choose Files button above
+            </div>
             <div id="uploadPreview" class="muted" style="margin-top:6px;"></div>
           </div>
 
@@ -1389,6 +1392,7 @@
       qs('#wb-' + wb).classList.add('active');
       if (wb === 'graph') refreshGraphSummary();
       if (wb === 'ontology') { ensureOntologyInitialized(); if (ontoState.cy) ontoState.cy.resize(); }
+      if (wb === 'files') { ensureFilesInitialized(); }
     });
 
     // Tree collapsible sections
@@ -2192,6 +2196,90 @@
         performDelete();
       }
     });
+
+    // Files workbench state + helpers
+    const filesState = { initialized: false, lastFiles: [] };
+    function renderFilesList(items) {
+      const list = qs('#filesList'); if (!list) return;
+      list.innerHTML = '';
+      const arr = Array.isArray(items) ? items : [];
+      if (!arr.length) {
+        const div = document.createElement('div');
+        div.className = 'muted';
+        div.textContent = 'No files yet. Upload or import to begin.';
+        list.appendChild(div);
+        return;
+      }
+      arr.forEach(f => {
+        const row = document.createElement('div');
+        row.className = 'card';
+        row.style.display = 'flex'; row.style.justifyContent = 'space-between'; row.style.alignItems = 'center'; row.style.padding = '8px';
+        const left = document.createElement('div');
+        left.innerHTML = `<strong>${f.name || 'file'}</strong> <span class="muted">${f.size ? `(${f.size} bytes)` : ''}</span>`;
+        const right = document.createElement('div');
+        right.className = 'muted'; right.textContent = f.status || 'new';
+        row.appendChild(left); row.appendChild(right);
+        list.appendChild(row);
+      });
+    }
+    function previewSelectedFiles(fileList) {
+      const el = qs('#uploadPreview'); if (!el) return;
+      if (!fileList || !fileList.length) { el.textContent = ''; return; }
+      const names = Array.from(fileList).map(f => `${f.name} (${f.size} bytes)`).join(', ');
+      el.textContent = `Selected: ${names}`;
+    }
+    function ensureFilesInitialized() {
+      if (filesState.initialized) return;
+      filesState.initialized = true;
+      const input = qs('#fileUploadInput');
+      const drop = qs('#fileDropZone');
+      const urlInput = qs('#fileUrlInput');
+      const urlBtn = qs('#fileUrlImportBtn');
+      const refreshBtn = qs('#filesRefreshBtn');
+      const docType = qs('#filesDocType');
+      const statusSel = qs('#filesStatus');
+      const tags = qs('#filesTags');
+      if (input) {
+        input.addEventListener('change', (e) => {
+          const files = e.target.files;
+          previewSelectedFiles(files);
+          filesState.lastFiles = Array.from(files || []);
+        });
+      }
+      if (drop) {
+        ;['dragenter','dragover'].forEach(ev => drop.addEventListener(ev, (e)=>{ e.preventDefault(); drop.style.background = '#0f1628'; }));
+        ;['dragleave','drop'].forEach(ev => drop.addEventListener(ev, (e)=>{ e.preventDefault(); drop.style.background = 'transparent'; }));
+        drop.addEventListener('drop', (e) => {
+          const dt = e.dataTransfer; const files = dt && dt.files ? dt.files : [];
+          previewSelectedFiles(files);
+          filesState.lastFiles = Array.from(files || []);
+        });
+      }
+      if (urlBtn && urlInput) {
+        urlBtn.addEventListener('click', () => {
+          const u = (urlInput.value || '').trim();
+          const el = qs('#uploadPreview');
+          if (el) el.textContent = u ? `URL ready: ${u}` : '';
+        });
+      }
+      const triggerRefresh = () => {
+        // Placeholder: no backend call yet
+        const q = {
+          type: docType ? docType.value : '',
+          status: statusSel ? statusSel.value : '',
+          tags: tags ? tags.value : ''
+        };
+        // For now show selected files (if any) as the list
+        const items = (filesState.lastFiles || []).map(f => ({ name: f.name, size: f.size, status: 'new' }));
+        renderFilesList(items);
+      };
+      if (refreshBtn) refreshBtn.addEventListener('click', triggerRefresh);
+      if (docType) docType.addEventListener('change', triggerRefresh);
+      if (statusSel) statusSel.addEventListener('change', triggerRefresh);
+      if (tags) tags.addEventListener('keyup', (e)=>{ if (e.key === 'Enter') triggerRefresh(); });
+      // Initial empty list
+      renderFilesList([]);
+    }
   </script>
 </body>
 </html>
