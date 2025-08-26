@@ -146,6 +146,23 @@ class DatabaseService:
         finally:
             self._return(conn)
 
+    def rename_project(self, project_id: str, new_name: str) -> Dict[str, Any]:
+        conn = self._conn()
+        try:
+            with conn.cursor(cursor_factory=RealDictCursor) as cur:
+                cur.execute(
+                    "UPDATE public.projects SET name = %s, updated_at = NOW() WHERE project_id = %s RETURNING project_id, name, description, created_at, updated_at, created_by, is_active",
+                    (new_name, project_id),
+                )
+                row = cur.fetchone()
+                if not row:
+                    conn.rollback()
+                    raise ValueError("Project not found")
+                conn.commit()
+                return dict(row)
+        finally:
+            self._return(conn)
+
     # Ontologies registry
     def add_ontology(self, project_id: str, graph_iri: str, label: Optional[str], role: str = "base") -> Dict[str, Any]:
         conn = self._conn()

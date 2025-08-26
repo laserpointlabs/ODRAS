@@ -198,6 +198,22 @@ def restore_project(project_id: str, user=Depends(get_user)):
         raise HTTPException(status_code=500, detail=str(e))
 
 
+@app.put("/api/projects/{project_id}")
+def rename_project(project_id: str, body: Dict, user=Depends(get_user)):
+    name = (body.get("name") or "").strip()
+    if not name:
+        raise HTTPException(status_code=400, detail="Name required")
+    try:
+        if not db.is_user_member(project_id=project_id, user_id=user["user_id"]):
+            raise HTTPException(status_code=403, detail="Not a member of project")
+        proj = db.rename_project(project_id=project_id, new_name=name)
+        return {"project": proj}
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
 @app.on_event("startup")
 async def on_startup():
     # Ensure services are initialized lazily via Settings
