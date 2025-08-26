@@ -293,6 +293,7 @@
       </aside>
       <!-- Project context menu -->
       <div id="projectContextMenu" style="position:absolute; display:none; background: var(--panel); border: 1px solid var(--border); border-radius: 8px; padding:4px; z-index: 9999; min-width: 220px;">
+        <button id="projRenameBtn" class="btn" style="width:100%; text-align:left; background:none; border:none; padding:8px; color:var(--text);">Rename Project…</button>
         <button id="projArchiveBtn" class="btn" style="width:100%; text-align:left; background:none; border:none; padding:8px; color:var(--text);">Archive Project</button>
         <button id="projDeleteBtn" class="btn" style="width:100%; text-align:left; background:none; border:none; padding:8px; color:#ef4444;">Delete Project</button>
         <hr style="border:none; border-top:1px solid var(--border); margin:6px 0;"/>
@@ -1831,6 +1832,25 @@
             const archiveBtn = qs('#projArchiveBtn');
             const deleteBtn = qs('#projDeleteBtn');
             const showArchivedBtn = qs('#projShowArchivedBtn');
+            const renameBtn = qs('#projRenameBtn');
+            if (renameBtn) renameBtn.onclick = async () => {
+              try {
+                const currentName = (project && (project.name || '')) || '';
+                const newName = prompt('Rename project', currentName);
+                if (!newName || newName.trim() === currentName) return;
+                const res = await fetch(`/api/projects/${encodeURIComponent(pid)}`, {
+                  method: 'PUT',
+                  headers: { 'Content-Type': 'application/json', Authorization: 'Bearer ' + token },
+                  body: JSON.stringify({ name: newName.trim() })
+                });
+                if (res.ok) {
+                  await loadProjects();
+                } else {
+                  const t = await res.text().catch(()=>String(res.status));
+                  alert('Rename failed: ' + t);
+                }
+              } finally { hide(); }
+            };
             if (archiveBtn) archiveBtn.onclick = async () => {
               try {
                 const res = await fetch(`/api/projects/${encodeURIComponent(pid)}/archive`, { method: 'POST', headers: { Authorization: 'Bearer ' + token }});
