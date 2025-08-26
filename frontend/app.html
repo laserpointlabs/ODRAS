@@ -31,6 +31,10 @@
       --onto-props-collapsed-w: 40px;
       --toolbar-h: 48px;
       --bottombar-h: 32px;
+      /* DAS (Digital Assistant Service) */
+      --das-w: 420px;
+      --das-h: 40vh;
+      --das-toolbar-h: 40px;
     }
     * { box-sizing: border-box; }
     html, body { height: 100%; margin: 0; background: var(--bg); color: var(--text); font-family: system-ui, sans-serif; }
@@ -185,6 +189,42 @@
     input[type="text"], input[type="password"] {
       background: #0b1220; color: var(--text); border: 1px solid var(--border); padding: 8px; border-radius: 6px;
     }
+    /* DAS dock styles */
+    .das-panel {
+      position: fixed;
+      z-index: 9000;
+      background: var(--panel);
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      box-shadow: 0 10px 30px rgba(0,0,0,.35);
+      display: none;
+      color: var(--text);
+    }
+    .das-panel.active { display: grid; grid-template-rows: var(--das-toolbar-h) 1fr; }
+    .das-toolbar {
+      height: var(--das-toolbar-h);
+      display: flex; gap: 8px; align-items: center;
+      padding: 6px 10px;
+      border-bottom: 1px solid var(--border);
+      background: var(--panel-2);
+      border-top-left-radius: 10px;
+      border-top-right-radius: 10px;
+    }
+    .das-body { padding: 8px; overflow: auto; }
+    .das-dock-right { right: 8px; top: 0; bottom: 0; width: var(--das-w); }
+    .das-dock-left { left: 8px; top: 0; bottom: 0; width: var(--das-w); }
+    .das-dock-bottom { left: 8px; right: 8px; bottom: 8px; height: var(--das-h); }
+    .das-resizer-x { position: absolute; top: 0; bottom: 0; width: 6px; cursor: col-resize; }
+    .das-resizer-y { position: absolute; left: 0; right: 0; height: 6px; cursor: row-resize; }
+    .das-dock-right .das-resizer-x { left: -3px; }
+    .das-dock-left .das-resizer-x { right: -3px; }
+    .das-dock-bottom .das-resizer-y { top: -3px; }
+    .das-toolbar .spacer { flex: 1; }
+    .das-help { font-size: 12px; color: var(--muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 60%; }
+    /* When DAS is open, shift the app layout to avoid overlap */
+    body.das-open-right #app { margin-right: calc(var(--das-w) + 16px); }
+    body.das-open-left #app { margin-left: calc(var(--das-w) + 16px); }
+    body.das-open-bottom #app { padding-bottom: calc(var(--das-h) + 16px); }
   </style>
   <script src="https://unpkg.com/cytoscape@3.28.1/dist/cytoscape.min.js"></script>
   <script src="https://unpkg.com/cytoscape-edgehandles@4.0.1/cytoscape-edgehandles.min.js"></script>
@@ -520,6 +560,28 @@
       <span class="muted">UI Restart Prototype</span>
     </div>
   </div>
+
+  <!-- DAS docked panel scaffold -->
+  <section id="dasPanel" class="das-panel das-dock-right" aria-label="Digital Assistant">
+    <div class="das-toolbar">
+      <strong>DAS</strong>
+      <span class="muted" id="dasStatus" style="margin-left:8px;">Idle</span>
+      <div class="spacer"></div>
+      <span class="das-help">Ctrl+Alt+D (or Alt+Shift+D) to toggle; <br>Alt+Shift+←/→/↓ to dock</span>
+    </div>
+    <div class="das-body" id="dasBody">
+      <div class="card" style="margin-bottom:8px;">
+        <div class="row" style="grid-template-columns: 1fr auto; align-items:center;">
+          <input type="text" id="dasPrompt" placeholder="Type a prompt..." />
+          <button class="btn" id="dasSendBtn" type="button">Send</button>
+        </div>
+        <div class="muted">Scaffold only — integration pending.</div>
+      </div>
+      <div id="dasTranscript" style="display:grid; gap:8px;"></div>
+    </div>
+    <div class="das-resizer-x" id="dasResizerX" aria-hidden="true"></div>
+    <div class="das-resizer-y" id="dasResizerY" aria-hidden="true"></div>
+  </section>
 
   <script>
     const qs = (s, r = document) => r.querySelector(s);
@@ -2989,6 +3051,93 @@
     }
     // Ensure file handlers are bound even if Files workbench is the initial active view
     try { setTimeout(() => { try { ensureFilesInitialized(); } catch(_) {} }, 0); } catch(_) {}
+
+    // DAS dock: state, toggle, docking, resize, persistence
+    (function(){
+      const storageKey = 'odras_das_state';
+      const panel = document.getElementById('dasPanel');
+      const resizerX = document.getElementById('dasResizerX');
+      const resizerY = document.getElementById('dasResizerY');
+      const transcript = document.getElementById('dasTranscript');
+      const promptInput = document.getElementById('dasPrompt');
+      const sendBtn = document.getElementById('dasSendBtn');
+      if (!panel) return;
+      let state = { open: false, dock: 'right', width: 420, height: Math.max(300, Math.round(window.innerHeight * 0.4)) };
+      try { const saved = JSON.parse(localStorage.getItem(storageKey) || '{}'); state = { ...state, ...saved }; } catch(_) {}
+      function applyState() {
+        panel.classList.remove('das-dock-left','das-dock-right','das-dock-bottom');
+        if (state.open) panel.classList.add('active'); else panel.classList.remove('active');
+        const dockCls = state.dock === 'left' ? 'das-dock-left' : (state.dock === 'bottom' ? 'das-dock-bottom' : 'das-dock-right');
+        panel.classList.add(dockCls);
+        document.documentElement.style.setProperty('--das-w', state.width + 'px');
+        document.documentElement.style.setProperty('--das-h', state.height + 'px');
+        // Body classes to shift layout
+        document.body.classList.remove('das-open-left','das-open-right','das-open-bottom');
+        if (state.open) {
+          if (state.dock === 'left') document.body.classList.add('das-open-left');
+          else if (state.dock === 'bottom') document.body.classList.add('das-open-bottom');
+          else document.body.classList.add('das-open-right');
+        }
+      }
+      function persist() { try { localStorage.setItem(storageKey, JSON.stringify(state)); } catch(_) {} }
+      function toggleOpen() { state.open = !state.open; applyState(); persist(); }
+      function setDock(pos) { state.dock = pos; applyState(); persist(); }
+      // Resize handlers
+      (function(){
+        let dragging = false; let startX = 0; let startY = 0; let startW = 0; let startH = 0;
+        function onMove(e) {
+          if (!dragging) return;
+          if (state.dock === 'bottom') {
+            const dy = e.clientY - startY;
+            const h = Math.max(200, startH - dy);
+            state.height = h;
+          } else {
+            const dx = e.clientX - startX;
+            let w = startW;
+            if (state.dock === 'right') w = Math.max(260, startW - dx);
+            if (state.dock === 'left') w = Math.max(260, startW + dx);
+            state.width = w;
+          }
+          applyState();
+        }
+        function endDrag() {
+          if (!dragging) return;
+          dragging = false; persist();
+          window.removeEventListener('mousemove', onMove);
+          window.removeEventListener('mouseup', endDrag);
+        }
+        function startDragX(e){ dragging = true; startX = e.clientX; startW = state.width; window.addEventListener('mousemove', onMove); window.addEventListener('mouseup', endDrag); e.preventDefault(); }
+        function startDragY(e){ dragging = true; startY = e.clientY; startH = state.height; window.addEventListener('mousemove', onMove); window.addEventListener('mouseup', endDrag); e.preventDefault(); }
+        if (resizerX) resizerX.addEventListener('mousedown', startDragX);
+        if (resizerY) resizerY.addEventListener('mousedown', startDragY);
+      })();
+      // Minimal scaffold behavior
+      if (sendBtn && promptInput && transcript) {
+        sendBtn.addEventListener('click', () => {
+          const text = (promptInput.value || '').trim(); if (!text) return;
+          const div = document.createElement('div'); div.className='card'; div.textContent = 'You: ' + text;
+          transcript.appendChild(div);
+          promptInput.value = '';
+        });
+        promptInput.addEventListener('keydown', (e)=>{ if (e.key === 'Enter') { e.preventDefault(); sendBtn.click(); } });
+      }
+      // Keyboard shortcuts: Alt+Shift+K toggle; Alt+Shift+Arrows to dock
+      const onKey = (e) => {
+        // Two toggles: Alt+Shift+D or Ctrl+Alt+D to avoid browser collisions
+        const toggleCombo = ((e.altKey && e.shiftKey && (e.key === 'D' || e.key === 'd')) || (e.ctrlKey && e.altKey && (e.key === 'D' || e.key === 'd')));
+        if (toggleCombo) { e.preventDefault(); toggleOpen(); return; }
+        if (!state.open) return;
+        const isAltShift = e.altKey && e.shiftKey;
+        if (!isAltShift) return;
+        if (e.key === 'ArrowLeft') { e.preventDefault(); setDock('left'); }
+        else if (e.key === 'ArrowRight') { e.preventDefault(); setDock('right'); }
+        else if (e.key === 'ArrowDown') { e.preventDefault(); setDock('bottom'); }
+      };
+      // Listen high in the stack to avoid being swallowed by focused elements
+      window.addEventListener('keydown', onKey, true);
+      // Initialize
+      applyState();
+    })();
   </script>
 </body>
 </html>
