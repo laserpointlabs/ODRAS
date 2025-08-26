@@ -29,7 +29,21 @@ app.include_router(files_router)
 
 # Configuration instance
 settings = Settings()
-db = DatabaseService(settings)
+# Lazily tolerate DB unavailability in CI/import contexts
+try:
+    db = DatabaseService(settings)
+except Exception:
+    # Provide a fallback that raises a 503 on any DB method usage
+    class _DBUnavailable:
+        def __getattr__(self, _name):
+            from fastapi import HTTPException  # local import to avoid circulars during import
+
+            def _raise(*_args, **_kwargs):
+                raise HTTPException(status_code=503, detail="Database unavailable")
+
+            return _raise
+
+    db = _DBUnavailable()
 TOKENS: Dict[str, Dict] = AUTH_TOKENS
 
 # Camunda configuration  
