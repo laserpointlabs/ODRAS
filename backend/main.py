@@ -12,6 +12,9 @@ import secrets
 
 # Import services using relative imports
 from .services.config import Settings
+from .services.db import DatabaseService
+from .services.auth import get_user as auth_get_user, TOKENS as AUTH_TOKENS
+import os
 # Import API routers
 from backend.api.files import router as files_router
 from backend.api.ontology import router as ontology_router
@@ -26,6 +29,8 @@ app.include_router(files_router)
 
 # Configuration instance
 settings = Settings()
+db = DatabaseService(settings)
+TOKENS: Dict[str, Dict] = AUTH_TOKENS
 
 # Camunda configuration  
 CAMUNDA_BASE_URL = settings.camunda_base_url
@@ -63,18 +68,9 @@ PROMPTS: List[Dict] = [
     }
 ]
 
-# MVP in-memory auth and projects (to be replaced with persistent store)
-TOKENS: Dict[str, Dict] = {}
 PROJECTS: List[Dict] = []
 
-def get_user(authorization: Optional[str] = Header(None)):
-    if not authorization or not authorization.startswith("Bearer "):
-        raise HTTPException(status_code=401, detail="Unauthorized")
-    token = authorization.split(" ", 1)[1]
-    user = TOKENS.get(token)
-    if not user:
-        raise HTTPException(status_code=401, detail="Invalid token")
-    return user
+get_user = auth_get_user
 
 @app.get("/app", response_class=HTMLResponse)
 def ui_restart():
@@ -90,28 +86,102 @@ def login(body: Dict):
     password = body.get("password") or ""
     if not username:
         raise HTTPException(status_code=400, detail="Username required")
+    # Allowlist users (env ALLOWED_USERS="admin,jdehart")
+    allowed_env = os.environ.get("ALLOWED_USERS", "admin,jdehart")
+    allowed = {u.strip() for u in allowed_env.split(",") if u.strip()}
+    if username not in allowed:
+        raise HTTPException(status_code=403, detail="User not allowed")
     token = secrets.token_hex(16)
-    user = {"username": username, "is_admin": username.lower() == "admin", "projects": []}
-    TOKENS[token] = user
-    return {"token": token}
+    # get or create DB user
+    try:
+        is_admin_flag = (username.lower() == "admin")
+        u = db.get_or_create_user(username=username, display_name=username, is_admin=is_admin_flag)
+        user = {"username": u["username"], "user_id": str(u["user_id"]), "is_admin": bool(u.get("is_admin", False))}
+        TOKENS[token] = user
+        return {"token": token}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Auth failed: {str(e)}")
 
 @app.get("/api/auth/me")
 def me(user=Depends(get_user)):
     return user
 
 @app.get("/api/projects")
-def list_projects(user=Depends(get_user)):
-    return {"projects": [p for p in PROJECTS if p.get("owner") == user["username"]]}
+def list_projects(state: Optional[str] = None, user=Depends(get_user)):
+    try:
+        active = True
+        if state == "archived":
+            active = False
+        elif state == "all":
+            active = None
+        rows = db.list_projects_for_user(user_id=user["user_id"], active=active)
+        return {"projects": rows}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
 
 @app.post("/api/projects")
 def create_project(body: Dict, user=Depends(get_user)):
     name = (body.get("name") or "").strip()
     if not name:
         raise HTTPException(status_code=400, detail="Name required")
-    pid = f"p_{secrets.token_hex(6)}"
-    proj = {"id": pid, "name": name, "owner": user["username"], "requirements": [], "knowledge": [], "outputs": []}
-    PROJECTS.append(proj)
-    return {"project": proj}
+    try:
+        proj = db.create_project(name=name, owner_user_id=user["user_id"], description=(body.get("description") or None))
+        return {"project": proj}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@app.delete("/api/projects/{project_id}")
+def delete_project(project_id: str, user=Depends(get_user)):
+    """Hard delete a project and memberships. Does NOT delete external artifacts.
+
+    For now, we perform a hard delete from the DB (projects, memberships). Artifacts like ontologies are not deleted;
+    they will simply not show in the user's project tree anymore. We can later implement a migration step to reassign
+    artifacts to the user or an archive space.
+    """
+    try:
+        # Ensure user is a member/owner; for now, require any membership
+        if not db.is_user_member(project_id=project_id, user_id=user["user_id"]):
+            raise HTTPException(status_code=403, detail="Not a member of project")
+        conn = db._conn()
+        try:
+            with conn.cursor() as cur:
+                cur.execute("DELETE FROM public.project_members WHERE project_id = %s", (project_id,))
+                cur.execute("DELETE FROM public.projects WHERE project_id = %s", (project_id,))
+                conn.commit()
+        finally:
+            db._return(conn)
+        return {"deleted": project_id}
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@app.post("/api/projects/{project_id}/archive")
+def archive_project(project_id: str, user=Depends(get_user)):
+    try:
+        if not db.is_user_member(project_id=project_id, user_id=user["user_id"]):
+            raise HTTPException(status_code=403, detail="Not a member of project")
+        db.archive_project(project_id)
+        return {"archived": project_id}
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@app.post("/api/projects/{project_id}/restore")
+def restore_project(project_id: str, user=Depends(get_user)):
+    try:
+        if not db.is_user_member(project_id=project_id, user_id=user["user_id"]):
+            raise HTTPException(status_code=403, detail="Not a member of project")
+        db.restore_project(project_id)
+        return {"restored": project_id}
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
 
 
 @app.on_event("startup")
@@ -173,6 +243,20 @@ async def list_ontologies(project: Optional[str] = None):
     Returns a list of { graphIri, label } entries. Optional project filter limits by substring match in graph IRI.
     """
     try:
+        # Prefer registry when project is provided
+        if project:
+            try:
+                regs = db.list_ontologies(project_id=project)
+                if regs:
+                    return {
+                        "ontologies": [
+                            {"graphIri": r.get("graph_iri"), "label": r.get("label"), "role": r.get("role")}
+                            for r in regs if r.get("graph_iri")
+                        ]
+                    }
+            except Exception:
+                pass
+
         s = Settings()
         base = s.fuseki_url.rstrip("/")
         query_url = f"{base}/query"
@@ -234,7 +318,7 @@ async def list_ontologies(project: Optional[str] = None):
 
 
 @app.post("/api/ontologies")
-async def create_ontology(body: Dict):
+async def create_ontology(body: Dict, user=Depends(get_user)):
     """Create a new empty ontology as a named graph with owl:Ontology and rdfs:label.
 
     Body: { project: string, name: string, label?: string }
@@ -253,6 +337,11 @@ async def create_ontology(body: Dict):
 <{graph_iri}> a owl:Ontology ; rdfs:label \"{label}\" .
 """.strip()
     try:
+        # Membership check
+        # project here is a plain string id
+        # Ensure user is member
+        if not db.is_user_member(project_id=project, user_id=user["user_id"]):
+            raise HTTPException(status_code=403, detail="Not a member of project")
         s = Settings()
         base = s.fuseki_url.rstrip("/")
         url = f"{base}/data?graph={graph_iri}"
@@ -260,6 +349,11 @@ async def create_ontology(body: Dict):
         auth = (s.fuseki_user, s.fuseki_password) if s.fuseki_user and s.fuseki_password else None
         resp = requests.put(url, data=turtle.encode("utf-8"), headers=headers, auth=auth, timeout=20)
         if 200 <= resp.status_code < 300:
+            # Register in ontologies_registry
+            try:
+                db.add_ontology(project_id=project, graph_iri=graph_iri, label=label, role="base")
+            except Exception:
+                pass
             return {"graphIri": graph_iri, "label": label}
         raise HTTPException(status_code=500, detail=f"Fuseki returned {resp.status_code}: {resp.text}")
     except Exception as e:
@@ -267,17 +361,24 @@ async def create_ontology(body: Dict):
 
 
 @app.delete("/api/ontologies")
-async def delete_ontology(graph: str):
+async def delete_ontology(graph: str, project: Optional[str] = None, user=Depends(get_user)):
     """Delete a named graph (drop ontology)."""
     if not graph:
         raise HTTPException(status_code=400, detail="graph parameter required")
     try:
+        # Optional membership check if project provided
+        if project and not db.is_user_member(project_id=project, user_id=user["user_id"]):
+            raise HTTPException(status_code=403, detail="Not a member of project")
         s = Settings()
         update_url = f"{s.fuseki_url.rstrip('/')}/update"
         query = f"DROP GRAPH <{graph}>"
         headers = {"Content-Type": "application/sparql-update"}
         r = requests.post(update_url, data=query.encode("utf-8"), headers=headers, timeout=20)
         if 200 <= r.status_code < 300:
+            try:
+                db.delete_ontology(graph_iri=graph)
+            except Exception:
+                pass
             return {"deleted": graph}
         raise HTTPException(status_code=500, detail=f"Fuseki returned {r.status_code}: {r.text}")
     except Exception as e:
@@ -762,9 +863,15 @@ async def upload_document(
     iterations: int = Form(10),
     llm_provider: Optional[str] = Form(None),
     llm_model: Optional[str] = Form(None),
+    project_id: Optional[str] = Form(None),
+    user=Depends(get_user),
 ):
     """Upload document and start Camunda BPMN process."""
     try:
+        if not project_id:
+            raise HTTPException(status_code=400, detail="project_id required")
+        if not db.is_user_member(project_id=project_id, user_id=user["user_id"]):
+            raise HTTPException(status_code=403, detail="Not a member of project")
         content = await file.read()
         document_text = content.decode("utf-8", errors="ignore")
 
@@ -778,6 +885,8 @@ async def upload_document(
             llm_provider=llm_provider or "openai",
             llm_model=llm_model or "gpt-4o-mini",
             iterations=iterations,
+            project_id=project_id,
+            user_id=user["user_id"],
         )
 
         if not process_id:
@@ -793,6 +902,8 @@ async def upload_document(
             "llm_provider": llm_provider,
             "llm_model": llm_model,
             "camunda_url": f"{CAMUNDA_BASE_URL}/cockpit/default/#/process-instance/{process_id}",
+            "project_id": project_id,
+            "user_id": user["user_id"],
         }
 
         return {"run_id": run_id, "status": "started", "process_id": process_id}
@@ -802,7 +913,13 @@ async def upload_document(
 
 
 async def start_camunda_process(
-    document_content: str, document_filename: str, llm_provider: str, llm_model: str, iterations: int
+    document_content: str,
+    document_filename: str,
+    llm_provider: str,
+    llm_model: str,
+    iterations: int,
+    project_id: str,
+    user_id: str,
 ) -> Optional[str]:
     """Start a new Camunda BPMN process instance."""
 
@@ -820,11 +937,19 @@ async def start_camunda_process(
         "llm_provider": {"value": llm_provider, "type": "String"},
         "llm_model": {"value": llm_model, "type": "String"},
         "iterations": {"value": iterations, "type": "Integer"},
+        "projectId": {"value": project_id, "type": "String"},
+        "userId": {"value": user_id, "type": "String"},
     }
 
     try:
         async with httpx.AsyncClient(timeout=30) as client:
-            response = await client.post(start_url, json={"variables": variables})
+            response = await client.post(
+                start_url,
+                json={
+                    "variables": variables,
+                    "businessKey": f"{project_id}:{document_filename}"
+                }
+            )
             response.raise_for_status()
             data = response.json()
             return data.get("id")
