@@ -178,7 +178,9 @@
     .login {
       display: grid; place-items: center; height: calc(100vh - var(--toolbar-h) - var(--bottombar-h));
     }
-    .card { background: var(--panel); border: 1px solid var(--border); border-radius: 12px; padding: 16px; width: 360px; }
+    /* Keep login card narrow without constraining other cards */
+    #authView .card { width: 360px; }
+    .card { background: var(--panel); border: 1px solid var(--border); border-radius: 12px; padding: 16px; }
     .row { display: grid; gap: 6px; margin-bottom: 10px; }
     input[type="text"], input[type="password"] {
       background: #0b1220; color: var(--text); border: 1px solid var(--border); padding: 8px; border-radius: 6px;
@@ -192,8 +194,7 @@
     <div class="topbar">
       <div class="brand">ODRAS</div>
       <div class="spacer"></div>
-      <select id="projectSelect" title="Active project"></select>
-      <button class="btn" id="newProjectBtn">New Project</button>
+      
       <div class="spacer"></div>
       <div id="userMenu" class="muted"></div>
       <button class="btn" id="logoutBtn">Logout</button>
@@ -282,7 +283,7 @@
       <aside class="tree" id="treePanel" aria-label="Project Tree">
         <div class="tree-header">
           <select id="projectSelect2" title="Active project"></select>
-          <button class="btn" id="addNodeBtn" title="Add item">＋</button>
+          <button class="btn" id="addNodeBtn" title="New Project">＋</button>
         </div>
         <div class="tree-scroll">
           <nav class="treeview" aria-label="Project">
@@ -290,11 +291,18 @@
           </nav>
         </div>
       </aside>
+      <!-- Project context menu -->
+      <div id="projectContextMenu" style="position:absolute; display:none; background: var(--panel); border: 1px solid var(--border); border-radius: 8px; padding:4px; z-index: 9999; min-width: 220px;">
+        <button id="projArchiveBtn" class="btn" style="width:100%; text-align:left; background:none; border:none; padding:8px; color:var(--text);">Archive Project</button>
+        <button id="projDeleteBtn" class="btn" style="width:100%; text-align:left; background:none; border:none; padding:8px; color:#ef4444;">Delete Project</button>
+        <hr style="border:none; border-top:1px solid var(--border); margin:6px 0;"/>
+        <button id="projShowArchivedBtn" class="btn" style="width:100%; text-align:left; background:none; border:none; padding:8px; color:var(--text);">Archived…</button>
+      </div>
 
       <div class="resizer" id="resizer" aria-hidden="true"></div>
 
       <main class="main">
-        <section id="wb-ontology" class="workbench active">
+        <section id="wb-ontology" class="workbench">
           <h2>Ontology Workbench</h2>
           <div class="ontology-toolbar">
             <span id="ontoGraphLabel" class="muted" style="max-width:55%; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">No graph selected</span>
@@ -308,6 +316,9 @@
             <button class="btn" id="ontoImportBtn" title="Import graph JSON">Import</button>
             <button class="btn" id="ontoExportBtn" title="Export graph JSON">Export</button>
             <input type="file" id="ontoImportFile" accept="application/json" style="display:none" />
+          </div>
+          <div id="ontoEmpty" class="card" style="margin-top:10px; display:none;">
+            Create or Select an Ontology to begin
           </div>
           <div class="onto-layout" id="ontoLayoutSection">
             <aside class="onto-tree" aria-label="Ontology Tree">
@@ -385,6 +396,73 @@
         <section id="wb-files" class="workbench">
           <h2>File Management</h2>
           <div class="muted">Upload requirements and knowledge docs (MinIO).</div>
+          <div id="filesToast" class="muted" style="margin-top:6px;"></div>
+          <div class="files-toolbar" style="display:flex; gap:8px; align-items:center; margin:10px 0; flex-wrap:wrap;">
+            <label class="muted" for="filesDocType">Type</label>
+            <select id="filesDocType" style="background:#0b1220; color:#e5e7eb; border:1px solid var(--border); border-radius:6px; padding:6px;">
+              <option value="">All</option>
+              <option value="requirements">Requirements</option>
+              <option value="knowledge">Knowledge</option>
+              <option value="unknown">Unknown</option>
+            </select>
+            <label class="muted" for="filesStatus">Status</label>
+            <select id="filesStatus" style="background:#0b1220; color:#e5e7eb; border:1px solid var(--border); border-radius:6px; padding:6px;">
+              <option value="">Any</option>
+              <option value="new">New</option>
+              <option value="ingested">Ingested</option>
+              <option value="embedded">Embedded</option>
+            </select>
+            <input id="filesTags" type="text" placeholder="tags (comma)" style="background:#0b1220; color:#e5e7eb; border:1px solid var(--border); border-radius:6px; padding:6px; min-width:200px;" />
+            <button class="btn" id="filesRefreshBtn" title="Refresh">Refresh</button>
+            <div class="spacer"></div>
+            <button class="btn" id="filesBulkProcessBtn" title="Process selected">Process Selected</button>
+            <button class="btn" id="filesBulkDeleteBtn" title="Delete selected">Delete Selected</button>
+          </div>
+
+          <div class="card" style="margin-top:8px;">
+            <div class="muted">Upload or import by URL</div>
+            <div style="display:flex; gap:8px; align-items:center; margin-top:8px; flex-wrap:wrap;">
+              <input type="file" id="fileUploadInput" multiple style="display:none" />
+              <button class="btn" id="fileChooseBtn" type="button">Choose Files</button>
+              <input id="fileUrlInput" type="url" placeholder="https://example.com/doc.pdf" style="background:#0b1220; color:#e5e7eb; border:1px solid var(--border); border-radius:6px; padding:6px; min-width:320px;" />
+              <button class="btn" id="fileUrlImportBtn">Import URL</button>
+            </div>
+            <div id="fileDropZone" tabindex="0" role="button" aria-label="Drop files or click to select" style="margin-top:10px; border:1px dashed var(--border); border-radius:8px; padding:16px; text-align:center; color:#9aa4b2; user-select:none; cursor:pointer;">
+              Drag & drop files here, or use the Choose Files button above
+            </div>
+            <div id="uploadPreview" class="muted" style="margin-top:6px;"></div>
+          </div>
+
+          <div class="card" style="margin-top:10px; display:grid; grid-template-columns: minmax(420px, 1fr) 8px minmax(360px, 420px); gap:0; align-items:stretch;">
+            <div style="display:grid; gap:10px;">
+              <div>
+                <div style="display:flex; justify-content:space-between; align-items:center; gap:8px;">
+                  <div class="muted">Staged files</div>
+                  <div style="display:flex; gap:8px; align-items:center;">
+                    <button class="btn" id="filesUploadAllBtn" type="button">Upload All</button>
+                    <button class="btn" id="filesClearStagedBtn" type="button">Clear</button>
+                  </div>
+                </div>
+                <div id="stagedList" style="display:grid; gap:6px; margin-top:6px;"></div>
+              </div>
+              <div>
+                <div class="muted" style="margin-bottom:6px;">Library</div>
+                <div id="filesList" style="display:block; overflow:auto;"></div>
+              </div>
+            </div>
+            <div style="width:8px; cursor:col-resize;" id="filesSplitResizer" aria-hidden="true"></div>
+            <aside id="filePreviewPane" style="border-left:1px solid var(--border); padding-left:10px; overflow:auto;">
+              <div class="muted" style="margin-bottom:6px;">Preview</div>
+              <div id="fileMetaBox" class="card" style="margin-bottom:8px;">
+                <div class="muted">Metadata</div>
+                <div id="fileMetaContent" class="muted">Select a file to see metadata.</div>
+              </div>
+              <div class="card">
+                <div class="muted" style="margin-bottom:6px;">Content</div>
+                <div id="filePreviewContent" class="muted">Select a file to preview.</div>
+              </div>
+            </aside>
+          </div>
         </section>
         <section id="wb-embedding" class="workbench">
           <h2>Embedding</h2>
@@ -445,10 +523,16 @@
   <script>
     const qs = (s, r = document) => r.querySelector(s);
     const qsa = (s, r = document) => Array.from(r.querySelectorAll(s));
+    function debounce(fn, wait) {
+      let t; return function(...args){ clearTimeout(t); t = setTimeout(()=>fn.apply(this,args), wait); };
+    }
+    // Ensure we persist canvas before unload/refresh
+    window.addEventListener('beforeunload', () => { try { if (ontoState && ontoState.cy && activeOntologyIri) persistOntologyToLocalStorage(); } catch(_) {} });
 
     // Ontology workbench state
     const ontoState = { cy: null, eh: null, connectMode: false, clickConnectFrom: null, nextId: 1, currentPredicateType: 'objectProperty', isCanvasActive: false };
     let activeProject = null;
+    let suppressWorkbenchSwitch = false;
     let activeOntologyIri = null;
 
     function updateOntoGraphLabel() {
@@ -460,6 +544,14 @@
       } else {
         el.textContent = 'No graph selected';
         el.title = '';
+      }
+      // Toggle empty-state hint
+      const empty = qs('#ontoEmpty');
+      const layout = qs('#ontoLayoutSection');
+      if (empty && layout) {
+        const showEmpty = !activeOntologyIri;
+        empty.style.display = showEmpty ? 'block' : 'none';
+        layout.style.display = showEmpty ? 'none' : 'grid';
       }
     }
 
@@ -494,34 +586,45 @@
           // Switch active ontology
           activeOntologyIri = iri;
           try {
-            const pid = (activeProject && activeProject.id) ? activeProject.id : 'default';
+            const pid = (activeProject && (activeProject.id || activeProject.project_id)) ? (activeProject.id || activeProject.project_id) : 'default';
             localStorage.setItem(`onto_active_iri__${pid}`, iri);
             // Set model name for properties panel based on discovered label or IRI tail
             const friendly = (li.dataset.label && li.dataset.label.trim()) || iri.split('/').pop() || iri;
-            localStorage.setItem('onto_model_name', friendly);
+            localStorage.setItem(`onto_model_name__${pid}`, friendly);
             // Also store display label and graph in model attributes
             let attrs = {};
-            try { attrs = JSON.parse(localStorage.getItem('onto_model_attrs') || '{}'); } catch(_) { attrs = {}; }
+            try { attrs = JSON.parse(localStorage.getItem(`onto_model_attrs__${pid}`) || '{}'); } catch(_) { attrs = {}; }
             attrs.displayLabel = friendly;
             attrs.graphIri = iri;
-            localStorage.setItem('onto_model_attrs', JSON.stringify(attrs));
+            localStorage.setItem(`onto_model_attrs__${pid}`, JSON.stringify(attrs));
+            // Keep project-scoped label map in sync so the top node reflects selection
+            try { saveOntologyLabel(iri, friendly); } catch(_) {}
           } catch(_) {}
           updateOntoGraphLabel();
           // Load new graph from local storage if present
           if (ontoState.cy) {
+            // Avoid racing autosave during restore
+            ontoState.suspendAutosave = true;
+            try { ontoState.cy.elements().remove(); } catch(_) {}
             loadGraphFromLocal(iri);
+            setTimeout(() => { ontoState.suspendAutosave = false; }, 50);
           }
           // Show model-level props when nothing selected
           updatePropertiesPanelFromSelection();
-          // Switch to Ontology workbench view
-          const ico = document.querySelector('.icon[data-wb="ontology"]');
-          if (ico && !document.querySelector('#wb-ontology.workbench.active')) {
-            ico.click();
+          // Rebuild ontology tree (top node label and contents)
+          try { refreshOntologyTree(); } catch(_) {}
+          // Switch to Ontology workbench view unless suppressed during restore
+          if (!suppressWorkbenchSwitch) {
+            const ico = document.querySelector('.icon[data-wb="ontology"]');
+            if (ico && !document.querySelector('#wb-ontology.workbench.active')) {
+              ico.click();
+            }
           }
-          // Reflect in hash for deep-linking
+          // Reflect in hash for deep-linking (preserve current workbench)
           try {
             const params = new URLSearchParams(location.hash.replace(/^#/, ''));
-            params.set('wb', 'ontology');
+            const wb = localStorage.getItem('active_workbench') || 'ontology';
+            params.set('wb', wb);
             params.set('graph', encodeURIComponent(iri));
             location.hash = params.toString();
           } catch(_) {}
@@ -877,6 +980,12 @@
         }
         persistOntologyToLocalStorage();
       });
+      // Bind autosave on edits (add/remove/data/position)
+      try {
+        const autosave = debounce(() => { try { if (activeOntologyIri) persistOntologyToLocalStorage(); } catch(_) {} }, 250);
+        ontoState.cy.on('add remove data position', autosave);
+        ontoState.autosaveBound = true;
+      } catch(_) {}
     }
 
     function addClassNode(label) {
@@ -946,8 +1055,14 @@
         '@prefix owl: <http://www.w3.org/2002/07/owl#> .',
         '@prefix rdfs: <http://www.w3.org/2000/01/rdf-schema#> .',
         (()=>{ try {
-          const labels = loadOntologyLabelMap();
-          const lbl = labels[graphIri] || (activeOntologyIri === graphIri ? (localStorage.getItem('onto_model_name')||'') : (graphIri.split('/').pop()||graphIri));
+          const labels = loadOntologyLabelMap(activeProject);
+          const pid = (activeProject && (activeProject.id || activeProject.project_id)) ? (activeProject.id || activeProject.project_id) : null;
+          const scopedName = pid ? (localStorage.getItem(`onto_model_name__${pid}`) || '') : '';
+          const mapLabel = labels[graphIri] || '';
+          const tail = (graphIri.split('/').pop()||graphIri);
+          // Prefer the actively edited model name, then label map, then IRI tail
+          const chosen = ((activeOntologyIri === graphIri && scopedName.trim()) || mapLabel || tail);
+          const lbl = String(chosen||'');
           return `\n<${graphIri}> a owl:Ontology ; rdfs:label "${String(lbl||'').replace(/\\/g,'\\\\').replace(/"/g,'\\"')}" .\n`;
         } catch(_) { return `\n<${graphIri}> a owl:Ontology .\n`; } })()
       ];
@@ -1118,7 +1233,7 @@
           const snap = await fetchImportGraphSnapshot(imp);
           const added = [];
           // Compute a simple cluster origin to the right of the base graph to avoid overlap (notes included)
-          const baseBBox = ontoState.cy.nodes(':not(.imported)').boundingBox();
+          const baseBBox = ontoState.cy.nodes().filter(n => !n.hasClass('imported')).boundingBox();
           const orderIndex = Math.max(0, visibleList.indexOf(imp));
           const padX = 200, padY = 40, jitterX = orderIndex * 100, jitterY = orderIndex * 60;
           const safe = (n, f)=> (Number.isFinite(n) ? n : f);
@@ -1213,7 +1328,7 @@
       ensureOntologyInitialized();
       if (!obj || !Array.isArray(obj.nodes) || !Array.isArray(obj.edges)) return;
       // Clear only base elements, keep imported overlays intact
-      ontoState.cy.elements(':not(.imported):not(.imported-equivalence)').remove();
+      ontoState.cy.elements().filter(el => !el.hasClass('imported') && !el.hasClass('imported-equivalence')).remove();
       // Migration guard: filter out any overlays accidentally saved to JSON
       const isOverlayNode = (n) => {
         try {
@@ -1256,9 +1371,31 @@
       if (!me || me.error) { showAuth(true); return; }
       qs('#userMenu').textContent = me.username + (me.is_admin ? ' (admin)' : '');
       showAuth(false);
-      await loadProjects();
+      // Restore last active workbench before loading projects
+      try {
+        const hashWB = (()=>{ try { const p = new URLSearchParams(location.hash.replace(/^#/, '')); return p.get('wb') || ''; } catch(_) { return ''; } })();
+        const wb = hashWB || localStorage.getItem('active_workbench') || 'ontology';
+        // Activate matching icon and section
+        const icon = qs(`.icon[data-wb="${wb}"]`);
+        if (icon) {
+          qsa('.icon').forEach(i => i.classList.remove('active')); icon.classList.add('active');
+          qsa('.workbench').forEach(w => w.classList.remove('active'));
+          const sec = qs('#wb-' + wb); if (sec) sec.classList.add('active');
+        }
+        // If no workbench got activated (e.g., missing section), default to ontology
+        if (!document.querySelector('.workbench.active')) {
+          const fallback = qs('.icon[data-wb="ontology"]');
+          if (fallback) fallback.click();
+        }
+      } catch(_) {}
+      // Initialize Cytoscape BEFORE loading projects so restore can occur during renderTree
       ensureOntologyInitialized();
+      // If Files workbench is already active from restore, initialize its handlers now
+      try { if (document.querySelector('#wb-files.workbench.active')) { ensureFilesInitialized(); } } catch(_) {}
+      await loadProjects();
       refreshOntologyTree();
+      // Bind Files workbench handlers proactively so Choose Files works immediately
+      try { ensureFilesInitialized(); } catch(_) {}
       // Restore ontology tree collapsed state
       try {
         // Restore left project tree width
@@ -1288,13 +1425,7 @@
         if (propsIcon && !propsCollapsed) propsIcon.innerHTML = '<path d="M9 6l6 6-6 6"/>';
         const savedW = parseInt(localStorage.getItem('onto_props_w') || '0', 10);
         if (savedW) document.documentElement.style.setProperty('--onto-props-w', savedW + 'px');
-        // Load saved graph for active ontology if present
-        try {
-          const attrs = JSON.parse(localStorage.getItem('onto_model_attrs') || '{}');
-          const iri = attrs.graphIri || activeOntologyIri;
-          if (iri) loadGraphFromLocal(iri);
-        } catch(_) {}
-        // After applying layout classes/widths, ensure cy fits the visible area
+        // Do not load any graph here; renderTree handles per-project restore safely
         requestAnimationFrame(() => { if (ontoState.cy) ontoState.cy.resize(); });
       } catch(_) {}
     }
@@ -1313,40 +1444,113 @@
         qs('#loginMsg').textContent = json.error || 'Login failed';
       }
     };
-    qs('#logoutBtn').onclick = () => { localStorage.removeItem(tokenKey); localStorage.removeItem(userKey); showAuth(true); };
+    qs('#logoutBtn').onclick = () => { localStorage.removeItem(tokenKey); localStorage.removeItem(userKey); activeOntologyIri = null; updateOntoGraphLabel(); try { if (ontoState.cy) ontoState.cy.elements().remove(); } catch(_) {} showAuth(true); };
 
     // Projects
     async function loadProjects() {
       const token = localStorage.getItem(tokenKey);
       const res = await fetch('/api/projects', { headers: { Authorization: 'Bearer ' + token }});
       const json = await res.json();
-      const list = json.projects || [];
-      const selects = [qs('#projectSelect'), qs('#projectSelect2')];
+      const raw = json.projects || [];
+      // Normalize backend shape to { id, name }
+      const list = raw.map(p => ({
+        id: p.id || p.project_id || p.projectId,
+        name: p.name || p.project_name || 'Project'
+      })).filter(p => !!p.id);
+      const selects = [qs('#projectSelect2')];
       if (list.length) {
-        selects.forEach(sel => { sel.innerHTML = list.map(p => `<option value="${p.id}">${p.name}</option>`).join(''); });
-        await renderTree(list[0]);
+        // restore previously selected project if available
+        const savedPid = (localStorage.getItem('active_project_id') || '').trim();
+        let selected = list[0];
+        if (savedPid) {
+          const found = list.find(p => p.id === savedPid);
+          if (found) selected = found;
+        }
+        selects.forEach(sel => { if (sel) { sel.innerHTML = list.map(p => `<option value="${p.id}">${p.name}</option>`).join(''); sel.disabled = false; sel.value = selected.id; } });
+        await renderTree(selected);
       } else {
-        const sample = getSampleProject();
-        selects.forEach(sel => { sel.innerHTML = `<option value="${sample.id}">${sample.name} (demo)</option>`; });
-        await renderTree(sample);
+        // No projects: clear tree and show empty state
+        selects.forEach(sel => { if (sel) { sel.innerHTML = '<option value="" disabled selected>Create Project...</option>'; sel.disabled = true; } });
+        await renderTree({ id: null, name: '' });
       }
     }
-    qs('#newProjectBtn').onclick = async () => {
-      const name = prompt('Project name'); if (!name) return;
-      const token = localStorage.getItem(tokenKey);
-      const res = await fetch('/api/projects', { method:'POST', headers:{'Content-Type':'application/json', Authorization: 'Bearer ' + token}, body: JSON.stringify({ name }) });
-      if (res.ok) loadProjects();
-    };
-    ['#projectSelect', '#projectSelect2'].forEach(id => {
-      qs(id).addEventListener('change', async (e) => {
-        const pid = e.target.value;
+    (function(){
+      const npb = qs('#newProjectBtn');
+      if (!npb) return;
+      npb.onclick = async () => {
+        const name = prompt('Project name'); if (!name) return;
         const token = localStorage.getItem(tokenKey);
+        const res = await fetch('/api/projects', { method:'POST', headers:{'Content-Type':'application/json', Authorization: 'Bearer ' + token}, body: JSON.stringify({ name }) });
+        let pid = '';
+        let pname = name;
+        if (res.ok) {
+          const js = await res.json().catch(()=>({}));
+          const proj = js.project || js;
+          pid = (proj && (proj.id || proj.project_id || proj.projectId)) || '';
+          pname = (proj && proj.name) || name;
+          if (pid) try { localStorage.setItem('active_project_id', pid); } catch(_) {}
+        }
+        // Reload projects, select the created one, and render it
+        const pr = await fetch('/api/projects', { headers: { Authorization: 'Bearer ' + token }}).then(r=>r.json()).catch(()=>({projects:[]}));
+        const raw = pr.projects || [];
+        const list = raw.map(p => ({ id: p.id || p.project_id || p.projectId, name: p.name || p.project_name || 'Project' })).filter(p => !!p.id);
+        const sel = qs('#projectSelect2');
+        if (sel) {
+          sel.innerHTML = list.map(p => `<option value="${p.id}">${p.name}</option>`).join('');
+          if (pid && list.find(p => p.id === pid)) sel.value = pid; else if (list.length) sel.value = list[0].id;
+          sel.disabled = !list.length;
+        }
+        const selected = pid ? { id: pid, name: pname } : (list[0] || { id: null, name: '' });
+        await renderTree(selected);
+      };
+    })();
+    ['#projectSelect2'].forEach(id => {
+      const sel = qs(id); if (!sel) return;
+      sel.addEventListener('change', async (e) => {
+        const pid = e.target.value;
+        try { localStorage.setItem('active_project_id', pid); } catch(_) {}
+        const token = localStorage.getItem(tokenKey);
+        // Save current ontology canvas before switching projects
+        try { if (ontoState && ontoState.cy && activeOntologyIri) saveGraphToLocal(activeOntologyIri); } catch(_) {}
         const res = await fetch('/api/projects', { headers: { Authorization: 'Bearer ' + token }});
         const json = await res.json();
-        const proj = (json.projects || []).find(p => p.id === pid);
-        if (proj) await renderTree(proj);
+        const raw = json.projects || [];
+        const list = raw.map(p => ({ id: p.id || p.project_id || p.projectId, name: p.name || p.project_name || 'Project' }));
+        const proj = list.find(p => p.id === pid);
+        if (proj) { activeOntologyIri = null; updateOntoGraphLabel(); await renderTree(proj); }
       });
     });
+
+    // Plus button near project selector creates a new project
+    (function(){
+      const btn = qs('#addNodeBtn');
+      if (!btn) return;
+      btn.addEventListener('click', async () => {
+        const name = prompt('Project name'); if (!name) return;
+        const token = localStorage.getItem(tokenKey);
+        const res = await fetch('/api/projects', { method:'POST', headers:{'Content-Type':'application/json', Authorization: 'Bearer ' + token}, body: JSON.stringify({ name }) });
+        if (res.ok) {
+          // Reload and select the newly created project
+          const pr = await fetch('/api/projects', { headers: { Authorization: 'Bearer ' + token }}).then(r=>r.json()).catch(()=>({projects:[]}));
+          const raw = pr.projects || [];
+          const list = raw.map(p => ({ id: p.id || p.project_id || p.projectId, name: p.name || p.project_name || 'Project' })).filter(p => !!p.id);
+          const sel = qs('#projectSelect2');
+          if (sel && list.length) {
+            sel.innerHTML = list.map(p => `<option value="${p.id}">${p.name}</option>`).join('');
+            const js = await res.json().catch(()=>({}));
+            const proj = js.project || js;
+            const pid = (proj && (proj.id || proj.project_id || proj.projectId)) || list[list.length - 1].id;
+            sel.value = pid;
+            try { localStorage.setItem('active_project_id', pid); } catch(_) {}
+            sel.disabled = false;
+            // Save current ontology canvas before switching projects
+            try { if (ontoState && ontoState.cy && activeOntologyIri) saveGraphToLocal(activeOntologyIri); } catch(_) {}
+            const selected = list.find(p => p.id === pid) || list[list.length - 1];
+            await renderTree(selected);
+          }
+        }
+      });
+    })();
 
     // Workbench switching
     qsa('.icon').forEach(el => el.onclick = () => {
@@ -1354,8 +1558,17 @@
       const wb = el.getAttribute('data-wb');
       qsa('.workbench').forEach(w => w.classList.remove('active'));
       qs('#wb-' + wb).classList.add('active');
+      // Persist selected workbench
+      try { localStorage.setItem('active_workbench', wb); } catch(_) {}
+      // Reflect in hash
+      try {
+        const params = new URLSearchParams(location.hash.replace(/^#/, ''));
+        params.set('wb', wb);
+        location.hash = params.toString();
+      } catch(_) {}
       if (wb === 'graph') refreshGraphSummary();
       if (wb === 'ontology') { ensureOntologyInitialized(); if (ontoState.cy) ontoState.cy.resize(); }
+      if (wb === 'files') { ensureFilesInitialized(); }
     });
 
     // Tree collapsible sections
@@ -1438,11 +1651,40 @@
     })();
 
     async function renderTree(project) {
-      activeProject = project;
+      activeProject = project && project.id ? project : null;
+      // Reset active ontology when switching context or when no project
+      activeOntologyIri = null;
+      updateOntoGraphLabel();
+      try { if (ontoState.cy) ontoState.cy.elements().remove(); } catch(_) {}
       // Restore per-project active ontology selection (label only)
       try {
-        const savedIri = localStorage.getItem(`onto_active_iri__${project.id}`);
-        if (savedIri) { activeOntologyIri = savedIri; updateOntoGraphLabel(); }
+        const pid = project && (project.id || project.project_id);
+        const savedIri = localStorage.getItem(`onto_active_iri__${pid}`);
+        if (savedIri) {
+          activeOntologyIri = savedIri;
+          updateOntoGraphLabel();
+          // Ensure properties panel model name reflects the saved active ontology
+          try {
+            const labels = loadOntologyLabelMap(project);
+            const pid2 = (project && (project.id || project.project_id)) ? (project.id || project.project_id) : 'default';
+            const friendly = (labels[savedIri] && String(labels[savedIri]).trim()) || (savedIri.split('/').pop() || savedIri);
+            localStorage.setItem(`onto_model_name__${pid2}`, friendly);
+            let attrs = {};
+            try { attrs = JSON.parse(localStorage.getItem(`onto_model_attrs__${pid2}`) || '{}'); } catch(_) { attrs = {}; }
+            attrs.displayLabel = friendly; attrs.graphIri = savedIri;
+            localStorage.setItem(`onto_model_attrs__${pid2}`, JSON.stringify(attrs));
+            updatePropertiesPanelFromSelection();
+          } catch(_) {}
+          // Attempt to load saved canvas for this active IRI
+          try {
+            if (ontoState.cy) {
+              ontoState.suspendAutosave = true;
+              ontoState.cy.elements().remove();
+              loadGraphFromLocal(savedIri);
+              setTimeout(() => { ontoState.suspendAutosave = false; }, 50);
+            }
+          } catch(_) {}
+        }
       } catch(_) {}
       const root = qs('#treeRoot');
       const makeItem = (id, label, iconCls, children = [], dataAttrs = {}) => {
@@ -1466,25 +1708,28 @@
             if (!name || name.trim() === current) return;
             try {
               const payload = { graph: li.dataset.iri, label: name.trim() };
-              fetch('/api/ontologies/label', { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) })
+              const token = localStorage.getItem(tokenKey);
+              fetch('/api/ontologies/label', { method: 'PUT', headers: { 'Content-Type': 'application/json', Authorization: 'Bearer ' + token }, body: JSON.stringify(payload) })
                 .then(async (res) => {
                   if (!res.ok) throw new Error('rename failed');
                   const newLabel = name.trim();
                   row.querySelector('.node-label').textContent = newLabel; li.dataset.label = newLabel; saveOntologyLabel(li.dataset.iri, newLabel);
                   if (activeOntologyIri === li.dataset.iri) {
-                    localStorage.setItem('onto_model_name', newLabel);
+                    const pid = project.id || project.project_id || 'default';
+                    localStorage.setItem(`onto_model_name__${pid}`, newLabel);
                     try {
                       let attrs = {};
-                      try { attrs = JSON.parse(localStorage.getItem('onto_model_attrs') || '{}'); } catch(_) { attrs = {}; }
+                      try { attrs = JSON.parse(localStorage.getItem(`onto_model_attrs__${pid}`) || '{}'); } catch(_) { attrs = {}; }
                       attrs.displayLabel = newLabel;
-                      localStorage.setItem('onto_model_attrs', JSON.stringify(attrs));
+                      localStorage.setItem(`onto_model_attrs__${pid}`, JSON.stringify(attrs));
                     } catch(_) {}
                     updateOntoGraphLabel();
-                    // Immediately reflect in Ontology tree view without a full refresh
+                    // Immediately update properties panel model name
+                    try { updatePropertiesPanelFromSelection(); } catch(_) {}
+                    // Immediately reflect in Ontology tree view without a full tree reload
                     try { refreshOntologyTree(); } catch(_) {}
                   }
-                  // Refresh discovery so main tree picks up new label from Fuseki
-                  await renderTree(project);
+                  // Avoid immediate server re-fetch that could race and overwrite the fresh label
                 })
                 .catch(()=>{ alert('Rename failed'); });
             } catch(_) {}
@@ -1509,29 +1754,33 @@
         return li;
       };
 
-      const reqItems = (project.requirements || []).map((r, idx) => {
+      const reqItems = ((project && project.requirements) || []).map((r, idx) => {
         const rid = r.id || `SP-${String(idx + 1).padStart(3, '0')}`;
         const label = rid; // ID only
         return makeItem(rid, label, 'req');
       });
-      const docReqItems = (project.documents && project.documents.requirements ? project.documents.requirements : []).map(d => makeItem(d.id || d.name, d.name || d.id, 'docreq'));
-      const docKnowItems = (project.documents && project.documents.knowledge ? project.documents.knowledge : []).map(d => makeItem(d.id || d.name, d.name || d.id, 'docknow'));
-      const outItems = (project.artifacts || project.outputs || []).map(o => makeItem(o.id || o.name, o.name || o.id, 'out'));
+      const docReqItems = (project && project.documents && project.documents.requirements ? project.documents.requirements : []).map(d => makeItem(d.id || d.name, d.name || d.id, 'docreq'));
+      const docKnowItems = (project && project.documents && project.documents.knowledge ? project.documents.knowledge : []).map(d => makeItem(d.id || d.name, d.name || d.id, 'docknow'));
+      const outItems = ((project && (project.artifacts || project.outputs)) || []).map(o => makeItem(o.id || o.name, o.name || o.id, 'out'));
 
       // Ontology tree: discover from Fuseki
       let ontologyNode = null;
       try {
-        const res = await fetch(`/api/ontologies${project?.id ? `?project=${encodeURIComponent(project.id)}` : ''}`);
+        const pid = project && (project.id || project.project_id);
+        const res = await fetch(`/api/ontologies${pid ? `?project=${encodeURIComponent(pid)}` : ''}`);
         const json = await res.json();
         const onts = Array.isArray(json.ontologies) ? json.ontologies : [];
-        const labelsMap = loadOntologyLabelMap();
+        const labelsMap = loadOntologyLabelMap(project);
         const ontoItems = onts.map((o, idx) => {
+          const serverLabel = (o.label && String(o.label).trim()) || '';
+          const mapLabel = (labelsMap[o.graphIri] && String(labelsMap[o.graphIri]).trim()) || '';
+          const displayLabel = mapLabel || serverLabel || o.graphIri;
           const li = makeItem(
             `ontology-${idx}-${o.graphIri}`,
-            (labelsMap[o.graphIri] || o.label || o.graphIri),
+            displayLabel,
             'onto',
             [],
-            { nodeType: 'ontology', iri: o.graphIri, label: (labelsMap[o.graphIri] || o.label || o.graphIri) }
+            { nodeType: 'ontology', iri: o.graphIri, label: displayLabel }
           );
           // Enable dragging this ontology into the Imports node
           const row = li.querySelector('.node-row');
@@ -1541,15 +1790,19 @@
               try { ev.dataTransfer.setData('text/graph-iri', o.graphIri); ev.dataTransfer.effectAllowed = 'copy'; } catch(_) {}
             });
           }
+          // Initialize label map from server only if missing
+          if (!mapLabel && serverLabel) {
+            try { saveOntologyLabel(o.graphIri, serverLabel); } catch(_) {}
+          }
           return li;
         });
         if (ontoItems.length) {
           ontologyNode = makeItem('ontology', 'Ontology', 'folder', ontoItems);
         } else {
-          // Fallback to sample listing if discovery yields nothing
-          ontologyNode = makeItem('ontology', 'Ontology', 'folder', [
-            makeItem('onto-sample', 'Sample Ontology', 'onto', [], { nodeType: 'ontology', iri: computeOntologyIri(project.id, 'sample', null) })
-          ]);
+          // No ontologies: ensure empty state is shown
+          activeOntologyIri = null;
+          updateOntoGraphLabel();
+          ontologyNode = makeItem('ontology', 'Ontology', 'folder', []);
         }
       } catch (_) {
         // Network/SPARQL error: show a placeholder item
@@ -1558,7 +1811,89 @@
         ]);
       }
 
-      const projectInfo = makeItem('project-info', `ID: ${project.id}`, 'folder');
+      const projectDisplay = (project && (project.name || project.id)) ? (project.name || project.id) : '';
+      const projectInfo = makeItem('project-info', `Project: ${projectDisplay}`, 'folder');
+      // Enable delete on main tree top node when project is selected
+      try {
+        const row = projectInfo.querySelector('.node-row');
+        if (row && project && (project.id || project.project_id)) {
+          // Context menu binding
+          row.oncontextmenu = (ev) => {
+            ev.preventDefault();
+            const menu = qs('#projectContextMenu'); if (!menu) return;
+            menu.style.display = 'block';
+            menu.style.left = ev.pageX + 'px';
+            menu.style.top = ev.pageY + 'px';
+            const hide = () => { menu.style.display = 'none'; document.removeEventListener('click', hide, { capture: true }); };
+            setTimeout(() => { document.addEventListener('click', hide, { capture: true }); }, 0);
+            const pid = project.id || project.project_id;
+            const token = localStorage.getItem(tokenKey);
+            const archiveBtn = qs('#projArchiveBtn');
+            const deleteBtn = qs('#projDeleteBtn');
+            const showArchivedBtn = qs('#projShowArchivedBtn');
+            if (archiveBtn) archiveBtn.onclick = async () => {
+              try {
+                const res = await fetch(`/api/projects/${encodeURIComponent(pid)}/archive`, { method: 'POST', headers: { Authorization: 'Bearer ' + token }});
+                if (res.ok) { try { localStorage.removeItem('active_project_id'); } catch(_) {} await loadProjects(); }
+                else { const t = await res.text().catch(()=>String(res.status)); alert('Archive failed: ' + t); }
+              } finally { hide(); }
+            };
+            if (deleteBtn) deleteBtn.onclick = async () => {
+              try {
+                if (!confirm('Delete this project? This does not delete external artifacts.')) return;
+                const res = await fetch(`/api/projects/${encodeURIComponent(pid)}`, { method: 'DELETE', headers: { Authorization: 'Bearer ' + token }});
+                if (res.ok) { try { localStorage.removeItem('active_project_id'); } catch(_) {} await loadProjects(); }
+                else { const t = await res.text().catch(()=>String(res.status)); alert('Delete failed: ' + t); }
+              } finally { hide(); }
+            };
+            if (showArchivedBtn) showArchivedBtn.onclick = async () => {
+              try {
+                const res = await fetch('/api/projects?state=archived', { headers: { Authorization: 'Bearer ' + token }});
+                const json = await res.json();
+                const rows = (json.projects || []).map(p => ({ id: p.project_id || p.id, name: p.name || 'Project' })).filter(p => p.id);
+                const overlay = document.createElement('div');
+                overlay.style.position='fixed'; overlay.style.inset='0'; overlay.style.background='rgba(0,0,0,0.4)'; overlay.style.zIndex='9998';
+                const panel = document.createElement('div'); panel.style.position='fixed'; panel.style.top='20%'; panel.style.left='50%'; panel.style.transform='translateX(-50%)'; panel.style.background='var(--panel)'; panel.style.border='1px solid var(--border)'; panel.style.borderRadius='12px'; panel.style.padding='12px'; panel.style.minWidth='420px'; panel.style.zIndex='9999';
+                panel.innerHTML = `<div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:8px;"><strong>Archived Projects</strong><button id="archClose" class="btn">Close</button></div><div id="archList"></div>`;
+                document.body.appendChild(overlay); document.body.appendChild(panel);
+                const close = ()=>{ try { document.body.removeChild(panel); document.body.removeChild(overlay); } catch(_) {} };
+                panel.querySelector('#archClose').onclick = close; overlay.onclick = close;
+                const listEl = panel.querySelector('#archList');
+                if (!rows.length) { listEl.innerHTML = '<div class="muted">No archived projects.</div>'; return; }
+                listEl.innerHTML = rows.map(r => `<div style="display:flex; justify-content:space-between; align-items:center; border:1px solid var(--border); border-radius:8px; padding:8px; margin-bottom:6px;"><span>${r.name}</span><div><button class="btn" data-restore="${r.id}">Restore</button></div></div>`).join('');
+                listEl.addEventListener('click', async (e)=>{
+                  const btn = e.target.closest('button[data-restore]'); if (!btn) return;
+                  const rid = btn.getAttribute('data-restore');
+                  const rr = await fetch(`/api/projects/${encodeURIComponent(rid)}/restore`, { method:'POST', headers:{ Authorization:'Bearer ' + token }});
+                  if (rr.ok) {
+                    try { localStorage.setItem('active_project_id', rid); } catch(_) {}
+                    close();
+                    await loadProjects();
+                  } else {
+                    const t = await rr.text().catch(()=>String(rr.status)); alert('Restore failed: ' + t);
+                  }
+                });
+              } finally { hide(); }
+            };
+          };
+          row.onkeydown = async (e) => {
+            if (e.key === 'Delete' || e.key === 'Backspace') {
+              e.preventDefault();
+              const pid = project.id || project.project_id;
+              const token = localStorage.getItem(tokenKey);
+              if (!confirm('Delete this project? This does not delete external artifacts.')) return;
+              const res = await fetch(`/api/projects/${encodeURIComponent(pid)}`, { method: 'DELETE', headers: { Authorization: 'Bearer ' + token }});
+              if (res.ok) {
+                try { localStorage.removeItem('active_project_id'); } catch(_) {}
+                await loadProjects();
+              } else {
+                const t = await res.text().catch(()=>String(res.status));
+                alert('Delete failed: ' + t);
+              }
+            }
+          };
+        }
+      } catch(_) {}
       const docsReqNode = makeItem('documents-requirements', 'Requirements Documents', 'folder', docReqItems);
       const docsKnowNode = makeItem('documents-knowledge', 'Knowledge Documents', 'folder', docKnowItems);
       const docsChildren = [];
@@ -1569,7 +1904,48 @@
       const outNode = makeItem('artifacts', 'Artifacts', 'folder', outItems);
 
       root.innerHTML = '';
-      [projectInfo, ontologyNode, docsNode, reqNode, outNode].filter(Boolean).forEach(n => root.appendChild(n));
+      // If no project, show minimal empty tree
+      root.innerHTML = '';
+      if (project && (project.id || project.project_id)) {
+        [projectInfo, ontologyNode, docsNode, reqNode, outNode].filter(Boolean).forEach(n => root.appendChild(n));
+      }
+
+      // Auto-restore previously selected ontology for this project, if available
+      try {
+        const pid = project && (project.id || project.project_id);
+        const savedIri = pid ? localStorage.getItem(`onto_active_iri__${pid}`) : null;
+        const treeEl = qs('#treeRoot');
+        if (savedIri && treeEl) {
+          const li = Array.from(treeEl.querySelectorAll('li[role="treeitem"]')).find(el => el.dataset && el.dataset.iri === savedIri);
+          if (li) {
+            // Restore canvas first (if we have saved content), then select the ontology to sync panels
+            try {
+              if (ontoState.cy) {
+                ontoState.suspendAutosave = true;
+                ontoState.cy.elements().remove();
+                loadGraphFromLocal(savedIri);
+                setTimeout(() => { ontoState.suspendAutosave = false; }, 50);
+              }
+            } catch(_) {}
+            selectNode(li);
+            // Prevent workbench switching when restoring selection on load
+            suppressWorkbenchSwitch = true;
+            try { handleTreeSelection(li); } finally { suppressWorkbenchSwitch = false; }
+          } else {
+            // Saved IRI no longer present; reset to empty state
+            activeOntologyIri = null;
+            updateOntoGraphLabel();
+            try { if (ontoState.cy) ontoState.cy.elements().remove(); } catch(_) {}
+            refreshOntologyTree();
+          }
+        } else {
+          // No saved selection for this project
+          activeOntologyIri = null;
+          updateOntoGraphLabel();
+          try { if (ontoState.cy) ontoState.cy.elements().remove(); } catch(_) {}
+          refreshOntologyTree();
+        }
+      } catch(_) {}
 
       // Add plus button on Ontology section header (right side)
       try {
@@ -1583,21 +1959,44 @@
           addBtn.style.marginLeft = '8px';
           addBtn.onclick = async (e) => {
             e.stopPropagation();
+            if (!project || !(project.id || project.project_id)) { alert('Create a project first'); return; }
             const disp = prompt('Display label for new ontology'); if (!disp) return;
             const base = slugify(disp) || `ontology-${Date.now()}`;
             const label = disp;
             try {
-              const res = await fetch('/api/ontologies', { method: 'POST', headers: { 'Content-Type':'application/json' }, body: JSON.stringify({ project: project.id, name: base, label }) });
+              const token = localStorage.getItem(tokenKey);
+              const pid2 = project.id || project.project_id;
+              const res = await fetch('/api/ontologies', { method: 'POST', headers: { 'Content-Type':'application/json', Authorization: 'Bearer ' + token }, body: JSON.stringify({ project: pid2, name: base, label }) });
+              if (!res.ok) {
+                const msg = await res.text().catch(()=>String(res.status));
+                alert('Create ontology failed: ' + msg);
+                return;
+              }
               const created = await res.json();
+              if (created && created.graphIri) {
+                try { saveOntologyLabel(created.graphIri, created.label || label); } catch(_) {}
+              }
               await renderTree(project);
-              // Ensure label is shown and select the created ontology
-              const newRoot = qs('#treeRoot');
-              const li = Array.from(newRoot.querySelectorAll('li[role="treeitem"]')).find(el => el.dataset && el.dataset.iri === created.graphIri);
-              if (li) {
-                const lbl = li.querySelector('.node-label'); if (lbl) lbl.textContent = created.label || label;
-                li.dataset.label = created.label || label;
-                selectNode(li);
-                handleTreeSelection(li);
+              // Ensure label is shown and select the created ontology (guard for valid response)
+              if (created && created.graphIri) {
+                const newRoot = qs('#treeRoot');
+                const li = Array.from(newRoot.querySelectorAll('li[role="treeitem"]')).find(el => el.dataset && el.dataset.iri === created.graphIri);
+                // Update top node label immediately
+                try {
+                  const ontoTop = qs('#ontoTreeRoot .onto-node-label');
+                  if (ontoTop) ontoTop.textContent = created.label || label;
+                } catch(_) {}
+                if (li) {
+                  const lbl = li.querySelector('.node-label'); if (lbl) lbl.textContent = created.label || label;
+                  li.dataset.label = created.label || label;
+                  selectNode(li);
+                  handleTreeSelection(li);
+                } else {
+                  // Fallback: set selection and force refresh display
+                  activeOntologyIri = created.graphIri;
+                  updateOntoGraphLabel();
+                  refreshOntologyTree();
+                }
               }
             } catch(_) {}
           };
@@ -1616,7 +2015,8 @@
           if (!iri) return;
           try {
             const url = `/api/ontologies?graph=${encodeURIComponent(iri)}`;
-            const res = await fetch(url, { method: 'DELETE' });
+            const token = localStorage.getItem(tokenKey);
+            const res = await fetch(url, { method: 'DELETE', headers: { Authorization: 'Bearer ' + token } });
             if (res.ok) {
               await renderTree(project);
               if (activeOntologyIri === iri) { activeOntologyIri = null; updateOntoGraphLabel(); ensureOntologyInitialized(); ontoState.cy?.elements().remove(); refreshOntologyTree(); }
@@ -1662,9 +2062,9 @@
     function refreshOntologyTree() {
       const root = qs('#ontoTreeRoot');
       if (!root || !ontoState.cy) return;
-      const classes = ontoState.cy.nodes().filter(n => (n.data('type') || 'class') === 'class' && !n.hasClass('imported'));
-      const importedClasses = ontoState.cy.nodes().filter(n => (n.data('type') || 'class') === 'class' && n.hasClass('imported'));
-      const notes = ontoState.cy.nodes().filter(n => (n.data('type') || '') === 'note' && !n.hasClass('imported'));
+      const classes = ontoState.cy.nodes().filter(n => n.visible() && (n.data('type') || 'class') === 'class' && !n.hasClass('imported'));
+      const importedClasses = ontoState.cy.nodes().filter(n => n.visible() && (n.data('type') || 'class') === 'class' && n.hasClass('imported'));
+      const notes = ontoState.cy.nodes().filter(n => n.visible() && (n.data('type') || '') === 'note' && !n.hasClass('imported'));
       // Simple grouping: Classes as top-level; edges shown under a "Relationships" group per class
       root.innerHTML = '';
       const makeItem = (label, expanded = true, children = []) => {
@@ -1709,9 +2109,21 @@
       const row = document.createElement('div'); row.className = 'onto-node-row';
       const twist = document.createElement('span'); twist.className = 'onto-twist'; twist.onclick = (e)=>{ e.stopPropagation(); rootItem.setAttribute('aria-expanded', rootItem.getAttribute('aria-expanded') === 'true' ? 'false' : 'true'); };
       const text = document.createElement('span'); text.className = 'onto-node-label';
-      const modelName = (localStorage.getItem('onto_model_name') || '').trim() || 'Ontology';
-      text.textContent = modelName;
+      (function(){
+        try {
+          const labels = loadOntologyLabelMap(activeProject);
+          let modelName = 'Ontology';
+          const pid = (activeProject && (activeProject.id || activeProject.project_id)) ? (activeProject.id || activeProject.project_id) : 'default';
+          const scopedName = localStorage.getItem(`onto_model_name__${pid}`) || '';
+          if (scopedName.trim()) modelName = scopedName.trim();
+          else if (activeOntologyIri) {
+            modelName = (labels[activeOntologyIri] && String(labels[activeOntologyIri]).trim()) || (activeOntologyIri.split('/').pop() || 'Ontology');
+          }
+          text.textContent = modelName;
+        } catch(_) { text.textContent = 'Ontology'; }
+      })();
       row.appendChild(twist); row.appendChild(text); rootItem.appendChild(row); rootItem.appendChild(ul);
+      // (Do not delete projects here; project deletion is handled in the main tree top node in renderTree)
       root.innerHTML = '';
       root.appendChild(rootItem);
 
@@ -1817,10 +2229,11 @@
         typeEl.value = e.data('type') || 'objectProperty';
         attrsEl.value = JSON.stringify(e.data('attrs') || {}, null, 2);
       } else {
-        nameEl.value = localStorage.getItem('onto_model_name') || 'Ontology Model';
+        const pid = (activeProject && (activeProject.id || activeProject.project_id)) ? (activeProject.id || activeProject.project_id) : 'default';
+        nameEl.value = localStorage.getItem(`onto_model_name__${pid}`) || 'Ontology Model';
         typeEl.value = 'model';
         try {
-          const json = JSON.parse(localStorage.getItem('onto_model_attrs') || '{}');
+          const json = JSON.parse(localStorage.getItem(`onto_model_attrs__${pid}`) || '{}');
           attrsEl.value = JSON.stringify(json, null, 2);
         } catch(_) { attrsEl.value = '{}'; }
       }
@@ -1828,46 +2241,51 @@
 
     function persistOntologyToLocalStorage() {
       if (!ontoState.cy) return;
+      if (ontoState.suspendAutosave) return;
       try {
-        const nodes = ontoState.cy.nodes(':not(.imported)').map(n => ({ data: n.data(), position: n.position() }));
-        const edges = ontoState.cy.edges(':not(.imported)').map(e => ({ data: e.data() }));
-        const key = graphKeyForActive();
-        if (key) localStorage.setItem(key, JSON.stringify({ nodes, edges }));
+        const nodes = ontoState.cy.nodes().filter(n => !n.hasClass('imported')).map(n => ({ data: n.data(), position: n.position() }));
+        const edges = ontoState.cy.edges().filter(e => !e.hasClass('imported')).map(e => ({ data: e.data() }));
+        if (activeOntologyIri) {
+          localStorage.setItem(storageKeyForGraph(activeOntologyIri), JSON.stringify({ nodes, edges }));
+        }
       } catch(_) {}
     }
 
-    function graphKeyForActive() {
-      const iri = activeOntologyIri || (attrsFromModel().graphIri || null);
-      if (!iri) return null;
-      return 'onto_graph__' + encodeURIComponent(iri);
-    }
+    // graphKeyForActive not used; per-project keys are used via storageKeyForGraph
     function attrsFromModel() {
-      try { return JSON.parse(localStorage.getItem('onto_model_attrs') || '{}'); } catch(_) { return {}; }
+      const pid = (activeProject && (activeProject.id || activeProject.project_id)) ? (activeProject.id || activeProject.project_id) : 'default';
+      try { return JSON.parse(localStorage.getItem(`onto_model_attrs__${pid}`) || '{}'); } catch(_) { return {}; }
     }
-    function loadOntologyLabelMap() { try { return JSON.parse(localStorage.getItem('onto_label_map') || '{}'); } catch(_) { return {}; } }
+    function loadOntologyLabelMap(project) {
+      const pid = project?.id || project?.project_id || (activeProject && (activeProject.id || activeProject.project_id)) || 'default';
+      try { return JSON.parse(localStorage.getItem(`onto_label_map__${pid}`) || '{}'); } catch(_) { return {}; }
+    }
     function saveOntologyLabel(graphIri, label) {
-      try { const m = loadOntologyLabelMap(); m[graphIri] = label; localStorage.setItem('onto_label_map', JSON.stringify(m)); } catch(_) {}
+      const pid = (activeProject && (activeProject.id || activeProject.project_id)) ? (activeProject.id || activeProject.project_id) : 'default';
+      try { const m = loadOntologyLabelMap(activeProject); m[graphIri] = label; localStorage.setItem(`onto_label_map__${pid}`, JSON.stringify(m)); } catch(_) {}
+    }
+    function storageKeyForGraph(iri) {
+      const pid = (activeProject && (activeProject.id || activeProject.project_id)) ? (activeProject.id || activeProject.project_id) : 'default';
+      return `onto_graph__${pid}__` + encodeURIComponent(iri);
     }
     function saveGraphToLocal(graphIri) {
-      if (!ontoState.cy) return;
       try {
-        const nodes = ontoState.cy.nodes(':not(.imported)').map(n => ({ data: n.data(), position: n.position() }));
-        const edges = ontoState.cy.edges(':not(.imported)').map(e => ({ data: e.data() }));
-        localStorage.setItem('onto_graph__' + encodeURIComponent(graphIri), JSON.stringify({ nodes, edges }));
+        const nodes = ontoState.cy ? ontoState.cy.nodes().jsons() : [];
+        const edges = ontoState.cy ? ontoState.cy.edges().jsons() : [];
+        localStorage.setItem(storageKeyForGraph(graphIri), JSON.stringify({ nodes, edges }));
       } catch(_) {}
     }
     function loadGraphFromLocal(graphIri) {
       try {
-        const json = localStorage.getItem('onto_graph__' + encodeURIComponent(graphIri));
+        const json = localStorage.getItem(storageKeyForGraph(graphIri));
+        if (!json) return;
+        const data = JSON.parse(json);
+        if (!ontoState.cy) return;
         ontoState.cy.elements().remove();
-        if (json) {
-          importOntologyJSON(JSON.parse(json));
-        } else {
-          refreshOntologyTree();
-        }
-        // After base load, reapply overlays per visibility settings
-        overlayImportsRefresh();
-      } catch(_) { ontoState.cy.elements().remove(); refreshOntologyTree(); }
+        ontoState.cy.add(data.nodes || []);
+        ontoState.cy.add(data.edges || []);
+        requestAnimationFrame(()=>{ ontoState.cy.fit(); });
+      } catch(_) {}
     }
 
     // Ontology toolbar events and import handling
@@ -2110,8 +2528,7 @@
 
     // Boot
     initAuth();
-    // Restore previously selected graph label
-    try { const iri = localStorage.getItem('onto_active_iri'); if (iri) { activeOntologyIri = iri; updateOntoGraphLabel(); } } catch(_) {}
+    // Per-project restore happens inside renderTree; avoid global restore that can clobber state
     // Save shortcut Ctrl/Cmd+S
     document.addEventListener('keydown', async (e) => {
       const isSave = (e.key === 's' || e.key === 'S') && (e.ctrlKey || e.metaKey);
@@ -2159,6 +2576,376 @@
         performDelete();
       }
     });
+
+    // Files workbench state + helpers
+    const filesState = { initialized: false, lastFiles: [], staged: [], library: [], sortBy: 'name', sortDir: 'asc' };
+    function toast(msg, isError=false) {
+      const el = qs('#filesToast'); if (!el) return;
+      el.textContent = msg || '';
+      el.style.color = isError ? '#ef4444' : '#9aa4b2';
+      if (!msg) return;
+      setTimeout(()=>{ if (el.textContent === msg) el.textContent=''; }, 3000);
+    }
+    function renderFilesList(items) {
+      const list = qs('#filesList'); if (!list) return;
+      list.innerHTML = '';
+      const arr = Array.isArray(items) ? items : [];
+      if (!arr.length) {
+        const div = document.createElement('div');
+        div.className = 'muted';
+        div.textContent = 'No files yet. Upload or import to begin.';
+        list.appendChild(div);
+        return;
+      }
+      const toBadge = (text) => `<span style="border:1px solid var(--border); padding:2px 6px; border-radius:6px; font-size:12px;">${text}</span>`;
+      const rows = arr.map(meta => {
+        const name = meta.filename || meta.name || 'file';
+        const id = meta.file_id || meta.id || '';
+        const tags = meta.tags || {};
+        const status = tags.status || 'new';
+        const size = meta.size || 0;
+        const sizeStr = size ? `${size}` : '';
+        const created = meta.created_at ? new Date(meta.created_at).toLocaleString() : '';
+        return `<tr>
+          <td style="width:32px; text-align:center;"><input type="checkbox" class="file-select" data-id="${id}" /></td>
+          <td><div style="display:flex; flex-direction:column;"><span style="font-weight:600;">${name}</span><span class="muted" style="font-size:12px;">${id}</span></div></td>
+          <td>${toBadge(docType)}</td>
+          <td>${toBadge(status)}</td>
+          <td style="text-align:right;">${sizeStr}</td>
+          <td class="muted" style="font-size:12px;">${created}</td>
+          <td style="text-align:right;">
+            <button class="btn" data-action="process" data-id="${id}">Process</button>
+            <button class="btn" data-action="url" data-id="${id}">URL</button>
+            <button class="btn" data-action="delete" data-id="${id}">Delete</button>
+          </td>
+        </tr>`;
+      }).join('');
+      list.innerHTML = `
+        <div style="overflow:auto;">
+          <table style="width:100%; border-collapse:separate; border-spacing:0 6px;">
+            <thead>
+              <tr>
+                <th style="width:32px;"><input type="checkbox" id="filesSelectAll" /></th>
+                <th data-sort="name" style="cursor:pointer;">Name</th>
+                <th data-sort="type" style="cursor:pointer;">Type</th>
+                <th data-sort="status" style="cursor:pointer;">Status</th>
+                <th data-sort="size" style="text-align:right; cursor:pointer;">Size</th>
+                <th>Uploaded</th>
+                <th style="text-align:right;">Actions</th>
+              </tr>
+            </thead>
+            <tbody>
+              ${rows}
+            </tbody>
+          </table>
+        </div>`;
+      // Sorting handlers
+      const thead = list.querySelector('thead');
+      if (thead) thead.addEventListener('click', (e) => {
+        const th = e.target.closest('[data-sort]'); if (!th) return;
+        const key = th.getAttribute('data-sort');
+        if (filesState.sortBy === key) filesState.sortDir = (filesState.sortDir === 'asc' ? 'desc' : 'asc');
+        else { filesState.sortBy = key; filesState.sortDir = 'asc'; }
+        // Re-sort current state
+        try { renderFilesList(sortItems(filesState.library)); } catch(_) {}
+      });
+      const selAll = list.querySelector('#filesSelectAll');
+      if (selAll) selAll.addEventListener('change', () => {
+        list.querySelectorAll('.file-select').forEach(cb => { cb.checked = selAll.checked; });
+      });
+      // Click to select and preview
+      list.querySelectorAll('tbody tr').forEach(tr => {
+        tr.addEventListener('click', async (e) => {
+          if (e.target.closest('button')) return;
+          const cb = tr.querySelector('.file-select');
+          const id = cb ? cb.getAttribute('data-id') : '';
+          if (!id) return;
+          cb.checked = true;
+          await updateFilePreview(id);
+        });
+      });
+      // Delegate actions
+      list.onclick = async (e) => {
+        const btn = e.target.closest('button[data-action]');
+        if (!btn) return;
+        const id = btn.getAttribute('data-id');
+        const action = btn.getAttribute('data-action');
+        if (!id) return;
+        if (action === 'delete') {
+          if (!confirm('Delete this file?')) return;
+          const ok = await deleteStoredFileViaApi(id);
+          if (ok) { toast('Deleted'); loadLibraryFromApi(); } else { toast('Delete failed', true); }
+        } else if (action === 'url') {
+          const url = await getFileUrlViaApi(id);
+          if (url) { try { await navigator.clipboard.writeText(url); toast('URL copied'); } catch(_) { window.open(url, '_blank'); } }
+        } else if (action === 'process') {
+          const ok = await processFileViaApi(id);
+          if (ok) toast('Process started'); else toast('Process failed', true);
+        }
+      };
+      // Bulk buttons
+      try {
+        const bulkDelete = qs('#filesBulkDeleteBtn');
+        const bulkProcess = qs('#filesBulkProcessBtn');
+        const selectedIds = () => Array.from(list.querySelectorAll('.file-select:checked')).map(c => c.getAttribute('data-id'));
+        if (bulkDelete) bulkDelete.onclick = async () => {
+          const ids = selectedIds(); if (!ids.length) { toast('No files selected', true); return; }
+          if (!confirm(`Delete ${ids.length} file(s)?`)) return;
+          let ok = 0; for (const id of ids) { if (await deleteStoredFileViaApi(id)) ok++; }
+          toast(`Deleted ${ok}/${ids.length}`); loadLibraryFromApi();
+        };
+        if (bulkProcess) bulkProcess.onclick = async () => {
+          const ids = selectedIds(); if (!ids.length) { toast('No files selected', true); return; }
+          let ok = 0; for (const id of ids) { if (await processFileViaApi(id)) ok++; }
+          toast(`Started ${ok}/${ids.length}`);
+        };
+      } catch(_) {}
+    }
+    function renderStagedList() {
+      const list = qs('#stagedList'); if (!list) return;
+      list.innerHTML = '';
+      if (!filesState.staged.length) {
+        const div = document.createElement('div'); div.className = 'muted'; div.textContent = 'No staged files.'; list.appendChild(div); return;
+      }
+      filesState.staged.forEach((f, idx) => {
+        const row = document.createElement('div'); row.className = 'card'; row.style.display='grid'; row.style.gridTemplateColumns='1fr auto'; row.style.alignItems='center'; row.style.padding='8px';
+        const left = document.createElement('div'); left.innerHTML = `<strong>${f.name}</strong> <span class="muted">${f.size} bytes</span>`;
+        const actions = document.createElement('div');
+        const rem = document.createElement('button'); rem.className='btn'; rem.textContent='Remove'; rem.onclick=()=>{ filesState.staged.splice(idx,1); renderStagedList(); };
+        actions.appendChild(rem);
+        row.appendChild(left); row.appendChild(actions);
+        list.appendChild(row);
+      });
+    }
+    function previewSelectedFiles(fileList) {
+      const el = qs('#uploadPreview'); if (!el) return;
+      if (!fileList || !fileList.length) { el.textContent = ''; return; }
+      const names = Array.from(fileList).map(f => `${f.name} (${f.size} bytes)`).join(', ');
+      el.textContent = `Selected: ${names}`;
+    }
+    function ensureFilesInitialized() {
+      if (filesState.initialized) return;
+      filesState.initialized = true;
+      const input = qs('#fileUploadInput');
+      const choose = qs('#fileChooseBtn');
+      const drop = qs('#fileDropZone');
+      const urlInput = qs('#fileUrlInput');
+      const urlBtn = qs('#fileUrlImportBtn');
+      const refreshBtn = qs('#filesRefreshBtn');
+      const docType = qs('#filesDocType');
+      const statusSel = qs('#filesStatus');
+      const tags = qs('#filesTags');
+      function authHeader() {
+        try { const t = localStorage.getItem('odras_token'); return t ? { Authorization: 'Bearer ' + t } : {}; } catch(_) { return {}; }
+      }
+      function currentProjectId() {
+        try { const pid = (activeProject && (activeProject.id || activeProject.project_id)) ? (activeProject.id || activeProject.project_id) : localStorage.getItem('active_project_id'); return pid || ''; } catch(_) { return ''; }
+      }
+      async function uploadOne(fileMeta) {
+        const pid = currentProjectId(); if (!pid) { toast('Select a project first', true); return false; }
+        const fd = new FormData();
+        fd.append('file', fileMeta);
+        fd.append('project_id', pid);
+        try {
+          const t = (tags && tags.value || '').trim();
+          const list = t ? t.split(',').map(s=>s.trim()).filter(Boolean) : [];
+          const tagObj = { docType: (docType && docType.value) || 'unknown', status: 'new' };
+          if (list.length) tagObj.userTags = list;
+          fd.append('tags', JSON.stringify(tagObj));
+        } catch(_) {}
+        try {
+          const res = await fetch('/api/files/upload', { method: 'POST', headers: { ...authHeader() }, body: fd });
+          const js = await res.json().catch(()=>({}));
+          if (!res.ok || js.success === false) { throw new Error(js.error || 'upload failed'); }
+          return true;
+        } catch (err) {
+          return false;
+        }
+      }
+      async function loadLibraryFromApi() {
+        const pid = currentProjectId(); if (!pid) { renderFilesList([]); return; }
+        try {
+          const res = await fetch(`/api/files?project_id=${encodeURIComponent(pid)}`, { headers: { ...authHeader() } });
+          const js = await res.json();
+          let items = js && js.files ? js.files : [];
+          // Client-side filters
+          const wantType = (docType && docType.value) || '';
+          const wantStatus = (statusSel && statusSel.value) || '';
+          const tagFilter = (tags && tags.value || '').trim().toLowerCase();
+          const filtered = items.filter(m => {
+            const t = m.tags || {};
+            const okType = !wantType || (t.docType || 'unknown') === wantType;
+            const okStatus = !wantStatus || (t.status || 'new') === wantStatus;
+            const okTags = !tagFilter || JSON.stringify(t).toLowerCase().includes(tagFilter);
+            return okType && okStatus && okTags;
+          });
+          filesState.library = filtered;
+          renderFilesList(sortItems(filtered));
+        } catch(_) { renderFilesList([]); }
+      }
+      function sortItems(items) {
+        const arr = Array.from(items || []);
+        const dir = filesState.sortDir === 'desc' ? -1 : 1;
+        const key = filesState.sortBy || 'name';
+        const get = (m) => {
+          const tags = m.tags || {};
+          if (key === 'name') return (m.filename || '').toLowerCase();
+          if (key === 'type') return (tags.docType || '').toLowerCase();
+          if (key === 'status') return (tags.status || '').toLowerCase();
+          if (key === 'size') return Number(m.size || 0);
+          return (m.filename || '').toLowerCase();
+        };
+        arr.sort((a,b)=>{ const av=get(a), bv=get(b); if (av<bv) return -1*dir; if (av>bv) return 1*dir; return 0; });
+        return arr;
+      }
+      if (input) {
+        input.addEventListener('change', (e) => {
+          const files = e.target.files;
+          previewSelectedFiles(files);
+          filesState.lastFiles = Array.from(files || []);
+          filesState.staged.push(...filesState.lastFiles);
+          renderStagedList();
+          const n = filesState.lastFiles.length; if (n) toast(`${n} file(s) staged. Click Upload All to upload.`);
+        });
+      }
+      if (choose && input) {
+        choose.addEventListener('click', ()=> input.click());
+      }
+      if (drop) {
+        ;['dragenter','dragover'].forEach(ev => drop.addEventListener(ev, (e)=>{ e.preventDefault(); drop.style.background = '#0f1628'; }));
+        ;['dragleave','drop'].forEach(ev => drop.addEventListener(ev, (e)=>{ e.preventDefault(); drop.style.background = 'transparent'; }));
+        drop.addEventListener('drop', (e) => {
+          const dt = e.dataTransfer; const files = dt && dt.files ? dt.files : [];
+          previewSelectedFiles(files);
+          filesState.lastFiles = Array.from(files || []);
+          filesState.staged.push(...filesState.lastFiles);
+          renderStagedList();
+          const n = filesState.lastFiles.length; if (n) toast(`${n} file(s) staged. Click Upload All to upload.`);
+        });
+        drop.addEventListener('click', ()=>{ if (input) input.click(); });
+        drop.addEventListener('keydown', (e)=>{ if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); if (input) input.click(); } });
+      }
+      if (urlBtn && urlInput) {
+        urlBtn.addEventListener('click', () => {
+          const u = (urlInput.value || '').trim();
+          const el = qs('#uploadPreview');
+          if (!u) { toast('Please enter a URL', true); if (el) el.textContent=''; return; }
+          try { new URL(u); } catch(_) { toast('Invalid URL', true); return; }
+          if (el) el.textContent = `URL ready: ${u}`;
+          toast('URL staged for import');
+        });
+      }
+      const uploadAll = qs('#filesUploadAllBtn');
+      const clearStaged = qs('#filesClearStagedBtn');
+      if (clearStaged) clearStaged.addEventListener('click', ()=>{ filesState.staged = []; renderStagedList(); previewSelectedFiles([]); });
+      if (uploadAll) uploadAll.addEventListener('click', async ()=>{
+        if (!filesState.staged.length) { toast('Nothing to upload', true); return; }
+        const total = filesState.staged.length; let ok = 0;
+        for (const f of filesState.staged) { const res = await uploadOne(f); if (res) ok++; }
+        toast(`Uploaded ${ok}/${total}`);
+        filesState.staged = []; renderStagedList(); previewSelectedFiles([]);
+        loadLibraryFromApi();
+      });
+      const triggerRefresh = () => {
+        loadLibraryFromApi();
+      };
+      if (refreshBtn) refreshBtn.addEventListener('click', triggerRefresh);
+      if (docType) docType.addEventListener('change', triggerRefresh);
+      if (statusSel) statusSel.addEventListener('change', triggerRefresh);
+      if (tags) tags.addEventListener('keyup', (e)=>{ if (e.key === 'Enter') triggerRefresh(); });
+      // Initial empty list
+      loadLibraryFromApi();
+      renderStagedList();
+    }
+    async function deleteStoredFileViaApi(fileId) {
+      try { const res = await fetch(`/api/files/${encodeURIComponent(fileId)}`, { method: 'DELETE' }); return res.ok; } catch(_) { return false; }
+    }
+    async function getFileUrlViaApi(fileId) {
+      try { const res = await fetch(`/api/files/${encodeURIComponent(fileId)}/url`); const js = await res.json(); return (js && js.url) ? js.url : (js && js.success && js.file_id ? js.url : null); } catch(_) { return null; }
+    }
+    async function processFileViaApi(fileId) {
+      try { const fd = new FormData(); const res = await fetch(`/api/files/${encodeURIComponent(fileId)}/process`, { method: 'POST', body: fd }); return res.ok; } catch(_) { return false; }
+    }
+    async function updateFilePreview(fileId) {
+      try {
+        const url = await getFileUrlViaApi(fileId);
+        const pane = qs('#filePreviewContent'); if (!pane) return;
+        const metaPane = qs('#fileMetaContent');
+        if (!url) { pane.textContent = 'Preview unavailable.'; if (metaPane) metaPane.textContent=''; return; }
+        // Derive extension
+        const ext = (function(){ try { const u=new URL(url); const p=u.pathname.toLowerCase(); const m=p.match(/\.([a-z0-9]+)$/); return m?m[1]:''; } catch(_) { return ''; } })();
+        // Try HEAD for content-type
+        let contentType = '';
+        try { const head = await fetch(url, { method: 'HEAD' }); contentType = head.headers.get('Content-Type') || ''; } catch(_) {}
+        // Render minimal metadata
+        try {
+          if (metaPane) metaPane.innerHTML = `<div style="display:grid; gap:4px;">
+            <div><strong>File ID:</strong> ${fileId}</div>
+            <div><strong>URL:</strong> <a href="${url}" target="_blank">Open</a></div>
+            <div><strong>Type:</strong> ${contentType || ext || 'unknown'}</div>
+          </div>`;
+        } catch(_) {}
+        // PDF inline
+        if (ext === 'pdf' || (contentType && contentType.includes('pdf'))) {
+          pane.innerHTML = `<embed src="${url}" type="application/pdf" style="width:100%; height:60vh;" />`;
+          return;
+        }
+        // Image inline
+        if (['png','jpg','jpeg','gif','webp','bmp','svg'].includes(ext) || (contentType && contentType.startsWith('image/'))) {
+          pane.innerHTML = `<img src="${url}" alt="preview" style="max-width:100%; height:auto;" />`;
+          return;
+        }
+        // CSV table (first ~40 rows)
+        if (ext === 'csv' || (contentType && contentType.includes('csv'))) {
+          const res = await fetch(url);
+          if (!res.ok) { pane.textContent = 'Preview unavailable.'; return; }
+          const text = await res.text();
+          const lines = text.split(/\r?\n/).slice(0, 40);
+          const cells = lines.map(l => l.split(',').map(x => x.replace(/&/g,'&amp;').replace(/</g,'&lt;')));
+          const header = cells.shift() || [];
+          const rows = cells.map(row => `<tr>${row.map(c=>`<td>${c}</td>`).join('')}</tr>`).join('');
+          pane.innerHTML = `<div style="overflow:auto;"><table style="width:100%; border-collapse:collapse;"><thead><tr>${header.map(h=>`<th style=\"text-align:left; border-bottom:1px solid var(--border);\">${h}</th>`).join('')}</tr></thead><tbody>${rows}</tbody></table></div>`;
+          return;
+        }
+        // Markdown quick render
+        if (['md','markdown'].includes(ext) || (contentType && contentType.includes('markdown'))) {
+          const res = await fetch(url);
+          if (!res.ok) { pane.textContent = 'Preview unavailable.'; return; }
+          const text = await res.text();
+          const html = renderBasicMarkdown(text.slice(0, 100000));
+          pane.innerHTML = html;
+          return;
+        }
+        // Fallback text preview
+        const res = await fetch(url, { method: 'GET' });
+        if (!res.ok) { pane.textContent = 'Preview unavailable.'; return; }
+        const buf = await res.arrayBuffer();
+        const bytes = new Uint8Array(buf).slice(0, 100000);
+        let text = '';
+        try { text = new TextDecoder('utf-8', { fatal: false }).decode(bytes); } catch(_) { text = ''; }
+        const safe = (s)=>String(s||'').replace(/[&<>]/g, c=>({ '&':'&amp;','<':'&lt;','>':'&gt;' }[c]));
+        pane.innerHTML = text ? `<pre style="white-space:pre-wrap;">${safe(text)}</pre>` : 'Binary or unsupported preview. Use URL to download.';
+      } catch(_) {
+        const pane = qs('#filePreviewContent'); if (pane) pane.textContent = 'Preview error.';
+      }
+    }
+    function renderBasicMarkdown(src) {
+      const esc = (s)=>String(s||'').replace(/[&<>]/g, c=>({ '&':'&amp;','<':'&lt;','>':'&gt;' }[c]));
+      let s = esc(src);
+      s = s.replace(/^######\s+(.*)$/gm, '<h6>$1</h6>')
+           .replace(/^#####\s+(.*)$/gm, '<h5>$1</h5>')
+           .replace(/^####\s+(.*)$/gm, '<h4>$1</h4>')
+           .replace(/^###\s+(.*)$/gm, '<h3>$1</h3>')
+           .replace(/^##\s+(.*)$/gm, '<h2>$1</h2>')
+           .replace(/^#\s+(.*)$/gm, '<h1>$1</h1>')
+           .replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>')
+           .replace(/\*(.+?)\*/g, '<em>$1</em>')
+           .replace(/`([^`]+)`/g, '<code>$1</code>')
+           .replace(/\n\n/g, '<br/><br/>');
+      return `<div>${s}</div>`;
+    }
+    // Ensure file handlers are bound even if Files workbench is the initial active view
+    try { setTimeout(() => { try { ensureFilesInitialized(); } catch(_) {} }, 0); } catch(_) {}
   </script>
 </body>
 </html>

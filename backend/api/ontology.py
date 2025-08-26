@@ -10,6 +10,7 @@ from fastapi import APIRouter, Body, Depends, HTTPException
 from pydantic import BaseModel, Field
 
 from ..services.config import Settings
+from ..services.db import DatabaseService
 from ..services.ontology_manager import OntologyManager
 
 logger = logging.getLogger(__name__)
@@ -54,6 +55,10 @@ def get_ontology_manager() -> OntologyManager:
     """Dependency to get OntologyManager instance."""
     settings = Settings()
     return OntologyManager(settings)
+
+
+def get_db_service() -> DatabaseService:
+    return DatabaseService(Settings())
 
 
 @router.get("/", response_model=Dict[str, Any])
