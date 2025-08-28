@@ -97,20 +97,26 @@ async def upload_file(
     file: UploadFile = File(...),
     project_id: Optional[str] = Form(None),
     tags: Optional[str] = Form(None),  # JSON string of tags
+    process_for_knowledge: Optional[bool] = Form(False),  # Trigger knowledge processing
+    embedding_model: Optional[str] = Form("all-MiniLM-L6-v2"),  # Embedding model for knowledge processing
+    chunking_strategy: Optional[str] = Form("hybrid"),  # Chunking strategy for knowledge processing
     storage_service: FileStorageService = Depends(get_file_storage_service),
     db: DatabaseService = Depends(get_db_service),
     authorization: Optional[str] = Header(None),
 ):
     """
-    Upload a file to the storage backend.
+    Upload a file to the storage backend with optional knowledge processing.
 
     Args:
         file: The file to upload
         project_id: Optional project ID to associate with the file
         tags: Optional JSON string of metadata tags
+        process_for_knowledge: Whether to automatically process file for knowledge management
+        embedding_model: Embedding model to use for knowledge processing (default: all-MiniLM-L6-v2)
+        chunking_strategy: Chunking strategy for knowledge processing (fixed/semantic/hybrid, default: hybrid)
 
     Returns:
-        Upload result with file metadata
+        Upload result with file metadata and optional knowledge asset ID
     """
     try:
         # Validate project membership
@@ -151,13 +157,51 @@ async def upload_file(
 
         if result["success"]:
             metadata = result["metadata"]
+            file_id = result["file_id"]
+            
+            # Trigger knowledge processing if requested
+            knowledge_asset_id = None
+            if process_for_knowledge:
+                try:
+                    from ..services.knowledge_transformation import get_knowledge_transformation_service
+                    
+                    # Prepare processing options
+                    processing_options = {
+                        'document_type': file_tags.get('docType', 'unknown') if file_tags else 'unknown',
+                        'embedding_model': embedding_model or 'all-MiniLM-L6-v2',
+                        'chunking_strategy': chunking_strategy or 'hybrid',
+                        'chunk_size': 512,
+                        'chunk_overlap': 50,
+                        'extract_relationships': True
+                    }
+                    
+                    # Start knowledge transformation (async)
+                    transformation_service = get_knowledge_transformation_service()
+                    knowledge_asset_id = await transformation_service.transform_file_to_knowledge(
+                        file_id=file_id,
+                        project_id=project_id,
+                        processing_options=processing_options
+                    )
+                    
+                    logger.info(f"Created knowledge asset {knowledge_asset_id} for file {file_id}")
+                    
+                except Exception as e:
+                    logger.error(f"Knowledge processing failed for file {file_id}: {str(e)}")
+                    # Don't fail the upload if knowledge processing fails
+                    pass
+            
+            # Build response
+            response_message = "File uploaded successfully"
+            if knowledge_asset_id:
+                response_message += f" and processed as knowledge asset {knowledge_asset_id}"
+            
             return FileUploadResponse(
                 success=True,
-                file_id=result["file_id"],
+                file_id=file_id,
                 filename=metadata["filename"],
                 size=metadata["size"],
                 content_type=metadata["content_type"],
-                message="File uploaded successfully",
+                message=response_message,
             )
         else:
             return FileUploadResponse(success=False, error=result["error"])

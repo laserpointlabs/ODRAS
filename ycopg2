@@ -1,0 +1,14 @@
+                List of relations
+ Schema |        Name         | Type  |  Owner   
+--------+---------------------+-------+----------
+ public | extraction_jobs     | table | postgres
+ public | file_content        | table | postgres
+ public | file_storage        | table | postgres
+ public | ontologies_registry | table | postgres
+ public | ontology_changes    | table | postgres
+ public | project_members     | table | postgres
+ public | projects            | table | postgres
+ public | requirements        | table | postgres
+ public | users               | table | postgres
+(9 rows)
+

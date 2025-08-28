@@ -1,8 +1,8 @@
 #!/bin/bash
 
 # ODRAS Application Management Script
-# Usage: ./start.sh [command]
-# Commands: start, stop, restart, status, logs, down, up, clean
+# Usage: ./odras.sh [command]
+# Commands: start, stop, restart, status, logs, down, up, clean, clean-all, init-db
 
 # Configuration
 APP_NAME="odras"
@@ -123,6 +123,26 @@ stop_app() {
 # Restart the Python application
 restart_app() {
     print_status "Restarting ODRAS application..."
+    
+    # First, kill any process using port 8000
+    print_status "Checking for processes on port $APP_PORT..."
+    local port_pids=$(lsof -ti tcp:$APP_PORT 2>/dev/null)
+    if [[ -n "$port_pids" ]]; then
+        print_status "Found processes on port $APP_PORT, killing them..."
+        echo "$port_pids" | xargs kill -9 2>/dev/null || true
+        sleep 1
+        
+        # Verify port is free
+        if lsof -ti tcp:$APP_PORT >/dev/null 2>&1; then
+            print_warning "Some processes may still be using port $APP_PORT"
+        else
+            print_success "Port $APP_PORT is now free"
+        fi
+    else
+        print_status "No processes found on port $APP_PORT"
+    fi
+    
+    # Now do the regular stop
     stop_app
     sleep 1
     start_app
@@ -236,9 +256,235 @@ show_docker_logs() {
     fi
 }
 
-# Clean up everything
+# Clean all databases (data only, keeps containers running)
+clean_databases() {
+    print_warning "This will DELETE ALL DATA from all databases. Are you sure? (y/N)"
+    read -r response
+    if [[ "$response" =~ ^([yY][eE][sS]|[yY])$ ]]; then
+        print_status "Cleaning all databases..."
+        
+        # Check if Docker services are running
+        if ! docker-compose -f "$DOCKER_COMPOSE_FILE" ps | grep -q "Up"; then
+            print_status "Starting Docker services first..."
+            start_docker
+            print_status "Waiting for services to initialize..."
+            sleep 10
+        fi
+        
+        # Clean PostgreSQL
+        clean_postgresql
+        
+        # Clean Qdrant
+        clean_qdrant
+        
+        # Clean Neo4j
+        clean_neo4j
+        
+        # Clean Fuseki
+        clean_fuseki
+        
+        # Clean MinIO
+        clean_minio
+        
+        # Clean local storage
+        clean_local_storage
+        
+        print_success "All databases cleaned successfully!"
+        
+        # Automatically recreate users and default project
+        print_status "Recreating default users and project..."
+        create_default_users
+        
+        # Recreate Qdrant collections
+        print_status "Recreating Qdrant collections..."
+        if curl -s http://localhost:6333/collections >/dev/null 2>&1; then
+            # Create knowledge_chunks collection (384 dimensions for sentence-transformers)
+            curl -s -X PUT "http://localhost:6333/collections/knowledge_chunks" \
+                 -H "Content-Type: application/json" \
+                 -d '{"vectors": {"size": 384, "distance": "Cosine"}}' >/dev/null 2>&1
+            
+            # Create knowledge_large collection (1536 dimensions for OpenAI embeddings)
+            curl -s -X PUT "http://localhost:6333/collections/knowledge_large" \
+                 -H "Content-Type: application/json" \
+                 -d '{"vectors": {"size": 1536, "distance": "Cosine"}}' >/dev/null 2>&1
+                 
+            # Create odras_requirements collection (384 dimensions)
+            curl -s -X PUT "http://localhost:6333/collections/odras_requirements" \
+                 -H "Content-Type: application/json" \
+                 -d '{"vectors": {"size": 384, "distance": "Cosine"}}' >/dev/null 2>&1
+            
+            print_success "✓ Recreated Qdrant collections"
+        else
+            print_warning "⚠ Could not connect to Qdrant to recreate collections"
+        fi
+        
+        print_success "🎉 Database cleaning completed with fresh setup!"
+        print_status "✅ Ready to login with: admin/admin or jdehart/jdehart"
+        print_status "✅ All databases and collections recreated"
+        print_status "💡 Restart the application: ./odras.sh restart"
+    else
+        print_status "Database cleaning cancelled"
+    fi
+}
+
+# Clean PostgreSQL database
+clean_postgresql() {
+    print_status "Cleaning PostgreSQL database..."
+    
+    # Try to connect and clean database
+    if docker exec odras_postgres psql -U postgres -d odras -c "SELECT 1;" >/dev/null 2>&1; then
+        # Drop all tables in correct order (respecting foreign key constraints)
+        docker exec odras_postgres psql -U postgres -d odras -c "
+        -- Disable foreign key checks temporarily
+        SET session_replication_role = replica;
+        
+        -- Drop knowledge management tables
+        DROP TABLE IF EXISTS knowledge_processing_jobs CASCADE;
+        DROP TABLE IF EXISTS knowledge_relationships CASCADE;
+        DROP TABLE IF EXISTS knowledge_chunks CASCADE;
+        DROP TABLE IF EXISTS knowledge_assets CASCADE;
+        
+        -- Drop file tables
+        DROP TABLE IF EXISTS file_content CASCADE;
+        DROP TABLE IF EXISTS files CASCADE;
+        
+        -- Drop project and user tables
+        DROP TABLE IF EXISTS project_members CASCADE;
+        DROP TABLE IF EXISTS projects CASCADE;
+        DROP TABLE IF EXISTS users CASCADE;
+        
+        -- Drop functions
+        DROP FUNCTION IF EXISTS update_files_updated_at CASCADE;
+        DROP FUNCTION IF EXISTS update_updated_at_column CASCADE;
+        
+        -- Re-enable foreign key checks
+        SET session_replication_role = DEFAULT;
+        "
+        
+        print_success "✓ PostgreSQL cleaned"
+    else
+        print_warning "⚠ Could not connect to PostgreSQL"
+    fi
+}
+
+# Clean Qdrant vector database
+clean_qdrant() {
+    print_status "Cleaning Qdrant vector database..."
+    
+    # Get all collections and delete them
+    local collections=$(curl -s http://localhost:6333/collections 2>/dev/null | jq -r '.result.collections[].name' 2>/dev/null)
+    
+    if [[ $? -eq 0 ]] && [[ -n "$collections" ]]; then
+        for collection in $collections; do
+            if [[ "$collection" != "null" ]] && [[ -n "$collection" ]]; then
+                print_status "  Deleting collection: $collection"
+                curl -s -X DELETE "http://localhost:6333/collections/$collection" >/dev/null 2>&1
+            fi
+        done
+        print_success "✓ Qdrant cleaned"
+    else
+        print_warning "⚠ Could not connect to Qdrant or no collections found"
+    fi
+}
+
+# Clean Neo4j graph database
+clean_neo4j() {
+    print_status "Cleaning Neo4j graph database..."
+    
+    # Delete all nodes and relationships
+    if docker exec odras_neo4j cypher-shell -u neo4j -p testpassword "RETURN 1;" >/dev/null 2>&1; then
+        docker exec odras_neo4j cypher-shell -u neo4j -p testpassword "
+        // Delete all relationships and nodes
+        MATCH (n) DETACH DELETE n;
+        
+        // Drop all constraints
+        CALL apoc.schema.assert({},{},true) YIELD label, key 
+        RETURN label, key;
+        " >/dev/null 2>&1
+        
+        print_success "✓ Neo4j cleaned"
+    else
+        print_warning "⚠ Could not connect to Neo4j"
+    fi
+}
+
+# Clean Fuseki RDF store
+clean_fuseki() {
+    print_status "Cleaning Fuseki RDF store..."
+    
+    # Get all datasets and clear them
+    local datasets=$(curl -s http://localhost:3030/$/datasets 2>/dev/null | jq -r '.datasets[].name' 2>/dev/null)
+    
+    if [[ $? -eq 0 ]] && [[ -n "$datasets" ]]; then
+        for dataset in $datasets; do
+            if [[ "$dataset" != "null" ]] && [[ -n "$dataset" ]]; then
+                print_status "  Clearing dataset: $dataset"
+                curl -s -X POST "http://localhost:3030/$dataset/update" \
+                     -H "Content-Type: application/sparql-update" \
+                     -d "DELETE WHERE { ?s ?p ?o }" >/dev/null 2>&1
+            fi
+        done
+        print_success "✓ Fuseki cleaned"
+    else
+        print_warning "⚠ Could not connect to Fuseki or no datasets found"
+    fi
+}
+
+# Clean MinIO storage
+clean_minio() {
+    print_status "Cleaning MinIO object storage..."
+    
+    # Use MinIO client if available, otherwise use REST API
+    if command -v mc >/dev/null 2>&1; then
+        # Configure MinIO client and remove all buckets
+        mc alias set odras-minio http://localhost:9000 minioadmin minioadmin >/dev/null 2>&1
+        local buckets=$(mc ls odras-minio 2>/dev/null | awk '{print $5}')
+        for bucket in $buckets; do
+            if [[ -n "$bucket" ]]; then
+                print_status "  Removing bucket: $bucket"
+                mc rm --recursive --force "odras-minio/$bucket" >/dev/null 2>&1
+                mc rb "odras-minio/$bucket" >/dev/null 2>&1
+            fi
+        done
+    else
+        # Fallback: restart MinIO container to clear data
+        print_status "  Restarting MinIO container to clear data..."
+        docker-compose -f "$DOCKER_COMPOSE_FILE" restart minio >/dev/null 2>&1
+    fi
+    
+    print_success "✓ MinIO cleaned"
+}
+
+# Clean local storage
+clean_local_storage() {
+    print_status "Cleaning local storage..."
+    
+    # Clean upload directories
+    if [[ -d "uploads" ]]; then
+        rm -rf uploads/*
+        print_status "  Cleared uploads directory"
+    fi
+    
+    if [[ -d "storage" ]]; then
+        rm -rf storage/*
+        print_status "  Cleared storage directory"
+    fi
+    
+    # Clean models cache
+    if [[ -d "models" ]]; then
+        find models -name "*.cache" -delete 2>/dev/null
+        print_status "  Cleared model cache"
+    fi
+    
+    # Clean temp files
+    rm -f /tmp/odras_*
+    
+    print_success "✓ Local storage cleaned"
+}
+
+# Clean everything (containers + volumes)
 clean_all() {
-    print_warning "This will stop and remove everything. Are you sure? (y/N)"
+    print_warning "This will DESTROY ALL DATA and remove Docker containers/volumes. Are you sure? (y/N)"
     read -r response
     if [[ "$response" =~ ^([yY][eE][sS]|[yY])$ ]]; then
         print_status "Cleaning up everything..."
@@ -246,16 +492,181 @@ clean_all() {
         # Stop app
         stop_app
         
-        # Stop Docker
-        down_docker
+        # Stop and remove containers with volumes
+        docker-compose -f "$DOCKER_COMPOSE_FILE" down -v --remove-orphans
         
-        # Clean up PID and log files
-        rm -f "$PID_FILE" "$LOG_FILE"
+        # Remove any remaining volumes
+        docker volume rm $(docker volume ls -q | grep odras) 2>/dev/null || true
         
-        print_success "Cleanup completed"
+        # Clean up PID and log files (only if application is not running)
+        if [[ -f "$PID_FILE" ]]; then
+            local pid=$(cat "$PID_FILE")
+            if ! ps -p "$pid" > /dev/null 2>&1; then
+                print_status "Cleaning up stale PID and log files..."
+                rm -f "$PID_FILE" "$LOG_FILE"
+            else
+                print_warning "Application is running (PID: $pid) - keeping log files"
+            fi
+        else
+            # No PID file, safe to remove log file
+            rm -f "$LOG_FILE"
+        fi
+        
+        # Clean local storage
+        clean_local_storage
+        
+        print_success "Complete cleanup completed"
+        print_status "Run './odras.sh up' to start fresh containers"
     else
         print_status "Cleanup cancelled"
     fi
+}
+
+# Create default users
+create_default_users() {
+    print_status "Creating default users..."
+    
+    if docker exec odras_postgres psql -U postgres -d odras -c "SELECT 1;" >/dev/null 2>&1; then
+        # Create users table if it doesn't exist
+        docker exec odras_postgres psql -U postgres -d odras -c "
+        CREATE TABLE IF NOT EXISTS users (
+            user_id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+            username VARCHAR(255) UNIQUE NOT NULL,
+            display_name VARCHAR(255) NOT NULL,
+            is_admin BOOLEAN DEFAULT FALSE,
+            created_at TIMESTAMPTZ DEFAULT NOW(),
+            updated_at TIMESTAMPTZ DEFAULT NOW()
+        );
+        
+        -- Create projects table if it doesn't exist  
+        CREATE TABLE IF NOT EXISTS projects (
+            project_id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+            name VARCHAR(255) NOT NULL,
+            description TEXT,
+            created_by UUID,
+            created_at TIMESTAMPTZ DEFAULT NOW(),
+            updated_at TIMESTAMPTZ DEFAULT NOW(),
+            is_active BOOLEAN DEFAULT TRUE
+        );
+        
+        -- Create project_members table if it doesn't exist
+        CREATE TABLE IF NOT EXISTS project_members (
+            user_id UUID NOT NULL,
+            project_id UUID NOT NULL,
+            role VARCHAR(50) DEFAULT 'member',
+            joined_at TIMESTAMPTZ DEFAULT NOW(),
+            PRIMARY KEY (user_id, project_id)
+        );
+        " >/dev/null 2>&1
+        
+        # Insert default users
+        docker exec odras_postgres psql -U postgres -d odras -c "
+        -- Insert admin user
+        INSERT INTO users (username, display_name, is_admin) 
+        VALUES ('admin', 'Administrator', TRUE) 
+        ON CONFLICT (username) DO UPDATE SET 
+            display_name = EXCLUDED.display_name, 
+            is_admin = EXCLUDED.is_admin,
+            updated_at = NOW();
+            
+        -- Insert jdehart user  
+        INSERT INTO users (username, display_name, is_admin)
+        VALUES ('jdehart', 'J DeHart', FALSE)
+        ON CONFLICT (username) DO UPDATE SET
+            display_name = EXCLUDED.display_name,
+            is_admin = EXCLUDED.is_admin,
+            updated_at = NOW();
+        " >/dev/null 2>&1
+        
+        # Create a default project and assign users
+        docker exec odras_postgres psql -U postgres -d odras -c "
+        -- Create default project
+        INSERT INTO projects (name, description, created_by)
+        SELECT 'Default Project', 'Default project for testing', u.user_id
+        FROM users u WHERE u.username = 'admin'
+        ON CONFLICT DO NOTHING;
+        
+        -- Add admin to default project
+        INSERT INTO project_members (user_id, project_id, role)
+        SELECT u.user_id, p.project_id, 'admin'
+        FROM users u, projects p 
+        WHERE u.username = 'admin' AND p.name = 'Default Project'
+        ON CONFLICT DO NOTHING;
+        
+        -- Add jdehart to default project
+        INSERT INTO project_members (user_id, project_id, role) 
+        SELECT u.user_id, p.project_id, 'member'
+        FROM users u, projects p
+        WHERE u.username = 'jdehart' AND p.name = 'Default Project'
+        ON CONFLICT DO NOTHING;
+        " >/dev/null 2>&1
+        
+        print_success "✓ Created default users: admin (admin), jdehart (member)"
+        print_status "  Login credentials:"
+        print_status "    Username: admin  | Password: admin"
+        print_status "    Username: jdehart | Password: jdehart"
+    else
+        print_warning "⚠ Could not connect to PostgreSQL to create users"
+    fi
+}
+
+# Initialize clean databases with schema
+init_databases() {
+    print_status "Initializing databases with schema..."
+    
+    # Wait for services to be ready
+    print_status "Waiting for database services to be ready..."
+    sleep 5
+    
+    # Run PostgreSQL migrations
+    if [[ -d "backend/migrations" ]]; then
+        print_status "Running PostgreSQL migrations..."
+        for migration in backend/migrations/*.sql; do
+            if [[ -f "$migration" ]]; then
+                print_status "  Running $(basename "$migration")"
+                docker exec odras_postgres psql -U postgres -d odras -f "/tmp/$(basename "$migration")" 2>/dev/null || \
+                cat "$migration" | docker exec -i odras_postgres psql -U postgres -d odras 2>/dev/null || \
+                print_warning "    Migration $(basename "$migration") may have failed or was already applied"
+            fi
+        done
+    fi
+    
+    # Create default users and project
+    create_default_users
+    
+    # Initialize Neo4j schema
+    print_status "Initializing Neo4j schema..."
+    docker exec odras_neo4j cypher-shell -u neo4j -p testpassword "
+    // Create basic constraints
+    CREATE CONSTRAINT doc_id IF NOT EXISTS FOR (d:Document) REQUIRE d.id IS UNIQUE;
+    CREATE CONSTRAINT asset_id IF NOT EXISTS FOR (a:KnowledgeAsset) REQUIRE a.id IS UNIQUE;
+    CREATE CONSTRAINT chunk_id IF NOT EXISTS FOR (c:Chunk) REQUIRE c.id IS UNIQUE;
+    " >/dev/null 2>&1 || print_warning "  Neo4j initialization may have failed"
+    
+    # Initialize Qdrant collections
+    print_status "Initializing Qdrant collections..."
+    if curl -s http://localhost:6333/collections >/dev/null 2>&1; then
+        # Create knowledge_chunks collection (384 dimensions for sentence-transformers)
+        curl -s -X PUT "http://localhost:6333/collections/knowledge_chunks" \
+             -H "Content-Type: application/json" \
+             -d '{"vectors": {"size": 384, "distance": "Cosine"}}' >/dev/null 2>&1
+        
+        # Create knowledge_large collection (1536 dimensions for OpenAI embeddings)
+        curl -s -X PUT "http://localhost:6333/collections/knowledge_large" \
+             -H "Content-Type: application/json" \
+             -d '{"vectors": {"size": 1536, "distance": "Cosine"}}' >/dev/null 2>&1
+             
+        # Create odras_requirements collection (384 dimensions)
+        curl -s -X PUT "http://localhost:6333/collections/odras_requirements" \
+             -H "Content-Type: application/json" \
+             -d '{"vectors": {"size": 384, "distance": "Cosine"}}' >/dev/null 2>&1
+        
+        print_success "✓ Created Qdrant collections: knowledge_chunks, knowledge_large, odras_requirements"
+    else
+        print_warning "⚠ Could not connect to Qdrant to create collections"
+    fi
+    
+    print_success "Database initialization completed"
 }
 
 # Show help
@@ -278,8 +689,12 @@ show_help() {
     echo "  docker-status  Show Docker services status"
     echo "  docker-logs    Show Docker services logs"
     echo ""
+    echo "Database Commands:"
+    echo "  clean          Clean all database data (keeps containers running)"
+    echo "  clean-all      DESTROY everything - containers, volumes, and data"
+    echo "  init-db        Initialize clean databases with schema"
+    echo ""
     echo "Utility Commands:"
-    echo "  clean          Stop everything and clean up"
     echo "  help           Show this help message"
     echo ""
     echo "Examples:"
@@ -287,6 +702,9 @@ show_help() {
     echo "  $0 up          # Start Docker services"
     echo "  $0 status      # Check status"
     echo "  $0 logs        # View app logs"
+    echo "  $0 clean       # Clean all database data for fresh testing"
+    echo "  $0 init-db     # Initialize clean databases with schema"
+    echo "  $0 clean-all   # DANGER: Destroy everything and start over"
 }
 
 # Main script logic
@@ -325,7 +743,13 @@ main() {
             show_docker_logs "$2"
             ;;
         clean)
+            clean_databases
+            ;;
+        clean-all)
             clean_all
+            ;;
+        init-db)
+            init_databases
             ;;
         help|--help|-h)
             show_help

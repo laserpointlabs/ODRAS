@@ -458,7 +458,7 @@
             <ol style="margin:0; padding-left:18px; color:#9aa4b2;">
               <li>Choose Files (or drop) → files appear under Staged files</li>
               <li>Click Upload next to a file (or Upload All)</li>
-              <li>Select uploaded file in Library → click Ingest to process</li>
+              <li>Select uploaded file in Library → click 🧠 Knowledge or 📋 Extract Requirements</li>
             </ol>
           </div>
           <div id="filesToast" class="muted" style="margin-top:6px;"></div>
@@ -483,8 +483,8 @@
             <label class="muted"><input type="checkbox" id="filesIncludePublic" /> Include public files</label>
             <button class="btn" id="filesRefreshBtn" title="Refresh">Refresh</button>
             <div class="spacer"></div>
-            <button class="btn" id="filesBulkProcessBtn" title="Process selected">Process Selected</button>
-            <button class="btn" id="filesBulkIngestBtn" title="Ingest and Embed selected">Ingest/Embed Selected</button>
+            <button class="btn" id="filesBulkProcessBtn" title="Extract requirements using BPMN workflows">📋 Extract Requirements</button>
+            <button class="btn" id="filesBulkIngestBtn" title="Transform into searchable knowledge for AI & semantic search">🧠 Add to Knowledge Base</button>
             <button class="btn" id="filesBulkDeleteBtn" title="Delete selected">Delete Selected</button>
           </div>
 
@@ -529,6 +529,36 @@
                   </div>
                 </div>
                 
+                <!-- Knowledge Processing Options -->
+                <div id="knowledgeProcessingOptions" style="display:none; margin:6px 0; padding:8px; background:rgba(37, 99, 235, 0.1); border:1px solid var(--accent); border-radius:6px;">
+                  <div style="margin-bottom:8px;">
+                    <label class="muted" style="display:flex; align-items:center; font-size:12px;">
+                      <input type="checkbox" id="enableKnowledgeProcessing" style="margin-right:8px;" /> 
+                      🧠 Process for Knowledge Management
+                    </label>
+                    <div class="muted" style="font-size:10px; margin-left:20px; color:var(--muted);">
+                      Transform documents into searchable knowledge with embeddings and semantic chunking
+                    </div>
+                  </div>
+                  <div id="knowledgeProcessingConfig" style="display:none; margin-left:20px; display:grid; grid-template-columns:1fr 1fr; gap:8px;">
+                    <div>
+                      <label class="muted" style="font-size:10px; display:block; margin-bottom:2px;">Embedding Model:</label>
+                      <select id="embeddingModel" style="background:#0b1220; color:#e5e7eb; border:1px solid var(--border); border-radius:4px; padding:2px 4px; font-size:10px; width:100%;">
+                        <option value="all-MiniLM-L6-v2">all-MiniLM-L6-v2 (Fast)</option>
+                        <option value="all-mpnet-base-v2">all-mpnet-base-v2 (Better)</option>
+                      </select>
+                    </div>
+                    <div>
+                      <label class="muted" style="font-size:10px; display:block; margin-bottom:2px;">Chunking Strategy:</label>
+                      <select id="chunkingStrategy" style="background:#0b1220; color:#e5e7eb; border:1px solid var(--border); border-radius:4px; padding:2px 4px; font-size:10px; width:100%;">
+                        <option value="hybrid">Hybrid (Recommended)</option>
+                        <option value="semantic">Semantic</option>
+                        <option value="fixed">Fixed Size</option>
+                      </select>
+                    </div>
+                  </div>
+                </div>
+                
                 <div id="stagedList" style="display:grid; gap:6px; margin-top:6px;"></div>
               </div>
               <div>
@@ -565,7 +595,7 @@
         <div id="ingestParamsModal" style="position:fixed; inset:0; display:none; align-items:center; justify-content:center; background:rgba(0,0,0,0.5); z-index:9999;">
           <div style="background:#0b1220; color:#e5e7eb; border:1px solid var(--border); border-radius:10px; width:460px; max-width:90vw; padding:14px; box-shadow:0 10px 30px rgba(0,0,0,0.4);">
             <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:8px;">
-              <h3 style="margin:0; font-size:16px;">Ingest & Embed Parameters</h3>
+              <h3 style="margin:0; font-size:16px;">🧠 Knowledge Processing Parameters</h3>
               <button class="btn" id="ingestParamsCloseBtn" style="min-width:auto;">✕</button>
             </div>
             <div style="display:grid; gap:10px;">
@@ -2907,11 +2937,11 @@
           
           let buttons = [];
           
-          // Ingest button - disabled for shared files for non-admin users
+          // Knowledge ingest button - disabled for shared files for non-admin users
           if (!isSharedFile || isAdminUser) {
-            buttons.push(`<button class="btn" data-action="ingest" data-id="${id}">Ingest</button>`);
+            buttons.push(`<button class="btn" data-action="ingest" data-id="${id}" title="Add to Knowledge Base">🧠 Knowledge</button>`);
           } else {
-            buttons.push(`<button class="btn" data-action="ingest" data-id="${id}" disabled style="opacity:0.5; cursor:not-allowed;" title="Cannot ingest shared files">Ingest</button>`);
+            buttons.push(`<button class="btn" data-action="ingest" data-id="${id}" disabled style="opacity:0.5; cursor:not-allowed;" title="Cannot ingest shared files">🧠 Knowledge</button>`);
           }
           
           // URL button - always available
@@ -3155,7 +3185,7 @@
           const url = await getFileUrlViaApi(id);
           if (url) { try { await navigator.clipboard.writeText(url); toast('URL copied'); } catch(_) { window.open(url, '_blank'); } }
         } else if (action === 'ingest') {
-          const pid = currentProjectId(); if (!pid) { toast('Select a project first', true); return; }
+          const pid = window.currentProjectId ? window.currentProjectId() : ''; if (!pid) { toast('Select a project first', true); return; }
           if (window.openIngestParamsModal) window.openIngestParamsModal(pid, [id]);
         }
       };
@@ -3183,7 +3213,7 @@
         };
         if (bulkIngest) bulkIngest.onclick = async () => {
           const ids = selectedIds(); if (!ids.length) { toast('No files selected', true); return; }
-          const pid = currentProjectId(); if (!pid) { toast('Select a project first', true); return; }
+          const pid = window.currentProjectId ? window.currentProjectId() : ''; if (!pid) { toast('Select a project first', true); return; }
           if (window.openIngestParamsModal) window.openIngestParamsModal(pid, ids);
         };
       } catch(_) {}
@@ -3191,18 +3221,21 @@
     function renderStagedList() {
       const list = qs('#stagedList'); if (!list) return;
       const docTypeSelector = qs('#stagedDocTypeSelector');
+      const knowledgeOptions = qs('#knowledgeProcessingOptions');
       
       list.innerHTML = '';
       
       if (!filesState.staged.length) {
         const div = document.createElement('div'); div.className = 'muted'; div.textContent = 'No staged files.'; list.appendChild(div);
-        // Hide document type selector when no files are staged
+        // Hide options when no files are staged
         if (docTypeSelector) docTypeSelector.style.display = 'none';
+        if (knowledgeOptions) knowledgeOptions.style.display = 'none';
         return;
       }
       
-      // Show document type selector when files are staged
+      // Show options when files are staged
       if (docTypeSelector) docTypeSelector.style.display = 'block';
+      if (knowledgeOptions) knowledgeOptions.style.display = 'block';
       filesState.staged.forEach((f, idx) => {
         const row = document.createElement('div'); row.className = 'card'; row.style.display='grid'; row.style.gridTemplateColumns='1fr auto'; row.style.alignItems='center'; row.style.padding='8px';
         const left = document.createElement('div'); left.innerHTML = `<strong>${f.name}</strong> <span class="muted">${f.size} bytes</span>`;
@@ -3239,6 +3272,8 @@
       function currentProjectId() {
         try { const pid = (activeProject && (activeProject.id || activeProject.project_id)) ? (activeProject.id || activeProject.project_id) : localStorage.getItem('active_project_id'); return pid || ''; } catch(_) { return ''; }
       }
+      // Expose currentProjectId globally for use in other scopes
+      window.currentProjectId = currentProjectId;
       async function uploadOne(fileMeta) {
         console.log('🔼 Starting upload for:', fileMeta.name, fileMeta.size, 'bytes');
         
@@ -3263,6 +3298,23 @@
         const fd = new FormData();
         fd.append('file', fileMeta);
         fd.append('project_id', pid);
+        
+        // Check knowledge processing options
+        const enableKnowledgeProcessing = qs('#enableKnowledgeProcessing');
+        const knowledgeEnabled = enableKnowledgeProcessing && enableKnowledgeProcessing.checked;
+        
+        if (knowledgeEnabled) {
+          fd.append('process_for_knowledge', 'true');
+          
+          // Add embedding model and chunking strategy
+          const embeddingModel = qs('#embeddingModel')?.value || 'all-MiniLM-L6-v2';
+          const chunkingStrategy = qs('#chunkingStrategy')?.value || 'hybrid';
+          
+          fd.append('embedding_model', embeddingModel);
+          fd.append('chunking_strategy', chunkingStrategy);
+          
+          console.log('🧠 Knowledge processing enabled:', embeddingModel, chunkingStrategy);
+        }
         
         try {
           const t = (tags && tags.value || '').trim();
@@ -3550,9 +3602,9 @@
       }
       
       // Auto-refresh Files Workbench when project changes
-      let lastProjectId = currentProjectId();
+      let lastProjectId = window.currentProjectId ? window.currentProjectId() : '';
       setInterval(() => {
-        const newProjectId = currentProjectId();
+        const newProjectId = window.currentProjectId ? window.currentProjectId() : '';
         if (newProjectId !== lastProjectId) {
           console.log('🔄 Project changed from', lastProjectId, 'to', newProjectId);
           lastProjectId = newProjectId;
@@ -3570,7 +3622,7 @@
           const el = qs('#uploadPreview');
           if (!u) { toast('Please enter a URL', true); if (el) el.textContent=''; return; }
           try { new URL(u); } catch(_) { toast('Invalid URL', true); return; }
-          const pid = currentProjectId(); if (!pid) { toast('Select a project first', true); return; }
+          const pid = window.currentProjectId ? window.currentProjectId() : ''; if (!pid) { toast('Select a project first', true); return; }
           const fd = new FormData(); fd.append('url', u); fd.append('project_id', pid);
           try {
             const res = await fetch('/api/files/import-url', { method: 'POST', body: fd });
@@ -3606,6 +3658,20 @@
           const hint = qs('#stagedDocTypeHint');
           if (hint) {
             hint.textContent = `${filesState.staged.length} file(s) will be uploaded as "${selectedType}"`;
+          }
+        });
+      }
+      
+      // Handle knowledge processing checkbox
+      const enableKnowledgeProcessing = qs('#enableKnowledgeProcessing');
+      const knowledgeProcessingConfig = qs('#knowledgeProcessingConfig');
+      
+      if (enableKnowledgeProcessing && knowledgeProcessingConfig) {
+        enableKnowledgeProcessing.addEventListener('change', () => {
+          knowledgeProcessingConfig.style.display = enableKnowledgeProcessing.checked ? 'grid' : 'none';
+          
+          if (enableKnowledgeProcessing.checked) {
+            toast('🧠 Knowledge processing enabled - files will be automatically processed for search and retrieval');
           }
         });
       }
@@ -4318,6 +4384,502 @@
         return { ok:true, runId: js.runId, url: js.camunda_url };
       } catch(e) { return { ok:false, error: String(e) }; }
     }
+
+    // ========================================
+    // KNOWLEDGE MANAGEMENT FUNCTIONALITY
+    // ========================================
+
+    async function loadKnowledgeAssets() {
+      try {
+        console.log('🧠 Loading knowledge assets...');
+        const response = await fetch('/api/knowledge/assets', {
+          headers: { ...authHeader() }
+        });
+
+        if (!response.ok) {
+          throw new Error(`Failed to load knowledge assets: ${response.status}`);
+        }
+
+        const data = await response.json();
+        console.log('🧠 Loaded knowledge assets:', data);
+        
+        displayKnowledgeAssets(data.assets || []);
+        updateProcessingStatus();
+
+      } catch (error) {
+        console.error('❌ Error loading knowledge assets:', error);
+        const listElement = document.getElementById('knowledgeAssetsList');
+        if (listElement) {
+          listElement.innerHTML = `
+            <div class="muted" style="padding:20px; text-align:center; color:var(--err);">
+              Error loading knowledge assets: ${error.message}<br/>
+              <button class="btn" onclick="loadKnowledgeAssets()" style="margin-top:8px;">Try Again</button>
+            </div>
+          `;
+        }
+      }
+    }
+
+    function displayKnowledgeAssets(assets) {
+      const listElement = document.getElementById('knowledgeAssetsList');
+      if (!listElement) return;
+
+      if (!assets || assets.length === 0) {
+        listElement.innerHTML = `
+          <div class="muted" style="padding:20px; text-align:center;">
+            No knowledge assets yet.<br/>
+            <small>Upload and process documents to begin building your knowledge base.</small>
+          </div>
+        `;
+        return;
+      }
+
+      // Check if current user is admin (simple check based on token payload)
+      const currentUser = getCurrentUser();
+      const isAdmin = currentUser && currentUser.is_admin;
+
+      const assetsHtml = assets.map(asset => {
+        const stats = asset.processing_stats || {};
+        const chunkCount = stats.chunk_count || 0;
+        const tokenCount = stats.token_count || 0;
+        const createdDate = new Date(asset.created_at).toLocaleDateString();
+        
+        // Public asset indicator
+        const publicIndicator = asset.is_public ? 
+          `<span style="background:#0f2f1f; color:#10b981; padding:2px 6px; border-radius:3px; font-size:10px; font-weight:600; margin-left:8px;">PUBLIC</span>` : '';
+        
+        // Action buttons
+        const actionButtons = `
+          <div class="asset-actions" style="display:flex; gap:4px; margin-top:8px; padding-top:8px; border-top:1px solid var(--border);">
+            <button class="btn" style="padding:4px 8px; font-size:11px; background:#1e3a8a; color:#60a5fa;" 
+                    onclick="event.stopPropagation(); viewAssetContent('${asset.id}')" title="View Content">
+              📄 Content
+            </button>
+            <button class="btn" style="padding:4px 8px; font-size:11px; background:#dc2626; color:#f87171;" 
+                    onclick="event.stopPropagation(); deleteAsset('${asset.id}', '${asset.title}')" title="Delete Asset">
+              🗑️ Delete
+            </button>
+            ${isAdmin ? `
+              <button class="btn" style="padding:4px 8px; font-size:11px; background:#7c3aed; color:#a78bfa;" 
+                      onclick="event.stopPropagation(); toggleAssetPublic('${asset.id}', ${!asset.is_public})" 
+                      title="${asset.is_public ? 'Make Private' : 'Make Public'}">
+                ${asset.is_public ? '🔒 Private' : '🌐 Public'}
+              </button>
+            ` : ''}
+          </div>
+        `;
+        
+        return `
+          <div class="knowledge-asset-card" style="background:#0b1220; border:1px solid var(--border); border-radius:6px; padding:12px; margin-bottom:8px; cursor:pointer;" 
+               onclick="selectKnowledgeAsset('${asset.id}')">
+            <div style="display:flex; justify-content:space-between; align-items:start; margin-bottom:8px;">
+              <div style="flex:1;">
+                <h4 style="margin:0 0 4px 0; color:var(--accent); display:flex; align-items:center;">
+                  ${asset.title === 'unknown' ? (stats.filename || 'Untitled Asset') : asset.title}
+                  ${publicIndicator}
+                </h4>
+                <div style="font-size:12px; color:var(--muted);">
+                  ${asset.document_type} • ${createdDate}
+                  ${asset.is_public && asset.made_public_by ? ` • Made public by ${asset.made_public_by}` : ''}
+                </div>
+              </div>
+              <div style="text-align:right; font-size:11px; color:var(--muted);">
+                <div>${chunkCount} chunk${chunkCount !== 1 ? 's' : ''}</div>
+                <div>${tokenCount} tokens</div>
+              </div>
+            </div>
+            <div style="display:flex; justify-content:space-between; align-items:center; font-size:11px;">
+              <span class="status-badge status-${asset.status}" style="
+                padding:2px 6px; border-radius:3px; font-weight:500;
+                ${asset.status === 'active' ? 'background:#0f3d2c; color:#10b981;' : ''}
+                ${asset.status === 'processing' ? 'background:#3d2f0f; color:#f59e0b;' : ''}
+                ${asset.status === 'failed' ? 'background:#3d0f0f; color:#ef4444;' : ''}
+              ">
+                ${asset.status.toUpperCase()}
+              </span>
+              <div style="color:var(--muted);">
+                Model: ${stats.embedding_model || 'N/A'}
+              </div>
+            </div>
+            ${actionButtons}
+          </div>
+        `;
+      }).join('');
+
+      listElement.innerHTML = `
+        <div style="margin-bottom:12px; font-size:12px; color:var(--muted);">
+          Showing ${assets.length} knowledge asset${assets.length !== 1 ? 's' : ''}
+          ${isAdmin ? '<span style="color:var(--accent);"> (Admin View)</span>' : ''}
+        </div>
+        ${assetsHtml}
+      `;
+    }
+
+    async function selectKnowledgeAsset(assetId) {
+      try {
+        console.log('🧠 Loading knowledge asset details:', assetId);
+        
+        // Highlight selected asset
+        document.querySelectorAll('.knowledge-asset-card').forEach(card => {
+          card.style.borderColor = 'var(--border)';
+        });
+        event.target.closest('.knowledge-asset-card').style.borderColor = 'var(--accent)';
+
+        const response = await fetch(`/api/knowledge/assets/${assetId}?include_chunks=true`, {
+          headers: { ...authHeader() }
+        });
+
+        if (!response.ok) {
+          throw new Error(`Failed to load asset details: ${response.status}`);
+        }
+
+        const asset = await response.json();
+        displayKnowledgeAssetDetails(asset);
+
+      } catch (error) {
+        console.error('❌ Error loading asset details:', error);
+        const detailsElement = document.getElementById('knowledgeDetailsContent');
+        if (detailsElement) {
+          detailsElement.innerHTML = `
+            <div style="padding:20px; text-align:center; color:var(--err);">
+              Error loading asset details: ${error.message}
+            </div>
+          `;
+        }
+      }
+    }
+
+    function displayKnowledgeAssetDetails(asset) {
+      const detailsElement = document.getElementById('knowledgeDetailsContent');
+      if (!detailsElement) return;
+
+      const stats = asset.processing_stats || {};
+      const chunks = asset.chunks || [];
+      
+      const detailsHtml = `
+        <div style="padding:4px 0;">
+          <h4 style="margin:0 0 12px 0; color:var(--accent);">
+            ${asset.title === 'unknown' ? (stats.filename || 'Untitled Asset') : asset.title}
+          </h4>
+          
+          <div style="display:grid; gap:12px; margin-bottom:16px;">
+            <div>
+              <div style="font-size:11px; color:var(--muted); font-weight:600;">DOCUMENT TYPE</div>
+              <div style="font-size:13px;">${asset.document_type}</div>
+            </div>
+            
+            <div>
+              <div style="font-size:11px; color:var(--muted); font-weight:600;">PROCESSING STATS</div>
+              <div style="font-size:12px;">
+                • ${stats.chunk_count || 0} chunks<br/>
+                • ${stats.token_count || 0} tokens<br/>
+                • ${stats.embedding_model || 'N/A'} model<br/>
+                • ${stats.chunking_strategy || 'N/A'} strategy
+              </div>
+            </div>
+
+            <div>
+              <div style="font-size:11px; color:var(--muted); font-weight:600;">FILE INFO</div>
+              <div style="font-size:12px;">
+                • Size: ${stats.original_size || 0} bytes<br/>
+                • Type: ${stats.content_type || 'N/A'}<br/>
+                • Extracted: ${stats.extracted_text_length || 0} chars
+              </div>
+            </div>
+
+            <div>
+              <div style="font-size:11px; color:var(--muted); font-weight:600;">TIMESTAMPS</div>
+              <div style="font-size:12px;">
+                Created: ${new Date(asset.created_at).toLocaleString()}<br/>
+                Updated: ${new Date(asset.updated_at).toLocaleString()}
+              </div>
+            </div>
+
+            ${asset.is_public ? `
+              <div>
+                <div style="font-size:11px; color:var(--muted); font-weight:600;">PUBLIC ACCESS</div>
+                <div style="font-size:12px;">
+                  <span style="color:#10b981; font-weight:600;">✓ Public Asset</span><br/>
+                  ${asset.made_public_at ? `Made public: ${new Date(asset.made_public_at).toLocaleString()}<br/>` : ''}
+                  ${asset.made_public_by ? `By: ${asset.made_public_by}` : ''}
+                </div>
+              </div>
+            ` : `
+              <div>
+                <div style="font-size:11px; color:var(--muted); font-weight:600;">ACCESS</div>
+                <div style="font-size:12px; color:var(--muted);">
+                  🔒 Project Only
+                </div>
+              </div>
+            `}
+          </div>
+
+          ${chunks.length > 0 ? `
+            <div style="margin-top:16px;">
+              <div style="font-size:11px; color:var(--muted); font-weight:600; margin-bottom:8px;">
+                CONTENT CHUNKS (${chunks.length})
+              </div>
+              <div style="max-height:300px; overflow-y:auto; background:#0b1220; border:1px solid var(--border); border-radius:4px;">
+                ${chunks.map((chunk, i) => `
+                  <div style="padding:8px; border-bottom:1px solid var(--border);" title="Chunk ${chunk.sequence_number}">
+                    <div style="font-size:10px; color:var(--muted); margin-bottom:4px;">
+                      #${chunk.sequence_number} • ${chunk.token_count} tokens • ${chunk.chunk_type}
+                    </div>
+                    <div style="font-size:11px; line-height:1.4; max-height:60px; overflow:hidden;">
+                      ${chunk.content.length > 200 ? chunk.content.substring(0, 200) + '...' : chunk.content}
+                    </div>
+                  </div>
+                `).join('')}
+              </div>
+            </div>
+          ` : ''}
+        </div>
+      `;
+
+      detailsElement.innerHTML = detailsHtml;
+    }
+
+    async function updateProcessingStatus() {
+      try {
+        const response = await fetch('/api/knowledge/jobs', {
+          headers: { ...authHeader() }
+        });
+
+        if (response.ok) {
+          const jobs = await response.json();
+          const statusElement = document.getElementById('knowledgeProcessingStatus');
+          
+          if (statusElement && Array.isArray(jobs)) {
+            const activeJobs = jobs.filter(job => job.status === 'running');
+            
+            if (activeJobs.length > 0) {
+              const jobsHtml = activeJobs.map(job => `
+                <div style="margin-bottom:8px;">
+                  <div style="font-size:12px; color:var(--accent);">
+                    ${job.job_type} - ${job.progress_percent}%
+                  </div>
+                  <div style="background:#0b1220; border-radius:3px; height:6px; overflow:hidden;">
+                    <div style="background:var(--accent); height:100%; width:${job.progress_percent}%; transition:width 0.3s;"></div>
+                  </div>
+                </div>
+              `).join('');
+              
+              statusElement.innerHTML = jobsHtml;
+            } else {
+              statusElement.innerHTML = '<div class="muted">No processing jobs running</div>';
+            }
+          }
+        }
+      } catch (error) {
+        console.error('Error updating processing status:', error);
+      }
+    }
+
+    // Initialize knowledge management when the page loads
+    function initializeKnowledgeManagement() {
+      console.log('🧠 Initializing Knowledge Management...');
+
+      // Bind refresh button
+      const refreshBtn = document.getElementById('knowledgeRefreshBtn');
+      if (refreshBtn) {
+        refreshBtn.addEventListener('click', () => {
+          console.log('🧠 Refresh button clicked');
+          loadKnowledgeAssets();
+        });
+      }
+
+      // Load knowledge assets if the knowledge workbench is active
+      const knowledgeWorkbench = document.getElementById('wb-knowledge');
+      if (knowledgeWorkbench && !knowledgeWorkbench.style.display) {
+        loadKnowledgeAssets();
+      }
+
+      // Also load when switching to knowledge workbench
+      const observer = new MutationObserver(() => {
+        if (knowledgeWorkbench && knowledgeWorkbench.style.display !== 'none') {
+          loadKnowledgeAssets();
+        }
+      });
+      
+      if (knowledgeWorkbench) {
+        observer.observe(knowledgeWorkbench, { attributes: true, attributeFilter: ['style'] });
+      }
+    }
+
+    // Auto-initialize when DOM is ready
+    if (document.readyState === 'loading') {
+      document.addEventListener('DOMContentLoaded', initializeKnowledgeManagement);
+    } else {
+      initializeKnowledgeManagement();
+    }
+
+    // Helper function to get current user info
+    function getCurrentUser() {
+      try {
+        const token = localStorage.getItem('authToken');
+        if (!token) return null;
+        
+        // Simple JWT decode (just for demo, in production use proper JWT library)
+        const payload = JSON.parse(atob(token.split('.')[1]));
+        return payload;
+      } catch (error) {
+        console.error('Error getting current user:', error);
+        return null;
+      }
+    }
+
+    // Function to view full asset content
+    async function viewAssetContent(assetId) {
+      try {
+        console.log('🧠 Loading asset content:', assetId);
+        
+        const response = await fetch(`/api/knowledge/assets/${assetId}/content`, {
+          headers: { ...authHeader() }
+        });
+
+        if (!response.ok) {
+          throw new Error(`Failed to load content: ${response.status}`);
+        }
+
+        const contentData = await response.json();
+        showContentModal(contentData);
+
+      } catch (error) {
+        console.error('❌ Error loading asset content:', error);
+        alert('Error loading content: ' + error.message);
+      }
+    }
+
+    // Function to show content in a modal
+    function showContentModal(contentData) {
+      const modal = document.createElement('div');
+      modal.style.cssText = `
+        position: fixed; top: 0; left: 0; right: 0; bottom: 0; 
+        background: rgba(0,0,0,0.8); display: flex; align-items: center; justify-content: center; 
+        z-index: 10000; padding: 20px;
+      `;
+      
+      modal.innerHTML = `
+        <div style="background: var(--panel); border: 1px solid var(--border); border-radius: 8px; 
+                    width: 90%; max-width: 1000px; height: 80vh; display: flex; flex-direction: column;">
+          <div style="padding: 16px; border-bottom: 1px solid var(--border); display: flex; justify-content: space-between; align-items: center;">
+            <h3 style="margin: 0; color: var(--accent);">${contentData.title}</h3>
+            <button onclick="this.closest('.content-modal').remove()" style="
+              background: transparent; border: none; color: var(--muted); font-size: 24px; cursor: pointer;
+            ">&times;</button>
+          </div>
+          <div style="padding: 16px; overflow-y: auto; flex: 1;">
+            <div style="margin-bottom: 16px; font-size: 12px; color: var(--muted);">
+              📄 ${contentData.document_type} • ${contentData.total_chunks} chunks • ${contentData.total_tokens} tokens
+            </div>
+            <div style="line-height: 1.6; white-space: pre-wrap; font-family: ui-monospace, monospace; font-size: 13px;">
+              ${contentData.content}
+            </div>
+          </div>
+        </div>
+      `;
+      
+      modal.className = 'content-modal';
+      document.body.appendChild(modal);
+      
+      // Close on backdrop click
+      modal.addEventListener('click', (e) => {
+        if (e.target === modal) {
+          modal.remove();
+        }
+      });
+    }
+
+    // Function to delete an asset
+    async function deleteAsset(assetId, assetTitle) {
+      const displayTitle = assetTitle === 'unknown' ? 'Untitled Asset' : assetTitle;
+      
+      if (!confirm(`Are you sure you want to delete "${displayTitle}"?\\n\\nThis will permanently remove the asset and all its chunks.`)) {
+        return;
+      }
+
+      try {
+        console.log('🧠 Deleting asset:', assetId);
+        
+        const response = await fetch(`/api/knowledge/assets/${assetId}`, {
+          method: 'DELETE',
+          headers: { ...authHeader() }
+        });
+
+        if (!response.ok) {
+          throw new Error(`Failed to delete asset: ${response.status}`);
+        }
+
+        const result = await response.json();
+        console.log('✅ Asset deleted successfully:', result);
+        
+        // Refresh the assets list
+        loadKnowledgeAssets();
+        
+        // Clear details panel
+        const detailsElement = document.getElementById('knowledgeDetailsContent');
+        if (detailsElement) {
+          detailsElement.innerHTML = `
+            <div class="muted" style="padding:20px; text-align:center;">
+              Select a knowledge asset to view details
+            </div>
+          `;
+        }
+        
+        alert('Asset deleted successfully');
+
+      } catch (error) {
+        console.error('❌ Error deleting asset:', error);
+        alert('Error deleting asset: ' + error.message);
+      }
+    }
+
+    // Function to toggle asset public status (admin only)
+    async function toggleAssetPublic(assetId, makePublic) {
+      const action = makePublic ? 'make public' : 'make private';
+      
+      if (!confirm(`Are you sure you want to ${action} this knowledge asset?\\n\\n${makePublic ? 'Public assets can be viewed by all users across all projects.' : 'Private assets are only visible within their project.'}`)) {
+        return;
+      }
+
+      try {
+        console.log(`🧠 ${makePublic ? 'Making public' : 'Making private'} asset:`, assetId);
+        
+        const response = await fetch(`/api/knowledge/assets/${assetId}/public`, {
+          method: 'PUT',
+          headers: { 
+            'Content-Type': 'application/json',
+            ...authHeader() 
+          },
+          body: JSON.stringify({ is_public: makePublic })
+        });
+
+        if (!response.ok) {
+          throw new Error(`Failed to update asset: ${response.status}`);
+        }
+
+        const result = await response.json();
+        console.log('✅ Asset visibility updated:', result);
+        
+        // Refresh the assets list
+        loadKnowledgeAssets();
+        
+        const status = makePublic ? 'public' : 'private';
+        alert(`Asset is now ${status}`);
+
+      } catch (error) {
+        console.error('❌ Error updating asset visibility:', error);
+        alert('Error updating asset: ' + error.message);
+      }
+    }
+
+    // Make functions globally available
+    window.loadKnowledgeAssets = loadKnowledgeAssets;
+    window.selectKnowledgeAsset = selectKnowledgeAsset;
+    window.viewAssetContent = viewAssetContent;
+    window.deleteAsset = deleteAsset;
+    window.toggleAssetPublic = toggleAssetPublic;
+
   </script>
 </body>
 </html>

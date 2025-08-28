@@ -12,7 +12,7 @@ from uuid import UUID, uuid4
 from fastapi import APIRouter, Depends, HTTPException, Query, Body
 from pydantic import BaseModel, Field
 
-from ..services.auth import get_user
+from ..services.auth import get_user, get_admin_user, is_user_admin
 from ..services.config import Settings
 from ..services.db import DatabaseService
 
@@ -54,6 +54,9 @@ class KnowledgeAssetResponse(BaseModel):
     version: str
     status: str
     processing_stats: Dict[str, Any]
+    is_public: bool = False
+    made_public_at: Optional[str] = None
+    made_public_by: Optional[str] = None
 
 class KnowledgeChunkResponse(BaseModel):
     """Response model for knowledge chunk."""
@@ -87,6 +90,20 @@ class KnowledgeListResponse(BaseModel):
     total_count: int
     message: str = "Knowledge assets retrieved successfully"
 
+class PublicAssetRequest(BaseModel):
+    """Request model for making an asset public."""
+    is_public: bool = Field(..., description="Whether to make the asset public")
+
+class AssetContentResponse(BaseModel):
+    """Response model for asset content."""
+    id: str
+    title: str
+    document_type: str
+    content: str
+    chunks: List[KnowledgeChunkResponse] = []
+    total_chunks: int = 0
+    total_tokens: int = 0
+
 # ========================================
 # HELPER FUNCTIONS
 # ========================================
@@ -115,7 +132,10 @@ def format_asset_response(asset_row: Dict) -> KnowledgeAssetResponse:
         updated_at=asset_row["updated_at"].isoformat() if asset_row.get("updated_at") else "",
         version=asset_row.get("version", "1.0.0"),
         status=asset_row.get("status", "active"),
-        processing_stats=asset_row.get("processing_stats", {})
+        processing_stats=asset_row.get("processing_stats", {}),
+        is_public=asset_row.get("is_public", False),
+        made_public_at=asset_row["made_public_at"].isoformat() if asset_row.get("made_public_at") else None,
+        made_public_by=asset_row.get("made_public_by")
     )
 
 # ========================================
@@ -152,20 +172,38 @@ async def list_knowledge_assets(
         where_clauses = ["1=1"]  # Base condition
         params = []
         
-        # Project filter - either specific project or user's accessible projects
-        if project_id:
-            where_clauses.append("ka.project_id = %s")
-            params.append(project_id)
+        # Project filter with admin and public assets logic
+        if is_user_admin(user):
+            # Admins can see all assets
+            if project_id:
+                where_clauses.append("ka.project_id = %s")
+                params.append(project_id)
+            # If no project_id specified, admin sees all assets (no additional filter needed)
         else:
-            # Get user's accessible projects
+            # Regular users see their project assets + public assets
             user_projects = db.list_projects_for_user(user_id=user["user_id"], active=True)
-            if not user_projects:
-                return KnowledgeListResponse(assets=[], total_count=0, message="No accessible projects")
             
-            project_ids = [str(p["project_id"]) for p in user_projects]
-            placeholders = ",".join(["%s"] * len(project_ids))
-            where_clauses.append(f"ka.project_id IN ({placeholders})")
-            params.extend(project_ids)
+            if project_id:
+                # Specific project: user's project assets + public assets
+                if not db.is_user_member(project_id=project_id, user_id=user["user_id"]):
+                    # User not in project, can only see public assets from this project
+                    where_clauses.append("ka.project_id = %s AND ka.is_public = TRUE")
+                    params.append(project_id)
+                else:
+                    # User in project, can see all project assets + public assets
+                    where_clauses.append("(ka.project_id = %s OR ka.is_public = TRUE)")
+                    params.append(project_id)
+            else:
+                # No project specified: user's accessible projects + public assets
+                if not user_projects:
+                    # User has no projects, can only see public assets
+                    where_clauses.append("ka.is_public = TRUE")
+                else:
+                    # User has projects, see their projects + public assets
+                    project_ids = [str(p["project_id"]) for p in user_projects]
+                    placeholders = ",".join(["%s"] * len(project_ids))
+                    where_clauses.append(f"(ka.project_id IN ({placeholders}) OR ka.is_public = TRUE)")
+                    params.extend(project_ids)
         
         if document_type:
             where_clauses.append("ka.document_type = %s")
@@ -475,11 +513,16 @@ async def delete_knowledge_asset(
         try:
             with conn.cursor() as cur:
                 # Verify asset exists and user has access
-                cur.execute("""
-                    SELECT ka.* FROM knowledge_assets ka
-                    JOIN project_members pm ON ka.project_id = pm.project_id
-                    WHERE ka.id = %s AND pm.user_id = %s
-                """, (asset_id, user["user_id"]))
+                if is_user_admin(user):
+                    # Admin can delete any asset
+                    cur.execute("SELECT ka.* FROM knowledge_assets ka WHERE ka.id = %s", (asset_id,))
+                else:
+                    # Regular users can only delete assets in their projects (not public assets they can view)
+                    cur.execute("""
+                        SELECT ka.* FROM knowledge_assets ka
+                        JOIN project_members pm ON ka.project_id = pm.project_id
+                        WHERE ka.id = %s AND pm.user_id = %s
+                    """, (asset_id, user["user_id"]))
                 
                 if not cur.fetchone():
                     raise HTTPException(status_code=404, detail="Knowledge asset not found or not accessible")
@@ -503,6 +546,209 @@ async def delete_knowledge_asset(
     except Exception as e:
         logger.error(f"Failed to delete knowledge asset {asset_id}: {str(e)}")
         raise HTTPException(status_code=500, detail=f"Failed to delete knowledge asset: {str(e)}")
+
+@router.get("/assets/{asset_id}/content", response_model=AssetContentResponse)
+async def get_knowledge_asset_content(
+    asset_id: str,
+    db: DatabaseService = Depends(get_knowledge_service),
+    user: Dict = Depends(get_user)
+):
+    """
+    Get full content of a knowledge asset with all chunks.
+    
+    Args:
+        asset_id: Knowledge asset ID
+        
+    Returns:
+        Asset content with all chunks
+    """
+    try:
+        logger.info(f"Getting content for knowledge asset {asset_id} by user {user.get('user_id')}")
+        
+        conn = db._conn()
+        try:
+            with conn.cursor() as cur:
+                # Get asset with access control (same logic as get_knowledge_asset)
+                if is_user_admin(user):
+                    # Admin can see all assets
+                    cur.execute("SELECT ka.* FROM knowledge_assets ka WHERE ka.id = %s", (asset_id,))
+                else:
+                    # Regular users: their projects + public assets
+                    cur.execute("""
+                        SELECT ka.* FROM knowledge_assets ka
+                        LEFT JOIN project_members pm ON ka.project_id = pm.project_id AND pm.user_id = %s
+                        WHERE ka.id = %s AND (pm.user_id IS NOT NULL OR ka.is_public = TRUE)
+                    """, (user["user_id"], asset_id))
+                
+                asset_row = cur.fetchone()
+                if not asset_row:
+                    raise HTTPException(status_code=404, detail="Knowledge asset not found or not accessible")
+                
+                asset_dict = dict(zip([desc[0] for desc in cur.description], asset_row))
+                
+                # Get all chunks for this asset
+                cur.execute("""
+                    SELECT * FROM knowledge_chunks 
+                    WHERE asset_id = %s 
+                    ORDER BY sequence_number
+                """, (asset_id,))
+                
+                chunk_rows = cur.fetchall()
+                chunks = []
+                total_tokens = 0
+                
+                for chunk_row in chunk_rows:
+                    chunk_dict = dict(zip([desc[0] for desc in cur.description], chunk_row))
+                    chunks.append(KnowledgeChunkResponse(
+                        id=str(chunk_dict["id"]),
+                        asset_id=str(chunk_dict["asset_id"]),
+                        sequence_number=chunk_dict["sequence_number"],
+                        chunk_type=chunk_dict["chunk_type"],
+                        content=chunk_dict["content"],
+                        token_count=chunk_dict.get("token_count", 0),
+                        metadata=chunk_dict.get("metadata", {}),
+                        embedding_model=chunk_dict.get("embedding_model"),
+                        qdrant_point_id=str(chunk_dict["qdrant_point_id"]) if chunk_dict.get("qdrant_point_id") else None,
+                        created_at=chunk_dict["created_at"].isoformat() if chunk_dict.get("created_at") else ""
+                    ))
+                    total_tokens += chunk_dict.get("token_count", 0)
+                
+                # Combine all chunk content
+                full_content = "\n\n".join([chunk.content for chunk in chunks])
+                
+                return AssetContentResponse(
+                    id=str(asset_dict["id"]),
+                    title=asset_dict["title"],
+                    document_type=asset_dict["document_type"],
+                    content=full_content,
+                    chunks=chunks,
+                    total_chunks=len(chunks),
+                    total_tokens=total_tokens
+                )
+                
+        finally:
+            db._return(conn)
+            
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Failed to get content for asset {asset_id}: {str(e)}")
+        raise HTTPException(status_code=500, detail=f"Failed to get asset content: {str(e)}")
+
+@router.put("/assets/{asset_id}/public", response_model=KnowledgeAssetResponse)
+async def set_asset_public_status(
+    asset_id: str,
+    public_request: PublicAssetRequest,
+    db: DatabaseService = Depends(get_knowledge_service),
+    user: Dict = Depends(get_admin_user)  # Admin only
+):
+    """
+    Set public status of a knowledge asset (Admin only).
+    
+    Args:
+        asset_id: Knowledge asset ID
+        public_request: Public status request
+        
+    Returns:
+        Updated knowledge asset
+    """
+    try:
+        logger.info(f"Setting public status for asset {asset_id} to {public_request.is_public} by admin {user.get('user_id')}")
+        
+        conn = db._conn()
+        try:
+            with conn.cursor() as cur:
+                # Verify asset exists
+                cur.execute("SELECT id FROM knowledge_assets WHERE id = %s", (asset_id,))
+                if not cur.fetchone():
+                    raise HTTPException(status_code=404, detail="Knowledge asset not found")
+                
+                # Update public status
+                now = datetime.now(timezone.utc)
+                if public_request.is_public:
+                    cur.execute("""
+                        UPDATE knowledge_assets 
+                        SET is_public = %s, made_public_at = %s, made_public_by = %s, updated_at = %s
+                        WHERE id = %s
+                        RETURNING *
+                    """, (True, now, user["user_id"], now, asset_id))
+                else:
+                    cur.execute("""
+                        UPDATE knowledge_assets 
+                        SET is_public = %s, made_public_at = NULL, made_public_by = NULL, updated_at = %s
+                        WHERE id = %s
+                        RETURNING *
+                    """, (False, now, asset_id))
+                
+                row = cur.fetchone()
+                asset_dict = dict(zip([desc[0] for desc in cur.description], row))
+                conn.commit()
+                
+                status = "public" if public_request.is_public else "private"
+                logger.info(f"Successfully set asset {asset_id} as {status}")
+                
+                return format_asset_response(asset_dict)
+                
+        finally:
+            db._return(conn)
+            
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Failed to set public status for asset {asset_id}: {str(e)}")
+        raise HTTPException(status_code=500, detail=f"Failed to update asset: {str(e)}")
+
+@router.delete("/assets/{asset_id}/force")
+async def force_delete_knowledge_asset(
+    asset_id: str,
+    db: DatabaseService = Depends(get_knowledge_service),
+    user: Dict = Depends(get_admin_user)  # Admin only for force delete
+):
+    """
+    Force delete a knowledge asset (Admin only).
+    
+    This deletes the asset, all chunks, embeddings, and relationships.
+    Regular users can only soft-delete their own assets.
+    
+    Args:
+        asset_id: Knowledge asset ID
+        
+    Returns:
+        Deletion confirmation
+    """
+    try:
+        logger.info(f"Force deleting knowledge asset {asset_id} by admin {user.get('user_id')}")
+        
+        conn = db._conn()
+        try:
+            with conn.cursor() as cur:
+                # Verify asset exists
+                cur.execute("SELECT id, title FROM knowledge_assets WHERE id = %s", (asset_id,))
+                result = cur.fetchone()
+                if not result:
+                    raise HTTPException(status_code=404, detail="Knowledge asset not found")
+                
+                asset_title = result[1]
+                
+                # Delete asset (cascades to chunks, relationships, jobs)
+                cur.execute("DELETE FROM knowledge_assets WHERE id = %s", (asset_id,))
+                
+                if cur.rowcount == 0:
+                    raise HTTPException(status_code=404, detail="Knowledge asset not found")
+                
+                conn.commit()
+                logger.info(f"Force deleted knowledge asset {asset_id} ({asset_title}) by admin")
+                
+                return {"success": True, "message": f"Knowledge asset '{asset_title}' permanently deleted"}
+                
+        finally:
+            db._return(conn)
+            
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Failed to force delete asset {asset_id}: {str(e)}")
+        raise HTTPException(status_code=500, detail=f"Failed to delete asset: {str(e)}")
 
 # ========================================
 # PROCESSING JOBS ENDPOINTS

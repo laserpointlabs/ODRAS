@@ -369,22 +369,22 @@ GET /api/knowledge/graph/visualize?project_id=uuid&center_node=REQ-001&radius=2
 
 ### **Phase 2A: Core Knowledge Infrastructure** (Weeks 1-2)
 
-#### **Sprint 1: Backend Foundation**
-- [ ] **KB-1**: Database schema creation and migrations (PostgreSQL + Neo4j)
-- [ ] **KB-2**: Knowledge asset API endpoints (CRUD operations)
-- [ ] **KB-3**: Qdrant integration service layer
-- [ ] **KB-3.1**: Neo4j integration service layer and graph schema setup
-- [ ] **KB-4**: Embedding service with model management
-- [ ] **KB-5**: Basic chunking pipeline implementation
+#### **Sprint 1: Backend Foundation** ✅ COMPLETED
+- [x] **KB-1**: Database schema creation and migrations (PostgreSQL + Neo4j)
+- [x] **KB-2**: Knowledge asset API endpoints (CRUD operations)
+- [x] **KB-3**: Qdrant integration service layer
+- [x] **KB-3.1**: Neo4j integration service layer and graph schema setup
+- [x] **KB-4**: Embedding service with model management
+- [x] **KB-5**: Basic chunking pipeline implementation
 
-#### **Sprint 2: Processing Pipeline**
-- [ ] **KB-6**: Document-to-knowledge transformation pipeline
-- [ ] **KB-7**: Metadata extraction and enrichment
+#### **Sprint 2: Processing Pipeline** ✅ COMPLETED
+- [x] **KB-6**: Document-to-knowledge transformation pipeline
+- [x] **KB-7**: Metadata extraction and enrichment
 - [ ] **KB-7.1**: Relationship extraction for knowledge graph population
-- [ ] **KB-8**: Semantic chunking algorithm implementation
-- [ ] **KB-9**: Vector embedding generation and storage
+- [x] **KB-8**: Semantic chunking algorithm implementation (enhanced existing service)
+- [x] **KB-9**: Vector embedding generation and storage
 - [ ] **KB-9.1**: Graph relationship creation and Neo4j storage
-- [ ] **KB-10**: Integration with existing file upload workflow
+- [x] **KB-10**: Integration with existing file upload workflow
 
 ### **Phase 2B: Search & Retrieval** (Weeks 3-4)
 
