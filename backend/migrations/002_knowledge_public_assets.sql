@@ -19,3 +19,4 @@ COMMENT ON COLUMN knowledge_assets.is_public IS 'True if asset is visible across
 COMMENT ON COLUMN knowledge_assets.made_public_at IS 'Timestamp when asset was made public';
 COMMENT ON COLUMN knowledge_assets.made_public_by IS 'User ID who made the asset public (admin only)';
 
+
