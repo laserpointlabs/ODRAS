@@ -1,0 +1,60 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<bpmn:definitions xmlns:bpmn="http://www.omg.org/spec/BPMN/20100524/MODEL" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" id="Definitions_ingestion" targetNamespace="http://odras.system/bpmn">
+  <bpmn:process id="ingestion_pipeline" name="ODRAS Ingestion Pipeline" isExecutable="true">
+    <bpmn:startEvent id="StartEvent_Ingestion" name="Start Ingestion">
+      <bpmn:outgoing>Flow_1</bpmn:outgoing>
+    </bpmn:startEvent>
+    <bpmn:scriptTask id="Task_DetectType" name="Detect Type/Scan">
+      <bpmn:incoming>Flow_1</bpmn:incoming>
+      <bpmn:outgoing>Flow_2</bpmn:outgoing>
+      <bpmn:script># Script: scripts/ingest_detect_type.py</bpmn:script>
+    </bpmn:scriptTask>
+    <bpmn:exclusiveGateway id="Gateway_OCRNeeded" name="Scanned?">
+      <bpmn:incoming>Flow_2</bpmn:incoming>
+      <bpmn:outgoing>Flow_3_OCR</bpmn:outgoing>
+      <bpmn:outgoing>Flow_3_SkipOCR</bpmn:outgoing>
+    </bpmn:exclusiveGateway>
+    <bpmn:scriptTask id="Task_OCR" name="OCR">
+      <bpmn:incoming>Flow_3_OCR</bpmn:incoming>
+      <bpmn:outgoing>Flow_4</bpmn:outgoing>
+      <bpmn:script># Script: scripts/ingest_ocr.py</bpmn:script>
+    </bpmn:scriptTask>
+    <bpmn:scriptTask id="Task_Parse" name="Parse &amp; Normalize">
+      <bpmn:incoming>Flow_3_SkipOCR</bpmn:incoming>
+      <bpmn:incoming>Flow_4</bpmn:incoming>
+      <bpmn:outgoing>Flow_5</bpmn:outgoing>
+      <bpmn:script># Script: scripts/ingest_parse_normalize.py</bpmn:script>
+    </bpmn:scriptTask>
+    <bpmn:scriptTask id="Task_Chunk" name="Chunk">
+      <bpmn:incoming>Flow_5</bpmn:incoming>
+      <bpmn:outgoing>Flow_6</bpmn:outgoing>
+      <bpmn:script># Script: scripts/ingest_chunk.py</bpmn:script>
+    </bpmn:scriptTask>
+    <bpmn:scriptTask id="Task_Embed" name="Embed">
+      <bpmn:incoming>Flow_6</bpmn:incoming>
+      <bpmn:outgoing>Flow_7</bpmn:outgoing>
+      <bpmn:script># Script: scripts/ingest_embed.py</bpmn:script>
+    </bpmn:scriptTask>
+    <bpmn:scriptTask id="Task_Index" name="Index Vectors">
+      <bpmn:incoming>Flow_7</bpmn:incoming>
+      <bpmn:outgoing>Flow_8</bpmn:outgoing>
+      <bpmn:script># Script: scripts/ingest_index.py</bpmn:script>
+    </bpmn:scriptTask>
+    <bpmn:endEvent id="EndEvent_Ingestion" name="Ingestion Complete">
+      <bpmn:incoming>Flow_8</bpmn:incoming>
+    </bpmn:endEvent>
+    <bpmn:sequenceFlow id="Flow_1" sourceRef="StartEvent_Ingestion" targetRef="Task_DetectType" />
+    <bpmn:sequenceFlow id="Flow_2" sourceRef="Task_DetectType" targetRef="Gateway_OCRNeeded" />
+    <bpmn:sequenceFlow id="Flow_3_OCR" sourceRef="Gateway_OCRNeeded" targetRef="Task_OCR">
+      <bpmn:conditionExpression xsi:type="bpmn:tFormalExpression">${needs_ocr == true}</bpmn:conditionExpression>
+    </bpmn:sequenceFlow>
+    <bpmn:sequenceFlow id="Flow_3_SkipOCR" sourceRef="Gateway_OCRNeeded" targetRef="Task_Parse">
+      <bpmn:conditionExpression xsi:type="bpmn:tFormalExpression">${needs_ocr == false}</bpmn:conditionExpression>
+    </bpmn:sequenceFlow>
+    <bpmn:sequenceFlow id="Flow_4" sourceRef="Task_OCR" targetRef="Task_Parse" />
+    <bpmn:sequenceFlow id="Flow_5" sourceRef="Task_Parse" targetRef="Task_Chunk" />
+    <bpmn:sequenceFlow id="Flow_6" sourceRef="Task_Chunk" targetRef="Task_Embed" />
+    <bpmn:sequenceFlow id="Flow_7" sourceRef="Task_Embed" targetRef="Task_Index" />
+    <bpmn:sequenceFlow id="Flow_8" sourceRef="Task_Index" targetRef="EndEvent_Ingestion" />
+  </bpmn:process>
+</bpmn:definitions>

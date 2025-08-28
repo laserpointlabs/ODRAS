@@ -54,6 +54,16 @@
       background: #0b1220; color: var(--text); border: 1px solid var(--border);
       padding: 6px 10px; border-radius: 6px; cursor: pointer;
     }
+    .btn:hover {
+      background: var(--panel); border-color: var(--accent);
+    }
+    #previewFullscreenBtn:hover, #previewPopoutBtn:hover {
+      background: var(--accent); color: white; border-color: var(--accent);
+    }
+    #fileDropZone:hover {
+      background: rgba(15, 22, 40, 0.5) !important;
+      border-color: #6b7280 !important;
+    }
     select { padding: 6px; }
     .content {
       display: grid; grid-template-columns: var(--iconbar-w) var(--tree-w) 6px 1fr; height: 100%;
@@ -437,13 +447,23 @@
         <section id="wb-files" class="workbench">
           <h2>File Management</h2>
           <div class="muted">Upload requirements and knowledge docs (MinIO).</div>
+          <div class="card" style="margin-top:8px;">
+            <div class="muted" style="font-weight:600; margin-bottom:6px;">Quick steps</div>
+            <ol style="margin:0; padding-left:18px; color:#9aa4b2;">
+              <li>Choose Files (or drop) → files appear under Staged files</li>
+              <li>Click Upload next to a file (or Upload All)</li>
+              <li>Select uploaded file in Library → click Ingest to process</li>
+            </ol>
+          </div>
           <div id="filesToast" class="muted" style="margin-top:6px;"></div>
           <div class="files-toolbar" style="display:flex; gap:8px; align-items:center; margin:10px 0; flex-wrap:wrap;">
             <label class="muted" for="filesDocType">Type</label>
             <select id="filesDocType" style="background:#0b1220; color:#e5e7eb; border:1px solid var(--border); border-radius:6px; padding:6px;">
-              <option value="">All</option>
+              <option value="">All Types</option>
               <option value="requirements">Requirements</option>
               <option value="knowledge">Knowledge</option>
+              <option value="reference">Reference</option>
+              <option value="specification">Specification</option>
               <option value="unknown">Unknown</option>
             </select>
             <label class="muted" for="filesStatus">Status</label>
@@ -454,9 +474,11 @@
               <option value="embedded">Embedded</option>
             </select>
             <input id="filesTags" type="text" placeholder="tags (comma)" style="background:#0b1220; color:#e5e7eb; border:1px solid var(--border); border-radius:6px; padding:6px; min-width:200px;" />
+            <label class="muted"><input type="checkbox" id="filesIncludePublic" /> Include public files</label>
             <button class="btn" id="filesRefreshBtn" title="Refresh">Refresh</button>
             <div class="spacer"></div>
             <button class="btn" id="filesBulkProcessBtn" title="Process selected">Process Selected</button>
+            <button class="btn" id="filesBulkIngestBtn" title="Ingest and Embed selected">Ingest/Embed Selected</button>
             <button class="btn" id="filesBulkDeleteBtn" title="Delete selected">Delete Selected</button>
           </div>
 
@@ -468,7 +490,7 @@
               <input id="fileUrlInput" type="url" placeholder="https://example.com/doc.pdf" style="background:#0b1220; color:#e5e7eb; border:1px solid var(--border); border-radius:6px; padding:6px; min-width:320px;" />
               <button class="btn" id="fileUrlImportBtn">Import URL</button>
             </div>
-            <div id="fileDropZone" tabindex="0" role="button" aria-label="Drop files or click to select" style="margin-top:10px; border:1px dashed var(--border); border-radius:8px; padding:16px; text-align:center; color:#9aa4b2; user-select:none; cursor:pointer;">
+            <div id="fileDropZone" tabindex="0" role="button" aria-label="Drop files or click to select" style="margin-top:10px; border:2px dashed var(--border); border-radius:8px; padding:20px; text-align:center; color:#9aa4b2; user-select:none; cursor:pointer; background:rgba(15, 22, 40, 0.3); transition:all 0.2s ease;">
               Drag & drop files here, or use the Choose Files button above
             </div>
             <div id="uploadPreview" class="muted" style="margin-top:6px;"></div>
@@ -484,6 +506,23 @@
                     <button class="btn" id="filesClearStagedBtn" type="button">Clear</button>
                   </div>
                 </div>
+                
+                <!-- Document Type Selector for Staged Files -->
+                <div id="stagedDocTypeSelector" style="display:none; margin:6px 0; padding:8px; background:var(--panel-2); border:1px solid var(--border); border-radius:6px;">
+                  <div style="display:flex; align-items:center; gap:8px; flex-wrap:wrap;">
+                    <span class="muted" style="font-size:12px;">Set document type for upload:</span>
+                    <select id="stagedDocType" style="background:#0b1220; color:#e5e7eb; border:1px solid var(--border); border-radius:6px; padding:4px 8px; font-size:12px;">
+                      <option value="unknown">Unknown</option>
+                      <option value="requirements">Requirements</option>
+                      <option value="knowledge">Knowledge</option>
+                      <option value="reference">Reference</option>
+                      <option value="specification">Specification</option>
+                    </select>
+                    <button class="btn" id="setStagedDocType" style="padding:4px 8px; font-size:12px;">Apply to All Staged</button>
+                    <span class="muted" style="font-size:11px;" id="stagedDocTypeHint">Files will be uploaded with this document type</span>
+                  </div>
+                </div>
+                
                 <div id="stagedList" style="display:grid; gap:6px; margin-top:6px;"></div>
               </div>
               <div>
@@ -493,7 +532,13 @@
             </div>
             <div style="width:8px; cursor:col-resize;" id="filesSplitResizer" aria-hidden="true"></div>
             <aside id="filePreviewPane" style="border-left:1px solid var(--border); padding-left:10px; overflow:auto;">
-              <div class="muted" style="margin-bottom:6px;">Preview</div>
+              <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:6px;">
+                <div class="muted">Preview</div>
+                <div id="previewControls" style="display:flex; gap:6px; align-items:center;">
+                  <button class="btn" id="previewFullscreenBtn" title="Fullscreen preview" style="min-width:auto; padding:6px 8px; font-size:14px; background:var(--panel-2); border:1px solid var(--border); color:var(--text);">⛶</button>
+                  <button class="btn" id="previewPopoutBtn" title="Open in new window" style="display:none; min-width:auto; padding:6px 8px; font-size:14px; background:var(--panel-2); border:1px solid var(--border); color:var(--text);">↗</button>
+                </div>
+              </div>
               <div id="fileMetaBox" class="card" style="margin-bottom:8px;">
                 <div class="muted">Metadata</div>
                 <div id="fileMetaContent" class="muted">Select a file to see metadata.</div>
@@ -502,9 +547,81 @@
                 <div class="muted" style="margin-bottom:6px;">Content</div>
                 <div id="filePreviewContent" class="muted">Select a file to preview.</div>
               </div>
+              <div class="card" style="margin-top:8px;">
+                <div class="muted" style="margin-bottom:6px;">Recent Runs</div>
+                <div id="fileRunsContent" class="muted">No runs yet.</div>
+              </div>
             </aside>
           </div>
         </section>
+        
+        <!-- Files: Ingestion Params Modal -->
+        <div id="ingestParamsModal" style="position:fixed; inset:0; display:none; align-items:center; justify-content:center; background:rgba(0,0,0,0.5); z-index:9999;">
+          <div style="background:#0b1220; color:#e5e7eb; border:1px solid var(--border); border-radius:10px; width:460px; max-width:90vw; padding:14px; box-shadow:0 10px 30px rgba(0,0,0,0.4);">
+            <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:8px;">
+              <h3 style="margin:0; font-size:16px;">Ingest & Embed Parameters</h3>
+              <button class="btn" id="ingestParamsCloseBtn" style="min-width:auto;">✕</button>
+            </div>
+            <div style="display:grid; gap:10px;">
+              <div style="display:grid; gap:6px;">
+                <label class="muted">Chunking</label>
+                <div style="display:grid; grid-template-columns: 1fr 1fr; gap:8px;">
+                  <div>
+                    <label class="muted" for="ing_chunk_size">Size (tokens)</label>
+                    <input id="ing_chunk_size" type="number" value="350" min="50" max="2000" step="10" style="width:100%; background:#0b1220; color:#e5e7eb; border:1px solid var(--border); border-radius:6px; padding:6px;" />
+                  </div>
+                  <div>
+                    <label class="muted" for="ing_chunk_overlap">Overlap (tokens)</label>
+                    <input id="ing_chunk_overlap" type="number" value="50" min="0" max="500" step="5" style="width:100%; background:#0b1220; color:#e5e7eb; border:1px solid var(--border); border-radius:6px; padding:6px;" />
+                  </div>
+                </div>
+                <div style="display:flex; gap:12px; align-items:center; flex-wrap:wrap;">
+                  <label><input type="checkbox" id="ing_respect_headings" checked /> Respect headings</label>
+                  <label><input type="checkbox" id="ing_join_short" checked /> Join short paragraphs</label>
+                  <label><input type="checkbox" id="ing_split_code" checked /> Split code blocks</label>
+                </div>
+              </div>
+              <div style="display:grid; gap:6px;">
+                <label class="muted">Embedding</label>
+                <select id="ing_model_id" style="background:#0b1220; color:#e5e7eb; border:1px solid var(--border); border-radius:6px; padding:6px;">
+                  <option value="simple-hasher">Simple Hasher (Testing)</option>
+                  <option value="all-MiniLM-L6-v2" selected>all-MiniLM-L6-v2 (384 dim)</option>
+                  <option value="all-mpnet-base-v2">all-mpnet-base-v2 (768 dim)</option>
+                  <option value="text-embedding-3-small">OpenAI text-embedding-3-small (1536 dim)</option>
+                  <option value="text-embedding-3-large">OpenAI text-embedding-3-large (3072 dim)</option>
+                </select>
+                <div style="display:grid; grid-template-columns: 1fr 1fr; gap:8px;">
+                  <div>
+                    <label class="muted" for="ing_batch_size">Batch size</label>
+                    <input id="ing_batch_size" type="number" value="64" min="1" max="1000" step="1" style="width:100%; background:#0b1220; color:#e5e7eb; border:1px solid var(--border); border-radius:6px; padding:6px;" />
+                  </div>
+                  <div style="display:flex; align-items:center; padding-top:20px;">
+                <label><input type="checkbox" id="ing_normalize" checked /> Normalize vectors</label>
+                  </div>
+                </div>
+              </div>
+              <div style="display:flex; gap:8px; justify-content:flex-end;">
+                <button class="btn" id="ingestParamsCancelBtn">Cancel</button>
+                <button class="btn" id="ingestParamsStartBtn">Start</button>
+              </div>
+            </div>
+          </div>
+        </div>
+        
+        <!-- Fullscreen Preview Modal -->
+        <div id="previewFullscreenModal" style="position:fixed; inset:0; display:none; background:rgba(0,0,0,0.95); z-index:10000; padding:20px;">
+          <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:16px;">
+            <div id="fullscreenPreviewTitle" style="color:#e5e7eb; font-weight:600; font-size:16px;">Document Preview</div>
+            <div style="display:flex; gap:8px;">
+              <button class="btn" id="fullscreenPopoutBtn" title="Open in new window" style="display:none; min-width:auto; padding:6px 12px;">↗ Popout</button>
+              <button class="btn" id="fullscreenCloseBtn" title="Close fullscreen" style="min-width:auto; padding:6px 12px;">✕ Close</button>
+            </div>
+          </div>
+          <div id="fullscreenPreviewContent" style="width:100%; height:calc(100vh - 80px); background:var(--panel); border:1px solid var(--border); border-radius:8px; overflow:hidden;">
+            <!-- Preview content will be cloned here -->
+          </div>
+        </div>
+        
         <section id="wb-embedding" class="workbench">
           <h2>Embedding</h2>
           <div class="muted">Chunking, overlap, embedding model, storage settings.</div>
@@ -2691,7 +2808,7 @@
       if (!msg) return;
       setTimeout(()=>{ if (el.textContent === msg) el.textContent=''; }, 3000);
     }
-    function renderFilesList(items) {
+    function renderFilesList(items, projectId = null) {
       const list = qs('#filesList'); if (!list) return;
       list.innerHTML = '';
       const arr = Array.isArray(items) ? items : [];
@@ -2702,7 +2819,85 @@
         list.appendChild(div);
         return;
       }
-      const toBadge = (text) => `<span style="border:1px solid var(--border); padding:2px 6px; border-radius:6px; font-size:12px;">${text}</span>`;
+      
+      // Get current project ID if not provided
+      if (!projectId) {
+        try { 
+          projectId = (activeProject && (activeProject.id || activeProject.project_id)) ? (activeProject.id || activeProject.project_id) : localStorage.getItem('active_project_id'); 
+        } catch(_) { 
+          projectId = '';
+        }
+      }
+              const toBadge = (text) => `<span style="border:1px solid var(--border); padding:2px 6px; border-radius:6px; font-size:12px;">${text}</span>`;
+        const getVisibilityBadge = (visibility, fileProjectId, currentProjectId) => {
+          const isPublic = visibility === 'public';
+          const isFromOtherProject = fileProjectId !== currentProjectId;
+          
+          if (isPublic) {
+            const badgeText = isFromOtherProject ? '🌐 Shared' : '🌐 Public';
+            return `<span style="background:rgba(37, 99, 235, 0.2); border:1px solid var(--accent); border-radius:6px; padding:2px 6px; font-size:12px; color:var(--accent);" title="Available to all projects">${badgeText}</span>`;
+          } else {
+            return `<span style="background:var(--panel-2); border:1px solid var(--border); border-radius:6px; padding:2px 6px; font-size:12px; color:var(--muted);" title="Only available in this project">🔒 Private</span>`;
+          }
+        };
+        
+        const getActionButtons = (meta, id, currentProjectId) => {
+          const isSharedFile = meta.visibility === 'public' && meta.project_id !== currentProjectId;
+          const username = localStorage.getItem('odras_user') || '';
+          const isAdminUser = username === 'admin';
+          
+          let buttons = [];
+          
+          // Ingest button - disabled for shared files for non-admin users
+          if (!isSharedFile || isAdminUser) {
+            buttons.push(`<button class="btn" data-action="ingest" data-id="${id}">Ingest</button>`);
+          } else {
+            buttons.push(`<button class="btn" data-action="ingest" data-id="${id}" disabled style="opacity:0.5; cursor:not-allowed;" title="Cannot ingest shared files">Ingest</button>`);
+          }
+          
+          // URL button - always available
+          buttons.push(`<button class="btn" data-action="url" data-id="${id}">URL</button>`);
+          
+          // Admin visibility toggle - only for admin users
+          buttons.push(`<button class="btn admin-only" data-action="toggle-visibility" data-id="${id}" data-visibility="${meta.visibility || 'private'}" title="Toggle visibility (Admin)" style="display:none;">${(meta.visibility === 'public') ? '🔒' : '🌐'}</button>`);
+          
+          // Delete button - disabled for shared files for non-admin users
+          if (!isSharedFile || isAdminUser) {
+            buttons.push(`<button class="btn" data-action="delete" data-id="${id}">Delete</button>`);
+          } else {
+            buttons.push(`<button class="btn" data-action="delete" data-id="${id}" disabled style="opacity:0.5; cursor:not-allowed;" title="Cannot delete shared files">Delete</button>`);
+          }
+          
+          return buttons.join(' ');
+        };
+        
+        const getEditableDocTypeBadge = (docType, fileId, currentProjectId, meta) => {
+          const isSharedFile = meta.visibility === 'public' && meta.project_id !== currentProjectId;
+          const username = localStorage.getItem('odras_user') || '';
+          const isAdminUser = username === 'admin';
+          const canEdit = !isSharedFile || isAdminUser;
+          
+          const colors = {
+            'requirements': { bg: 'rgba(239, 68, 68, 0.2)', border: '#ef4444', color: '#f87171' },
+            'knowledge': { bg: 'rgba(34, 197, 94, 0.2)', border: '#22c55e', color: '#4ade80' },
+            'reference': { bg: 'rgba(168, 85, 247, 0.2)', border: '#a855f7', color: '#c084fc' },
+            'specification': { bg: 'rgba(59, 130, 246, 0.2)', border: '#3b82f6', color: '#60a5fa' },
+            'unknown': { bg: 'var(--panel-2)', border: 'var(--border)', color: 'var(--muted)' }
+          };
+          
+          const style = colors[docType] || colors['unknown'];
+          const cursor = canEdit ? 'pointer' : 'default';
+          const title = canEdit ? 'Click to change document type' : (isSharedFile ? 'Cannot edit shared files' : '');
+          
+          return `<span 
+            class="doc-type-badge${canEdit ? ' editable-doc-type' : ''}" 
+            data-file-id="${fileId}" 
+            data-current-type="${docType}"
+            style="background:${style.bg}; border:1px solid ${style.border}; color:${style.color}; padding:2px 6px; border-radius:6px; font-size:12px; cursor:${cursor};" 
+            title="${title}"
+            ${canEdit ? 'onclick="editDocType(this)"' : ''}
+          >${docType.charAt(0).toUpperCase() + docType.slice(1)}</span>`;
+        };
       const rows = arr.map(meta => {
         const name = meta.filename || meta.name || 'file';
         const id = meta.file_id || meta.id || '';
@@ -2714,14 +2909,13 @@
         return `<tr>
           <td style="width:32px; text-align:center;"><input type="checkbox" class="file-select" data-id="${id}" /></td>
           <td><div style="display:flex; flex-direction:column;"><span style="font-weight:600;">${name}</span><span class="muted" style="font-size:12px;">${id}</span></div></td>
-          <td>${toBadge(docType)}</td>
+          <td>${getEditableDocTypeBadge(tags.docType || 'unknown', id, projectId, meta)}</td>
           <td>${toBadge(status)}</td>
+          <td>${getVisibilityBadge(meta.visibility || 'private', meta.project_id, projectId)}</td>
           <td style="text-align:right;">${sizeStr}</td>
           <td class="muted" style="font-size:12px;">${created}</td>
           <td style="text-align:right;">
-            <button class="btn" data-action="process" data-id="${id}">Process</button>
-            <button class="btn" data-action="url" data-id="${id}">URL</button>
-            <button class="btn" data-action="delete" data-id="${id}">Delete</button>
+            ${getActionButtons(meta, id, projectId)}
           </td>
         </tr>`;
       }).join('');
@@ -2734,6 +2928,7 @@
                 <th data-sort="name" style="cursor:pointer;">Name</th>
                 <th data-sort="type" style="cursor:pointer;">Type</th>
                 <th data-sort="status" style="cursor:pointer;">Status</th>
+                <th data-sort="visibility" style="cursor:pointer;">Visibility</th>
                 <th data-sort="size" style="text-align:right; cursor:pointer;">Size</th>
                 <th>Uploaded</th>
                 <th style="text-align:right;">Actions</th>
@@ -2757,16 +2952,72 @@
       const selAll = list.querySelector('#filesSelectAll');
       if (selAll) selAll.addEventListener('change', () => {
         list.querySelectorAll('.file-select').forEach(cb => { cb.checked = selAll.checked; });
+        
+        // Clear preview when deselecting all
+        if (!selAll.checked) {
+          clearFilePreview();
+        }
       });
-      // Click to select and preview
+      // Update "Select All" state based on individual checkboxes
+      function updateSelectAllState() {
+        const selAll = list.querySelector('#filesSelectAll');
+        if (!selAll) return;
+        
+        const allCheckboxes = list.querySelectorAll('.file-select');
+        const checkedBoxes = list.querySelectorAll('.file-select:checked');
+        
+        if (checkedBoxes.length === 0) {
+          selAll.checked = false;
+          selAll.indeterminate = false;
+          clearFilePreview(); // Clear preview when no files are selected
+        } else if (checkedBoxes.length === allCheckboxes.length) {
+          selAll.checked = true;
+          selAll.indeterminate = false;
+        } else {
+          selAll.checked = false;
+          selAll.indeterminate = true;
+        }
+      }
+      
+      // Handle individual checkbox clicks (without interfering with row clicks)
+      list.querySelectorAll('.file-select').forEach(cb => {
+        cb.addEventListener('click', async (e) => {
+          e.stopPropagation(); // Prevent row click from firing
+          const id = cb.getAttribute('data-id');
+          console.log('🔲 Checkbox clicked for file:', id, 'checked:', cb.checked);
+          
+          // Update Select All state
+          updateSelectAllState();
+          
+          // Update preview based on selection
+          if (cb.checked && id) {
+            await updateFilePreview(id);
+          } else {
+            clearFilePreview();
+          }
+        });
+      });
+      
+      // Click to select and preview (but not on checkboxes or buttons)
       list.querySelectorAll('tbody tr').forEach(tr => {
         tr.addEventListener('click', async (e) => {
           if (e.target.closest('button')) return;
+          if (e.target.closest('.file-select')) return; // Don't interfere with checkbox clicks
           const cb = tr.querySelector('.file-select');
           const id = cb ? cb.getAttribute('data-id') : '';
           if (!id) return;
-          cb.checked = true;
+          // Toggle checkbox state instead of always setting to true
+          cb.checked = !cb.checked;
+          console.log('🔲 Row clicked, toggled checkbox for file:', id, 'checked:', cb.checked);
+          
+          // Update Select All state
+          updateSelectAllState();
+          
+          if (cb.checked) {
           await updateFilePreview(id);
+          } else {
+            clearFilePreview();
+          }
         });
       });
       // Delegate actions
@@ -2778,46 +3029,128 @@
         if (!id) return;
         if (action === 'delete') {
           if (!confirm('Delete this file?')) return;
+          console.log('🗑️  Starting delete for file:', id);
           const ok = await deleteStoredFileViaApi(id);
-          if (ok) { toast('Deleted'); loadLibraryFromApi(); } else { toast('Delete failed', true); }
+          console.log('🗑️  Delete result:', ok);
+          if (ok) { 
+            console.log('🗑️  Refreshing library after successful delete');
+            toast('Deleted'); 
+            await window.loadLibraryFromApi(); 
+            console.log('🗑️  Library refresh completed');
+          } else { 
+            console.error('🗑️  Delete failed, not refreshing library');
+            toast('Delete failed', true); 
+          }
+        }
+        if (action === 'toggle-visibility') {
+          // Check admin status synchronously for immediate response
+          const username = localStorage.getItem('odras_user') || '';
+          const isAdminUser = username === 'admin';
+          
+          console.log('👑 Checking admin access - username:', username, 'isAdmin:', isAdminUser);
+          
+          if (!isAdminUser) {
+            toast('Admin access required', true);
+            return;
+          }
+          
+          const currentVisibility = btn.getAttribute('data-visibility') || 'private';
+          const newVisibility = currentVisibility === 'public' ? 'private' : 'public';
+          const confirmText = `Make this file ${newVisibility}?\n\n${newVisibility === 'public' ? 'Public files are available to all projects.' : 'Private files are only visible in their project.'}`;
+          
+          if (!confirm(confirmText)) return;
+          
+          console.log('👑 Admin toggling file visibility:', id, 'from', currentVisibility, 'to', newVisibility);
+          toast('Updating visibility...');
+          
+          try {
+            const formData = new FormData();
+            formData.append('visibility', newVisibility);
+            
+            console.log('👑 Making API call to /api/files/' + id + '/visibility with visibility:', newVisibility);
+            
+            const response = await fetch(`/api/files/${id}/visibility`, {
+              method: 'PUT',
+              headers: { ...window.authHeader() },
+              body: formData
+            });
+            
+            console.log('👑 API response status:', response.status, response.statusText);
+            
+            const result = await response.json();
+            console.log('👑 API response data:', result);
+            
+            if (result.success) {
+              toast(`File is now ${newVisibility}`);
+              console.log('👑 Refreshing library to show updated visibility');
+              await window.loadLibraryFromApi(); // Refresh to show updated visibility
+            } else {
+              console.error('👑 API returned error:', result);
+              toast('Visibility update failed: ' + (result.error || result.message || 'Unknown error'), true);
+            }
+          } catch (error) {
+            console.error('👑 Visibility update error:', error);
+            toast('Network error updating visibility', true);
+          }
         } else if (action === 'url') {
           const url = await getFileUrlViaApi(id);
           if (url) { try { await navigator.clipboard.writeText(url); toast('URL copied'); } catch(_) { window.open(url, '_blank'); } }
-        } else if (action === 'process') {
-          const ok = await processFileViaApi(id);
-          if (ok) toast('Process started'); else toast('Process failed', true);
+        } else if (action === 'ingest') {
+          const pid = currentProjectId(); if (!pid) { toast('Select a project first', true); return; }
+          if (window.openIngestParamsModal) window.openIngestParamsModal(pid, [id]);
         }
       };
       // Bulk buttons
       try {
         const bulkDelete = qs('#filesBulkDeleteBtn');
         const bulkProcess = qs('#filesBulkProcessBtn');
+        const bulkIngest = qs('#filesBulkIngestBtn');
         const selectedIds = () => Array.from(list.querySelectorAll('.file-select:checked')).map(c => c.getAttribute('data-id'));
         if (bulkDelete) bulkDelete.onclick = async () => {
           const ids = selectedIds(); if (!ids.length) { toast('No files selected', true); return; }
           if (!confirm(`Delete ${ids.length} file(s)?`)) return;
+          console.log('🗑️  Starting bulk delete for files:', ids);
           let ok = 0; for (const id of ids) { if (await deleteStoredFileViaApi(id)) ok++; }
-          toast(`Deleted ${ok}/${ids.length}`); loadLibraryFromApi();
+          console.log('🗑️  Bulk delete completed:', ok, 'of', ids.length);
+          toast(`Deleted ${ok}/${ids.length}`); 
+          console.log('🗑️  Refreshing library after bulk delete');
+          await window.loadLibraryFromApi();
+          console.log('🗑️  Bulk delete library refresh completed');
         };
         if (bulkProcess) bulkProcess.onclick = async () => {
           const ids = selectedIds(); if (!ids.length) { toast('No files selected', true); return; }
           let ok = 0; for (const id of ids) { if (await processFileViaApi(id)) ok++; }
           toast(`Started ${ok}/${ids.length}`);
         };
+        if (bulkIngest) bulkIngest.onclick = async () => {
+          const ids = selectedIds(); if (!ids.length) { toast('No files selected', true); return; }
+          const pid = currentProjectId(); if (!pid) { toast('Select a project first', true); return; }
+          if (window.openIngestParamsModal) window.openIngestParamsModal(pid, ids);
+        };
       } catch(_) {}
     }
     function renderStagedList() {
       const list = qs('#stagedList'); if (!list) return;
+      const docTypeSelector = qs('#stagedDocTypeSelector');
+      
       list.innerHTML = '';
+      
       if (!filesState.staged.length) {
-        const div = document.createElement('div'); div.className = 'muted'; div.textContent = 'No staged files.'; list.appendChild(div); return;
+        const div = document.createElement('div'); div.className = 'muted'; div.textContent = 'No staged files.'; list.appendChild(div);
+        // Hide document type selector when no files are staged
+        if (docTypeSelector) docTypeSelector.style.display = 'none';
+        return;
       }
+      
+      // Show document type selector when files are staged
+      if (docTypeSelector) docTypeSelector.style.display = 'block';
       filesState.staged.forEach((f, idx) => {
         const row = document.createElement('div'); row.className = 'card'; row.style.display='grid'; row.style.gridTemplateColumns='1fr auto'; row.style.alignItems='center'; row.style.padding='8px';
         const left = document.createElement('div'); left.innerHTML = `<strong>${f.name}</strong> <span class="muted">${f.size} bytes</span>`;
-        const actions = document.createElement('div');
+        const actions = document.createElement('div'); actions.style.display='flex'; actions.style.gap='8px';
+        const up = document.createElement('button'); up.className='btn'; up.textContent='Upload'; up.onclick=async()=>{ const ok = await (window.odrasUploadOne ? window.odrasUploadOne(f) : Promise.resolve(false)); if (ok) { toast('Uploaded 1/1'); filesState.staged.splice(idx,1); renderStagedList(); try { if (window.odrasLoadLibrary) await window.odrasLoadLibrary(); } catch(_) {} } else { toast('Upload failed', true); } };
         const rem = document.createElement('button'); rem.className='btn'; rem.textContent='Remove'; rem.onclick=()=>{ filesState.staged.splice(idx,1); renderStagedList(); };
-        actions.appendChild(rem);
+        actions.appendChild(up); actions.appendChild(rem);
         row.appendChild(left); row.appendChild(actions);
         list.appendChild(row);
       });
@@ -2837,6 +3170,7 @@
       const urlInput = qs('#fileUrlInput');
       const urlBtn = qs('#fileUrlImportBtn');
       const refreshBtn = qs('#filesRefreshBtn');
+      const includePublicCheckbox = qs('#filesIncludePublic');
       const docType = qs('#filesDocType');
       const statusSel = qs('#filesStatus');
       const tags = qs('#filesTags');
@@ -2847,36 +3181,106 @@
         try { const pid = (activeProject && (activeProject.id || activeProject.project_id)) ? (activeProject.id || activeProject.project_id) : localStorage.getItem('active_project_id'); return pid || ''; } catch(_) { return ''; }
       }
       async function uploadOne(fileMeta) {
-        const pid = currentProjectId(); if (!pid) { toast('Select a project first', true); return false; }
+        console.log('🔼 Starting upload for:', fileMeta.name, fileMeta.size, 'bytes');
+        
+        const pid = currentProjectId(); 
+        console.log('📁 Project ID for upload:', pid);
+        console.log('📁 activeProject:', window.activeProject);
+        console.log('📁 localStorage project_id:', localStorage.getItem('active_project_id'));
+        if (!pid) { 
+          console.error('❌ No project selected');
+          toast('Select a project first', true); 
+          return false; 
+        }
+        
+        const headers = { ...authHeader() };
+        console.log('🔐 Auth headers:', headers.Authorization ? 'Present' : 'Missing');
+        if (!headers.Authorization) { 
+          console.error('❌ No auth token');
+          toast('Login required', true); 
+          return false; 
+        }
+        
         const fd = new FormData();
         fd.append('file', fileMeta);
         fd.append('project_id', pid);
+        
         try {
           const t = (tags && tags.value || '').trim();
           const list = t ? t.split(',').map(s=>s.trim()).filter(Boolean) : [];
-          const tagObj = { docType: (docType && docType.value) || 'unknown', status: 'new' };
+          // Use document type from staged file if available, otherwise fall back to filter dropdown
+          const selectedDocType = fileMeta.docType || (docType && docType.value) || 'unknown';
+          const tagObj = { docType: selectedDocType, status: 'new' };
           if (list.length) tagObj.userTags = list;
           fd.append('tags', JSON.stringify(tagObj));
-        } catch(_) {}
+          console.log('🏷️  Tags with document type:', tagObj);
+        } catch(e) {
+          console.warn('⚠️  Tags error:', e);
+        }
+        
         try {
-          const res = await fetch('/api/files/upload', { method: 'POST', headers: { ...authHeader() }, body: fd });
-          const js = await res.json().catch(()=>({}));
-          if (!res.ok || js.success === false) { throw new Error(js.error || 'upload failed'); }
+          console.log('📤 Making upload request to /api/files/upload');
+          const res = await fetch('/api/files/upload', { method: 'POST', headers, body: fd });
+          console.log('📥 Upload response status:', res.status, res.statusText);
+          
+          const js = await res.json().catch((e)=>{ 
+            console.error('❌ Failed to parse response JSON:', e); 
+            return {}; 
+          });
+          console.log('📄 Upload response data:', js);
+          
+          if (!res.ok || js.success === false) { 
+            const errorMsg = js.error || js.detail || 'upload failed';
+            console.error('❌ Upload failed:', errorMsg);
+            toast(`Upload failed: ${errorMsg}`, true);
+            throw new Error(errorMsg); 
+          }
+          
+          console.log('✅ Upload successful, file_id:', js.file_id);
+          toast(`Uploaded: ${fileMeta.name}`, false);
           return true;
         } catch (err) {
+          console.error('❌ Upload exception:', err);
+          toast(`Upload error: ${err.message}`, true);
           return false;
         }
       }
+      // Expose for other handlers defined outside this scope
+      try { window.odrasUploadOne = uploadOne; } catch(_) {}
       async function loadLibraryFromApi() {
-        const pid = currentProjectId(); if (!pid) { renderFilesList([]); return; }
+        const pid = currentProjectId(); 
+        console.log('📚 Loading library for project:', pid);
+        console.log('📚 activeProject:', window.activeProject);
+        console.log('📚 localStorage project_id:', localStorage.getItem('active_project_id'));
+        if (!pid) { 
+          console.log('📚 No project ID, clearing library');
+          renderFilesList([], ''); 
+          return; 
+        }
+        
+        
+        const includePublicCheckbox = qs('#filesIncludePublic');
+        const includePublic = includePublicCheckbox ? includePublicCheckbox.checked : false;
+        
         try {
-          const res = await fetch(`/api/files?project_id=${encodeURIComponent(pid)}`, { headers: { ...authHeader() } });
+          const url = `/api/files?project_id=${pid}${includePublic ? '&include_public=true' : ''}`;
+          console.log('📚 Fetching files from', url);
+          const res = await fetch(url, { headers: { ...authHeader() } });
+          console.log('📚 Files API response status:', res.status, res.statusText);
+          
           const js = await res.json();
+          console.log('📚 Files API response data:', js);
+          console.log('📚 Individual files:', js.files);
+          
           let items = js && js.files ? js.files : [];
+          console.log('📚 Raw files count:', items.length);
+          
           // Client-side filters
           const wantType = (docType && docType.value) || '';
           const wantStatus = (statusSel && statusSel.value) || '';
           const tagFilter = (tags && tags.value || '').trim().toLowerCase();
+          console.log('📚 Filters - Type:', wantType, 'Status:', wantStatus, 'Tags:', tagFilter);
+          
           const filtered = items.filter(m => {
             const t = m.tags || {};
             const okType = !wantType || (t.docType || 'unknown') === wantType;
@@ -2884,9 +3288,128 @@
             const okTags = !tagFilter || JSON.stringify(t).toLowerCase().includes(tagFilter);
             return okType && okStatus && okTags;
           });
+          
+          console.log('📚 Filtered files count:', filtered.length);
+          if (filtered.length > 0) {
+            console.log('📚 Sample file:', filtered[0]);
+          } else {
+            console.log('📚 No files after filtering. Original count:', items.length);
+            console.log('📚 Filter settings - Type:', wantType, 'Status:', wantStatus, 'Tags:', tagFilter);
+            if (items.length > 0) {
+              console.log('📚 Sample raw file:', items[0]);
+            }
+          }
+          
           filesState.library = filtered;
-          renderFilesList(sortItems(filtered));
-        } catch(_) { renderFilesList([]); }
+          renderFilesList(sortItems(filtered), pid);
+          console.log('📚 Library updated and rendered');
+          
+          // Show admin buttons if user is admin
+          toggleAdminButtons();
+        } catch(e) { 
+          console.error('📚 Library loading failed:', e);
+          renderFilesList([], pid);
+          
+          // Show admin buttons if user is admin (even on error)
+          toggleAdminButtons();
+        }
+      }
+      // Show/hide admin buttons after rendering list
+      async function toggleAdminButtons() {
+        try {
+          const adminStatus = await isAdmin();
+          console.log('👑 Admin status:', adminStatus);
+          
+          document.querySelectorAll('.admin-only').forEach(btn => {
+            btn.style.display = adminStatus ? 'inline-block' : 'none';
+          });
+        } catch (error) {
+          console.error('👑 Error checking admin status:', error);
+          // Hide admin buttons on error
+          document.querySelectorAll('.admin-only').forEach(btn => {
+            btn.style.display = 'none';
+          });
+        }
+      }
+      // Expose functions globally for staged-list handlers and other components
+      try { 
+        window.odrasLoadLibrary = loadLibraryFromApi; 
+        window.loadLibraryFromApi = loadLibraryFromApi; // Also expose without prefix for internal use
+        window.authHeader = authHeader; // Expose auth header function globally
+        window.editDocType = editDocType; // Expose document type editor globally
+      } catch(_) {}
+      
+      // Document type inline editor
+      async function editDocType(badgeElement) {
+        const fileId = badgeElement.getAttribute('data-file-id');
+        const currentType = badgeElement.getAttribute('data-current-type');
+        
+        // Create inline dropdown
+        const select = document.createElement('select');
+        select.style.cssText = 'background:#0b1220; color:#e5e7eb; border:1px solid var(--border); border-radius:4px; padding:2px 4px; font-size:12px;';
+        
+        const options = ['unknown', 'requirements', 'knowledge', 'reference', 'specification'];
+        options.forEach(type => {
+          const option = document.createElement('option');
+          option.value = type;
+          option.textContent = type.charAt(0).toUpperCase() + type.slice(1);
+          option.selected = type === currentType;
+          select.appendChild(option);
+        });
+        
+        // Replace badge with dropdown temporarily
+        const originalHTML = badgeElement.outerHTML;
+        badgeElement.parentNode.replaceChild(select, badgeElement);
+        select.focus();
+        
+        // Handle selection
+        const handleChange = async (newType) => {
+          if (newType === currentType) {
+            // No change, restore original badge
+            select.parentNode.innerHTML = originalHTML;
+            return;
+          }
+          
+          try {
+            // Update file tags on server
+            const response = await fetch(`/api/files/${fileId}/tags`, {
+              method: 'PUT',
+              headers: { 
+                'Content-Type': 'application/json',
+                ...window.authHeader() 
+              },
+              body: JSON.stringify({ tags: { docType: newType } })
+            });
+            
+            const result = await response.json();
+            if (result.success) {
+              toast(`Document type changed to "${newType}"`);
+              // Refresh library to show updated badge
+              window.loadLibraryFromApi();
+            } else {
+              throw new Error(result.error || 'Update failed');
+            }
+          } catch (error) {
+            console.error('Error updating document type:', error);
+            toast(`Failed to update document type: ${error.message}`, true);
+            // Restore original badge on error
+            select.parentNode.innerHTML = originalHTML;
+          }
+        };
+        
+        // Handle dropdown events
+        select.addEventListener('change', () => handleChange(select.value));
+        select.addEventListener('blur', () => handleChange(select.value));
+        select.addEventListener('keydown', (e) => {
+          if (e.key === 'Enter') {
+            e.preventDefault();
+            handleChange(select.value);
+          } else if (e.key === 'Escape') {
+            e.preventDefault();
+            // Restore original badge
+            select.parentNode.innerHTML = originalHTML;
+          }
+        });
       }
       function sortItems(items) {
         const arr = Array.from(items || []);
@@ -2910,15 +3433,26 @@
           filesState.lastFiles = Array.from(files || []);
           filesState.staged.push(...filesState.lastFiles);
           renderStagedList();
-          const n = filesState.lastFiles.length; if (n) toast(`${n} file(s) staged. Click Upload All to upload.`);
+          const n = filesState.lastFiles.length; if (n) toast(`${n} file(s) staged. Click Upload next to a file or Upload All.`); else toast('No files selected', true);
+          try { input.value = ''; } catch(_) {}
         });
       }
       if (choose && input) {
-        choose.addEventListener('click', ()=> input.click());
+        choose.addEventListener('click', ()=> { try { input.value = ''; } catch(_) {}; input.click(); });
       }
       if (drop) {
-        ;['dragenter','dragover'].forEach(ev => drop.addEventListener(ev, (e)=>{ e.preventDefault(); drop.style.background = '#0f1628'; }));
-        ;['dragleave','drop'].forEach(ev => drop.addEventListener(ev, (e)=>{ e.preventDefault(); drop.style.background = 'transparent'; }));
+        ;['dragenter','dragover'].forEach(ev => drop.addEventListener(ev, (e)=>{ 
+          e.preventDefault(); 
+          drop.style.background = 'rgba(37, 99, 235, 0.2)'; 
+          drop.style.borderColor = 'var(--accent)'; 
+          drop.style.color = 'var(--accent)'; 
+        }));
+        ;['dragleave','drop'].forEach(ev => drop.addEventListener(ev, (e)=>{ 
+          e.preventDefault(); 
+          drop.style.background = 'rgba(15, 22, 40, 0.3)'; 
+          drop.style.borderColor = 'var(--border)'; 
+          drop.style.color = '#9aa4b2'; 
+        }));
         drop.addEventListener('drop', (e) => {
           const dt = e.dataTransfer; const files = dt && dt.files ? dt.files : [];
           previewSelectedFiles(files);
@@ -2927,32 +3461,107 @@
           renderStagedList();
           const n = filesState.lastFiles.length; if (n) toast(`${n} file(s) staged. Click Upload All to upload.`);
         });
-        drop.addEventListener('click', ()=>{ if (input) input.click(); });
+        drop.addEventListener('click', ()=>{ if (input) { try { input.value = ''; } catch(_) {}; input.click(); } });
         drop.addEventListener('keydown', (e)=>{ if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); if (input) input.click(); } });
       }
+      
+      // Refresh button and Include Public Files checkbox handlers
+      if (refreshBtn) {
+        refreshBtn.addEventListener('click', () => {
+          console.log('🔄 Manual library refresh triggered');
+          window.loadLibraryFromApi();
+        });
+      }
+      
+      if (includePublicCheckbox) {
+        // Restore checkbox state from localStorage
+        const savedState = localStorage.getItem('files_include_public');
+        if (savedState !== null) {
+          includePublicCheckbox.checked = savedState === 'true';
+          console.log('🌐 Restored "Include public files" state:', includePublicCheckbox.checked);
+        }
+        
+        includePublicCheckbox.addEventListener('change', () => {
+          console.log('🌐 Include public files changed:', includePublicCheckbox.checked);
+          // Save checkbox state to localStorage
+          localStorage.setItem('files_include_public', includePublicCheckbox.checked.toString());
+          console.log('🌐 Saved "Include public files" state to localStorage');
+          window.loadLibraryFromApi(); // Refresh library with new visibility setting
+        });
+      }
+      
+      // Auto-refresh Files Workbench when project changes
+      let lastProjectId = currentProjectId();
+      setInterval(() => {
+        const newProjectId = currentProjectId();
+        if (newProjectId !== lastProjectId) {
+          console.log('🔄 Project changed from', lastProjectId, 'to', newProjectId);
+          lastProjectId = newProjectId;
+          // Only refresh if we're currently viewing the Files Workbench
+          const filesSection = qs('#wb-files');
+          if (filesSection && filesSection.style.display !== 'none') {
+            console.log('🔄 Auto-refreshing Files Workbench for new project');
+            window.loadLibraryFromApi();
+          }
+        }
+      }, 1000); // Check every second
       if (urlBtn && urlInput) {
-        urlBtn.addEventListener('click', () => {
+        urlBtn.addEventListener('click', async () => {
           const u = (urlInput.value || '').trim();
           const el = qs('#uploadPreview');
           if (!u) { toast('Please enter a URL', true); if (el) el.textContent=''; return; }
           try { new URL(u); } catch(_) { toast('Invalid URL', true); return; }
-          if (el) el.textContent = `URL ready: ${u}`;
-          toast('URL staged for import');
+          const pid = currentProjectId(); if (!pid) { toast('Select a project first', true); return; }
+          const fd = new FormData(); fd.append('url', u); fd.append('project_id', pid);
+          try {
+            const res = await fetch('/api/files/import-url', { method: 'POST', body: fd });
+            const js = await res.json().catch(()=>({}));
+            if (!res.ok || js.success === false) throw new Error(js.detail || js.error || 'Import failed');
+            if (el) el.textContent = `Imported URL: ${u}`;
+            toast('Imported URL');
+            loadLibraryFromApi();
+          } catch(e) {
+            toast('Import failed', true);
+          }
         });
       }
       const uploadAll = qs('#filesUploadAllBtn');
       const clearStaged = qs('#filesClearStagedBtn');
+      const setStagedDocTypeBtn = qs('#setStagedDocType');
+      
       if (clearStaged) clearStaged.addEventListener('click', ()=>{ filesState.staged = []; renderStagedList(); previewSelectedFiles([]); });
+      
+      // Handle document type selector for staged files
+      if (setStagedDocTypeBtn) {
+        setStagedDocTypeBtn.addEventListener('click', () => {
+          const selectedType = qs('#stagedDocType')?.value || 'unknown';
+          
+          // Add docType property to all staged files
+          filesState.staged.forEach(file => {
+            file.docType = selectedType;
+          });
+          
+          toast(`Set document type to "${selectedType}" for ${filesState.staged.length} staged file(s)`);
+          
+          // Update hint text
+          const hint = qs('#stagedDocTypeHint');
+          if (hint) {
+            hint.textContent = `${filesState.staged.length} file(s) will be uploaded as "${selectedType}"`;
+          }
+        });
+      }
       if (uploadAll) uploadAll.addEventListener('click', async ()=>{
         if (!filesState.staged.length) { toast('Nothing to upload', true); return; }
-        const total = filesState.staged.length; let ok = 0;
-        for (const f of filesState.staged) { const res = await uploadOne(f); if (res) ok++; }
-        toast(`Uploaded ${ok}/${total}`);
-        filesState.staged = []; renderStagedList(); previewSelectedFiles([]);
-        loadLibraryFromApi();
+        const total = filesState.staged.length; let ok = 0; const keep = [];
+        for (const f of filesState.staged) { const res = await (window.odrasUploadOne ? window.odrasUploadOne(f) : Promise.resolve(false)); if (res) ok++; else keep.push(f); }
+        const failed = total - ok;
+        toast(`Uploaded ${ok}/${total}${failed?` (failed ${failed})`:''}`);
+        filesState.staged = keep; renderStagedList(); previewSelectedFiles(keep);
+        try { if (window.odrasLoadLibrary) await window.odrasLoadLibrary(); } catch(_) {}
       });
       const triggerRefresh = () => {
         loadLibraryFromApi();
+        try { refreshRunsPanel(); } catch(_) {}
       };
       if (refreshBtn) refreshBtn.addEventListener('click', triggerRefresh);
       if (docType) docType.addEventListener('change', triggerRefresh);
@@ -2961,9 +3570,138 @@
       // Initial empty list
       loadLibraryFromApi();
       renderStagedList();
+
+      // Ingest params modal handlers
+      const modal = qs('#ingestParamsModal');
+      const btnClose = qs('#ingestParamsCloseBtn');
+      const btnCancel = qs('#ingestParamsCancelBtn');
+      const btnStart = qs('#ingestParamsStartBtn');
+      const inputChunk = qs('#ing_chunk_size');
+      const inputOverlap = qs('#ing_chunk_overlap');
+      const inputModel = qs('#ing_model_id');
+      const inputBatch = qs('#ing_batch_size');
+      const chkHeadings = qs('#ing_respect_headings');
+      const chkJoin = qs('#ing_join_short');
+      const chkSplit = qs('#ing_split_code');
+      const chkNorm = qs('#ing_normalize');
+      let modalCtx = { projectId: '', fileIds: [] };
+      
+      // Load embedding models from API and populate selector
+      async function loadEmbeddingModels() {
+        try {
+          const response = await fetch('/api/embedding-models/');
+          if (response.ok) {
+            const data = await response.json();
+            if (data.success && data.models && inputModel) {
+              // Clear existing options
+              inputModel.innerHTML = '';
+              
+              // Add models from API
+              data.models.forEach(model => {
+                const option = document.createElement('option');
+                option.value = model.id;
+                option.textContent = `${model.name} (${model.dimensions} dim)`;
+                if (model.status === 'deprecated') {
+                  option.textContent += ' [DEPRECATED]';
+                  option.disabled = true;
+                }
+                if (model.id === 'all-MiniLM-L6-v2') {
+                  option.selected = true; // Default selection
+                }
+                inputModel.appendChild(option);
+              });
+            }
+          }
+        } catch (error) {
+          console.warn('Failed to load embedding models:', error);
+          // Fall back to hardcoded options if API fails
+        }
+      }
+      
+      function openIngestParamsModal(projectId, fileIds) {
+        modalCtx = { projectId, fileIds };
+        loadEmbeddingModels(); // Load latest models when modal opens
+        if (modal) modal.style.display = 'flex';
+      }
+      function closeIngestParamsModal() { if (modal) modal.style.display = 'none'; }
+      if (btnClose) btnClose.addEventListener('click', closeIngestParamsModal);
+      if (btnCancel) btnCancel.addEventListener('click', closeIngestParamsModal);
+      if (modal) modal.addEventListener('click', (e)=>{ if (e.target === modal) closeIngestParamsModal(); });
+      if (btnStart) btnStart.addEventListener('click', async () => {
+        const pid = modalCtx.projectId; const ids = modalCtx.fileIds;
+        if (!pid || !ids || !ids.length) { closeIngestParamsModal(); return; }
+        const sizeTokens = parseInt((inputChunk && inputChunk.value) || '350', 10);
+        const overlapTokens = parseInt((inputOverlap && inputOverlap.value) || '50', 10);
+        const modelId = (inputModel && inputModel.value) || 'all-MiniLM-L6-v2';
+        const batchSize = parseInt((inputBatch && inputBatch.value) || '64', 10);
+        const params = {
+          chunking: {
+            strategy: 'semantic',
+            sizeTokens,
+            overlapTokens,
+            respectHeadings: !!(chkHeadings && chkHeadings.checked),
+            joinShortParagraphs: !!(chkJoin && chkJoin.checked),
+            splitCodeBlocks: !!(chkSplit && chkSplit.checked)
+          },
+          embedding: {
+            modelId,
+            normalize: !!(chkNorm && chkNorm.checked),
+            batchSize
+          }
+        };
+        // Optimistically mark status=processing for selected files
+        try { await Promise.all(ids.map(async (fid)=>{
+          await fetch(`/api/files/${encodeURIComponent(fid)}/tags`, { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ tags: { status: 'processing' } }) });
+        })); } catch(_) {}
+        closeIngestParamsModal();
+        const res = await startWorkflowStartApi('ingestion_pipeline', pid, ids, params);
+        if (res.ok) { toast('Ingestion started'); try { refreshRunsPanel(); } catch(_) {} } else { toast(`Ingestion failed: ${res.error}`, true); }
+      });
+      // Expose for bulk handler
+      window.openIngestParamsModal = openIngestParamsModal;
     }
+
+    // Runs panel
+    async function loadRecentRuns() {
+      try { const res = await fetch('/api/runs'); const js = await res.json(); return (js && js.runs) ? js.runs : []; } catch(_) { return []; }
+    }
+    async function refreshRunsPanel() {
+      const pane = qs('#fileRunsContent'); if (!pane) return;
+      const runs = await loadRecentRuns();
+      if (!runs.length) { pane.textContent = 'No runs yet.'; return; }
+      const rows = runs.slice(-10).reverse().map(r => {
+        const name = r.filename || r.processKey || 'run';
+        const status = r.status || 'started';
+        const url = r.camunda_url || '';
+        const when = r.started_at ? new Date(r.started_at).toLocaleString() : '';
+        const link = url ? `<a href="${url}" target="_blank">Open</a>` : '';
+        return `<div style="display:flex; justify-content:space-between; gap:8px; align-items:center;">
+          <span>${name}</span>
+          <span class="muted">${status}</span>
+          <span>${link}</span>
+        </div>`;
+      }).join('');
+      pane.innerHTML = rows;
+    }
+    // Initial runs load
+    try { refreshRunsPanel(); } catch(_) {}
     async function deleteStoredFileViaApi(fileId) {
-      try { const res = await fetch(`/api/files/${encodeURIComponent(fileId)}`, { method: 'DELETE' }); return res.ok; } catch(_) { return false; }
+      console.log('🗑️  Deleting file:', fileId);
+      try { 
+        const res = await fetch(`/api/files/${encodeURIComponent(fileId)}`, { method: 'DELETE' }); 
+        console.log('🗑️  Delete response:', res.status, res.statusText);
+        
+        if (res.ok) {
+          console.log('🗑️  Delete successful');
+          return true;
+        } else {
+          console.error('🗑️  Delete failed:', res.status);
+          return false;
+        }
+      } catch(e) { 
+        console.error('🗑️  Delete error:', e);
+        return false; 
+      }
     }
     async function getFileUrlViaApi(fileId) {
       try { const res = await fetch(`/api/files/${encodeURIComponent(fileId)}/url`); const js = await res.json(); return (js && js.url) ? js.url : (js && js.success && js.file_id ? js.url : null); } catch(_) { return null; }
@@ -2971,69 +3709,439 @@
     async function processFileViaApi(fileId) {
       try { const fd = new FormData(); const res = await fetch(`/api/files/${encodeURIComponent(fileId)}/process`, { method: 'POST', body: fd }); return res.ok; } catch(_) { return false; }
     }
+    function clearFilePreview() {
+      console.log('👁️  Clearing file preview');
+      const pane = qs('#filePreviewContent');
+      const metaPane = qs('#fileMetaContent');
+      
+      if (pane) {
+        pane.innerHTML = '<div class="muted" style="padding:20px; text-align:center;">Select a file to preview.</div>';
+      }
+      
+      if (metaPane) {
+        metaPane.innerHTML = '';
+      }
+      
+      // Hide/clear preview controls data
+      const controls = qs('#previewControls');
+      if (controls) {
+        controls.removeAttribute('data-file-id');
+        controls.removeAttribute('data-filename');
+        controls.removeAttribute('data-url');
+      }
+      
+      // Clear current preview data
+      currentPreviewData = { fileId: '', filename: '', url: '' };
+    }
+
     async function updateFilePreview(fileId) {
+      console.log('👁️  Starting preview for file:', fileId);
       try {
         const url = await getFileUrlViaApi(fileId);
-        const pane = qs('#filePreviewContent'); if (!pane) return;
+        console.log('👁️  Got file URL:', url);
+        
+        const pane = qs('#filePreviewContent'); 
         const metaPane = qs('#fileMetaContent');
-        if (!url) { pane.textContent = 'Preview unavailable.'; if (metaPane) metaPane.textContent=''; return; }
-        // Derive extension
-        const ext = (function(){ try { const u=new URL(url); const p=u.pathname.toLowerCase(); const m=p.match(/\.([a-z0-9]+)$/); return m?m[1]:''; } catch(_) { return ''; } })();
-        // Try HEAD for content-type
-        let contentType = '';
-        try { const head = await fetch(url, { method: 'HEAD' }); contentType = head.headers.get('Content-Type') || ''; } catch(_) {}
-        // Render minimal metadata
+        
+        if (!pane) { 
+          console.error('👁️  Preview pane not found');
+          return; 
+        }
+        
+        if (!url) { 
+          console.log('👁️  No URL available, showing unavailable message');
+          pane.textContent = 'Preview unavailable.'; 
+          if (metaPane) metaPane.textContent=''; 
+          return; 
+        }
+        
+        // Get file metadata from the current library state
+        const fileMetadata = filesState.library.find(f => f.file_id === fileId);
+        console.log('👁️  File metadata:', fileMetadata);
+        
+        // Use metadata for extension and content type
+        const filename = fileMetadata ? fileMetadata.filename : '';
+        const metaContentType = fileMetadata ? fileMetadata.content_type : '';
+        
+        // Extract extension from filename instead of URL
+        const ext = filename ? filename.toLowerCase().split('.').pop() || '' : '';
+        console.log('👁️  File extension from metadata:', ext, 'from filename:', filename);
+        
+        // Use metadata content type, fallback to HEAD request
+        let contentType = metaContentType || '';
+        if (!contentType) {
+          console.log('👁️  No content type in metadata, trying HEAD request...');
+          try { 
+            const head = await fetch(url, { method: 'HEAD' }); 
+            contentType = head.headers.get('Content-Type') || '';
+            console.log('👁️  HEAD request successful, content type:', contentType);
+          } catch(e) {
+            console.log('👁️  HEAD request failed (expected for presigned URLs):', e.message);
+          }
+        } else {
+          console.log('👁️  Using content type from metadata:', contentType);
+        }
+        
+        // Render enhanced metadata
         try {
-          if (metaPane) metaPane.innerHTML = `<div style="display:grid; gap:4px;">
-            <div><strong>File ID:</strong> ${fileId}</div>
-            <div><strong>URL:</strong> <a href="${url}" target="_blank">Open</a></div>
-            <div><strong>Type:</strong> ${contentType || ext || 'unknown'}</div>
+          if (metaPane) {
+            const size = fileMetadata ? fileMetadata.size : 0;
+            const sizeStr = size > 1024 * 1024 ? `${(size / (1024*1024)).toFixed(1)} MB` : size > 1024 ? `${(size / 1024).toFixed(1)} KB` : `${size} bytes`;
+            const tags = fileMetadata ? fileMetadata.tags || {} : {};
+            const docType = tags.docType || 'unknown';
+            const status = tags.status || 'new';
+            
+            metaPane.innerHTML = `<div style="display:grid; gap:4px; font-size:12px;">
+              <div><strong>Filename:</strong> ${filename || 'Unknown'}</div>
+              <div><strong>Type:</strong> ${docType} (${contentType || ext || 'unknown'})</div>
+              <div><strong>Size:</strong> ${sizeStr}</div>
+              <div><strong>Status:</strong> ${status}</div>
+              <div><strong>Actions:</strong> <a href="${url}" target="_blank" style="color:var(--accent);">Open</a></div>
           </div>`;
-        } catch(_) {}
-        // PDF inline
+          }
+        } catch(e) { 
+          console.error('👁️  Metadata render error:', e);
+        }
+        // PDF preview (with multiple rendering options)
         if (ext === 'pdf' || (contentType && contentType.includes('pdf'))) {
-          pane.innerHTML = `<embed src="${url}" type="application/pdf" style="width:100%; height:60vh;" />`;
+          console.log('👁️  Rendering PDF preview for URL:', url);
+          
+          // Create container with fallback structure
+          const pdfContainer = `
+            <div style="border:1px solid var(--border); border-radius:6px; overflow:hidden;">
+              <div id="pdf-iframe-${fileId}" style="width:100%; height:500px; display:block;">
+                <iframe src="${url}#toolbar=0&navpanes=0" style="width:100%; height:100%; border:none;"></iframe>
+              </div>
+              
+              <div id="pdf-fallback-${fileId}" style="display:none; padding:40px; text-align:center; background:var(--panel-2);">
+                <div style="margin-bottom:16px; color:var(--muted);">
+                  <svg style="width:48px; height:48px; margin-bottom:12px;" fill="currentColor" viewBox="0 0 24 24">
+                    <path d="M14,2H6A2,2 0 0,0 4,4V20A2,2 0 0,0 6,22H18A2,2 0 0,0 20,20V8L14,2M18,20H6V4H13V9H18V20Z"/>
+                  </svg>
+                  <br/>
+                  <strong>PDF Document</strong>
+                  <br/>
+                  <small>Click to open in new tab</small>
+                </div>
+                <div style="display:flex; gap:12px; justify-content:center; flex-wrap:wrap;">
+                  <a href="${url}" target="_blank" class="btn" style="text-decoration:none;">
+                    📄 Open PDF
+                  </a>
+                  <button class="btn" onclick="navigator.clipboard.writeText('${url}').then(()=>this.textContent='✓ Copied').catch(()=>this.textContent='Copy failed');">
+                    📋 Copy URL
+                  </button>
+                </div>
+              </div>
+            </div>
+          `;
+          
+          pane.innerHTML = pdfContainer;
+          
+          // Add proper event handling after DOM insertion
+          setTimeout(() => {
+            const iframe = pane.querySelector(`#pdf-iframe-${fileId} iframe`);
+            const fallbackDiv = pane.querySelector(`#pdf-fallback-${fileId}`);
+            const iframeContainer = pane.querySelector(`#pdf-iframe-${fileId}`);
+            
+            if (iframe && fallbackDiv && iframeContainer) {
+              // Set up error handling
+              iframe.onerror = () => {
+                console.error('👁️ PDF iframe failed to load');
+                iframeContainer.style.display = 'none';
+                fallbackDiv.style.display = 'block';
+              };
+              
+              iframe.onload = () => {
+                console.log('👁️ PDF iframe onload triggered');
+                // Check if it actually loaded a PDF or just showed source
+                setTimeout(() => {
+                  try {
+                    // If we can't access contentDocument, assume it's working (CORS blocked)
+                    iframe.contentDocument;
+                    console.log('👁️ PDF iframe content accessible - might be showing source');
+                    // For now, assume PDF is working if no error occurs
+                  } catch(e) {
+                    console.log('👁️ PDF iframe CORS blocked - PDF is likely rendering correctly');
+                  }
+                }, 1000);
+              };
+              
+              // Check after 3 seconds if iframe seems to be working
+              setTimeout(() => {
+                try {
+                  // Simple heuristic: if iframe is still visible, assume it's working
+                  if (iframeContainer.style.display !== 'none') {
+                    console.log('👁️ PDF iframe appears to be working');
+                  }
+                } catch(e) {
+                  console.log('👁️ PDF iframe error check failed:', e);
+                }
+              }, 3000);
+            }
+          }, 100);
+          
           return;
         }
-        // Image inline
+        
+        // Image inline (with size constraints)
         if (['png','jpg','jpeg','gif','webp','bmp','svg'].includes(ext) || (contentType && contentType.startsWith('image/'))) {
-          pane.innerHTML = `<img src="${url}" alt="preview" style="max-width:100%; height:auto;" />`;
+          console.log('👁️  Rendering image preview');
+          pane.innerHTML = `<div style="text-align:center; padding:10px;">
+            <img src="${url}" alt="preview" style="max-width:100%; max-height:300px; height:auto; border-radius:6px; box-shadow:0 2px 8px rgba(0,0,0,0.1);" />
+          </div>`;
           return;
         }
-        // CSV table (first ~40 rows)
+        
+        // CSV table (full content with responsive styling)
         if (ext === 'csv' || (contentType && contentType.includes('csv'))) {
+          console.log('👁️  Rendering CSV preview');
+          try {
           const res = await fetch(url);
-          if (!res.ok) { pane.textContent = 'Preview unavailable.'; return; }
+            if (!res.ok) throw new Error('Fetch failed');
           const text = await res.text();
-          const lines = text.split(/\r?\n/).slice(0, 40);
-          const cells = lines.map(l => l.split(',').map(x => x.replace(/&/g,'&amp;').replace(/</g,'&lt;')));
+            const lines = text.split(/\r?\n/).filter(line => line.trim()); // Show all rows, filter empty lines
+            const cells = lines.map(l => l.split(',').map(x => x.replace(/&/g,'&amp;').replace(/</g,'&lt;'))); // No cell content limits
           const header = cells.shift() || [];
-          const rows = cells.map(row => `<tr>${row.map(c=>`<td>${c}</td>`).join('')}</tr>`).join('');
-          pane.innerHTML = `<div style="overflow:auto;"><table style="width:100%; border-collapse:collapse;"><thead><tr>${header.map(h=>`<th style=\"text-align:left; border-bottom:1px solid var(--border);\">${h}</th>`).join('')}</tr></thead><tbody>${rows}</tbody></table></div>`;
+            const rows = cells.map(row => `<tr>${row.map(c=>`<td style="padding:4px 8px; border-bottom:1px solid var(--border); font-size:12px; word-wrap:break-word; max-width:200px;">${c}</td>`).join('')}</tr>`).join('');
+            pane.innerHTML = `<div style="max-height:600px; overflow:auto; border:1px solid var(--border); border-radius:6px;">
+              <table style="width:100%; border-collapse:collapse; font-size:12px;">
+                <thead style="position:sticky; top:0; background:var(--panel);">
+                  <tr>${header.map(h=>`<th style="padding:6px 8px; text-align:left; border-bottom:2px solid var(--border); font-weight:600; word-wrap:break-word; max-width:200px;">${h}</th>`).join('')}</tr>
+                </thead>
+                <tbody>${rows}</tbody>
+              </table>
+            </div>`;
+          } catch(e) {
+            console.error('👁️  CSV preview error:', e);
+            pane.textContent = 'CSV preview unavailable.';
+          }
           return;
         }
-        // Markdown quick render
+        
+        // Markdown preview (full content with styling)
         if (['md','markdown'].includes(ext) || (contentType && contentType.includes('markdown'))) {
+          console.log('👁️  Rendering Markdown preview');
+          try {
           const res = await fetch(url);
-          if (!res.ok) { pane.textContent = 'Preview unavailable.'; return; }
+            if (!res.ok) throw new Error('Fetch failed');
           const text = await res.text();
-          const html = renderBasicMarkdown(text.slice(0, 100000));
-          pane.innerHTML = html;
+            const html = renderBasicMarkdown(text);
+            pane.innerHTML = `<div style="max-height:600px; overflow:auto; padding:10px; border:1px solid var(--border); border-radius:6px; background:var(--panel-2); font-size:13px; line-height:1.5;">
+              ${html}
+            </div>`;
+          } catch(e) {
+            console.error('👁️  Markdown preview error:', e);
+            pane.textContent = 'Markdown preview unavailable.';
+          }
           return;
         }
-        // Fallback text preview
+        
+        // Fallback text preview (full content with styling)
+        console.log('👁️  Rendering fallback text preview');
+        try {
         const res = await fetch(url, { method: 'GET' });
-        if (!res.ok) { pane.textContent = 'Preview unavailable.'; return; }
+          if (!res.ok) throw new Error('Fetch failed');
         const buf = await res.arrayBuffer();
-        const bytes = new Uint8Array(buf).slice(0, 100000);
+          const bytes = new Uint8Array(buf); // Load full file content
         let text = '';
-        try { text = new TextDecoder('utf-8', { fatal: false }).decode(bytes); } catch(_) { text = ''; }
-        const safe = (s)=>String(s||'').replace(/[&<>]/g, c=>({ '&':'&amp;','<':'&lt;','>':'&gt;' }[c]));
-        pane.innerHTML = text ? `<pre style="white-space:pre-wrap;">${safe(text)}</pre>` : 'Binary or unsupported preview. Use URL to download.';
+          try { 
+            text = new TextDecoder('utf-8', { fatal: false }).decode(bytes); 
       } catch(_) {
-        const pane = qs('#filePreviewContent'); if (pane) pane.textContent = 'Preview error.';
+            pane.innerHTML = '<div style="padding:20px; text-align:center; color:var(--muted);">Binary file - preview not available<br/><small>Use "Open" link to download</small></div>';
+            return;
+          }
+          
+          const safe = (s)=>String(s||'').replace(/[&<>]/g, c=>({ '&':'&amp;','<':'&lt;','>':'&gt;' }[c]));
+          
+          if (text) {
+            pane.innerHTML = `<div style="max-height:600px; overflow:auto; border:1px solid var(--border); border-radius:6px; background:var(--panel-2);">
+              <pre style="white-space:pre-wrap; margin:0; padding:12px; font-size:12px; line-height:1.4; font-family:'Monaco','Menlo','Ubuntu Mono',monospace;">${safe(text)}</pre>
+            </div>`;
+          } else {
+            pane.innerHTML = '<div style="padding:20px; text-align:center; color:var(--muted);">Empty file or unsupported format</div>';
+          }
+        } catch(e) {
+          console.error('👁️  Text preview error:', e);
+          pane.innerHTML = '<div style="padding:20px; text-align:center; color:var(--err);">Preview unavailable<br/><small>Use "Open" link to access file</small></div>';
+        }
+      } catch(e) {
+        console.error('👁️  Preview function error:', e);
+        const pane = qs('#filePreviewContent'); 
+        if (pane) pane.innerHTML = '<div style="padding:20px; text-align:center; color:var(--err);">Preview error occurred</div>';
+      }
+      
+      // Store current file info in preview controls for fullscreen/popout
+      const controls = qs('#previewControls');
+      if (controls) {
+        // Store current file info for fullscreen/popout
+        controls.setAttribute('data-file-id', fileId);
+        controls.setAttribute('data-filename', filename || 'document');
+        controls.setAttribute('data-url', url || '');
+        console.log('👁️  Controls configured with:', { fileId, filename, url });
       }
     }
+    
+    // Fullscreen and popout functionality
+    let currentPreviewData = { fileId: '', filename: '', url: '' };
+    
+    function openFullscreenPreview() {
+      const pane = qs('#filePreviewContent');
+      const modal = qs('#previewFullscreenModal');
+      const fullscreenContent = qs('#fullscreenPreviewContent');
+      const title = qs('#fullscreenPreviewTitle');
+      const controls = qs('#previewControls');
+      
+      if (!pane || !modal || !fullscreenContent) {
+        console.error('👁️  Missing elements for fullscreen');
+        return;
+      }
+      
+      // Get current file data
+      if (controls) {
+        currentPreviewData.fileId = controls.getAttribute('data-file-id') || '';
+        currentPreviewData.filename = controls.getAttribute('data-filename') || 'Document';
+        currentPreviewData.url = controls.getAttribute('data-url') || '';
+      }
+      
+      // Clone content structure but regenerate with full height
+      const originalHTML = pane.innerHTML;
+      
+      // For PDFs and iframes, recreate with full height instead of constrained height
+      if (originalHTML.includes('<iframe') && originalHTML.includes('pdf')) {
+        const url = currentPreviewData.url;
+        fullscreenContent.innerHTML = `
+          <div style="width:100%; height:100%; border:none;">
+            <iframe src="${url}#toolbar=0&navpanes=0" style="width:100%; height:100%; border:none;"></iframe>
+          </div>
+        `;
+      } else {
+        // For other content, just clone but remove height constraints
+        let fullscreenHTML = originalHTML;
+        // Remove any height constraints from the cloned content
+        fullscreenHTML = fullscreenHTML.replace(/max-height:\s*\d+px/gi, 'max-height: 100%');
+        fullscreenHTML = fullscreenHTML.replace(/height:\s*\d+px/gi, 'height: auto');
+        fullscreenContent.innerHTML = fullscreenHTML;
+      }
+      
+      if (title) title.textContent = `${currentPreviewData.filename} - Preview`;
+      
+      // Show modal
+      modal.style.display = 'block';
+      document.body.style.overflow = 'hidden'; // Prevent body scroll
+      
+      console.log('👁️  Opened fullscreen preview for:', currentPreviewData.filename);
+    }
+    
+    function closeFullscreenPreview() {
+      const modal = qs('#previewFullscreenModal');
+      if (modal) {
+        modal.style.display = 'none';
+        document.body.style.overflow = ''; // Restore body scroll
+        console.log('👁️  Closed fullscreen preview');
+      }
+    }
+    
+    function popoutPreview() {
+      console.log('👁️  Popout requested with data:', currentPreviewData);
+      
+      if (!currentPreviewData.url) {
+        // Try to get URL from controls if not in currentPreviewData
+        const controls = qs('#previewControls');
+        if (controls) {
+          currentPreviewData.url = controls.getAttribute('data-url') || '';
+          console.log('👁️  Retrieved URL from controls:', currentPreviewData.url);
+        }
+      }
+      
+      if (!currentPreviewData.url) {
+        console.error('👁️  No URL available for popout');
+        alert('Cannot open file in new window - no URL available');
+        return;
+      }
+      
+      const filename = currentPreviewData.filename || 'Document';
+      const url = currentPreviewData.url;
+      
+      console.log('👁️  Opening URL in new window:', url);
+      
+      try {
+        // Open in new window with proper window features
+        const popup = window.open(url, '_blank', 'width=1000,height=800,scrollbars=yes,resizable=yes,toolbar=yes,menubar=no,status=yes');
+        if (popup) {
+          // Set title after a brief delay to ensure content loads
+          setTimeout(() => {
+            try {
+              popup.document.title = filename;
+            } catch(e) {
+              // CORS may prevent title setting, that's ok
+              console.log('👁️  Could not set popup title (CORS)');
+            }
+          }, 1000);
+          console.log('👁️  Successfully opened preview in new window');
+        } else {
+          console.error('👁️  Popup was blocked');
+          // Fallback: try to open in new tab
+          const fallback = window.open(url, '_blank');
+          if (fallback) {
+            console.log('👁️  Fallback: opened in new tab');
+          } else {
+            console.error('👁️  Both popup and fallback blocked');
+            alert('Popup blocked. Please allow popups for this site or use the "Open" link in metadata.');
+          }
+        }
+      } catch(e) {
+        console.error('👁️  Error opening popup:', e);
+        alert('Error opening new window: ' + e.message);
+      }
+    }
+    
+    // Initialize preview controls
+    try {
+      const fullscreenBtn = qs('#previewFullscreenBtn');
+      const popoutBtn = qs('#previewPopoutBtn');
+      const fullscreenCloseBtn = qs('#fullscreenCloseBtn');
+      const fullscreenPopoutBtn = qs('#fullscreenPopoutBtn');
+      const fullscreenModal = qs('#previewFullscreenModal');
+      
+      if (fullscreenBtn) {
+        fullscreenBtn.addEventListener('click', openFullscreenPreview);
+      }
+      if (popoutBtn) {
+        popoutBtn.addEventListener('click', popoutPreview);
+      }
+      if (fullscreenCloseBtn) fullscreenCloseBtn.addEventListener('click', closeFullscreenPreview);
+      if (fullscreenPopoutBtn) fullscreenPopoutBtn.addEventListener('click', popoutPreview);
+      
+      // Close fullscreen on ESC key
+      document.addEventListener('keydown', (e) => {
+        if (e.key === 'Escape' && fullscreenModal && fullscreenModal.style.display === 'block') {
+          closeFullscreenPreview();
+        }
+      });
+      
+      // Close fullscreen on modal background click
+      if (fullscreenModal) {
+        fullscreenModal.addEventListener('click', (e) => {
+          if (e.target === fullscreenModal) {
+            closeFullscreenPreview();
+          }
+        });
+      }
+      
+    } catch(e) {
+      console.error('👁️  Preview controls initialization failed:', e);
+    }
+    
+          // Controls will show automatically when a file is selected for preview
+       
+       // Admin check function - checks if current user has admin role
+       async function isAdmin() {
+         const username = localStorage.getItem('odras_user') || '';
+         const isAdminUser = username === 'admin';
+         
+         console.log('👑 Checking admin status - username:', username, 'isAdmin:', isAdminUser);
+         return isAdminUser;
+       }
     function renderBasicMarkdown(src) {
       const esc = (s)=>String(s||'').replace(/[&<>]/g, c=>({ '&':'&amp;','<':'&lt;','>':'&gt;' }[c]));
       let s = esc(src);
@@ -3138,6 +4246,19 @@
       // Initialize
       applyState();
     })();
+
+    async function startWorkflowStartApi(processKey, projectId, fileIds, params) {
+      try {
+        const res = await fetch('/api/workflows/start', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json', ...authHeader() },
+          body: JSON.stringify({ processKey, projectId, fileIds, params })
+        });
+        const js = await res.json().catch(()=>({}));
+        if (!res.ok || js.success === false) return { ok:false, error: (js && (js.detail || js.error)) || 'failed' };
+        return { ok:true, runId: js.runId, url: js.camunda_url };
+      } catch(e) { return { ok:false, error: String(e) }; }
+    }
   </script>
 </body>
 </html>

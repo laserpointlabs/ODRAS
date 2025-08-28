@@ -1,0 +1,36 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<bpmn:definitions xmlns:bpmn="http://www.omg.org/spec/BPMN/20100524/MODEL" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" id="Definitions_kn" targetNamespace="http://odras.system/bpmn">
+  <bpmn:process id="knowledge_enrichment" name="ODRAS Knowledge Enrichment" isExecutable="true">
+    <bpmn:startEvent id="StartEvent_KNOW" name="Start Knowledge Enrichment">
+      <bpmn:outgoing>Flow_K1</bpmn:outgoing>
+    </bpmn:startEvent>
+    <bpmn:scriptTask id="Task_SelectDocs_K" name="Select Document Set">
+      <bpmn:incoming>Flow_K1</bpmn:incoming>
+      <bpmn:outgoing>Flow_K2</bpmn:outgoing>
+      <bpmn:script># Script: scripts/knowledge_select_docs.py</bpmn:script>
+    </bpmn:scriptTask>
+    <bpmn:scriptTask id="Task_Retrieve_K" name="Retrieve Relevant Chunks">
+      <bpmn:incoming>Flow_K2</bpmn:incoming>
+      <bpmn:outgoing>Flow_K3</bpmn:outgoing>
+      <bpmn:script># Script: scripts/knowledge_retrieve_chunks.py</bpmn:script>
+    </bpmn:scriptTask>
+    <bpmn:scriptTask id="Task_Synthesize_K" name="LLM Synthesize Knowledge Items">
+      <bpmn:incoming>Flow_K3</bpmn:incoming>
+      <bpmn:outgoing>Flow_K4</bpmn:outgoing>
+      <bpmn:script># Script: scripts/knowledge_llm_synthesize.py</bpmn:script>
+    </bpmn:scriptTask>
+    <bpmn:scriptTask id="Task_Persist_K" name="Persist Knowledge with Citations">
+      <bpmn:incoming>Flow_K4</bpmn:incoming>
+      <bpmn:outgoing>Flow_K5</bpmn:outgoing>
+      <bpmn:script># Script: scripts/knowledge_persist_items.py</bpmn:script>
+    </bpmn:scriptTask>
+    <bpmn:endEvent id="EndEvent_KNOW" name="Knowledge Enrichment Complete">
+      <bpmn:incoming>Flow_K5</bpmn:incoming>
+    </bpmn:endEvent>
+    <bpmn:sequenceFlow id="Flow_K1" sourceRef="StartEvent_KNOW" targetRef="Task_SelectDocs_K" />
+    <bpmn:sequenceFlow id="Flow_K2" sourceRef="Task_SelectDocs_K" targetRef="Task_Retrieve_K" />
+    <bpmn:sequenceFlow id="Flow_K3" sourceRef="Task_Retrieve_K" targetRef="Task_Synthesize_K" />
+    <bpmn:sequenceFlow id="Flow_K4" sourceRef="Task_Synthesize_K" targetRef="Task_Persist_K" />
+    <bpmn:sequenceFlow id="Flow_K5" sourceRef="Task_Persist_K" targetRef="EndEvent_KNOW" />
+  </bpmn:process>
+</bpmn:definitions>
