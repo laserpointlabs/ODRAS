@@ -618,17 +618,32 @@ init_databases() {
     print_status "Waiting for database services to be ready..."
     sleep 5
     
-    # Run PostgreSQL migrations
+    # Run PostgreSQL migrations in order
     if [[ -d "backend/migrations" ]]; then
         print_status "Running PostgreSQL migrations..."
-        for migration in backend/migrations/*.sql; do
-            if [[ -f "$migration" ]]; then
-                print_status "  Running $(basename "$migration")"
-                docker exec odras_postgres psql -U postgres -d odras -f "/tmp/$(basename "$migration")" 2>/dev/null || \
-                cat "$migration" | docker exec -i odras_postgres psql -U postgres -d odras 2>/dev/null || \
-                print_warning "    Migration $(basename "$migration") may have failed or was already applied"
+        
+        # Run migrations in specific order to ensure dependencies
+        local migrations=(
+            "000_files_table.sql"
+            "001_knowledge_management.sql" 
+            "002_knowledge_public_assets.sql"
+        )
+        
+        for migration in "${migrations[@]}"; do
+            local migration_file="backend/migrations/$migration"
+            if [[ -f "$migration_file" ]]; then
+                print_status "  Running $migration..."
+                if cat "$migration_file" | docker exec -i odras_postgres psql -U postgres -d odras; then
+                    print_success "    ✓ $migration completed"
+                else
+                    print_warning "    ⚠ $migration may have failed or was already applied"
+                fi
+            else
+                print_warning "    Migration file $migration not found"
             fi
         done
+    else
+        print_warning "No migrations directory found"
     fi
     
     # Create default users and project

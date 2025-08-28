@@ -301,6 +301,9 @@ class KnowledgeTransformationService:
             vector_size = model_info['dimensions']
             self.qdrant_service.ensure_collection(collection_name, vector_size)
             
+            # Get asset metadata for better payload information
+            asset_metadata = await self._get_asset_metadata(asset_id)
+            
             # Extract text content for embedding
             texts = [chunk.content for chunk in chunks]
             
@@ -316,7 +319,7 @@ class KnowledgeTransformationService:
                 qdrant_point_id = str(uuid4())
                 qdrant_point_ids.append(qdrant_point_id)
                 
-                # Create payload with metadata for filtering
+                # Create payload with metadata for filtering and RAG retrieval
                 payload = {
                     'chunk_id': chunk_id,
                     'asset_id': asset_id,
@@ -324,7 +327,10 @@ class KnowledgeTransformationService:
                     'chunk_type': chunk.metadata.chunk_type,
                     'sequence_number': chunk.metadata.sequence_number,
                     'token_count': chunk.metadata.token_count,
-                    'content_preview': chunk.content[:200] + '...' if len(chunk.content) > 200 else chunk.content
+                    'text': chunk.content,  # Full text for RAG retrieval
+                    'content_preview': chunk.content[:200] + '...' if len(chunk.content) > 200 else chunk.content,
+                    'source_asset': asset_metadata.get('title', f'Asset {asset_id[:8]}'),
+                    'document_type': asset_metadata.get('document_type', 'document')
                 }
                 
                 vectors_data.append({
@@ -552,6 +558,48 @@ class KnowledgeTransformationService:
         except Exception as e:
             logger.warning(f"Failed to get file title for {file_id}: {str(e)}")
             return f"Knowledge Asset {file_id[:8]}"
+    
+    async def _get_asset_metadata(self, asset_id: str) -> Dict[str, Any]:
+        """
+        Get knowledge asset metadata for vector payload.
+        
+        Args:
+            asset_id: Knowledge asset ID
+            
+        Returns:
+            Dict containing asset title and document type
+        """
+        try:
+            conn = self.db_service._conn()
+            try:
+                with conn.cursor() as cur:
+                    cur.execute("""
+                        SELECT title, document_type 
+                        FROM knowledge_assets 
+                        WHERE id = %s
+                    """, (asset_id,))
+                    result = cur.fetchone()
+                    
+                    if result:
+                        return {
+                            'title': result[0] or f'Asset {asset_id[:8]}',
+                            'document_type': result[1] or 'document'
+                        }
+                    else:
+                        return {
+                            'title': f'Asset {asset_id[:8]}',
+                            'document_type': 'document'
+                        }
+                        
+            finally:
+                self.db_service._return(conn)
+                
+        except Exception as e:
+            logger.warning(f"Failed to get asset metadata for {asset_id}: {str(e)}")
+            return {
+                'title': f'Asset {asset_id[:8]}',
+                'document_type': 'document'
+            }
 
 # ========================================
 # UTILITY FUNCTIONS
