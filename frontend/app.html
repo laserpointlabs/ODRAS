@@ -276,11 +276,17 @@
             <path d="M3 7h5l2 2h11v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V7z"/>
           </svg>
         </div>
-        <div class="icon" data-wb="embedding" title="Embedding" aria-label="Embedding">
+        <div class="icon" data-wb="knowledge" title="Knowledge Management" aria-label="Knowledge Management">
           <svg viewBox="0 0 24 24" fill="none" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round">
-            <path d="M12 3l8 4-8 4-8-4 8-4z"/>
-            <path d="M4 12l8 4 8-4"/>
-            <path d="M4 16l8 4 8-4"/>
+            <circle cx="12" cy="12" r="3"/>
+            <path d="M12 1v6"/>
+            <path d="M12 17v6"/>
+            <path d="m4.2 4.2 4.2 4.2"/>
+            <path d="m15.6 15.6 4.2 4.2"/>
+            <path d="M1 12h6"/>
+            <path d="M17 12h6"/>
+            <path d="m4.2 19.8 4.2-4.2"/>
+            <path d="m15.6 8.4 4.2-4.2"/>
           </svg>
         </div>
         <div class="icon" data-wb="requirements" title="Requirements" aria-label="Requirements">
@@ -622,9 +628,62 @@
           </div>
         </div>
         
-        <section id="wb-embedding" class="workbench">
-          <h2>Embedding</h2>
-          <div class="muted">Chunking, overlap, embedding model, storage settings.</div>
+        <section id="wb-knowledge" class="workbench">
+          <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:16px;">
+            <div>
+              <h2>Knowledge Management</h2>
+              <div class="muted">Transform documents into searchable knowledge with AI-powered insights</div>
+            </div>
+            <div style="display:flex; gap:8px;">
+              <button class="btn" id="knowledgeProcessBtn" disabled>Process Documents</button>
+              <button class="btn" id="knowledgeRefreshBtn">Refresh</button>
+            </div>
+          </div>
+
+          <div style="display:grid; grid-template-columns: 2fr 1fr; gap:20px; height:calc(100vh - 200px);">
+            <!-- Main Knowledge Area -->
+            <div style="display:flex; flex-direction:column; gap:16px;">
+              <!-- Knowledge Assets List -->
+              <div style="flex:1; background:var(--panel); border:1px solid var(--border); border-radius:8px; padding:16px;">
+                <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:12px;">
+                  <h3 style="margin:0;">Knowledge Assets</h3>
+                  <div style="display:flex; gap:8px; align-items:center;">
+                    <input type="text" id="knowledgeSearchInput" placeholder="Search knowledge..." style="background:#0b1220; color:#e5e7eb; border:1px solid var(--border); border-radius:6px; padding:6px 10px; width:200px;"/>
+                  </div>
+                </div>
+                <div id="knowledgeAssetsList" style="height:calc(100% - 60px); overflow-y:auto;">
+                  <div class="muted" style="padding:20px; text-align:center;">
+                    No knowledge assets yet.<br/>
+                    <small>Upload and process documents to begin building your knowledge base.</small>
+                  </div>
+                </div>
+              </div>
+
+              <!-- Processing Status -->
+              <div style="background:var(--panel); border:1px solid var(--border); border-radius:8px; padding:16px; height:120px;">
+                <h4 style="margin:0 0 8px 0;">Processing Status</h4>
+                <div id="knowledgeProcessingStatus">
+                  <div class="muted">No processing jobs running</div>
+                </div>
+              </div>
+            </div>
+
+            <!-- Knowledge Panel -->
+            <div style="background:var(--panel); border:1px solid var(--border); border-radius:8px; padding:16px; display:flex; flex-direction:column;">
+              <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:12px;">
+                <h4 style="margin:0;">Knowledge Details</h4>
+                <div style="display:flex; gap:4px;">
+                  <button class="btn" id="knowledgeQueryBtn" title="Query Knowledge" style="min-width:auto; padding:4px 8px; font-size:16px;">🔍</button>
+                  <button class="btn" id="knowledgeGraphBtn" title="View Graph" style="min-width:auto; padding:4px 8px; font-size:16px;">🕸️</button>
+                </div>
+              </div>
+              <div id="knowledgeDetailsContent" style="flex:1; overflow-y:auto;">
+                <div class="muted" style="padding:20px; text-align:center;">
+                  Select a knowledge asset to view details
+                </div>
+              </div>
+            </div>
+          </div>
         </section>
         <section id="wb-requirements" class="workbench">
           <h2>Requirements</h2>
@@ -2828,7 +2887,7 @@
           projectId = '';
         }
       }
-              const toBadge = (text) => `<span style="border:1px solid var(--border); padding:2px 6px; border-radius:6px; font-size:12px;">${text}</span>`;
+      const toBadge = (text) => `<span style="border:1px solid var(--border); padding:2px 6px; border-radius:6px; font-size:12px;">${text}</span>`;
         const getVisibilityBadge = (visibility, fileProjectId, currentProjectId) => {
           const isPublic = visibility === 'public';
           const isFromOtherProject = fileProjectId !== currentProjectId;
@@ -4141,7 +4200,7 @@
          
          console.log('👑 Checking admin status - username:', username, 'isAdmin:', isAdminUser);
          return isAdminUser;
-       }
+    }
     function renderBasicMarkdown(src) {
       const esc = (s)=>String(s||'').replace(/[&<>]/g, c=>({ '&':'&amp;','<':'&lt;','>':'&gt;' }[c]));
       let s = esc(src);

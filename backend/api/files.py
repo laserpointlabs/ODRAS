@@ -597,7 +597,7 @@ async def extract_requirements_by_keywords(
 @router.put("/{file_id}/visibility")
 async def update_file_visibility(
     file_id: str,
-    visibility: str = Form(..., regex="^(private|public)$"),
+    visibility: str = Form(..., pattern="^(private|public)$"),
     storage_service: FileStorageService = Depends(get_file_storage_service),
     admin_user: Dict = Depends(get_admin_user),
 ):

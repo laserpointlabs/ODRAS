@@ -20,6 +20,7 @@ from backend.api.files import router as files_router
 from backend.api.ontology import router as ontology_router
 from backend.api.workflows import router as workflows_router
 from backend.api.embedding_models import router as embedding_models_router
+from backend.api.knowledge import router as knowledge_router
 from backend.run_registry import RUNS as SHARED_RUNS
 from backend.test_review_endpoint import router as test_router
 
@@ -31,6 +32,7 @@ app.include_router(ontology_router)
 app.include_router(files_router)
 app.include_router(workflows_router)
 app.include_router(embedding_models_router)
+app.include_router(knowledge_router)
 
 # Configuration instance
 settings = Settings()
