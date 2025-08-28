@@ -18,6 +18,9 @@ import os
 # Import API routers
 from backend.api.files import router as files_router
 from backend.api.ontology import router as ontology_router
+from backend.api.workflows import router as workflows_router
+from backend.api.embedding_models import router as embedding_models_router
+from backend.run_registry import RUNS as SHARED_RUNS
 from backend.test_review_endpoint import router as test_router
 
 app = FastAPI(title="ODRAS API", version="0.1.0")
@@ -26,6 +29,8 @@ app = FastAPI(title="ODRAS API", version="0.1.0")
 app.include_router(test_router)
 app.include_router(ontology_router)
 app.include_router(files_router)
+app.include_router(workflows_router)
+app.include_router(embedding_models_router)
 
 # Configuration instance
 settings = Settings()
@@ -51,7 +56,7 @@ CAMUNDA_BASE_URL = settings.camunda_base_url
 CAMUNDA_REST_API = f"{CAMUNDA_BASE_URL}/engine-rest"
 
 # Simple in-memory run registry (MVP). Replace with Redis/DB later.
-RUNS: Dict[str, Dict] = {}
+RUNS: Dict[str, Dict] = SHARED_RUNS
 
 # In-memory storage for personas and prompts (MVP). Replace with Redis/DB later.
 PERSONAS: List[Dict] = [
@@ -93,6 +98,7 @@ def ui_restart():
             return HTMLResponse(content=f.read())
     except FileNotFoundError:
         return HTMLResponse(content="<h1>App not found</h1>", status_code=404)
+
 
 @app.post("/api/auth/login")
 def login(body: Dict):

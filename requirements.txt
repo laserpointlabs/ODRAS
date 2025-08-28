@@ -16,6 +16,7 @@ qdrant-client>=1.15.0
 neo4j>=5.28.0
 rdflib>=7.1.0
 SPARQLWrapper>=2.0.0
+pdfminer.six>=20240706
 
 # HTTP and networking
 httpx>=0.28.0
@@ -54,5 +55,6 @@ portalocker>=3.2.0
 pytest>=8.0.0
 pytest-cov>=4.0.0
 httpx>=0.28.0
+pytest-asyncio>=0.23.0
 
 

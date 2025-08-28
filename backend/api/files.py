@@ -16,6 +16,7 @@ from ..services.config import Settings
 from ..services.db import DatabaseService
 from ..services.file_storage import FileStorageService
 from ..services.persistence import PersistenceLayer
+from ..services.auth import get_admin_user, get_user
 
 logger = logging.getLogger(__name__)
 
@@ -43,6 +44,7 @@ class FileMetadataResponse(BaseModel):
     tags: Optional[Dict[str, Any]] = None
     created_at: str
     updated_at: str
+    visibility: str = "private"  # "private" or "public"
 
 
 class FileListResponse(BaseModel):
@@ -50,6 +52,10 @@ class FileListResponse(BaseModel):
     files: List[FileMetadataResponse]
     total_count: int
     message: Optional[str] = None
+
+
+class TagsUpdateRequest(BaseModel):
+    tags: Dict[str, Any]
 
 
 class KeywordConfig(BaseModel):
@@ -262,16 +268,18 @@ async def delete_file(file_id: str, storage_service: FileStorageService = Depend
 @router.get("/", response_model=FileListResponse)
 async def list_files(
     project_id: Optional[str] = Query(None, description="Filter by project ID"),
+    include_public: bool = Query(False, description="Include public files from other projects"),
     limit: int = Query(100, description="Maximum number of results"),
     offset: int = Query(0, description="Result offset for pagination"),
     storage_service: FileStorageService = Depends(get_file_storage_service),
     db: DatabaseService = Depends(get_db_service),
 ):
     """
-    List files with optional filtering.
+    List files with optional filtering and visibility support.
 
     Args:
         project_id: Optional project ID filter
+        include_public: Include public files from other projects (requires project_id)
         limit: Maximum number of results
         offset: Result offset for pagination
 
@@ -279,8 +287,8 @@ async def list_files(
         List of files with metadata
     """
     try:
-        # Optional: enforce membership when project filter provided
-        files = await storage_service.list_files(project_id, limit, offset)
+        # Use the new visibility-aware method
+        files = await storage_service.list_files_with_visibility(project_id, include_public, limit, offset)
 
         # Convert to response format
         file_responses = [FileMetadataResponse(**file_data) for file_data in files]
@@ -309,6 +317,63 @@ async def get_storage_info(storage_service: FileStorageService = Depends(get_fil
     except Exception as e:
         logger.error(f"Failed to get storage info: {e}")
         raise HTTPException(status_code=500, detail=f"Failed to get storage info: {str(e)}")
+
+
+@router.put("/{file_id}/tags")
+async def update_file_tags(file_id: str, body: TagsUpdateRequest, storage_service: FileStorageService = Depends(get_file_storage_service)):
+    try:
+        ok = await storage_service.update_file_tags(file_id, body.tags or {})
+        if not ok:
+            raise HTTPException(status_code=404, detail="File metadata not found")
+        return {"success": True}
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Tags update failed: {str(e)}")
+
+
+@router.post("/import-url")
+async def import_file_by_url(
+    url: str = Form(...),
+    project_id: Optional[str] = Form(None),
+    tags: Optional[str] = Form(None),
+    storage_service: FileStorageService = Depends(get_file_storage_service),
+):
+    """Server-side fetch by URL and store as a file (MVP)."""
+    try:
+        if not project_id:
+            raise HTTPException(status_code=400, detail="project_id required")
+        # Fetch bytes
+        async with httpx.AsyncClient(timeout=30) as client:
+            r = await client.get(url)
+            r.raise_for_status()
+            content = r.content
+            # Derive filename from URL
+            import urllib.parse as _up
+            parsed = _up.urlparse(url)
+            name = (parsed.path.split("/")[-1] or "downloaded_file")
+        file_tags = {}
+        if tags:
+            import json
+            try:
+                file_tags = json.loads(tags)
+            except json.JSONDecodeError:
+                file_tags = {}
+        result = await storage_service.store_file(
+            content=content,
+            filename=name,
+            content_type=None,
+            project_id=project_id,
+            tags=file_tags,
+        )
+        if not result.get("success"):
+            raise HTTPException(status_code=500, detail=result.get("error") or "Store failed")
+        md = result["metadata"]
+        return {"success": True, "file_id": result["file_id"], "filename": md["filename"], "size": md["size"]}
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Import failed: {str(e)}")
 
 
 @router.post("/batch/upload")
@@ -527,3 +592,52 @@ async def extract_requirements_by_keywords(
         }
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Extraction failed: {str(e)}")
+
+
+@router.put("/{file_id}/visibility")
+async def update_file_visibility(
+    file_id: str,
+    visibility: str = Form(..., regex="^(private|public)$"),
+    storage_service: FileStorageService = Depends(get_file_storage_service),
+    admin_user: Dict = Depends(get_admin_user),
+):
+    """
+    Update file visibility (admin only).
+    
+    Args:
+        file_id: Unique file identifier
+        visibility: "private" or "public"
+        
+    Returns:
+        Success response with updated visibility
+    """
+    try:
+        logger.info(f"Visibility update request: file_id={file_id}, visibility={visibility}, admin_user={admin_user}")
+        
+        # Check if file exists first
+        file_metadata = await storage_service.get_file_metadata(file_id)
+        if not file_metadata:
+            logger.error(f"File not found: {file_id}")
+            raise HTTPException(status_code=404, detail="File not found")
+        
+        logger.info(f"Current file metadata: {file_metadata}")
+        
+        # Update visibility
+        success = await storage_service.update_file_visibility(file_id, visibility)
+        logger.info(f"Visibility update result: success={success}")
+        
+        if success:
+            return {
+                "success": True,
+                "file_id": file_id,
+                "visibility": visibility,
+                "message": f"File visibility updated to {visibility}"
+            }
+        else:
+            raise HTTPException(status_code=500, detail="Failed to update file visibility")
+            
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Failed to update file visibility: {e}")
+        raise HTTPException(status_code=500, detail=f"Update failed: {str(e)}")

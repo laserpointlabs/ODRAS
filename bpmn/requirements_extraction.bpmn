@@ -1,0 +1,36 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<bpmn:definitions xmlns:bpmn="http://www.omg.org/spec/BPMN/20100524/MODEL" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" id="Definitions_req" targetNamespace="http://odras.system/bpmn">
+  <bpmn:process id="requirements_extraction" name="ODRAS Requirements Extraction" isExecutable="true">
+    <bpmn:startEvent id="StartEvent_REQ" name="Start Requirements Extraction">
+      <bpmn:outgoing>Flow_R1</bpmn:outgoing>
+    </bpmn:startEvent>
+    <bpmn:scriptTask id="Task_SelectDocs" name="Select Document Set">
+      <bpmn:incoming>Flow_R1</bpmn:incoming>
+      <bpmn:outgoing>Flow_R2</bpmn:outgoing>
+      <bpmn:script># Script: scripts/extract_select_docs.py</bpmn:script>
+    </bpmn:scriptTask>
+    <bpmn:scriptTask id="Task_RetrieveChunks" name="Retrieve Relevant Chunks">
+      <bpmn:incoming>Flow_R2</bpmn:incoming>
+      <bpmn:outgoing>Flow_R3</bpmn:outgoing>
+      <bpmn:script># Script: scripts/extract_retrieve_chunks.py</bpmn:script>
+    </bpmn:scriptTask>
+    <bpmn:scriptTask id="Task_ExtractRequirements" name="LLM Extract Requirements">
+      <bpmn:incoming>Flow_R3</bpmn:incoming>
+      <bpmn:outgoing>Flow_R4</bpmn:outgoing>
+      <bpmn:script># Script: scripts/extract_llm_requirements.py</bpmn:script>
+    </bpmn:scriptTask>
+    <bpmn:scriptTask id="Task_PersistRequirements" name="Persist Requirements with Citations">
+      <bpmn:incoming>Flow_R4</bpmn:incoming>
+      <bpmn:outgoing>Flow_R5</bpmn:outgoing>
+      <bpmn:script># Script: scripts/extract_persist_requirements.py</bpmn:script>
+    </bpmn:scriptTask>
+    <bpmn:endEvent id="EndEvent_REQ" name="Extraction Complete">
+      <bpmn:incoming>Flow_R5</bpmn:incoming>
+    </bpmn:endEvent>
+    <bpmn:sequenceFlow id="Flow_R1" sourceRef="StartEvent_REQ" targetRef="Task_SelectDocs" />
+    <bpmn:sequenceFlow id="Flow_R2" sourceRef="Task_SelectDocs" targetRef="Task_RetrieveChunks" />
+    <bpmn:sequenceFlow id="Flow_R3" sourceRef="Task_RetrieveChunks" targetRef="Task_ExtractRequirements" />
+    <bpmn:sequenceFlow id="Flow_R4" sourceRef="Task_ExtractRequirements" targetRef="Task_PersistRequirements" />
+    <bpmn:sequenceFlow id="Flow_R5" sourceRef="Task_PersistRequirements" targetRef="EndEvent_REQ" />
+  </bpmn:process>
+</bpmn:definitions>

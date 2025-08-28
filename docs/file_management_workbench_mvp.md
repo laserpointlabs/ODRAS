@@ -1,6 +1,24 @@
 # File Management Workbench MVP
 
-This document defines the MVP for managing project files used for requirements extraction and knowledge documents. All RAG pipelines are orchestrated as BPMN workflows — no hard-coded pipelines in application code. The design favors determinism, observability, and replayability.
+> ⚠️ **DOCUMENT STATUS**: This document is being replaced by [`file_management_status_2024.md`](./file_management_status_2024.md) which reflects the actual current implementation as of December 2024.
+
+## 🎉 **Phase 1 COMPLETE** - File Management Foundation
+
+**The ODRAS File Management Workbench Phase 1 is fully implemented and production-ready!**
+
+### ✅ What's Working
+- Project-scoped file upload, library, preview, and deletion
+- Admin-controlled public/private file visibility system  
+- Advanced file preview (Markdown, Text, PDF, CSV) with fullscreen
+- Configurable processing parameters and embedding model selection
+- Multi-backend storage with unified API
+- Role-based authentication with admin controls
+
+**See [`file_management_status_2024.md`](./file_management_status_2024.md) for complete implementation details.**
+
+---
+
+## Original MVP Planning Document (Historical)
 
 ## Goals and scope (MVP)
 - Manage project-scoped files: upload, import, list, preview, organize.
@@ -240,5 +258,142 @@ Deliverables for this step:
 - Files Workbench shows real library from `/api/files`, supports upload, delete, presigned URL, and “Process” per file.
 - Doc type visible as a badge; filter chip(s) work client-side.
 - Optional: simple toast/logs for process starts and keyword extraction runs.
+
+## Adopted best practices for document management (RAG-focused)
+
+- Metadata and tags as first-class: capture `docType`, `status`, source, authorship, confidentiality, and domain tags. Enable multi-facet filtering and deterministic lineage via content hashing and versioning.
+- Versioning and provenance: immutable `FileVersion` chain; every derived artifact includes `fileId`, `version`, `runId`, and a `pipelineConfigHash` (fingerprint of chunking/embedding params) for replayability and safe reprocessing.
+- Chunking strategy: semantic-first segmentation (headings, sections, sentences), then token-window fallback. Defaults: `sizeTokens=350`, `overlapTokens=50`, `respectHeadings=true`, `joinShortParagraphs=true`.
+- Embedding discipline: model registry with versioning; re-embed triggered on model/default change or chunking parameter change. Store embedding model id with each vector and record normalization.
+- OCR and layout: detect scanned PDFs; use OCR pipeline when needed, preserving page numbers and text coordinates where feasible for better citation UX.
+- Previews: safe, in-browser previews for Markdown, text, PDF, and CSV without requiring download; limit row/page counts for large files.
+- Security: project-scoped RBAC and token-based access on all write operations; download/preview URLs can be short-lived presigned links.
+- Observability: workflow runs expose step-level logs, inputs/outputs, and artifacts with links; surface errors and re-run affordances in UI.
+
+## Design updates for File Management Workbench
+
+### File previews (UI + API)
+- UI: in `#wb-files`, add a right-side preview panel for selected file. Renderers:
+  - Markdown/Text: client-side render (sanitize HTML), line numbers toggle for `.txt`.
+  - PDF: embed PDF.js viewer using file URL or a proxied preview route.
+  - CSV: stream first N rows with client table (virtualized for large files), download full.
+- API additions:
+  - GET `/api/files/{file_id}/preview?mode=text|markdown|pdf|csv&maxRows=...` → 200 stream/text or redirects to presigned URL for PDF.
+  - Existing `GET /api/files/{file_id}/url` remains for direct viewer sources (PDF.js, CSV fetch).
+
+### Chunking and embedding from File Manager
+- Replace separate Embedding workspace: ingestion and embedding are triggered from the Files Workbench.
+- Ingest/Embed action opens a drawer with parameters:
+  - Chunking: `strategy=semantic|fixed`, `sizeTokens` (default 350), `overlapTokens` (default 50), `respectHeadings`, `joinShortParagraphs`, `splitCodeBlocks`.
+  - Embedding: `modelId` (from registry), `normalize=true|false` (default true), optional `batchSize`.
+- Persist selected params in `IngestionRun.params` and compute a `pipelineConfigHash` used for idempotency and provenance.
+- Re-embed flow: choose a different model or parameters; pipeline reads latest parsed text and regenerates vectors only.
+
+### Embedding model management
+- Model registry (system-level):
+  - `EmbeddingModel`: `id`, `provider`, `name`, `version`, `dimensions`, `maxInputTokens`, `normalizeDefault`, `status{active|deprecated}`, `createdAt`.
+  - API:
+    - GET `/api/embedding-models` — list registry
+    - POST `/api/embedding-models` — register model
+    - PUT `/api/embedding-models/{id}` — update metadata/status
+    - DELETE `/api/embedding-models/{id}` — soft-delete/deprecate
+- Project defaults and overrides:
+  - GET `/api/projects/{project_id}/embedding-model` — resolve default
+  - PUT `/api/projects/{project_id}/embedding-model` — set default
+  - Optional: GET/PUT `/api/projects/{project_id}/chunking-config`
+
+### API additions/changes
+- Files (additions):
+  - GET `/api/files/{file_id}` — single-file metadata with tags and latest artifacts
+  - PUT `/api/files/{file_id}/tags` — update tags (status transitions `new → ingested → embedded`)
+  - POST `/api/files/import-url` — server-side import by URL with `project_id`, `tags`
+  - GET `/api/files/{file_id}/preview` — see above
+- Workflows:
+  - POST `/api/workflows/start` payload sample:
+    ```json
+    {
+      "processKey": "ingestion_pipeline",
+      "projectId": "...",
+      "fileIds": ["..."],
+      "params": {
+        "chunking": {
+          "strategy": "semantic",
+          "sizeTokens": 350,
+          "overlapTokens": 50,
+          "respectHeadings": true,
+          "joinShortParagraphs": true,
+          "splitCodeBlocks": true
+        },
+        "embedding": {
+          "modelId": "e5-large-v2",
+          "normalize": true,
+          "batchSize": 64
+        }
+      }
+    }
+    ```
+  - Re-embed: reuse `ingestion_pipeline` with `params.mode = "reembed"` or introduce `reembed_pipeline` with `fileIds`, `modelId`.
+
+### Data model updates
+- Add `EmbeddingModel` (registry as above).
+- Extend `Project` settings: `defaultEmbeddingModelId`, `defaultChunkingConfig`.
+- `IngestionRun`: add `params` JSON and `pipelineConfigHash` (hash of params + worker versions).
+- `Chunk`: ensure `sectionPath`, `pageNumber`, and `tokenCount` present; `Embedding` continues to carry `modelId` and vector.
+
+### Workflow updates
+- `ingestion_pipeline` steps:
+  1) Detect type → 2) Optional OCR → 3) Parse/normalize → 4) Semantic segmentation → 5) Token windowing (fallback) → 6) Embed → 7) Upsert vectors → 8) Persist artifacts/metadata.
+- Idempotency: skip recompute if `pipelineConfigHash` + `fileVersion.bytesHash` matches an existing successful run for the same outputs.
+- Provenance: every artifact references `runId` and includes the config snapshot.
+
+### UI/UX updates in `frontend/app.html`
+- Library table: show `docType` and `status` badges; action menu: `Preview`, `Download`, `Get URL`, `Delete`, `Ingest/Embed`, `Re-embed`, `Start Requirements Extraction`.
+- Filters: client-side chips for `docType`, `status`, `tags`, with server-side query support when available.
+- Model selector: dropdown bound to `/api/embedding-models` and project default; allow per-run override.
+- Project tree integration: newly uploaded files appear under the active project's node; selecting a node focuses the file in the Workbench and opens the preview panel.
+- Remove Embedding workspace: routes/menus consolidated under File Management Workbench.
+
+## Chunking and embedding strategy (defaults and rationale)
+
+- Defaults aim to balance recall/precision and context fit for common LLMs:
+  - `sizeTokens=350`, `overlapTokens=50` (~14% overlap) for general prose.
+  - For highly structured content (requirements lists, specs), keep `respectHeadings=true` and enable `joinShortParagraphs` to avoid over-fragmentation.
+  - For code or config blobs, enable `splitCodeBlocks` to keep logical units intact.
+- Sentence-aware segmentation reduces mid-sentence splits; fallback token windows ensure coverage when structure is poor.
+- Overlap ensures cross-boundary recall during retrieval; tune between 10%–20% based on document style and retriever behavior.
+- Re-embedding is required when either the model or chunking parameters change; use registry status to deprecate models and surface re-embed prompts in UI.
+
+## Updated MVP TODO checklist (delta)
+
+- [ ] FM-0: Route and Library (expand)
+  - [ ] Project-scoped library wired to `/api/files` with filters (`docType/status/tags`)
+  - [ ] Show uploads in main project tree view (focus file on select)
+- [ ] FM-2: Workers (services)
+  - [ ] Implement semantic-first chunker with token window fallback
+  - [ ] Add OCR pipeline for scanned PDFs (toggleable)
+- [ ] FM-3: API contracts (expand)
+  - [ ] GET `/api/files/{id}` and PUT `/api/files/{id}/tags`
+  - [ ] GET `/api/files/{id}/preview` (md/txt/pdf/csv)
+  - [ ] POST `/api/files/import-url`
+  - [ ] POST `/api/workflows/start` with chunking/embedding params
+- [ ] FM-4: Library UI (expand)
+  - [ ] Preview panel for md/txt/pdf/csv with virtualization for CSV
+  - [ ] Ingest/Embed drawer with chunking + model selection
+  - [ ] Re-embed action
+- [ ] FM-9: Embedding Model Registry
+  - [ ] Registry CRUD APIs and persistence
+  - [ ] Project default model endpoints and UI selector
+  - [ ] Deprecation flow and re-embed prompts
+- [ ] FM-10: Remove Embedding workspace
+  - [ ] Consolidate routes/menus into Files Workbench
+  - [ ] Migrate any remaining actions to Files Workbench
+
+## Acceptance criteria (augmented)
+
+- Users can preview Markdown, text, PDF, and CSV within the Workbench.
+- Users can start ingestion with configurable chunking and selected embedding model; vectors appear in the vector store with correct provenance.
+- Changing the default embedding model triggers a re-embed prompt; completed runs show lineage (`runId`, `pipelineConfigHash`).
+- Uploaded files appear under the active project's tree node and can be acted on from the Workbench.
+- The separate Embedding workspace is removed; all related actions live in File Management.
 
 

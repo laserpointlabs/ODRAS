@@ -17,3 +17,16 @@ def get_user(authorization: Optional[str] = Header(None)):
     return user
 
 
+def get_admin_user(authorization: Optional[str] = Header(None)):
+    """Get user and verify admin permissions."""
+    user = get_user(authorization)
+    if not user.get("is_admin", False):
+        raise HTTPException(status_code=403, detail="Admin access required")
+    return user
+
+
+def is_user_admin(user: Dict) -> bool:
+    """Check if user has admin privileges."""
+    return user.get("is_admin", False)
+
+

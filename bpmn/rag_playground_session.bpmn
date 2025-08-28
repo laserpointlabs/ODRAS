@@ -1,0 +1,24 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<bpmn:definitions xmlns:bpmn="http://www.omg.org/spec/BPMN/20100524/MODEL" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" id="Definitions_play" targetNamespace="http://odras.system/bpmn">
+  <bpmn:process id="rag_playground_session" name="ODRAS RAG Playground Session" isExecutable="true">
+    <bpmn:startEvent id="StartEvent_PLAY" name="Start Session">
+      <bpmn:outgoing>Flow_P1</bpmn:outgoing>
+    </bpmn:startEvent>
+    <bpmn:scriptTask id="Task_RetrieveContext" name="Retrieve Context">
+      <bpmn:incoming>Flow_P1</bpmn:incoming>
+      <bpmn:outgoing>Flow_P2</bpmn:outgoing>
+      <bpmn:script># Script: scripts/playground_retrieve.py</bpmn:script>
+    </bpmn:scriptTask>
+    <bpmn:scriptTask id="Task_ChatLLM" name="LLM Response with Citations">
+      <bpmn:incoming>Flow_P2</bpmn:incoming>
+      <bpmn:outgoing>Flow_P3</bpmn:outgoing>
+      <bpmn:script># Script: scripts/playground_chat.py</bpmn:script>
+    </bpmn:scriptTask>
+    <bpmn:endEvent id="EndEvent_PLAY" name="Session Complete">
+      <bpmn:incoming>Flow_P3</bpmn:incoming>
+    </bpmn:endEvent>
+    <bpmn:sequenceFlow id="Flow_P1" sourceRef="StartEvent_PLAY" targetRef="Task_RetrieveContext" />
+    <bpmn:sequenceFlow id="Flow_P2" sourceRef="Task_RetrieveContext" targetRef="Task_ChatLLM" />
+    <bpmn:sequenceFlow id="Flow_P3" sourceRef="Task_ChatLLM" targetRef="EndEvent_PLAY" />
+  </bpmn:process>
+</bpmn:definitions>
