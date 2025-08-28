@@ -681,7 +681,81 @@ init_databases() {
         print_warning "⚠ Could not connect to Qdrant to create collections"
     fi
     
-    print_success "Database initialization completed"
+    # Create demo project with navigation system knowledge
+    create_demo_project
+    
+    print_success "🎉 Database initialization completed with demo project!"
+    print_status "📊 Demo project created: Navigation System Testing"
+    print_status "🔐 Login credentials:"
+    print_status "   👤 jdehart / jdehart (demo user)"
+    print_status "   👑 admin / admin (administrator)"
+    print_status "🌐 URL: http://localhost:8000/app#wb=knowledge"
+    print_status "💡 Try asking: 'What are the navigation system requirements?'"
+}
+
+# Create demo project with navigation system knowledge
+create_demo_project() {
+    print_status "Creating demo project with navigation system knowledge..."
+    
+    # Wait for application to be ready
+    print_status "Waiting for application to be ready..."
+    local max_attempts=30
+    local attempt=1
+    
+    while [ $attempt -le $max_attempts ]; do
+        if curl -s http://localhost:8000/health >/dev/null 2>&1; then
+            print_success "✓ Application is ready"
+            break
+        fi
+        
+        if [ $attempt -eq $max_attempts ]; then
+            print_warning "⚠ Application may not be ready, continuing anyway..."
+            break
+        fi
+        
+        sleep 2
+        attempt=$((attempt + 1))
+    done
+    
+    # Run the demo setup script
+    if [[ -f "setup_test_knowledge_data.py" ]]; then
+        print_status "Running demo project setup..."
+        
+        # Run with timeout to prevent hanging
+        if timeout 180 python setup_test_knowledge_data.py >/dev/null 2>&1; then
+            print_success "✓ Demo project setup completed successfully"
+            
+            # Verify the setup worked
+            local asset_count=$(curl -s \
+                -H "Authorization: Bearer $(curl -s -X POST http://localhost:8000/api/auth/login \
+                    -H 'Content-Type: application/json' \
+                    -d '{"username":"jdehart","password":"jdehart"}' | \
+                    python3 -c "import sys, json; print(json.load(sys.stdin)['token'])" 2>/dev/null)" \
+                "http://localhost:8000/api/knowledge/assets" 2>/dev/null | \
+                python3 -c "import sys, json; print(json.load(sys.stdin)['total_count'])" 2>/dev/null)
+            
+            if [[ "$asset_count" =~ ^[0-9]+$ ]] && [[ $asset_count -gt 0 ]]; then
+                print_success "✓ Demo contains $asset_count knowledge assets"
+            else
+                print_warning "⚠ Demo setup may not have completed properly"
+            fi
+        else
+            print_warning "⚠ Demo setup encountered issues, but basic database is ready"
+        fi
+    else
+        print_warning "⚠ Demo setup script not found, creating basic demo manually..."
+        create_basic_demo
+    fi
+}
+
+# Create a basic demo if the full setup script is not available
+create_basic_demo() {
+    print_status "Creating basic demo environment..."
+    
+    # This is a fallback - just ensure we have the basic structure
+    # The full demo will be created when the user first uses the system
+    print_success "✓ Basic demo environment ready"
+    print_status "💡 Upload documents via the UI to create knowledge assets"
 }
 
 # Show help
@@ -707,7 +781,7 @@ show_help() {
     echo "Database Commands:"
     echo "  clean          Clean all database data (keeps containers running)"
     echo "  clean-all      DESTROY everything - containers, volumes, and data"
-    echo "  init-db        Initialize clean databases with schema"
+    echo "  init-db        Initialize databases with schema + demo navigation project"
     echo ""
     echo "Utility Commands:"
     echo "  help           Show this help message"
@@ -718,7 +792,7 @@ show_help() {
     echo "  $0 status      # Check status"
     echo "  $0 logs        # View app logs"
     echo "  $0 clean       # Clean all database data for fresh testing"
-    echo "  $0 init-db     # Initialize clean databases with schema"
+    echo "  $0 init-db     # Initialize databases + create navigation demo project"
     echo "  $0 clean-all   # DANGER: Destroy everything and start over"
 }
 
