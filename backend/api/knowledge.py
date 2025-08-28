@@ -15,6 +15,7 @@ from pydantic import BaseModel, Field
 from ..services.auth import get_user, get_admin_user, is_user_admin
 from ..services.config import Settings
 from ..services.db import DatabaseService
+from ..services.rag_service import get_rag_service
 
 logger = logging.getLogger(__name__)
 router = APIRouter(prefix="/api/knowledge", tags=["knowledge"])
@@ -104,6 +105,42 @@ class AssetContentResponse(BaseModel):
     chunks: List[KnowledgeChunkResponse] = []
     total_chunks: int = 0
     total_tokens: int = 0
+
+class RAGQueryRequest(BaseModel):
+    """Request model for RAG queries."""
+    question: str = Field(..., description="The question to ask the knowledge base", min_length=3, max_length=500)
+    project_id: Optional[str] = Field(None, description="Optional project scope for the query")
+    max_chunks: int = Field(5, description="Maximum number of relevant chunks to retrieve", ge=1, le=20)
+    similarity_threshold: float = Field(0.5, description="Minimum similarity score for relevance", ge=0.1, le=1.0)
+    include_metadata: bool = Field(True, description="Include source metadata in response")
+    response_style: str = Field("comprehensive", description="Response style")
+    
+class RAGSourceInfo(BaseModel):
+    """Source information for RAG responses."""
+    asset_id: str
+    title: str
+    document_type: str
+    chunk_id: Optional[str] = None
+    relevance_score: float
+
+class RAGQueryResponse(BaseModel):
+    """Response model for RAG queries."""
+    success: bool
+    response: Optional[str] = None
+    confidence: Optional[str] = None
+    sources: List[RAGSourceInfo] = []
+    query: str
+    chunks_found: int = 0
+    response_style: Optional[str] = None
+    generated_at: str
+    model_used: Optional[str] = None
+    provider: Optional[str] = None
+    error: Optional[str] = None
+
+class QuerySuggestionsResponse(BaseModel):
+    """Response model for query suggestions."""
+    suggestions: List[str]
+    project_id: Optional[str] = None
 
 # ========================================
 # HELPER FUNCTIONS
@@ -1010,6 +1047,171 @@ async def search_knowledge(
 # ========================================
 # HEALTH CHECK
 # ========================================
+
+# ========================================
+# RAG (RETRIEVAL AUGMENTED GENERATION) ENDPOINTS
+# ========================================
+
+@router.post("/query", response_model=RAGQueryResponse)
+async def query_knowledge_base(
+    request: RAGQueryRequest,
+    user: Dict = Depends(get_user)
+):
+    """
+    Query the knowledge base using RAG (Retrieval Augmented Generation).
+    
+    This endpoint combines vector similarity search with LLM generation to provide
+    contextual answers based on the user's knowledge assets.
+    
+    Args:
+        request: RAG query request with question and parameters
+        
+    Returns:
+        Generated response with sources and metadata
+    """
+    try:
+        logger.info(f"Processing RAG query from user {user.get('user_id')}: '{request.question}'")
+        
+        # Get RAG service
+        rag_service = get_rag_service()
+        
+        # Execute RAG query
+        result = await rag_service.query_knowledge_base(
+            question=request.question,
+            project_id=request.project_id,
+            user_id=user["user_id"],
+            max_chunks=request.max_chunks,
+            similarity_threshold=request.similarity_threshold,
+            include_metadata=request.include_metadata,
+            response_style=request.response_style
+        )
+        
+        # Convert sources to proper response format
+        if result.get("sources"):
+            formatted_sources = []
+            for source in result["sources"]:
+                formatted_sources.append(RAGSourceInfo(
+                    asset_id=source["asset_id"],
+                    title=source["title"],
+                    document_type=source["document_type"],
+                    chunk_id=source.get("chunk_id"),
+                    relevance_score=source["relevance_score"]
+                ))
+            result["sources"] = formatted_sources
+        
+        return RAGQueryResponse(**result)
+        
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"RAG query failed: {str(e)}")
+        raise HTTPException(status_code=500, detail=f"Failed to process query: {str(e)}")
+
+@router.get("/query/suggestions", response_model=QuerySuggestionsResponse)
+async def get_query_suggestions(
+    project_id: Optional[str] = Query(None, description="Optional project ID to scope suggestions"),
+    limit: int = Query(5, ge=1, le=10, description="Maximum number of suggestions"),
+    user: Dict = Depends(get_user)
+):
+    """
+    Get suggested queries based on the available knowledge assets.
+    
+    Args:
+        project_id: Optional project scope
+        limit: Maximum number of suggestions to return
+        
+    Returns:
+        List of suggested queries
+    """
+    try:
+        logger.info(f"Getting query suggestions for user {user.get('user_id')}")
+        
+        # Get RAG service
+        rag_service = get_rag_service()
+        
+        # Get suggestions
+        suggestions = await rag_service.get_query_suggestions(
+            project_id=project_id,
+            user_id=user["user_id"],
+            limit=limit
+        )
+        
+        return QuerySuggestionsResponse(
+            suggestions=suggestions,
+            project_id=project_id
+        )
+        
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Failed to get query suggestions: {str(e)}")
+        raise HTTPException(status_code=500, detail=f"Failed to get suggestions: {str(e)}")
+
+@router.post("/search/semantic")
+async def semantic_search_chunks(
+    query: str = Body(..., description="Search query text"),
+    project_id: Optional[str] = Body(None, description="Optional project scope"),
+    limit: int = Body(10, ge=1, le=50, description="Maximum results to return"),
+    score_threshold: float = Body(0.7, ge=0.0, le=1.0, description="Minimum similarity score"),
+    user: Dict = Depends(get_user)
+):
+    """
+    Perform semantic search on knowledge chunks without LLM generation.
+    
+    This endpoint provides direct access to vector similarity search results
+    for users who want to see raw search results.
+    
+    Args:
+        query: The search query text
+        project_id: Optional project scope
+        limit: Maximum number of results
+        score_threshold: Minimum similarity score
+        
+    Returns:
+        List of matching knowledge chunks with scores
+    """
+    try:
+        logger.info(f"Processing semantic search for user {user.get('user_id')}: '{query}'")
+        
+        # Get RAG service for reusing chunk retrieval logic
+        rag_service = get_rag_service()
+        
+        # Retrieve relevant chunks
+        chunks = await rag_service._retrieve_relevant_chunks(
+            question=query,
+            project_id=project_id,
+            user_id=user["user_id"],
+            max_chunks=limit,
+            similarity_threshold=score_threshold
+        )
+        
+        # Format results
+        results = []
+        for chunk in chunks:
+            chunk_data = chunk.get("payload", {})
+            results.append({
+                "chunk_id": chunk_data.get("chunk_id"),
+                "content": chunk_data.get("text", ""),
+                "score": chunk.get("score", 0.0),
+                "asset_id": chunk_data.get("asset_id"),
+                "asset_title": chunk_data.get("source_asset", "Unknown"),
+                "document_type": chunk_data.get("document_type", "document"),
+                "project_id": chunk_data.get("project_id")
+            })
+        
+        return {
+            "success": True,
+            "query": query,
+            "results": results,
+            "total_found": len(results),
+            "score_threshold": score_threshold
+        }
+        
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Semantic search failed: {str(e)}")
+        raise HTTPException(status_code=500, detail=f"Search failed: {str(e)}")
 
 @router.get("/health")
 async def knowledge_health():

@@ -377,6 +377,58 @@ class QdrantService:
                 'qdrant_available': False
             }
 
+    async def search_similar_chunks(
+        self,
+        query_text: str,
+        collection_name: str = "knowledge_chunks",
+        limit: int = 10,
+        score_threshold: float = 0.7,
+        metadata_filter: Optional[Dict[str, Any]] = None
+    ) -> List[Dict[str, Any]]:
+        """
+        Search for similar knowledge chunks using text query.
+        
+        This method handles embedding generation and vector search in one call.
+        
+        Args:
+            query_text: The text query to search for
+            collection_name: Target collection name
+            limit: Maximum number of results
+            score_threshold: Minimum similarity score
+            metadata_filter: Optional metadata filters
+            
+        Returns:
+            List of similar chunks with scores and metadata
+        """
+        try:
+            # Generate embedding for query text
+            from .embedding_service import get_embedding_service
+            
+            embedding_service = get_embedding_service()
+            query_embeddings = embedding_service.generate_embeddings([query_text])
+            
+            if not query_embeddings:
+                logger.error("Failed to generate embedding for query text")
+                return []
+            
+            query_vector = query_embeddings[0]
+            
+            # Perform vector search
+            results = self.search_vectors(
+                collection_name=collection_name,
+                query_vector=query_vector,
+                limit=limit,
+                score_threshold=score_threshold,
+                metadata_filter=metadata_filter
+            )
+            
+            logger.info(f"Found {len(results)} similar chunks for query: '{query_text[:50]}...'")
+            return results
+            
+        except Exception as e:
+            logger.error(f"Similar chunks search failed: {str(e)}")
+            return []
+
 # ========================================
 # UTILITY FUNCTIONS
 # ========================================

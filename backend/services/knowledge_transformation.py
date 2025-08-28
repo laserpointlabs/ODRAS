@@ -419,8 +419,9 @@ class KnowledgeTransformationService:
             
             # Step 2: Create knowledge asset
             logger.info("Step 2: Creating knowledge asset")
-            file_metadata = await self.file_storage_service.get_file_metadata(file_id)
-            title = file_metadata.get('filename', f'Asset from file {file_id}')
+            
+            # Get proper filename from database
+            title = await self._get_file_title(file_id)
             
             asset_id = await self.create_knowledge_asset(
                 source_file_id=file_id,
@@ -512,6 +513,45 @@ class KnowledgeTransformationService:
                     self.db_service._return(conn)
             
             raise RuntimeError(error_msg)
+    
+    async def _get_file_title(self, file_id: str) -> str:
+        """
+        Get proper file title from database.
+        
+        Args:
+            file_id: File ID to get title for
+            
+        Returns:
+            File title (filename without extension) or fallback title
+        """
+        try:
+            conn = self.db_service._conn()
+            try:
+                with conn.cursor() as cur:
+                    cur.execute("SELECT filename, original_filename FROM files WHERE id = %s", (file_id,))
+                    result = cur.fetchone()
+                    
+                    if result:
+                        filename = result[0] or result[1]  # Try filename first, then original_filename
+                        if filename and filename != 'unknown':
+                            # Remove file extension and clean up the name
+                            base_name = filename
+                            if '.' in base_name:
+                                base_name = base_name.rsplit('.', 1)[0]
+                            
+                            # Convert to readable title
+                            title = base_name.replace('_', ' ').replace('-', ' ').title()
+                            return title
+                    
+                    # Fallback if no filename found
+                    return f"Knowledge Asset {file_id[:8]}"
+                    
+            finally:
+                self.db_service._return(conn)
+                
+        except Exception as e:
+            logger.warning(f"Failed to get file title for {file_id}: {str(e)}")
+            return f"Knowledge Asset {file_id[:8]}"
 
 # ========================================
 # UTILITY FUNCTIONS

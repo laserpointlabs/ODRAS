@@ -4688,6 +4688,15 @@
         });
       }
 
+      // Add query button event listener
+      const queryBtn = document.getElementById('knowledgeQueryBtn');
+      if (queryBtn) {
+        queryBtn.addEventListener('click', () => {
+          console.log('🔍 Query button clicked');
+          showRAGQueryInterface();
+        });
+      }
+
       // Load knowledge assets if the knowledge workbench is active
       const knowledgeWorkbench = document.getElementById('wb-knowledge');
       if (knowledgeWorkbench && !knowledgeWorkbench.style.display) {
@@ -4873,12 +4882,238 @@
       }
     }
 
+    // ========================================
+    // RAG QUERY FUNCTIONALITY
+    // ========================================
+
+    async function showRAGQueryInterface() {
+      try {
+        console.log('🔍 Showing RAG query interface...');
+        
+        const detailsContent = document.getElementById('knowledgeDetailsContent');
+        if (!detailsContent) return;
+        
+        detailsContent.innerHTML = `
+          <div style="height:100%; display:flex; flex-direction:column;">
+            <!-- Query Input -->
+            <div style="margin-bottom:16px;">
+              <div style="font-size:14px; font-weight:600; margin-bottom:8px;">Ask your knowledge base:</div>
+              <div style="display:flex; flex-direction:column; gap:8px;">
+                <textarea id="ragQueryInput" placeholder="What are the main requirements for navigation systems?" 
+                  style="background:#0b1220; color:#e5e7eb; border:1px solid var(--border); border-radius:6px; padding:10px; width:100%; height:80px; resize:vertical; font-family:inherit; font-size:13px;">
+                </textarea>
+                <div style="display:flex; gap:8px; align-items:center; flex-wrap:wrap;">
+                  <button class="btn" id="ragQueryBtn" style="background:#059669; border-color:#059669;">🔍 Ask</button>
+                  <button class="btn" id="ragSuggestionsBtn">💡 Suggestions</button>
+                  <select id="ragStyleSelect" style="background:#0b1220; color:#e5e7eb; border:1px solid var(--border); border-radius:4px; padding:4px 8px; font-size:12px;">
+                    <option value="comprehensive">📖 Comprehensive</option>
+                    <option value="concise">⚡ Concise</option>
+                    <option value="technical">🔧 Technical</option>
+                  </select>
+                  <div class="muted" style="font-size:11px; margin-left:auto;" id="ragStatus"></div>
+                </div>
+              </div>
+            </div>
+            
+            <!-- Query Response -->
+            <div style="flex:1; border:1px solid var(--border); border-radius:6px; background:#0f1419; overflow:hidden; display:flex; flex-direction:column;">
+              <div style="background:var(--accent-subtle); padding:8px 12px; border-bottom:1px solid var(--border); font-size:12px; font-weight:600; color:var(--accent); display:flex; justify-content:space-between; align-items:center;">
+                <span>💬 Response</span>
+                <div id="ragMetadata" class="muted" style="font-size:10px;"></div>
+              </div>
+              <div id="ragResponseContent" style="flex:1; padding:16px; overflow-y:auto; line-height:1.5;">
+                <div class="muted" style="text-align:center; padding:40px 20px;">
+                  Enter a question above and click "Ask" to query your knowledge base.<br/>
+                  <small>Powered by AI retrieval and generation</small>
+                </div>
+              </div>
+            </div>
+          </div>
+        `;
+        
+        // Add event listeners
+        document.getElementById('ragQueryBtn')?.addEventListener('click', executeRAGQuery);
+        document.getElementById('ragSuggestionsBtn')?.addEventListener('click', loadQuerySuggestions);
+        
+        // Load suggestions immediately
+        loadQuerySuggestions();
+        
+      } catch (error) {
+        console.error('Error showing RAG interface:', error);
+      }
+    }
+    
+    async function executeRAGQuery() {
+      try {
+        const queryInput = document.getElementById('ragQueryInput');
+        const styleSelect = document.getElementById('ragStyleSelect');
+        const statusDiv = document.getElementById('ragStatus');
+        const responseContent = document.getElementById('ragResponseContent');
+        const metadataDiv = document.getElementById('ragMetadata');
+        
+        if (!queryInput || !queryInput.value.trim()) {
+          alert('Please enter a question to ask your knowledge base.');
+          return;
+        }
+        
+        const question = queryInput.value.trim();
+        const responseStyle = styleSelect?.value || 'comprehensive';
+        
+        // Show loading state
+        statusDiv.textContent = 'Thinking...';
+        responseContent.innerHTML = `
+          <div style="display:flex; align-items:center; justify-content:center; padding:40px;">
+            <div style="display:flex; flex-direction:column; align-items:center; gap:16px;">
+              <div class="loading-spinner" style="width:24px; height:24px; border:2px solid var(--border); border-top:2px solid var(--accent); border-radius:50%; animation:spin 1s linear infinite;"></div>
+              <div class="muted">Analyzing your knowledge base...</div>
+            </div>
+          </div>
+        `;
+        
+        console.log('🔍 Executing RAG query:', { question, responseStyle });
+        
+        // Execute RAG query
+        const response = await fetch('/api/knowledge/query', {
+          method: 'POST',
+          headers: {
+            ...authHeader(),
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify({
+            question: question,
+            response_style: responseStyle,
+            max_chunks: 5,
+            similarity_threshold: 0.5,  // More permissive threshold
+            include_metadata: true
+          })
+        });
+        
+        if (!response.ok) {
+          throw new Error(`RAG query failed: ${response.status}`);
+        }
+        
+        const data = await response.json();
+        console.log('🔍 RAG response:', data);
+        
+        // Display response
+        displayRAGResponse(data);
+        
+      } catch (error) {
+        console.error('RAG query error:', error);
+        const statusDiv = document.getElementById('ragStatus');
+        const responseContent = document.getElementById('ragResponseContent');
+        
+        statusDiv.textContent = 'Query failed';
+        responseContent.innerHTML = `
+          <div style="padding:20px; text-align:center; color:#ef4444;">
+            <div style="font-weight:600; margin-bottom:8px;">❌ Query Failed</div>
+            <div class="muted">${error.message}</div>
+            <button class="btn" onclick="executeRAGQuery()" style="margin-top:12px;">🔄 Retry</button>
+          </div>
+        `;
+      }
+    }
+    
+    function displayRAGResponse(data) {
+      const responseContent = document.getElementById('ragResponseContent');
+      const metadataDiv = document.getElementById('ragMetadata');
+      const statusDiv = document.getElementById('ragStatus');
+      
+      if (!data.success) {
+        responseContent.innerHTML = `
+          <div style="padding:20px; text-align:center; color:#ef4444;">
+            <div style="font-weight:600; margin-bottom:8px;">❌ Error</div>
+            <div class="muted">${data.error || 'Unknown error occurred'}</div>
+          </div>
+        `;
+        statusDiv.textContent = 'Error';
+        return;
+      }
+      
+      // Update metadata
+      const confidence = data.confidence || 'medium';
+      const confidenceIcon = confidence === 'high' ? '🟢' : confidence === 'medium' ? '🟡' : '🟠';
+      const chunksFound = data.chunks_found || 0;
+      
+      metadataDiv.innerHTML = `
+        ${confidenceIcon} ${confidence} confidence • ${chunksFound} sources • ${data.model_used}
+      `;
+      statusDiv.textContent = `${chunksFound} sources found`;
+      
+      // Display main response
+      let responseHTML = `
+        <div style="margin-bottom:20px; padding:16px; background:#0a0e13; border-radius:6px; border-left:3px solid #059669;">
+          <div style="line-height:1.6; white-space:pre-wrap;">${escapeHtml(data.response)}</div>
+        </div>
+      `;
+      
+      // Add sources if available
+      if (data.sources && data.sources.length > 0) {
+        responseHTML += `
+          <div style="margin-top:16px;">
+            <div style="font-size:12px; font-weight:600; color:var(--muted); margin-bottom:8px; padding-bottom:4px; border-bottom:1px solid var(--border);">📚 SOURCES</div>
+        `;
+        
+        data.sources.forEach((source, index) => {
+          const relevanceScore = Math.round(source.relevance_score * 100);
+          responseHTML += `
+            <div style="margin-bottom:8px; padding:8px; background:#0b1220; border-radius:4px; border-left:2px solid var(--accent-subtle);">
+              <div style="display:flex; justify-content:space-between; align-items:start; margin-bottom:4px;">
+                <div style="font-size:12px; font-weight:600; color:var(--accent);">${escapeHtml(source.title)}</div>
+                <div style="font-size:10px; color:var(--muted);">${relevanceScore}% relevant</div>
+              </div>
+              <div style="font-size:11px; color:var(--muted);">${escapeHtml(source.document_type)} • Asset ID: ${source.asset_id}</div>
+            </div>
+          `;
+        });
+        
+        responseHTML += `</div>`;
+      }
+      
+      responseContent.innerHTML = responseHTML;
+    }
+    
+    async function loadQuerySuggestions() {
+      try {
+        console.log('💡 Loading query suggestions...');
+        
+        const response = await fetch('/api/knowledge/query/suggestions', {
+          headers: authHeader()
+        });
+        
+        if (!response.ok) {
+          throw new Error(`Failed to load suggestions: ${response.status}`);
+        }
+        
+        const data = await response.json();
+        console.log('💡 Query suggestions:', data);
+        
+        // Update query input placeholder with a random suggestion
+        const queryInput = document.getElementById('ragQueryInput');
+        if (queryInput && data.suggestions && data.suggestions.length > 0) {
+          const randomSuggestion = data.suggestions[Math.floor(Math.random() * data.suggestions.length)];
+          queryInput.placeholder = randomSuggestion;
+        }
+        
+      } catch (error) {
+        console.error('Failed to load query suggestions:', error);
+      }
+    }
+    
+    // Helper function to escape HTML
+    function escapeHtml(text) {
+      const div = document.createElement('div');
+      div.textContent = text;
+      return div.innerHTML;
+    }
+
     // Make functions globally available
     window.loadKnowledgeAssets = loadKnowledgeAssets;
     window.selectKnowledgeAsset = selectKnowledgeAsset;
     window.viewAssetContent = viewAssetContent;
     window.deleteAsset = deleteAsset;
     window.toggleAssetPublic = toggleAssetPublic;
+    window.showRAGQueryInterface = showRAGQueryInterface;
 
   </script>
 </body>
