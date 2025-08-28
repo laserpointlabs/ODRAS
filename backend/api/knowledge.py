@@ -57,6 +57,7 @@ class KnowledgeAssetResponse(BaseModel):
     is_public: bool = False
     made_public_at: Optional[str] = None
     made_public_by: Optional[str] = None
+    chunks: Optional[List["KnowledgeChunkResponse"]] = None  # Include chunks when requested
 
 class KnowledgeChunkResponse(BaseModel):
     """Response model for knowledge chunk."""
@@ -135,7 +136,8 @@ def format_asset_response(asset_row: Dict) -> KnowledgeAssetResponse:
         processing_stats=asset_row.get("processing_stats", {}),
         is_public=asset_row.get("is_public", False),
         made_public_at=asset_row["made_public_at"].isoformat() if asset_row.get("made_public_at") else None,
-        made_public_by=asset_row.get("made_public_by")
+        made_public_by=asset_row.get("made_public_by"),
+        chunks=asset_row.get("chunks")  # Include chunks if present
     )
 
 # ========================================
@@ -832,6 +834,178 @@ async def list_processing_jobs(
     except Exception as e:
         logger.error(f"Failed to list processing jobs: {str(e)}")
         raise HTTPException(status_code=500, detail=f"Failed to list processing jobs: {str(e)}")
+
+# ========================================
+# SEARCH ENDPOINTS  
+# ========================================
+
+class KnowledgeSearchRequest(BaseModel):
+    """Request model for knowledge search."""
+    query: str = Field(..., min_length=1, max_length=1000, description="Search query text")
+    project_id: Optional[str] = Field(None, description="Filter by project ID")
+    document_types: Optional[List[str]] = Field(None, description="Filter by document types")
+    limit: int = Field(10, ge=1, le=100, description="Maximum number of results")
+    min_score: float = Field(0.0, ge=0.0, le=1.0, description="Minimum similarity score")
+    include_metadata: bool = Field(True, description="Include chunk metadata in results")
+
+class KnowledgeSearchResult(BaseModel):
+    """Individual search result."""
+    chunk_id: str
+    asset_id: str
+    score: float
+    content: str
+    chunk_metadata: Dict[str, Any]
+    asset_metadata: Dict[str, Any]
+
+class KnowledgeSearchResponse(BaseModel):
+    """Response model for knowledge search."""
+    results: List[KnowledgeSearchResult]
+    query: str
+    total_found: int
+    search_time_ms: float
+    message: str = "Search completed successfully"
+
+@router.post("/search", response_model=KnowledgeSearchResponse)
+async def search_knowledge(
+    search_request: KnowledgeSearchRequest,
+    db: DatabaseService = Depends(get_knowledge_service),
+    user: Dict = Depends(get_user)
+):
+    """
+    Search knowledge base using semantic similarity.
+    
+    Args:
+        search_request: Search parameters and filters
+        
+    Returns:
+        Ranked search results with similarity scores
+    """
+    import time
+    start_time = time.time()
+    
+    try:
+        logger.info(f"Searching knowledge for user {user.get('user_id')}: '{search_request.query}'")
+        
+        # Get embedding service and generate query embedding
+        from ..services.embedding_service import get_embedding_service
+        from ..services.qdrant_service import get_qdrant_service
+        
+        embedding_service = get_embedding_service()
+        qdrant_service = get_qdrant_service()
+        
+        # Generate query embedding
+        query_embedding = embedding_service.generate_embeddings([search_request.query])
+        if not query_embedding:
+            raise HTTPException(status_code=500, detail="Failed to generate query embedding")
+        
+        query_vector = query_embedding[0]
+        
+        # Build search filters
+        search_filters = {}
+        
+        # Project access control
+        if is_user_admin(user):
+            # Admin can search all projects
+            if search_request.project_id:
+                search_filters["project_id"] = search_request.project_id
+        else:
+            # Regular users can only search their projects + public assets
+            user_projects = db.list_projects_for_user(user_id=user["user_id"], active=True)
+            accessible_project_ids = [str(p["project_id"]) for p in user_projects]
+            
+            if search_request.project_id:
+                if search_request.project_id in accessible_project_ids:
+                    search_filters["project_id"] = search_request.project_id
+                else:
+                    # User requested a project they don't have access to
+                    raise HTTPException(status_code=403, detail="Not authorized to search in this project")
+            else:
+                # Search across all accessible projects
+                search_filters["project_ids"] = accessible_project_ids
+        
+        # Document type filter
+        if search_request.document_types:
+            search_filters["document_types"] = search_request.document_types
+        
+        # Perform vector search in Qdrant
+        qdrant_results = qdrant_service.search_vectors(
+            collection_name="knowledge_chunks",
+            query_vector=query_vector,
+            limit=search_request.limit,
+            score_threshold=search_request.min_score,
+            metadata_filter=search_filters
+        )
+        
+        # Get detailed information for results from database
+        results = []
+        chunk_ids = [result["payload"]["chunk_id"] for result in qdrant_results if result.get("payload", {}).get("chunk_id")]
+        
+        if chunk_ids:
+            conn = db._conn()
+            try:
+                with conn.cursor() as cur:
+                    # Get chunk and asset details
+                    placeholders = ",".join(["%s"] * len(chunk_ids))
+                    cur.execute(f"""
+                        SELECT 
+                            kc.id as chunk_id,
+                            kc.asset_id,
+                            kc.content,
+                            kc.metadata as chunk_metadata,
+                            ka.title as asset_title,
+                            ka.document_type,
+                            ka.project_id,
+                            ka.metadata as asset_metadata
+                        FROM knowledge_chunks kc
+                        JOIN knowledge_assets ka ON kc.asset_id = ka.id
+                        WHERE kc.id IN ({placeholders})
+                    """, chunk_ids)
+                    
+                    chunk_details = {}
+                    for row in cur.fetchall():
+                        chunk_dict = dict(zip([desc[0] for desc in cur.description], row))
+                        chunk_details[str(chunk_dict["chunk_id"])] = chunk_dict
+                    
+                    # Build results with scores
+                    for qdrant_result in qdrant_results:
+                        chunk_id = qdrant_result["payload"].get("chunk_id")
+                        if chunk_id and chunk_id in chunk_details:
+                            chunk_info = chunk_details[chunk_id]
+                            
+                            results.append(KnowledgeSearchResult(
+                                chunk_id=chunk_id,
+                                asset_id=str(chunk_info["asset_id"]),
+                                score=qdrant_result["score"],
+                                content=chunk_info["content"],
+                                chunk_metadata=chunk_info.get("chunk_metadata", {}),
+                                asset_metadata={
+                                    "title": chunk_info["asset_title"],
+                                    "document_type": chunk_info["document_type"],
+                                    "project_id": str(chunk_info["project_id"]),
+                                    **chunk_info.get("asset_metadata", {})
+                                }
+                            ))
+                            
+            finally:
+                db._return(conn)
+        
+        search_time = (time.time() - start_time) * 1000  # Convert to milliseconds
+        
+        logger.info(f"Search completed: {len(results)} results in {search_time:.2f}ms")
+        
+        return KnowledgeSearchResponse(
+            results=results,
+            query=search_request.query,
+            total_found=len(results),
+            search_time_ms=round(search_time, 2),
+            message=f"Found {len(results)} results in {search_time:.2f}ms"
+        )
+        
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Knowledge search failed: {str(e)}")
+        raise HTTPException(status_code=500, detail=f"Search failed: {str(e)}")
 
 # ========================================
 # HEALTH CHECK

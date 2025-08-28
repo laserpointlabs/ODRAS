@@ -275,6 +275,7 @@ class KnowledgeTransformationService:
         chunks: List[DocumentChunk],
         chunk_ids: List[str],
         asset_id: str,
+        project_id: str,
         embedding_model: str = 'all-MiniLM-L6-v2',
         collection_name: str = 'knowledge_chunks'
     ) -> List[str]:
@@ -319,7 +320,7 @@ class KnowledgeTransformationService:
                 payload = {
                     'chunk_id': chunk_id,
                     'asset_id': asset_id,
-                    'project_id': chunk.metadata.section_path,  # TODO: Get actual project_id
+                    'project_id': project_id,
                     'chunk_type': chunk.metadata.chunk_type,
                     'sequence_number': chunk.metadata.sequence_number,
                     'token_count': chunk.metadata.token_count,
@@ -462,7 +463,7 @@ class KnowledgeTransformationService:
             # Step 6: Generate and store embeddings
             logger.info("Step 6: Generating and storing embeddings")
             qdrant_point_ids = await self.generate_and_store_embeddings(
-                chunks, chunk_ids, asset_id, processing_config['embedding_model']
+                chunks, chunk_ids, asset_id, project_id, processing_config['embedding_model']
             )
             
             await self.update_job_progress(job_id, 80, 'running')
