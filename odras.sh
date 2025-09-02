@@ -52,9 +52,14 @@ is_app_running() {
             return 0
         else
             rm -f "$PID_FILE"
-            return 1
         fi
     fi
+    
+    # Check if any process is using our port
+    if lsof -Pi :$APP_PORT -sTCP:LISTEN -t >/dev/null 2>&1; then
+        return 0
+    fi
+    
     return 1
 }
 
@@ -153,8 +158,14 @@ show_app_status() {
     print_status "ODRAS Application Status:"
     
     if is_app_running; then
-        local pid=$(cat "$PID_FILE")
-        print_success "✓ Running (PID: $pid)"
+        if [[ -f "$PID_FILE" ]]; then
+            local pid=$(cat "$PID_FILE")
+            print_success "✓ Running (PID: $pid)"
+        else
+            local port_pid=$(lsof -Pi :$APP_PORT -sTCP:LISTEN -t 2>/dev/null | head -1)
+            print_success "✓ Running (PID: ${port_pid:-unknown})"
+            print_warning "⚠ Started outside of odras.sh (no PID file)"
+        fi
         print_status "Port: $APP_PORT"
         print_status "Logs: $LOG_FILE"
         
