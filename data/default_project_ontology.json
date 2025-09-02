@@ -1,7 +1,7 @@
 {
   "metadata": {
     "name": "Default Project Ontology", 
-    "description": "Base ontology for ODRAS with engineering data objects",
+    "description": "Base SE ontology with data objects for ODRAS demo",
     "namespace": "http://odras.system/ontology",
     "version": "1.0.0",
     "created_at": "2024-01-01T00:00:00Z"
@@ -26,12 +26,6 @@
       "subclass_of": null
     },
     {
-      "name": "Interface",
-      "label": "Interface",
-      "comment": "Connection point between components",
-      "subclass_of": null
-    },
-    {
       "name": "Process",
       "label": "Process",
       "comment": "A sequence of operations or activities",
@@ -44,46 +38,10 @@
       "subclass_of": null
     },
     {
-      "name": "Condition",
-      "label": "Condition",
-      "comment": "A state or circumstance that triggers actions",
-      "subclass_of": null
-    },
-    {
-      "name": "DataObject",
-      "label": "Data Object",
-      "comment": "Abstract class for all data objects in the system",
-      "subclass_of": null
-    },
-    {
       "name": "CADFile",
       "label": "CAD File",
       "comment": "Computer-aided design file containing 3D models or technical drawings",
-      "subclass_of": "DataObject"
-    },
-    {
-      "name": "Specification",
-      "label": "Specification",
-      "comment": "Technical specification document",
-      "subclass_of": "DataObject"
-    },
-    {
-      "name": "TestCase", 
-      "label": "Test Case",
-      "comment": "Test scenario for verifying requirements",
-      "subclass_of": "DataObject"
-    },
-    {
-      "name": "SafetyProtocol",
-      "label": "Safety Protocol",
-      "comment": "Safety procedures and guidelines",
-      "subclass_of": "DataObject"
-    },
-    {
-      "name": "NavigationSystem",
-      "label": "Navigation System",
-      "comment": "System for navigation and positioning",
-      "subclass_of": "Component"
+      "subclass_of": null
     }
   ],
   "object_properties": [
@@ -102,13 +60,6 @@
       "range": "Component"
     },
     {
-      "name": "presents",
-      "label": "presents",
-      "comment": "Links a component to its interfaces",
-      "domain": "Component",
-      "range": "Interface"
-    },
-    {
       "name": "performs",
       "label": "performs",
       "comment": "Links a component to processes it performs",
@@ -123,16 +74,9 @@
       "range": "Function"
     },
     {
-      "name": "activates_on",
-      "label": "activates on",
-      "comment": "Links a function to its activation conditions",
-      "domain": "Function",
-      "range": "Condition"
-    },
-    {
       "name": "specifically_depends_upon",
       "label": "specifically depends upon",
-      "comment": "Links a function to components it depends on",
+      "comment": "Links a function back to components it depends on",
       "domain": "Function",
       "range": "Component"
     },
@@ -142,27 +86,6 @@
       "comment": "Links a component to its CAD file",
       "domain": "Component",
       "range": "CADFile"
-    },
-    {
-      "name": "has_specification",
-      "label": "has specification", 
-      "comment": "Links entities to their specifications",
-      "domain": null,
-      "range": "Specification"
-    },
-    {
-      "name": "verified_by",
-      "label": "verified by",
-      "comment": "Links requirements to test cases",
-      "domain": "Requirement",
-      "range": "TestCase"
-    },
-    {
-      "name": "follows_protocol",
-      "label": "follows protocol",
-      "comment": "Links components or processes to safety protocols",
-      "domain": null,
-      "range": "SafetyProtocol"
     }
   ],
   "datatype_properties": [
@@ -184,43 +107,29 @@
       "name": "status",
       "label": "status",
       "comment": "Current status of the entity",
-      "domain": null,
+      "domain": "Requirement",
+      "range": "xsd:string"
+    },
+    {
+      "name": "component_type",
+      "label": "component type",
+      "comment": "Type of component (Hardware, Software, etc.)",
+      "domain": "Component",
       "range": "xsd:string"
     },
     {
       "name": "file_path",
       "label": "file path",
-      "comment": "Path to the file in storage",
-      "domain": "DataObject",
+      "comment": "Path to the CAD file in storage",
+      "domain": "CADFile",
       "range": "xsd:string"
     },
     {
       "name": "file_format",
       "label": "file format",
-      "comment": "Format of the file (e.g., STEP, STL, PDF)",
-      "domain": "DataObject", 
+      "comment": "Format of the CAD file (STEP, STL, etc.)",
+      "domain": "CADFile", 
       "range": "xsd:string"
-    },
-    {
-      "name": "version",
-      "label": "version",
-      "comment": "Version number",
-      "domain": null,
-      "range": "xsd:string"
-    },
-    {
-      "name": "created_date",
-      "label": "created date",
-      "comment": "Date when the entity was created",
-      "domain": null,
-      "range": "xsd:dateTime"
-    },
-    {
-      "name": "modified_date",
-      "label": "modified date", 
-      "comment": "Date when the entity was last modified",
-      "domain": null,
-      "range": "xsd:dateTime"
     },
     {
       "name": "cad_software",
@@ -230,25 +139,11 @@
       "range": "xsd:string"
     },
     {
-      "name": "coordinate_system",
-      "label": "coordinate system",
-      "comment": "Coordinate system used (e.g., WGS84, UTM)",
-      "domain": "NavigationSystem",
-      "range": "xsd:string"
-    },
-    {
-      "name": "accuracy",
-      "label": "accuracy",
-      "comment": "Accuracy measurement in meters",
-      "domain": "NavigationSystem",
-      "range": "xsd:decimal"
-    },
-    {
-      "name": "test_result", 
-      "label": "test result",
-      "comment": "Result of test execution (Pass/Fail)",
-      "domain": "TestCase",
-      "range": "xsd:string"
+      "name": "process_duration",
+      "label": "process duration",
+      "comment": "Expected duration of the process in minutes",
+      "domain": "Process",
+      "range": "xsd:integer"
     }
   ]
 }
