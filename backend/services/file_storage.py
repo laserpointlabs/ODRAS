@@ -54,6 +54,7 @@ class FileMetadata:
         project_id: Optional[str] = None,
         tags: Optional[Dict] = None,
         visibility: str = "private",  # "private" or "public"
+        created_by: Optional[str] = None,  # User ID of file owner
     ):
         self.file_id = file_id
         self.filename = filename
@@ -67,6 +68,7 @@ class FileMetadata:
         self.project_id = project_id
         self.tags = tags or {}
         self.visibility = visibility
+        self.created_by = created_by
 
     def to_dict(self) -> Dict[str, Any]:
         return {
@@ -82,6 +84,7 @@ class FileMetadata:
             "project_id": self.project_id,
             "tags": self.tags,
             "visibility": self.visibility,
+            "created_by": self.created_by,
         }
 
 
@@ -902,6 +905,7 @@ class FileStorageService:
         content_type: Optional[str] = None,
         project_id: Optional[str] = None,
         tags: Optional[Dict] = None,
+        created_by: Optional[str] = None,
     ) -> Dict[str, Any]:
         """
         Store a file and return metadata.
@@ -912,6 +916,7 @@ class FileStorageService:
             content_type: MIME type (auto-detected if not provided)
             project_id: Associated project ID
             tags: Additional metadata tags
+            created_by: User ID of file owner
 
         Returns:
             Dict containing file metadata and storage result
@@ -943,6 +948,7 @@ class FileStorageService:
                 project_id=project_id,
                 tags=tags or {},
                 visibility="private",  # All files are private by default
+                created_by=created_by,
             )
 
             # Store file using backend
@@ -1086,9 +1092,7 @@ class FileStorageService:
         merged["updated_at"] = datetime.now(timezone.utc).isoformat()
         return self._write_metadata(file_id, merged)
 
-    async def get_file_metadata(self, file_id: str) -> Optional[Dict[str, Any]]:
-        """Return stored metadata for file if available (local/minio)."""
-        return self._read_metadata(file_id)
+
 
     async def update_file_visibility(self, file_id: str, visibility: str) -> bool:
         """
@@ -1111,23 +1115,72 @@ class FileStorageService:
             logger.error(f"Failed to update file visibility: {e}")
             return False
 
-    async def list_files_with_visibility(self, project_id: Optional[str] = None, include_public: bool = False, limit: int = 100, offset: int = 0) -> List[Dict[str, Any]]:
+    async def list_files_with_visibility(self, project_id: Optional[str] = None, include_public: bool = False, 
+                                        limit: int = 100, offset: int = 0, user_id: Optional[str] = None, 
+                                        is_admin: bool = False, db = None) -> List[Dict[str, Any]]:
         """
-        List files with visibility support.
+        List files with visibility support and user-based filtering.
         
         Args:
             project_id: Filter by project ID (optional)
             include_public: Include public files from other projects
             limit: Maximum number of results
             offset: Result offset for pagination
+            user_id: Current user ID for permission checking
+            is_admin: Whether the user is an admin
+            db: Database service for project membership checking
             
         Returns:
-            List of file metadata dictionaries
+            List of file metadata dictionaries filtered by user permissions
         """
         try:
-            return await self.backend.list_files_with_visibility(project_id, include_public, limit, offset)
+            # Get all files first
+            all_files = await self.backend.list_files_with_visibility(project_id, include_public, limit * 2, 0)
+            
+            # Apply user-based filtering with ownership checks
+            filtered_files = []
+            for file_data in all_files:
+                file_project_id = file_data.get("project_id")
+                file_visibility = file_data.get("visibility", "private")
+                file_created_by = file_data.get("created_by")
+                
+                should_include = False
+                
+                if is_admin:
+                    # Admins can see all files
+                    should_include = True
+                elif file_created_by == user_id:
+                    # Users can always see their own files
+                    should_include = True
+                elif file_visibility == "public":
+                    # Public files are visible to project members or globally
+                    if project_id is not None:
+                        if file_project_id == project_id:
+                            # Public file in requested project - include it
+                            should_include = True
+                        elif include_public:
+                            # Include public files from other projects if requested
+                            should_include = True
+                    elif file_project_id and db and user_id:
+                        # Check if user is member of file's project for public files
+                        try:
+                            is_member = db.is_user_member(project_id=file_project_id, user_id=user_id)
+                            if is_member:
+                                should_include = True
+                        except Exception as e:
+                            logger.warning(f"Failed to check project membership for user {user_id}, project {file_project_id}: {e}")
+                # Note: Private files are only visible to their owner (checked above) or admins
+                
+                if should_include:
+                    filtered_files.append(file_data)
+                    if len(filtered_files) >= limit:
+                        break
+            
+            # Apply pagination to filtered results
+            return filtered_files[offset:offset + limit]
+            
         except Exception as e:
-            logger.error(f"Failed to list files with visibility: {e}")
+            logger.error(f"Failed to list files with visibility and user filtering: {e}")
             return []
             
     async def get_file_content(self, file_id: str) -> Optional[bytes]:
@@ -1205,7 +1258,8 @@ class FileStorageService:
             logger.error(f"Failed to get metadata from database for {file_id}: {e}")
             return None
         finally:
-            backend.connection_pool.putconn(conn)
+            if isinstance(backend, PostgreSQLBackend):
+                backend.connection_pool.putconn(conn)
 
 
 # Global service instance

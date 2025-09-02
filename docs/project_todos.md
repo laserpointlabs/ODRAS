@@ -30,6 +30,7 @@ This file contains data dumps of just one lines for want, needs, and nice to hav
 [] data manager needs to be grouped by imports, and local project ontologies
 [] Ensure that the requirements.txt stays up to date.
 [] Add tabs to main screen to open more than one workbench at a time. 
+[] Keep project questions as approved by the project and we can continue to test with these.
 
 ## 🎯 NEXT PRIORITIES
 
