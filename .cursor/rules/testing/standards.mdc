@@ -1,0 +1,28 @@
+rule "unit-testing" {
+  description = "Write comprehensive unit tests"
+  when = "implementing new features"
+  then = "Create unit tests that:
+    - Use pytest for Python code
+    - Cover all code paths
+    - Include edge cases
+    - Use meaningful test names (test_feature_scenario_expected)"
+}
+
+rule "integration-testing" {
+  description = "Test complete workflows"
+  when = "implementing workflow features"
+  then = "Create integration tests that:
+    - Test end-to-end workflows
+    - Verify database interactions
+    - Check API responses
+    - Validate BPMN process execution"
+}
+
+rule "test-file-naming" {
+  description = "Follow test file naming conventions"
+  when = "creating test files"
+  then = "Name test files with:
+    - Prefix 'test_' for Python test files
+    - Descriptive names indicating what's being tested
+    - Match source file structure in tests directory"
+}

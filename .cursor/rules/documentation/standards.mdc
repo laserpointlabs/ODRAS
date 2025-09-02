@@ -1,0 +1,29 @@
+rule "code-documentation" {
+  description = "Maintain clear code documentation"
+  when = "writing or modifying code"
+  then = "Include documentation that:
+    - Explains why, not what
+    - Documents complex logic
+    - Includes usage examples for public APIs
+    - Uses docstrings for Python functions/classes"
+}
+
+rule "api-documentation" {
+  description = "Document API endpoints thoroughly"
+  when = "creating or modifying API endpoints"
+  then = "Include API documentation with:
+    - Endpoint purpose and behavior
+    - Request/response examples
+    - Error codes and meanings
+    - Authentication requirements"
+}
+
+rule "readme-maintenance" {
+  description = "Keep README files up to date"
+  when = "making significant changes"
+  then = "Update README to include:
+    - Clear setup instructions
+    - Architecture overview
+    - Dependencies and requirements
+    - Common troubleshooting steps"
+}

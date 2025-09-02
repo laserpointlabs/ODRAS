@@ -169,10 +169,8 @@ CREATE TRIGGER update_extraction_jobs_updated_at BEFORE UPDATE ON public.extract
 CREATE TRIGGER update_requirements_updated_at BEFORE UPDATE ON public.requirements
     FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
 
--- Insert a default project for testing
-INSERT INTO public.projects (name, description, created_by) 
-VALUES ('Default Project', 'Default project for ODRAS testing and development', 'system')
-ON CONFLICT DO NOTHING;
+-- Note: Default project is created by odras.sh script during init-db
+-- This ensures proper user associations and project memberships
 
 -- Grant permissions (adjust as needed for your security requirements)
 -- GRANT ALL PRIVILEGES ON SCHEMA file_storage TO your_app_user;

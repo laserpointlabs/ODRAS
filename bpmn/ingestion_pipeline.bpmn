@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<bpmn:definitions xmlns:bpmn="http://www.omg.org/spec/BPMN/20100524/MODEL" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" id="Definitions_ingestion" targetNamespace="http://odras.system/bpmn">
-  <bpmn:process id="ingestion_pipeline" name="ODRAS Ingestion Pipeline" isExecutable="true">
+<bpmn:definitions xmlns:bpmn="http://www.omg.org/spec/BPMN/20100524/MODEL" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xmlns:camunda="http://camunda.org/schema/1.0/bpmn" id="Definitions_ingestion" targetNamespace="http://odras.system/bpmn">
+  <bpmn:process id="ingestion_pipeline" name="ODRAS Ingestion Pipeline" isExecutable="true" camunda:historyTimeToLive="180">
     <bpmn:startEvent id="StartEvent_Ingestion" name="Start Ingestion">
       <bpmn:outgoing>Flow_1</bpmn:outgoing>
     </bpmn:startEvent>

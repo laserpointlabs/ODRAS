@@ -1,0 +1,29 @@
+rule "bpmn-workflow-design" {
+  description = "Design visual workflows using Camunda 7"
+  when = "creating or modifying BPMN workflows"
+  then = "Follow BPMN best practices:
+    - Use clear, descriptive task names
+    - Implement proper start and end events
+    - Include error boundaries for fault tolerance
+    - Add documentation to each task"
+}
+
+rule "script-task-implementation" {
+  description = "Implement Python scripts for workflow tasks"
+  when = "creating BPMN script tasks"
+  then = "Ensure script tasks:
+    - Are self-contained and idempotent
+    - Include proper error handling
+    - Log execution details
+    - Return appropriate process variables"
+}
+
+rule "workflow-monitoring" {
+  description = "Enable workflow monitoring capabilities"
+  when = "deploying BPMN processes"
+  then = "Configure for monitoring:
+    - Enable Camunda Cockpit tracking
+    - Include meaningful logging
+    - Set up appropriate metrics
+    - Document expected execution times"
+}

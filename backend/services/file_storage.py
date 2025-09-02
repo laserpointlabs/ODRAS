@@ -4,6 +4,7 @@ Provides abstraction over different storage backends (MinIO, PostgreSQL, local f
 """
 
 import hashlib
+import json
 import logging
 import mimetypes
 import os
@@ -53,6 +54,7 @@ class FileMetadata:
         project_id: Optional[str] = None,
         tags: Optional[Dict] = None,
         visibility: str = "private",  # "private" or "public"
+        created_by: Optional[str] = None,  # User ID of file owner
     ):
         self.file_id = file_id
         self.filename = filename
@@ -66,6 +68,7 @@ class FileMetadata:
         self.project_id = project_id
         self.tags = tags or {}
         self.visibility = visibility
+        self.created_by = created_by
 
     def to_dict(self) -> Dict[str, Any]:
         return {
@@ -81,6 +84,7 @@ class FileMetadata:
             "project_id": self.project_id,
             "tags": self.tags,
             "visibility": self.visibility,
+            "created_by": self.created_by,
         }
 
 
@@ -370,11 +374,12 @@ class MinIOBackend(StorageBackend):
 class PostgreSQLBackend(StorageBackend):
     """PostgreSQL storage backend (stores files as BLOBs)."""
 
-    def __init__(self, settings: Settings):
+    def __init__(self, settings: Settings, metadata_only: bool = False):
         if not POSTGRES_AVAILABLE:
             raise ImportError("PostgreSQL client not available. Install with: pip install psycopg2-binary")
 
         self.settings = settings
+        self.metadata_only = metadata_only  # When True, only store metadata in files table
         self.connection_pool = psycopg2.pool.ThreadedConnectionPool(
             minconn=1,
             maxconn=10,
@@ -453,14 +458,14 @@ class PostgreSQLBackend(StorageBackend):
                 # Insert metadata
                 cursor.execute(
                     """
-                    INSERT INTO file_storage 
-                    (file_id, filename, content_type, size, hash_md5, hash_sha256, 
+                    INSERT INTO files 
+                    (id, filename, content_type, file_size, hash_md5, hash_sha256, 
                      storage_path, project_id, tags, created_at, updated_at)
                     VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
-                    ON CONFLICT (file_id) DO UPDATE SET
+                    ON CONFLICT (id) DO UPDATE SET
                         filename = EXCLUDED.filename,
                         content_type = EXCLUDED.content_type,
-                        size = EXCLUDED.size,
+                        file_size = EXCLUDED.file_size,
                         hash_md5 = EXCLUDED.hash_md5,
                         hash_sha256 = EXCLUDED.hash_sha256,
                         updated_at = EXCLUDED.updated_at
@@ -474,22 +479,23 @@ class PostgreSQLBackend(StorageBackend):
                         metadata.hash_sha256,
                         metadata.storage_path,
                         metadata.project_id,
-                        str(metadata.tags),
+                        json.dumps(metadata.tags or {}),  # Proper JSON serialization
                         metadata.created_at,
                         metadata.updated_at,
                     ),
                 )
 
-                # Insert content
-                cursor.execute(
-                    """
-                    INSERT INTO file_content (file_id, content)
-                    VALUES (%s, %s)
-                    ON CONFLICT (file_id) DO UPDATE SET
-                        content = EXCLUDED.content
-                """,
-                    (file_id, content),
-                )
+                # Only insert content if not in metadata-only mode
+                if not self.metadata_only:
+                    cursor.execute(
+                        """
+                        INSERT INTO file_content (file_id, content)
+                        VALUES (%s, %s)
+                        ON CONFLICT (file_id) DO UPDATE SET
+                            content = EXCLUDED.content
+                    """,
+                        (file_id, content),
+                    )
 
                 conn.commit()
 
@@ -534,7 +540,7 @@ class PostgreSQLBackend(StorageBackend):
             with conn.cursor() as cursor:
                 cursor.execute(
                     """
-                    DELETE FROM file_storage WHERE file_id = %s
+                    DELETE FROM files WHERE id = %s
                 """,
                     (file_id,),
                 )
@@ -557,7 +563,7 @@ class PostgreSQLBackend(StorageBackend):
             with conn.cursor() as cursor:
                 cursor.execute(
                     """
-                    SELECT 1 FROM file_storage WHERE file_id = %s
+                    SELECT 1 FROM files WHERE id = %s
                 """,
                     (file_id,),
                 )
@@ -590,10 +596,10 @@ class PostgreSQLBackend(StorageBackend):
                 import json
                 cursor.execute(
                     """
-                    UPDATE file_storage 
+                    UPDATE files 
                     SET metadata = metadata || %s,
                         updated_at = NOW()
-                    WHERE file_id = %s
+                    WHERE id = %s
                     """,
                     (json.dumps({"visibility": visibility}), file_id),
                 )
@@ -635,9 +641,9 @@ class PostgreSQLBackend(StorageBackend):
                 
                 cursor.execute(
                     f"""
-                    SELECT file_id, filename, content_type, size, hash_md5, hash_sha256,
+                    SELECT id as file_id, filename, content_type, file_size as size, hash_md5, hash_sha256,
                            storage_path, created_at, updated_at, metadata
-                    FROM file_storage 
+                    FROM files 
                     {where_clause}
                     ORDER BY created_at DESC
                     LIMIT %s OFFSET %s
@@ -851,7 +857,9 @@ class FileStorageService:
 
         # Initialize metadata store (always use PostgreSQL if available, else local)
         if POSTGRES_AVAILABLE and settings.storage_backend != "local":
-            self.metadata_backend = PostgreSQLBackend(settings)
+            # Use metadata-only mode when PostgreSQL is not the primary storage backend
+            metadata_only = settings.storage_backend != "postgresql"
+            self.metadata_backend = PostgreSQLBackend(settings, metadata_only=metadata_only)
         else:
             self.metadata_backend = None
 
@@ -897,6 +905,7 @@ class FileStorageService:
         content_type: Optional[str] = None,
         project_id: Optional[str] = None,
         tags: Optional[Dict] = None,
+        created_by: Optional[str] = None,
     ) -> Dict[str, Any]:
         """
         Store a file and return metadata.
@@ -907,6 +916,7 @@ class FileStorageService:
             content_type: MIME type (auto-detected if not provided)
             project_id: Associated project ID
             tags: Additional metadata tags
+            created_by: User ID of file owner
 
         Returns:
             Dict containing file metadata and storage result
@@ -938,12 +948,22 @@ class FileStorageService:
                 project_id=project_id,
                 tags=tags or {},
                 visibility="private",  # All files are private by default
+                created_by=created_by,
             )
 
             # Store file using backend
             success = await self.backend.store_file(file_id, content, metadata)
 
             if success:
+                # If using MinIO (or other non-PostgreSQL backends), also store metadata in PostgreSQL
+                if self.metadata_backend and self.settings.storage_backend != "postgresql":
+                    try:
+                        metadata_success = await self.metadata_backend.store_file(file_id, content, metadata)
+                        if not metadata_success:
+                            logger.warning(f"Failed to store metadata in PostgreSQL for file {file_id}")
+                    except Exception as e:
+                        logger.error(f"Error storing metadata in PostgreSQL for file {file_id}: {e}")
+                
                 return {
                     "success": True,
                     "file_id": file_id,
@@ -1072,9 +1092,7 @@ class FileStorageService:
         merged["updated_at"] = datetime.now(timezone.utc).isoformat()
         return self._write_metadata(file_id, merged)
 
-    async def get_file_metadata(self, file_id: str) -> Optional[Dict[str, Any]]:
-        """Return stored metadata for file if available (local/minio)."""
-        return self._read_metadata(file_id)
+
 
     async def update_file_visibility(self, file_id: str, visibility: str) -> bool:
         """
@@ -1097,21 +1115,161 @@ class FileStorageService:
             logger.error(f"Failed to update file visibility: {e}")
             return False
 
-    async def list_files_with_visibility(self, project_id: Optional[str] = None, include_public: bool = False, limit: int = 100, offset: int = 0) -> List[Dict[str, Any]]:
+    async def list_files_with_visibility(self, project_id: Optional[str] = None, include_public: bool = False, 
+                                        limit: int = 100, offset: int = 0, user_id: Optional[str] = None, 
+                                        is_admin: bool = False, db = None) -> List[Dict[str, Any]]:
         """
-        List files with visibility support.
+        List files with visibility support and user-based filtering.
         
         Args:
             project_id: Filter by project ID (optional)
             include_public: Include public files from other projects
             limit: Maximum number of results
             offset: Result offset for pagination
+            user_id: Current user ID for permission checking
+            is_admin: Whether the user is an admin
+            db: Database service for project membership checking
             
         Returns:
-            List of file metadata dictionaries
+            List of file metadata dictionaries filtered by user permissions
         """
         try:
-            return await self.backend.list_files_with_visibility(project_id, include_public, limit, offset)
+            # Get all files first
+            all_files = await self.backend.list_files_with_visibility(project_id, include_public, limit * 2, 0)
+            
+            # Apply user-based filtering with ownership checks
+            filtered_files = []
+            for file_data in all_files:
+                file_project_id = file_data.get("project_id")
+                file_visibility = file_data.get("visibility", "private")
+                file_created_by = file_data.get("created_by")
+                
+                should_include = False
+                
+                if is_admin:
+                    # Admins can see all files
+                    should_include = True
+                elif file_created_by == user_id:
+                    # Users can always see their own files
+                    should_include = True
+                elif file_visibility == "public":
+                    # Public files are visible to project members or globally
+                    if project_id is not None:
+                        if file_project_id == project_id:
+                            # Public file in requested project - include it
+                            should_include = True
+                        elif include_public:
+                            # Include public files from other projects if requested
+                            should_include = True
+                    elif file_project_id and db and user_id:
+                        # Check if user is member of file's project for public files
+                        try:
+                            is_member = db.is_user_member(project_id=file_project_id, user_id=user_id)
+                            if is_member:
+                                should_include = True
+                        except Exception as e:
+                            logger.warning(f"Failed to check project membership for user {user_id}, project {file_project_id}: {e}")
+                # Note: Private files are only visible to their owner (checked above) or admins
+                
+                if should_include:
+                    filtered_files.append(file_data)
+                    if len(filtered_files) >= limit:
+                        break
+            
+            # Apply pagination to filtered results
+            return filtered_files[offset:offset + limit]
+            
         except Exception as e:
-            logger.error(f"Failed to list files with visibility: {e}")
+            logger.error(f"Failed to list files with visibility and user filtering: {e}")
             return []
+            
+    async def get_file_content(self, file_id: str) -> Optional[bytes]:
+        """
+        Get file content by file ID.
+        
+        Args:
+            file_id: Unique file identifier
+            
+        Returns:
+            File content as bytes or None if not found
+        """
+        try:
+            file_data = await self.retrieve_file(file_id)
+            if file_data and 'content' in file_data:
+                return file_data['content']
+            return None
+        except Exception as e:
+            logger.error(f"Failed to get file content for {file_id}: {e}")
+            return None
+    
+    async def get_file_metadata(self, file_id: str) -> Optional[Dict[str, Any]]:
+        """
+        Get file metadata by file ID.
+        
+        Args:
+            file_id: Unique file identifier
+            
+        Returns:
+            File metadata dict or None if not found
+        """
+        try:
+            # Query the files table for metadata
+            if isinstance(self.backend, PostgreSQLBackend):
+                return await self._get_metadata_from_db(file_id)
+            else:
+                # For other backends, use retrieve_file and extract metadata
+                file_data = await self.retrieve_file(file_id)
+                if file_data:
+                    return {
+                        'file_id': file_data.get('file_id'),
+                        'filename': 'unknown',  # Need to get from backend-specific metadata
+                        'content_type': 'application/octet-stream',
+                        'size': file_data.get('size', 0)
+                    }
+                return None
+        except Exception as e:
+            logger.error(f"Failed to get file metadata for {file_id}: {e}")
+            return None
+    
+    async def _get_metadata_from_db(self, file_id: str) -> Optional[Dict[str, Any]]:
+        """Get metadata from PostgreSQL database."""
+        try:
+            backend = self.backend
+            if not isinstance(backend, PostgreSQLBackend):
+                return None
+                
+            conn = backend.connection_pool.getconn()
+            with conn.cursor(cursor_factory=RealDictCursor) as cursor:
+                cursor.execute(
+                    """
+                    SELECT id, filename, content_type, file_size, hash_md5, hash_sha256,
+                           storage_path, project_id, tags, created_at, updated_at, metadata
+                    FROM files 
+                    WHERE id = %s
+                    """,
+                    (file_id,)
+                )
+                
+                row = cursor.fetchone()
+                if row:
+                    return dict(row)
+                return None
+        except Exception as e:
+            logger.error(f"Failed to get metadata from database for {file_id}: {e}")
+            return None
+        finally:
+            if isinstance(backend, PostgreSQLBackend):
+                backend.connection_pool.putconn(conn)
+
+
+# Global service instance
+_file_storage_service = None
+
+
+def get_file_storage_service() -> FileStorageService:
+    """Get the global file storage service instance."""
+    global _file_storage_service
+    if _file_storage_service is None:
+        settings = Settings()
+        _file_storage_service = FileStorageService(settings)
+    return _file_storage_service

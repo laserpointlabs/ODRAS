@@ -1,0 +1,27 @@
+rule "no-emoji-icons" {
+  description = "Never use emojis as icons in the UI"
+  when = "adding icons or visual indicators"
+  then = "NEVER use emojis. Always use SVG icons instead."
+}
+
+rule "svg-icon-standards" {
+  description = "Enforce consistent SVG icon formatting"
+  when = "creating or implementing icons"
+  then = "Follow SVG icon standards:
+    - Use black and white stroke-based icons only
+    - Set icon size to 22px x 22px within 40px x 40px containers
+    - Use stroke-width of 1.6px
+    - Use viewBox='0 0 24 24'
+    - Apply stroke='currentColor' to inherit parent color
+    - Use fill='none' for stroke-based icons"
+}
+
+rule "icon-style-consistency" {
+  description = "Maintain consistent icon style"
+  when = "selecting or creating icons"
+  then = "Ensure icons match the project style:
+    - Simple, professional line icons
+    - No colorful or cartoon-style icons
+    - No filled/solid icons unless specifically required
+    - Consistent visual weight across all icons"
+}
