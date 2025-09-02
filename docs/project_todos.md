@@ -35,6 +35,8 @@ This file contains data dumps of just one lines for want, needs, and nice to hav
 
 - Improve ontology capabiltities
     - Mange URIs
+        - Show selected object uri
+        - Rename objects to more useful name rather then (class2)
     - Enable addtributes
 - Data Manager Workbench (auto create data connectors based on ontology data properties)
 - User management UI for admins
