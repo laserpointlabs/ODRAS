@@ -1,0 +1,39 @@
+rule "html-structure" {
+  description = "Use semantic HTML5 with proper accessibility"
+  when = "writing HTML"
+  then = "Follow HTML best practices:
+    - Use semantic HTML5 elements
+    - Include proper ARIA attributes for accessibility
+    - Maintain consistent indentation
+    - Use descriptive class names"
+}
+
+rule "css-methodology" {
+  description = "Use CSS custom properties and BEM-like naming"
+  when = "writing CSS styles"
+  then = "Follow CSS conventions:
+    - Use CSS custom properties for theming
+    - Apply BEM-like class naming (block__element--modifier)
+    - Organize styles logically
+    - Avoid inline styles unless necessary"
+}
+
+rule "javascript-standards" {
+  description = "Use modern JavaScript patterns"
+  when = "writing JavaScript code"
+  then = "Follow JavaScript best practices:
+    - Use ES6+ features
+    - Avoid jQuery or outdated patterns
+    - Implement proper error handling
+    - Use async/await for asynchronous operations"
+}
+
+rule "component-dimensions" {
+  description = "Maintain consistent component sizing"
+  when = "creating UI components"
+  then = "Use standard dimensions:
+    - Vertical toolbar: 56px width
+    - Tree views: 320px default (min: 220px, max: 520px)
+    - Standard spacing: 8px gap between elements
+    - Button padding: 6px 10px"
+}

@@ -88,3 +88,4 @@ def check_db_status():
 
 if __name__ == "__main__":
     check_db_status()
+

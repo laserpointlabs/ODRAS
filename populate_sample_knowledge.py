@@ -678,3 +678,4 @@ def populate_knowledge_assets():
 
 if __name__ == "__main__":
     populate_knowledge_assets()
+

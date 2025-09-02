@@ -1,0 +1,35 @@
+rule "project-overview" {
+  description = "Understand ODRAS project context"
+  when = "working on any part of the project"
+  then = "Remember that ODRAS is an Ontology-Driven Requirements Analysis System using:
+    - BPMN workflows with Camunda 7
+    - Dark-themed CAD-like UI
+    - Multiple database backends (Qdrant, Neo4j, Fuseki)
+    - Professional, minimalist design approach"
+}
+
+rule "file-naming-conventions" {
+  description = "Use consistent file naming"
+  when = "creating new files"
+  then = "Apply naming conventions:
+    - HTML files: kebab-case (e.g., ontology-editor.html)
+    - Python files: snake_case (e.g., check_db_status.py)
+    - BPMN files: kebab-case with .bpmn extension
+    - Test files: prefix with test_"
+}
+
+rule "security-considerations" {
+  description = "Implement proper security measures"
+  when = "handling user data or authentication"
+  then = "Follow security best practices:
+    - Implement proper authentication
+    - Use role-based access control
+    - Validate all user inputs
+    - Never commit credentials or keys"
+}
+
+rule "docker-environment" {
+  description = "Test in Docker environment"
+  when = "making significant changes"
+  then = "Always test changes in the Docker environment before committing to ensure compatibility with the containerized deployment"
+}

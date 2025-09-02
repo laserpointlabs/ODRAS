@@ -229,3 +229,4 @@ time curl -X POST http://localhost:8000/api/knowledge/query \
 | llama3.1:70b | ~40GB | 48GB+ | Slow | Excellent | Best quality (enterprise) |
 
 **💡 Tip**: Start with `llama3.1:8b-instruct` - it offers the best balance of performance, quality, and resource usage for most ODRAS knowledge management tasks.
+
