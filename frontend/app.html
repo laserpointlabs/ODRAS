@@ -1656,11 +1656,50 @@
     }
     async function initAuth() {
       const token = localStorage.getItem(tokenKey);
-      if (!token) { showAuth(true); return; }
-      const me = await fetch('/api/auth/me', { headers: { Authorization: 'Bearer ' + token }}).then(r=>r.json()).catch(()=>null);
-      if (!me || me.error) { showAuth(true); return; }
-      qs('#userMenu').textContent = me.username + (me.is_admin ? ' (admin)' : '');
-      showAuth(false);
+      if (!token) { 
+        showAuth(true); 
+        // Clear any stale user data
+        localStorage.removeItem(userKey);
+        qs('#userMenu').textContent = '';
+        return; 
+      }
+      
+      try {
+        const response = await fetch('/api/auth/me', { 
+          headers: { Authorization: 'Bearer ' + token }
+        });
+        
+        if (!response.ok) {
+          // Token is invalid, clear it and show login
+          localStorage.removeItem(tokenKey);
+          localStorage.removeItem(userKey);
+          qs('#userMenu').textContent = '';
+          showAuth(true);
+          return;
+        }
+        
+        const me = await response.json();
+        if (!me || me.error || !me.username) {
+          // Invalid response, clear auth and show login
+          localStorage.removeItem(tokenKey);
+          localStorage.removeItem(userKey);
+          qs('#userMenu').textContent = '';
+          showAuth(true);
+          return;
+        }
+        
+        // Valid user, show main view
+        qs('#userMenu').textContent = me.username + (me.is_admin ? ' (admin)' : '');
+        showAuth(false);
+      } catch (error) {
+        // Network or other error, clear auth and show login
+        console.error('Auth check failed:', error);
+        localStorage.removeItem(tokenKey);
+        localStorage.removeItem(userKey);
+        qs('#userMenu').textContent = '';
+        showAuth(true);
+        return;
+      }
       // Restore last active workbench before loading projects
       try {
         const hashWB = (()=>{ try { const p = new URLSearchParams(location.hash.replace(/^#/, '')); return p.get('wb') || ''; } catch(_) { return ''; } })();
@@ -1734,7 +1773,15 @@
         qs('#loginMsg').textContent = json.error || 'Login failed';
       }
     };
-    qs('#logoutBtn').onclick = () => { localStorage.removeItem(tokenKey); localStorage.removeItem(userKey); activeOntologyIri = null; updateOntoGraphLabel(); try { if (ontoState.cy) ontoState.cy.elements().remove(); } catch(_) {} showAuth(true); };
+    qs('#logoutBtn').onclick = () => { 
+      localStorage.removeItem(tokenKey); 
+      localStorage.removeItem(userKey); 
+      activeOntologyIri = null; 
+      updateOntoGraphLabel(); 
+      try { if (ontoState.cy) ontoState.cy.elements().remove(); } catch(_) {} 
+      qs('#userMenu').textContent = '';  // Clear user display
+      showAuth(true); 
+    };
 
     // Projects
     async function loadProjects() {

@@ -313,6 +313,449 @@ stateDiagram-v2
 - `GET /api/projects/{id}/approval-status` - Check approval status
 - `POST /api/projects/{id}/archive` - Archive project
 
+## 🧪 Synthesized Test Data Strategy
+
+### Overview
+To validate the Data Manager Workbench and ensure robust testing without external dependencies, we'll create a comprehensive synthesized test dataset covering all supported data source types.
+
+### Test Data Components
+
+#### 1. Database Test Data
+
+**Test Schema (PostgreSQL):**
+```sql
+-- Test schema for aerospace components
+CREATE SCHEMA IF NOT EXISTS odras_test;
+
+-- Aircraft components table
+CREATE TABLE IF NOT EXISTS odras_test.aircraft_components (
+    component_id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    part_number VARCHAR(50) UNIQUE NOT NULL,
+    component_name VARCHAR(255) NOT NULL,
+    component_type VARCHAR(100), -- engine, avionics, structure, hydraulics
+    manufacturer VARCHAR(255),
+    weight_kg DECIMAL(10,2),
+    cost_usd DECIMAL(12,2),
+    certification_date DATE,
+    mtbf_hours INTEGER, -- Mean Time Between Failures
+    temperature_rating_min INTEGER, -- Celsius
+    temperature_rating_max INTEGER, -- Celsius
+    created_at TIMESTAMP DEFAULT NOW(),
+    updated_at TIMESTAMP DEFAULT NOW()
+);
+
+-- Sensor readings table (time-series data)
+CREATE TABLE IF NOT EXISTS odras_test.sensor_readings (
+    reading_id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    sensor_id VARCHAR(50) NOT NULL,
+    component_id UUID REFERENCES odras_test.aircraft_components(component_id),
+    reading_type VARCHAR(50), -- temperature, pressure, vibration, voltage
+    value DECIMAL(10,4) NOT NULL,
+    unit VARCHAR(20) NOT NULL,
+    timestamp TIMESTAMP NOT NULL,
+    quality_score DECIMAL(3,2), -- 0.00 to 1.00
+    INDEX idx_sensor_time (sensor_id, timestamp)
+);
+
+-- Requirements compliance table
+CREATE TABLE IF NOT EXISTS odras_test.compliance_records (
+    compliance_id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    component_id UUID REFERENCES odras_test.aircraft_components(component_id),
+    requirement_id VARCHAR(50) NOT NULL, -- Links to ontology requirements
+    compliance_status VARCHAR(50), -- compliant, non_compliant, partial, pending
+    test_date DATE,
+    test_results JSONB,
+    notes TEXT
+);
+
+-- Insert sample data
+INSERT INTO odras_test.aircraft_components 
+(part_number, component_name, component_type, manufacturer, weight_kg, cost_usd, certification_date, mtbf_hours, temperature_rating_min, temperature_rating_max)
+VALUES 
+('GPS-NAV-001', 'GPS Navigation Module', 'avionics', 'TechAvionics Corp', 2.5, 15000.00, '2023-06-15', 10000, -40, 85),
+('ENG-CTRL-A1', 'Engine Control Unit', 'engine', 'AeroControls Inc', 5.2, 45000.00, '2023-03-20', 8000, -55, 125),
+('HYD-PUMP-B2', 'Hydraulic Pump Assembly', 'hydraulics', 'FluidDynamics Ltd', 12.8, 28000.00, '2022-11-10', 5000, -40, 100),
+('STR-BEAM-C3', 'Structural Support Beam', 'structure', 'AeroStructures', 45.0, 8500.00, '2023-01-05', 50000, -60, 150);
+
+-- Generate time-series sensor data
+INSERT INTO odras_test.sensor_readings (sensor_id, component_id, reading_type, value, unit, timestamp, quality_score)
+SELECT 
+    'TEMP-' || comp.part_number,
+    comp.component_id,
+    'temperature',
+    20 + (RANDOM() * 40), -- 20-60°C
+    'celsius',
+    NOW() - (interval '1 hour' * generate_series(1, 168)), -- Last 7 days hourly
+    0.85 + (RANDOM() * 0.15) -- 0.85-1.00 quality
+FROM odras_test.aircraft_components comp
+WHERE comp.component_type IN ('avionics', 'engine');
+```
+
+#### 2. Mock API Endpoints
+
+**Test API Server (FastAPI):**
+```python
+# test_api_server.py
+from fastapi import FastAPI, HTTPException
+from datetime import datetime, timedelta
+import random
+from typing import List, Optional
+from pydantic import BaseModel
+
+app = FastAPI(title="ODRAS Test Data API")
+
+class MaintenanceRecord(BaseModel):
+    record_id: str
+    component_id: str
+    maintenance_type: str
+    performed_date: datetime
+    next_due_date: datetime
+    technician: str
+    status: str
+    cost: float
+
+class WeatherData(BaseModel):
+    location: str
+    timestamp: datetime
+    temperature: float
+    pressure: float
+    humidity: float
+    visibility: float
+    conditions: str
+
+@app.get("/api/v1/maintenance/{component_id}")
+async def get_maintenance_history(component_id: str, limit: int = 10) -> List[MaintenanceRecord]:
+    """Mock maintenance history for a component"""
+    records = []
+    for i in range(limit):
+        performed = datetime.now() - timedelta(days=30*i)
+        records.append(MaintenanceRecord(
+            record_id=f"MNT-{component_id}-{i:03d}",
+            component_id=component_id,
+            maintenance_type=random.choice(["inspection", "repair", "replacement", "calibration"]),
+            performed_date=performed,
+            next_due_date=performed + timedelta(days=90),
+            technician=f"Tech-{random.randint(100, 999)}",
+            status=random.choice(["completed", "pending_parts", "scheduled"]),
+            cost=random.uniform(500, 5000)
+        ))
+    return records
+
+@app.get("/api/v1/weather/conditions")
+async def get_weather_conditions(lat: float, lon: float) -> WeatherData:
+    """Mock weather data for flight conditions"""
+    return WeatherData(
+        location=f"{lat},{lon}",
+        timestamp=datetime.now(),
+        temperature=15 + random.uniform(-10, 25),
+        pressure=1013 + random.uniform(-20, 20),
+        humidity=random.uniform(30, 90),
+        visibility=random.uniform(1, 10),
+        conditions=random.choice(["clear", "cloudy", "rain", "fog", "snow"])
+    )
+
+@app.get("/api/v1/supply-chain/{part_number}")
+async def get_supply_chain_data(part_number: str):
+    """Mock supply chain data"""
+    return {
+        "part_number": part_number,
+        "suppliers": [
+            {
+                "supplier_id": f"SUP-{i:03d}",
+                "name": f"Supplier {chr(65+i)}",
+                "lead_time_days": random.randint(7, 60),
+                "price": random.uniform(100, 10000),
+                "availability": random.choice(["in_stock", "low_stock", "out_of_stock"]),
+                "quality_rating": round(random.uniform(3.5, 5.0), 1)
+            }
+            for i in range(3)
+        ],
+        "last_updated": datetime.now().isoformat()
+    }
+```
+
+#### 3. Sample CAD/STL Files
+
+**Generate Test STL Files:**
+```python
+# generate_test_stl.py
+import numpy as np
+from stl import mesh
+
+def create_test_bracket_stl():
+    """Create a simple bracket STL for testing"""
+    # Define vertices for a simple L-shaped bracket
+    vertices = np.array([
+        [0, 0, 0], [100, 0, 0], [100, 20, 0], [0, 20, 0],  # Base
+        [0, 0, 10], [100, 0, 10], [100, 20, 10], [0, 20, 10],  # Base top
+        [0, 0, 10], [20, 0, 10], [20, 0, 80], [0, 0, 80],  # Vertical
+        [0, 20, 10], [20, 20, 10], [20, 20, 80], [0, 20, 80]  # Vertical other side
+    ])
+    
+    # Define faces
+    faces = np.array([
+        [0,3,1], [1,3,2],  # Bottom
+        [4,5,7], [5,6,7],  # Top base
+        [0,1,5], [0,5,4],  # Front base
+        [2,3,7], [2,7,6],  # Back base
+        [8,11,9], [9,11,10],  # Vertical front
+        [12,13,15], [13,14,15]  # Vertical back
+    ])
+    
+    # Create mesh
+    bracket = mesh.Mesh(np.zeros(faces.shape[0], dtype=mesh.Mesh.dtype))
+    for i, f in enumerate(faces):
+        for j in range(3):
+            bracket.vectors[i][j] = vertices[f[j],:]
+    
+    # Add metadata as comments
+    bracket.save('test_data/cad/bracket_GPS-NAV-001.stl')
+    
+    # Create metadata file
+    metadata = {
+        "file": "bracket_GPS-NAV-001.stl",
+        "part_number": "GPS-NAV-001",
+        "material": "Aluminum 6061-T6",
+        "volume_cm3": 24.5,
+        "surface_area_cm2": 156.8,
+        "weight_g": 66.15,
+        "bounding_box": {
+            "x": 100, "y": 20, "z": 80
+        },
+        "tolerance": "+/- 0.1mm",
+        "finish": "Anodized"
+    }
+    
+    import json
+    with open('test_data/cad/bracket_GPS-NAV-001.json', 'w') as f:
+        json.dump(metadata, f, indent=2)
+
+# Generate multiple test CAD files
+components = [
+    ("GPS-NAV-001", "GPS Mount Bracket"),
+    ("ENG-CTRL-A1", "Engine Controller Housing"),
+    ("HYD-PUMP-B2", "Pump Mounting Plate"),
+    ("STR-BEAM-C3", "Structural Connector")
+]
+
+for part_number, description in components:
+    create_test_bracket_stl()  # Simplified - would create different geometries
+```
+
+#### 4. Test Ontology with Data Properties
+
+**Extend Test Ontology:**
+```turtle
+@prefix odras: <http://odras.local/onto/aerospace#> .
+@prefix owl: <http://www.w3.org/2002/07/owl#> .
+@prefix rdfs: <http://www.w3.org/2000/01/rdf-schema#> .
+@prefix xsd: <http://www.w3.org/2001/XMLSchema#> .
+
+# Data Properties for testing Data Manager
+odras:partNumber a owl:DatatypeProperty ;
+    rdfs:label "Part Number" ;
+    rdfs:domain odras:Component ;
+    rdfs:range xsd:string .
+
+odras:weight a owl:DatatypeProperty ;
+    rdfs:label "Weight" ;
+    rdfs:domain odras:Component ;
+    rdfs:range xsd:decimal ;
+    odras:unit "kilogram" .
+
+odras:operatingTemperature a owl:DatatypeProperty ;
+    rdfs:label "Operating Temperature" ;
+    rdfs:domain odras:Component ;
+    rdfs:range xsd:decimal ;
+    odras:unit "celsius" .
+
+odras:certificationDate a owl:DatatypeProperty ;
+    rdfs:label "Certification Date" ;
+    rdfs:domain odras:Component ;
+    rdfs:range xsd:date .
+
+odras:mtbfHours a owl:DatatypeProperty ;
+    rdfs:label "Mean Time Between Failures" ;
+    rdfs:domain odras:Component ;
+    rdfs:range xsd:integer ;
+    odras:unit "hours" .
+
+odras:supplierLeadTime a owl:DatatypeProperty ;
+    rdfs:label "Supplier Lead Time" ;
+    rdfs:domain odras:Component ;
+    rdfs:range xsd:integer ;
+    odras:unit "days" .
+
+odras:complianceStatus a owl:DatatypeProperty ;
+    rdfs:label "Compliance Status" ;
+    rdfs:domain odras:Component ;
+    rdfs:range xsd:string ;
+    odras:allowedValues "compliant,non_compliant,partial,pending" .
+```
+
+### Test Data Initialization Scripts
+
+**Master Test Data Setup:**
+```bash
+#!/bin/bash
+# setup_test_data.sh
+
+echo "Setting up ODRAS test data environment..."
+
+# 1. Create test database schema and data
+echo "Creating test database..."
+psql -U $POSTGRES_USER -d $POSTGRES_DB -f test_data/sql/create_test_schema.sql
+psql -U $POSTGRES_USER -d $POSTGRES_DB -f test_data/sql/insert_test_data.sql
+
+# 2. Start mock API server
+echo "Starting mock API server..."
+cd test_data/api && uvicorn test_api_server:app --host 0.0.0.0 --port 8888 --reload &
+
+# 3. Generate CAD test files
+echo "Generating CAD test files..."
+python test_data/cad/generate_test_stl.py
+
+# 4. Load test ontology
+echo "Loading test ontology with data properties..."
+curl -X POST http://localhost:3030/test/data \
+     -H "Content-Type: text/turtle" \
+     -d @test_data/ontology/test_data_properties.ttl
+
+# 5. Create test data pipes configuration
+echo "Creating default data pipe configurations..."
+python test_data/create_test_pipes.py
+
+echo "Test data setup complete!"
+```
+
+### Integration Test Scenarios
+
+**Data Manager Test Cases:**
+```python
+# test_data_manager_integration.py
+import pytest
+from datetime import datetime
+
+class TestDataManagerIntegration:
+    
+    @pytest.fixture
+    def test_project(self):
+        """Create test project with ontology"""
+        # Setup code
+        return project_id
+    
+    def test_database_pipe_sync(self, test_project):
+        """Test syncing component data from PostgreSQL"""
+        # Create pipe configuration
+        pipe_config = {
+            "pipe_type": "database",
+            "source_config": {
+                "driver": "postgresql",
+                "connection_string": "postgresql://test:test@localhost/odras_test"
+            },
+            "mapping": {
+                "query": "SELECT * FROM aircraft_components",
+                "bindings": {
+                    "odras:partNumber": "part_number",
+                    "odras:weight": "weight_kg",
+                    "odras:certificationDate": "certification_date"
+                }
+            }
+        }
+        
+        # Execute sync
+        result = data_manager.sync_pipe(pipe_config)
+        
+        # Verify RDF triples created
+        assert result.records_processed == 4
+        assert result.status == "success"
+    
+    def test_api_pipe_realtime(self, test_project):
+        """Test API integration for maintenance data"""
+        pipe_config = {
+            "pipe_type": "api",
+            "source_config": {
+                "endpoint": "http://localhost:8888/api/v1/maintenance/{component_id}",
+                "method": "GET",
+                "auth": None
+            },
+            "mapping": {
+                "response_path": "$",
+                "bindings": {
+                    "odras:maintenanceDate": "$.performed_date",
+                    "odras:maintenanceCost": "$.cost"
+                }
+            }
+        }
+        
+        # Test with specific component
+        result = data_manager.sync_pipe(pipe_config, {"component_id": "GPS-NAV-001"})
+        assert len(result.data) > 0
+    
+    def test_cad_metadata_extraction(self, test_project):
+        """Test CAD file metadata extraction"""
+        pipe_config = {
+            "pipe_type": "file",
+            "source_config": {
+                "path": "test_data/cad/",
+                "pattern": "*.json",
+                "format": "json"
+            },
+            "mapping": {
+                "bindings": {
+                    "odras:cadVolume": "$.volume_cm3",
+                    "odras:cadWeight": "$.weight_g",
+                    "odras:cadMaterial": "$.material"
+                }
+            }
+        }
+        
+        result = data_manager.sync_pipe(pipe_config)
+        assert result.records_processed == 4
+```
+
+### Performance Test Data
+
+**Load Testing Dataset:**
+```python
+# generate_load_test_data.py
+def generate_large_dataset():
+    """Generate larger dataset for performance testing"""
+    
+    # 10,000 components
+    components = []
+    for i in range(10000):
+        components.append({
+            "part_number": f"COMP-{i:06d}",
+            "name": f"Component {i}",
+            "type": random.choice(["engine", "avionics", "structure", "hydraulics"]),
+            "weight": random.uniform(0.1, 100),
+            "cost": random.uniform(10, 50000)
+        })
+    
+    # 1 million sensor readings
+    readings = []
+    for comp in components[:1000]:  # First 1000 components
+        for hour in range(1000):  # Last 1000 hours
+            readings.append({
+                "component_id": comp["part_number"],
+                "timestamp": datetime.now() - timedelta(hours=hour),
+                "temperature": random.uniform(20, 80),
+                "pressure": random.uniform(0.8, 1.2)
+            })
+    
+    return components, readings
+```
+
+### Benefits of Test Data Strategy
+
+1. **Isolation**: No external dependencies during development/testing
+2. **Repeatability**: Consistent test results across environments
+3. **Coverage**: Tests all data source types (DB, API, Files)
+4. **Performance**: Can generate scaled datasets for load testing
+5. **Validation**: Ensures Data Manager handles various data formats
+6. **Documentation**: Test data serves as usage examples
+
 ## 📋 Implementation Plan
 
 ### Week 2 Sprint Plan

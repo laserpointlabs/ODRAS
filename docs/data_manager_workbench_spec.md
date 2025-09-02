@@ -278,6 +278,46 @@ mapping:
 - Support VPN/private endpoints
 - Monitor for anomalous access patterns
 
+## Test Data Integration
+
+The Data Manager Workbench includes comprehensive test data for validation and development:
+
+### Available Test Data
+1. **PostgreSQL Test Schema** (`odras_test`)
+   - Aircraft components table with 4 sample components
+   - Time-series sensor readings (1,344 data points)
+   - Compliance records linking to requirements
+
+2. **Mock REST API** (Port 8888)
+   - Maintenance history endpoint
+   - Weather conditions API
+   - Supply chain data service
+
+3. **CAD File Samples**
+   - STL files for 4 components
+   - JSON metadata with material properties
+   - Demonstrates file-based data extraction
+
+4. **Test Ontology Properties**
+   - 7 data properties for aerospace domain
+   - Covers various data types (string, decimal, date, integer)
+   - Includes units and constraints
+
+### Quick Test Setup
+```bash
+# Run complete test environment setup
+./scripts/setup_test_data.sh
+
+# This will:
+# 1. Create PostgreSQL test schema and data
+# 2. Start mock API server on port 8888
+# 3. Generate CAD test files
+# 4. Load test ontology properties
+# 5. Create sample data pipe configurations
+```
+
+For detailed setup instructions, see [Test Data Setup Guide](./test_data_setup_guide.md).
+
 ## User Interface Design
 
 ### Main Dashboard
