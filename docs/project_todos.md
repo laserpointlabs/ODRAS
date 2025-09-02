@@ -1,11 +1,48 @@
-THis file contains data dumps of just one lines for want, needs, and nice to haves for the ODRAS MVP. Im just trying to keep a log of what I think we need so I dont lose it. 
+This file contains data dumps of just one lines for want, needs, and nice to haves for the ODRAS MVP. Im just trying to keep a log of what I think we need so I dont lose it.
 
-- I want to add the ability for the admin to to create a new users (view, create, admin controls) and if checked add a default project for that user. 
+## 🎯 COMPLETED TODAY (2025-09-02)
 
 - ✅ DONE: Create a more clean demo project (init-db now creates single Default Project with demo content)
 
-- ✅ DONE: add an ontology to the default project that is created as a part of the init-db and this ontology should containt some data objects and be loaded in the ontology canvas for the user to see as there is local storeage and remote storage these need to be in sync to the ontology is visible when crating (init-db now creates default ontology with CADFile, Specification, TestCase and other data objects) 
+- ✅ DONE: Fixed clean and init-db for single default project 
+  - Removed duplicate project creation from init-postgres.sql
+  - Fixed create_default_users being called twice
+  - Added -y flag for non-interactive cleaning: `./odras.sh clean -y`
+  - Added progress indicators during demo setup
 
-- Add admin controls to user creation and project controls (user/project/type)
+- ✅ DONE: Add complete ontology to default project during init-db
+  - Creates simplified but complete SE ontology with full traceability
+  - 6 Classes: Requirement → Component → Process → Function → CADFile (+ Constraint)
+  - 6 Object Properties: Creating complete traceable workflow
+  - 8 Data Properties: Properly assigned to relevant classes
+  - Fixed API to be graph-aware: `/api/ontology/?graph={iri}`
+  - Fixed UI to load from API when local storage is empty
+  - Ontology now shows in canvas with classes, edges, and data property nodes
 
-- data manager needs to goupd by imports, and local project ontologies
+- ✅ DONE: Cleaned up 25+ debugging and temporary files from root directory
+  - Removed test_*.py, debug_*.py, check_*.py files  
+  - Removed log files, SQL artifacts, and Python cache
+  - Directory now has 22 essential items vs 50+ before
+
+## 🎯 REMAINING TODO
+
+[] Add admin controls to user creation and project controls (user/project/type)
+[] data manager needs to be grouped by imports, and local project ontologies
+[] Ensure that the requirements.txt stays up to date.
+[] Add tabs to main screen to open more than one workbench at a time. 
+
+## 🎯 NEXT PRIORITIES
+
+- Improve ontology capabiltities
+    - Mange URIs
+    - Enable addtributes
+- Data Manager Workbench (auto create data connectors based on ontology data properties)
+- User management UI for admins
+- Project management controls
+- Ontology import/export workflows
+- Future ontology capbilities
+    - Data Types Management
+    - Units Managment
+    - Validation
+    - Resoners
+    - SHAQL
