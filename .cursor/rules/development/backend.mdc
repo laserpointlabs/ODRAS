@@ -1,0 +1,39 @@
+rule "python-standards" {
+  description = "Follow PEP 8 Python coding standards"
+  when = "writing Python code"
+  then = "Apply PEP 8 conventions:
+    - Use snake_case for functions and variables
+    - Use CamelCase for classes
+    - Maximum line length of 88 characters (Black formatter)
+    - Include type hints where appropriate"
+}
+
+rule "api-design" {
+  description = "Create RESTful APIs with clear naming"
+  when = "designing API endpoints"
+  then = "Follow REST conventions:
+    - Use appropriate HTTP methods (GET, POST, PUT, DELETE)
+    - Return proper HTTP status codes
+    - Use clear, descriptive endpoint names
+    - Implement consistent error response format"
+}
+
+rule "database-support" {
+  description = "Support multiple database backends"
+  when = "implementing database operations"
+  then = "Ensure compatibility with:
+    - Qdrant for vector storage
+    - Neo4j for graph relationships
+    - Fuseki for RDF/SPARQL queries
+    - PostgreSQL for relational data"
+}
+
+rule "error-handling" {
+  description = "Implement comprehensive error handling"
+  when = "writing backend code"
+  then = "Include proper error handling:
+    - Catch specific exceptions
+    - Log errors with appropriate detail
+    - Return meaningful error messages to clients
+    - Never expose sensitive information in errors"
+}

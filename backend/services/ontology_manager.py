@@ -80,6 +80,44 @@ class OntologyManager:
             # Return base ontology structure if Fuseki is unavailable
             return self._get_base_ontology_json()
 
+    def get_ontology_json_by_graph(self, graph_iri: str) -> Dict[str, Any]:
+        """
+        Retrieve a specific ontology from Fuseki by graph IRI and convert to JSON format.
+
+        Args:
+            graph_iri: The IRI of the named graph to query
+
+        Returns:
+            Dict containing the ontology in JSON format
+        """
+        try:
+            # Query specific named graph for classes, properties, and individuals
+            query = f"""
+            PREFIX owl: <http://www.w3.org/2002/07/owl#>
+            PREFIX rdfs: <http://www.w3.org/2000/01/rdf-schema#>
+            PREFIX odras: <http://odras.system/ontology#>
+            
+            SELECT ?s ?p ?o WHERE {{
+                GRAPH <{graph_iri}> {{
+                    ?s ?p ?o .
+                }}
+            }}
+            """
+
+            sparql = SPARQLWrapper(self.fuseki_query_url)
+            sparql.setQuery(query)
+            sparql.setReturnFormat(SPARQL_JSON)
+            results = sparql.query().convert()
+
+            # Convert SPARQL results to structured JSON
+            ontology_json = self._sparql_results_to_json(results)
+            return ontology_json
+
+        except Exception as e:
+            logger.error(f"Failed to retrieve ontology {graph_iri} from Fuseki: {e}")
+            # Return base ontology structure if query fails
+            return self._get_base_ontology_json()
+
     def update_ontology_from_json(self, ontology_json: Dict[str, Any], user_id: str = "system") -> Dict[str, Any]:
         """
         Update the ontology from JSON format and push to Fuseki.
@@ -476,42 +514,82 @@ class OntologyManager:
             "individuals": [],
         }
 
-        # Process SPARQL results to extract classes, properties, etc.
-        # This is a simplified version - you may want to expand this
-        # based on the specific structure of your ontology
-
+        # Group all triples by subject
         entities = {}
-
         for binding in results["results"]["bindings"]:
             subject = binding["s"]["value"]
             predicate = binding["p"]["value"]
-            obj = binding["o"]["value"]
+            obj_value = binding["o"]["value"]
 
             if subject not in entities:
-                entities[subject] = {"triples": []}
+                entities[subject] = {}
+            
+            # Store multiple values for properties like rdfs:domain, rdfs:range
+            if predicate not in entities[subject]:
+                entities[subject][predicate] = []
+            entities[subject][predicate].append(obj_value)
 
-            entities[subject]["triples"].append((predicate, obj))
+        # Extract name from URI (after # or last /)
+        def extract_name(uri):
+            if '#' in uri:
+                return uri.split('#')[-1]
+            return uri.split('/')[-1]
 
-        # Convert entities to JSON structure
-        for uri, data in entities.items():
-            entity_name = uri.split("#")[-1]
-            entity_type = None
-
-            for pred, obj in data["triples"]:
-                if pred == str(RDF.type):
-                    if obj == str(OWL.Class):
-                        entity_type = "class"
-                    elif obj == str(OWL.ObjectProperty):
-                        entity_type = "object_property"
-                    elif obj == str(OWL.DatatypeProperty):
-                        entity_type = "datatype_property"
-
-            if entity_type == "class":
-                ontology_json["classes"].append({"name": entity_name, "uri": uri})
-            elif entity_type == "object_property":
-                ontology_json["object_properties"].append({"name": entity_name, "uri": uri})
-            elif entity_type == "datatype_property":
-                ontology_json["datatype_properties"].append({"name": entity_name, "uri": uri})
+        # Convert entities to structured JSON
+        for uri, props in entities.items():
+            entity_name = extract_name(uri)
+            rdf_type = str(RDF.type)
+            rdfs_label = str(RDFS.label)
+            rdfs_comment = str(RDFS.comment)
+            rdfs_domain = str(RDFS.domain)
+            rdfs_range = str(RDFS.range)
+            rdfs_subclass = str(RDFS.subClassOf)
+            
+            # Get entity type
+            types = props.get(rdf_type, [])
+            
+            # Build common fields
+            common_fields = {
+                "name": entity_name,
+                "uri": uri,
+                "label": props.get(rdfs_label, [None])[0],
+                "comment": props.get(rdfs_comment, [None])[0]
+            }
+            
+            if str(OWL.Class) in types:
+                # Class
+                class_obj = {**common_fields}
+                subclass_of_uris = props.get(rdfs_subclass, [])
+                if subclass_of_uris:
+                    class_obj["subclass_of"] = extract_name(subclass_of_uris[0])
+                ontology_json["classes"].append(class_obj)
+                
+            elif str(OWL.ObjectProperty) in types:
+                # Object Property
+                prop_obj = {**common_fields}
+                domain_uris = props.get(rdfs_domain, [])
+                range_uris = props.get(rdfs_range, [])
+                if domain_uris:
+                    prop_obj["domain"] = extract_name(domain_uris[0])
+                if range_uris:
+                    prop_obj["range"] = extract_name(range_uris[0])
+                ontology_json["object_properties"].append(prop_obj)
+                
+            elif str(OWL.DatatypeProperty) in types:
+                # Datatype Property
+                prop_obj = {**common_fields}
+                domain_uris = props.get(rdfs_domain, [])
+                range_uris = props.get(rdfs_range, [])
+                if domain_uris:
+                    prop_obj["domain"] = extract_name(domain_uris[0])
+                if range_uris:
+                    # Keep full XSD datatype URIs
+                    range_uri = range_uris[0]
+                    if 'XMLSchema#' in range_uri:
+                        prop_obj["range"] = 'xsd:' + extract_name(range_uri)
+                    else:
+                        prop_obj["range"] = extract_name(range_uri)
+                ontology_json["datatype_properties"].append(prop_obj)
 
         return ontology_json
 

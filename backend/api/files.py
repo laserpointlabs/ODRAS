@@ -45,6 +45,7 @@ class FileMetadataResponse(BaseModel):
     created_at: str
     updated_at: str
     visibility: str = "private"  # "private" or "public"
+    created_by: Optional[str] = None  # User ID of file owner
 
 
 class FileListResponse(BaseModel):
@@ -97,20 +98,26 @@ async def upload_file(
     file: UploadFile = File(...),
     project_id: Optional[str] = Form(None),
     tags: Optional[str] = Form(None),  # JSON string of tags
+    process_for_knowledge: Optional[bool] = Form(False),  # Trigger knowledge processing
+    embedding_model: Optional[str] = Form("all-MiniLM-L6-v2"),  # Embedding model for knowledge processing
+    chunking_strategy: Optional[str] = Form("hybrid"),  # Chunking strategy for knowledge processing
     storage_service: FileStorageService = Depends(get_file_storage_service),
     db: DatabaseService = Depends(get_db_service),
     authorization: Optional[str] = Header(None),
 ):
     """
-    Upload a file to the storage backend.
+    Upload a file to the storage backend with optional knowledge processing.
 
     Args:
         file: The file to upload
         project_id: Optional project ID to associate with the file
         tags: Optional JSON string of metadata tags
+        process_for_knowledge: Whether to automatically process file for knowledge management
+        embedding_model: Embedding model to use for knowledge processing (default: all-MiniLM-L6-v2)
+        chunking_strategy: Chunking strategy for knowledge processing (fixed/semantic/hybrid, default: hybrid)
 
     Returns:
-        Upload result with file metadata
+        Upload result with file metadata and optional knowledge asset ID
     """
     try:
         # Validate project membership
@@ -147,17 +154,56 @@ async def upload_file(
             content_type=file.content_type,
             project_id=project_id,
             tags=file_tags,
+            created_by=user["user_id"],  # Track file ownership
         )
 
         if result["success"]:
             metadata = result["metadata"]
+            file_id = result["file_id"]
+            
+            # Trigger knowledge processing if requested
+            knowledge_asset_id = None
+            if process_for_knowledge:
+                try:
+                    from ..services.knowledge_transformation import get_knowledge_transformation_service
+                    
+                    # Prepare processing options
+                    processing_options = {
+                        'document_type': file_tags.get('docType', 'unknown') if file_tags else 'unknown',
+                        'embedding_model': embedding_model or 'all-MiniLM-L6-v2',
+                        'chunking_strategy': chunking_strategy or 'hybrid',
+                        'chunk_size': 512,
+                        'chunk_overlap': 50,
+                        'extract_relationships': True
+                    }
+                    
+                    # Start knowledge transformation (async)
+                    transformation_service = get_knowledge_transformation_service()
+                    knowledge_asset_id = await transformation_service.transform_file_to_knowledge(
+                        file_id=file_id,
+                        project_id=project_id,
+                        processing_options=processing_options
+                    )
+                    
+                    logger.info(f"Created knowledge asset {knowledge_asset_id} for file {file_id}")
+                    
+                except Exception as e:
+                    logger.error(f"Knowledge processing failed for file {file_id}: {str(e)}")
+                    # Don't fail the upload if knowledge processing fails
+                    pass
+            
+            # Build response
+            response_message = "File uploaded successfully"
+            if knowledge_asset_id:
+                response_message += f" and processed as knowledge asset {knowledge_asset_id}"
+            
             return FileUploadResponse(
                 success=True,
-                file_id=result["file_id"],
+                file_id=file_id,
                 filename=metadata["filename"],
                 size=metadata["size"],
                 content_type=metadata["content_type"],
-                message="File uploaded successfully",
+                message=response_message,
             )
         else:
             return FileUploadResponse(success=False, error=result["error"])
@@ -240,17 +286,33 @@ async def get_file_url(
 
 
 @router.delete("/{file_id}")
-async def delete_file(file_id: str, storage_service: FileStorageService = Depends(get_file_storage_service)):
+async def delete_file(
+    file_id: str, 
+    storage_service: FileStorageService = Depends(get_file_storage_service),
+    user: Dict = Depends(get_user)  # Add user authentication
+):
     """
-    Delete a file by ID.
+    Delete a file by ID (owner or admin only).
 
     Args:
         file_id: Unique file identifier
+        user: Authenticated user
 
     Returns:
         Deletion result
     """
     try:
+        # Check file ownership
+        file_metadata = await storage_service.get_file_metadata(file_id)
+        if not file_metadata:
+            raise HTTPException(status_code=404, detail="File not found")
+            
+        is_admin = user.get("is_admin", False)
+        is_owner = file_metadata.get("created_by") == user["user_id"]
+        
+        if not (is_admin or is_owner):
+            raise HTTPException(status_code=403, detail="Not authorized to delete this file")
+        
         success = await storage_service.delete_file(file_id)
 
         if success:
@@ -273,6 +335,7 @@ async def list_files(
     offset: int = Query(0, description="Result offset for pagination"),
     storage_service: FileStorageService = Depends(get_file_storage_service),
     db: DatabaseService = Depends(get_db_service),
+    user: Dict = Depends(get_user),  # Add user authentication
 ):
     """
     List files with optional filtering and visibility support.
@@ -282,13 +345,26 @@ async def list_files(
         include_public: Include public files from other projects (requires project_id)
         limit: Maximum number of results
         offset: Result offset for pagination
+        user: Authenticated user (required)
 
     Returns:
         List of files with metadata
     """
     try:
-        # Use the new visibility-aware method
-        files = await storage_service.list_files_with_visibility(project_id, include_public, limit, offset)
+        # Check if user is admin
+        is_admin = user.get("is_admin", False)
+        user_id = user.get("user_id")
+        
+        # Use the new visibility-aware method with user context
+        files = await storage_service.list_files_with_visibility(
+            project_id=project_id, 
+            include_public=include_public, 
+            limit=limit, 
+            offset=offset,
+            user_id=user_id,
+            is_admin=is_admin,
+            db=db
+        )
 
         # Convert to response format
         file_responses = [FileMetadataResponse(**file_data) for file_data in files]
@@ -320,8 +396,24 @@ async def get_storage_info(storage_service: FileStorageService = Depends(get_fil
 
 
 @router.put("/{file_id}/tags")
-async def update_file_tags(file_id: str, body: TagsUpdateRequest, storage_service: FileStorageService = Depends(get_file_storage_service)):
+async def update_file_tags(
+    file_id: str, 
+    body: TagsUpdateRequest, 
+    storage_service: FileStorageService = Depends(get_file_storage_service),
+    user: Dict = Depends(get_user)  # Add user authentication
+):
     try:
+        # Check file ownership
+        file_metadata = await storage_service.get_file_metadata(file_id)
+        if not file_metadata:
+            raise HTTPException(status_code=404, detail="File not found")
+            
+        is_admin = user.get("is_admin", False)
+        is_owner = file_metadata.get("created_by") == user["user_id"]
+        
+        if not (is_admin or is_owner):
+            raise HTTPException(status_code=403, detail="Not authorized to edit this file")
+            
         ok = await storage_service.update_file_tags(file_id, body.tags or {})
         if not ok:
             raise HTTPException(status_code=404, detail="File metadata not found")
@@ -338,11 +430,16 @@ async def import_file_by_url(
     project_id: Optional[str] = Form(None),
     tags: Optional[str] = Form(None),
     storage_service: FileStorageService = Depends(get_file_storage_service),
+    db: DatabaseService = Depends(get_db_service),
+    user: Dict = Depends(get_user),  # Add user authentication
 ):
     """Server-side fetch by URL and store as a file (MVP)."""
     try:
         if not project_id:
             raise HTTPException(status_code=400, detail="project_id required")
+        # Check project membership
+        if not db.is_user_member(project_id=project_id, user_id=user["user_id"]):
+            raise HTTPException(status_code=403, detail="Not a member of project")
         # Fetch bytes
         async with httpx.AsyncClient(timeout=30) as client:
             r = await client.get(url)
@@ -365,6 +462,7 @@ async def import_file_by_url(
             content_type=None,
             project_id=project_id,
             tags=file_tags,
+            created_by=user["user_id"],  # Track file ownership
         )
         if not result.get("success"):
             raise HTTPException(status_code=500, detail=result.get("error") or "Store failed")
@@ -381,18 +479,27 @@ async def batch_upload_files(
     files: List[UploadFile] = File(...),
     project_id: Optional[str] = Form(None),
     storage_service: FileStorageService = Depends(get_file_storage_service),
+    db: DatabaseService = Depends(get_db_service),
+    user: Dict = Depends(get_user),  # Add user authentication
 ):
     """
     Upload multiple files in a batch operation.
 
     Args:
         files: List of files to upload
-        project_id: Optional project ID to associate with all files
+        project_id: Required project ID to associate with all files
+        user: Authenticated user
 
     Returns:
         Results for all uploaded files
     """
     try:
+        if not project_id:
+            raise HTTPException(status_code=400, detail="project_id required")
+        # Check project membership
+        if not db.is_user_member(project_id=project_id, user_id=user["user_id"]):
+            raise HTTPException(status_code=403, detail="Not a member of project")
+            
         results = []
 
         for file in files:
@@ -400,7 +507,11 @@ async def batch_upload_files(
                 content = await file.read()
 
                 result = await storage_service.store_file(
-                    content=content, filename=file.filename or "unknown", content_type=file.content_type, project_id=project_id
+                    content=content, 
+                    filename=file.filename or "unknown", 
+                    content_type=file.content_type, 
+                    project_id=project_id,
+                    created_by=user["user_id"]  # Track file ownership
                 )
 
                 if result["success"]:
@@ -597,7 +708,7 @@ async def extract_requirements_by_keywords(
 @router.put("/{file_id}/visibility")
 async def update_file_visibility(
     file_id: str,
-    visibility: str = Form(..., regex="^(private|public)$"),
+    visibility: str = Form(..., pattern="^(private|public)$"),
     storage_service: FileStorageService = Depends(get_file_storage_service),
     admin_user: Dict = Depends(get_admin_user),
 ):
