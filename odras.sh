@@ -258,9 +258,24 @@ show_docker_logs() {
 
 # Clean all databases (data only, keeps containers running)
 clean_databases() {
-    print_warning "This will DELETE ALL DATA from all databases. Are you sure? (y/N)"
-    read -r response
-    if [[ "$response" =~ ^([yY][eE][sS]|[yY])$ ]]; then
+    # Check if -y flag was passed
+    local skip_confirm=false
+    if [[ "$1" == "-y" ]] || [[ "$SKIP_CONFIRM" == "true" ]]; then
+        skip_confirm=true
+    fi
+    
+    if [[ "$skip_confirm" == "false" ]]; then
+        print_warning "This will DELETE ALL DATA from all databases. Are you sure? (y/N)"
+        read -r response
+        if [[ ! "$response" =~ ^([yY][eE][sS]|[yY])$ ]]; then
+            print_status "Database cleaning cancelled"
+            return
+        fi
+    else
+        print_status "Cleaning all databases (auto-confirmed)..."
+    fi
+    
+    if [[ true ]]; then
         print_status "Cleaning all databases..."
         
         # Check if Docker services are running
@@ -291,9 +306,8 @@ clean_databases() {
         
         print_success "All databases cleaned successfully!"
         
-        # Automatically recreate users and default project
-        print_status "Recreating default users and project..."
-        create_default_users
+        # DO NOT create users here - that's what init-db is for!
+        # Just recreate empty collections
         
         # Recreate Qdrant collections
         print_status "Recreating Qdrant collections..."
@@ -318,10 +332,9 @@ clean_databases() {
             print_warning "⚠ Could not connect to Qdrant to recreate collections"
         fi
         
-        print_success "🎉 Database cleaning completed with fresh setup!"
-        print_status "✅ Ready to login with: admin/admin or jdehart/jdehart"
-        print_status "✅ All databases and collections recreated"
-        print_status "💡 Restart the application: ./odras.sh restart"
+        print_success "🎉 All databases cleaned!"
+        print_status "⚠️  Databases are now empty - run './odras.sh init-db' to create users and default project"
+        print_status "💡 After init-db, restart the application: ./odras.sh restart"
     else
         print_status "Database cleaning cancelled"
     fi
@@ -484,9 +497,24 @@ clean_local_storage() {
 
 # Clean everything (containers + volumes)
 clean_all() {
-    print_warning "This will DESTROY ALL DATA and remove Docker containers/volumes. Are you sure? (y/N)"
-    read -r response
-    if [[ "$response" =~ ^([yY][eE][sS]|[yY])$ ]]; then
+    # Check if -y flag was passed
+    local skip_confirm=false
+    if [[ "$1" == "-y" ]] || [[ "$SKIP_CONFIRM" == "true" ]]; then
+        skip_confirm=true
+    fi
+    
+    if [[ "$skip_confirm" == "false" ]]; then
+        print_warning "This will DESTROY ALL DATA and remove Docker containers/volumes. Are you sure? (y/N)"
+        read -r response
+        if [[ ! "$response" =~ ^([yY][eE][sS]|[yY])$ ]]; then
+            print_status "Cleanup cancelled"
+            return
+        fi
+    else
+        print_status "Destroying all data and containers (auto-confirmed)..."
+    fi
+    
+    if [[ true ]]; then
         print_status "Cleaning up everything..."
         
         # Stop app
@@ -681,21 +709,23 @@ init_databases() {
         print_warning "⚠ Could not connect to Qdrant to create collections"
     fi
     
-    # Create demo project with navigation system knowledge
-    create_demo_project
+    # Create demo content for the Default Project
+    create_demo_content
     
-    print_success "🎉 Database initialization completed with demo project!"
-    print_status "📊 Demo project created: Navigation System Testing"
+    # Create default ontology for the Default Project
+    create_default_ontology
+    
+    print_success "🎉 Database initialization completed!"
+    print_status "📊 Created: Default Project with demo content and ontology"
     print_status "🔐 Login credentials:"
-    print_status "   👤 jdehart / jdehart (demo user)"
+    print_status "   👤 jdehart / jdehart (member)"
     print_status "   👑 admin / admin (administrator)"
-    print_status "🌐 URL: http://localhost:8000/app#wb=knowledge"
-    print_status "💡 Try asking: 'What are the navigation system requirements?'"
+    print_status "🌐 URL: http://localhost:8000/app"
 }
 
-# Create demo project with navigation system knowledge
-create_demo_project() {
-    print_status "Creating demo project with navigation system knowledge..."
+# Create demo content with navigation system knowledge for Default Project
+create_demo_content() {
+    print_status "Creating demo content with navigation system knowledge for Default Project..."
     
     # Wait for application to be ready
     print_status "Waiting for application to be ready..."
@@ -720,10 +750,16 @@ create_demo_project() {
     # Run the demo setup script
     if [[ -f "setup_test_knowledge_data.py" ]]; then
         print_status "Running demo project setup..."
+        print_status "  📄 Uploading navigation system requirements..."
+        print_status "  📋 Uploading safety protocols..."
+        print_status "  🔧 Uploading technical specifications..."
+        print_status "  ⏳ Processing documents (this may take 30-60 seconds)..."
         
-        # Run with timeout to prevent hanging
-        if timeout 180 python setup_test_knowledge_data.py >/dev/null 2>&1; then
+        # Run with timeout to prevent hanging, capture output for error reporting
+        local setup_output=$(mktemp)
+        if timeout 180 python setup_test_knowledge_data.py >"$setup_output" 2>&1; then
             print_success "✓ Demo project setup completed successfully"
+            rm -f "$setup_output"
             
             # Verify the setup worked
             local asset_count=$(curl -s \
@@ -741,6 +777,10 @@ create_demo_project() {
             fi
         else
             print_warning "⚠ Demo setup encountered issues, but basic database is ready"
+            if [[ -f "$setup_output" ]]; then
+                print_status "  Error details: $(tail -n 5 "$setup_output" | head -n 1)"
+                rm -f "$setup_output"
+            fi
         fi
     else
         print_warning "⚠ Demo setup script not found, creating basic demo manually..."
@@ -756,6 +796,26 @@ create_basic_demo() {
     # The full demo will be created when the user first uses the system
     print_success "✓ Basic demo environment ready"
     print_status "💡 Upload documents via the UI to create knowledge assets"
+}
+
+# Create default ontology for the Default Project
+create_default_ontology() {
+    print_status "Creating default ontology for Default Project..."
+    
+    # Check if the script exists
+    if [[ -f "scripts/create_default_ontology.py" ]]; then
+        print_status "Running ontology creation script..."
+        
+        # Run the script
+        if python scripts/create_default_ontology.py; then
+            print_success "✓ Default ontology created successfully"
+            print_status "   Includes: CADFile, Specification, TestCase, and other data objects"
+        else
+            print_warning "⚠ Ontology creation encountered issues, but project is ready"
+        fi
+    else
+        print_warning "⚠ Ontology creation script not found"
+    fi
 }
 
 # Show help
@@ -780,8 +840,10 @@ show_help() {
     echo ""
     echo "Database Commands:"
     echo "  clean          Clean all database data (keeps containers running)"
+    echo "  clean -y       Clean all database data without confirmation prompt"
     echo "  clean-all      DESTROY everything - containers, volumes, and data"
-    echo "  init-db        Initialize databases with schema + demo navigation project"
+    echo "  clean-all -y   DESTROY everything without confirmation prompt"
+    echo "  init-db        Initialize databases with schema and default project"
     echo ""
     echo "Utility Commands:"
     echo "  help           Show this help message"
@@ -792,7 +854,7 @@ show_help() {
     echo "  $0 status      # Check status"
     echo "  $0 logs        # View app logs"
     echo "  $0 clean       # Clean all database data for fresh testing"
-    echo "  $0 init-db     # Initialize databases + create navigation demo project"
+    echo "  $0 init-db     # Initialize databases with default project"
     echo "  $0 clean-all   # DANGER: Destroy everything and start over"
 }
 
@@ -832,10 +894,12 @@ main() {
             show_docker_logs "$2"
             ;;
         clean)
-            clean_databases
+            shift  # Remove 'clean' from arguments
+            clean_databases "$@"  # Pass remaining arguments (like -y)
             ;;
         clean-all)
-            clean_all
+            shift  # Remove 'clean-all' from arguments
+            clean_all "$@"  # Pass remaining arguments (like -y)
             ;;
         init-db)
             init_databases

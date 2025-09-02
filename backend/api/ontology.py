@@ -62,15 +62,21 @@ def get_db_service() -> DatabaseService:
 
 
 @router.get("/", response_model=Dict[str, Any])
-async def get_ontology(manager: OntologyManager = Depends(get_ontology_manager)):
+async def get_ontology(graph: Optional[str] = None, manager: OntologyManager = Depends(get_ontology_manager)):
     """
     Retrieve the current ontology in JSON format.
+
+    Args:
+        graph: Optional graph IRI to retrieve specific ontology
 
     Returns:
         The complete ontology structure
     """
     try:
-        ontology_json = manager.get_current_ontology_json()
+        if graph:
+            ontology_json = manager.get_ontology_json_by_graph(graph)
+        else:
+            ontology_json = manager.get_current_ontology_json()
         return {"success": True, "data": ontology_json, "message": "Ontology retrieved successfully"}
     except Exception as e:
         logger.error(f"Failed to get ontology: {e}")

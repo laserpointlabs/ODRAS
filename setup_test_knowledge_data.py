@@ -278,30 +278,32 @@ class TestDataSetup:
             self.admin_token = admin_response.json()["token"]
             print("✅ admin authenticated")
     
-    async def create_test_project(self):
-        """Create a test project for jdehart"""
-        print("\n📁 Step 2: Creating test project...")
+    async def get_default_project(self):
+        """Get the Default Project instead of creating a new one"""
+        print("\n📁 Step 2: Getting Default Project...")
         
         async with httpx.AsyncClient(timeout=30) as client:
-            project_data = {
-                "name": "Navigation System Testing",
-                "description": "Test project for navigation system requirements and knowledge management validation"
-            }
-            
-            response = await client.post(
+            # Get all projects for the user
+            response = await client.get(
                 f"{self.base_url}/api/projects",
-                headers={"Authorization": f"Bearer {self.jdehart_token}"},
-                json=project_data
+                headers={"Authorization": f"Bearer {self.jdehart_token}"}
             )
             
-            if response.status_code in [200, 201]:
+            if response.status_code == 200:
                 data = response.json()
-                project = data.get("project", data)  # Handle different response formats
-                self.test_project_id = project["project_id"]
-                print(f"✅ Created test project: {project['name']} (ID: {self.test_project_id})")
-                return True
+                projects = data.get("projects", [])
+                
+                # Find the Default Project
+                for project in projects:
+                    if project.get("name") == "Default Project":
+                        self.test_project_id = project["project_id"]
+                        print(f"✅ Using Default Project (ID: {self.test_project_id})")
+                        return True
+                
+                print("❌ Default Project not found")
+                return False
             else:
-                print(f"❌ Failed to create project: {response.status_code} - {response.text}")
+                print(f"❌ Failed to get projects: {response.status_code} - {response.text}")
                 return False
     
     async def upload_test_documents(self):
@@ -494,7 +496,7 @@ class TestDataSetup:
                 print(f"📊 Total Chunks: {total_chunks}")
         
         print(f"\n🎯 Test Environment Ready!")
-        print(f"   Project: Navigation System Testing ({self.test_project_id})")
+        print(f"   Project: Default Project ({self.test_project_id})")
         print(f"   User: jdehart (password: jdehart)")
         print(f"   Documents: {len(TEST_DOCUMENTS)} technical documents processed")
         print(f"   URL: http://localhost:8000/app#wb=knowledge")
@@ -520,8 +522,8 @@ async def main():
         # Step 1: Authenticate users
         await setup.authenticate_users()
         
-        # Step 2: Create test project  
-        if not await setup.create_test_project():
+        # Step 2: Get Default Project  
+        if not await setup.get_default_project():
             return False
         
         # Step 3: Upload test documents

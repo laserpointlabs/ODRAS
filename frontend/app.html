@@ -840,7 +840,7 @@
       return `http://odras.local/onto/${pid}/${n}${ver}`;
     }
 
-    function handleTreeSelection(li) {
+    async function handleTreeSelection(li) {
       if (!li || !li.dataset) return;
       const type = li.dataset.nodeType || '';
       if (type === 'ontology') {
@@ -870,12 +870,12 @@
             try { saveOntologyLabel(iri, friendly); } catch(_) {}
           } catch(_) {}
           updateOntoGraphLabel();
-          // Load new graph from local storage if present
+          // Load new graph from local storage if present, otherwise fetch from API
           if (ontoState.cy) {
             // Avoid racing autosave during restore
             ontoState.suspendAutosave = true;
             try { ontoState.cy.elements().remove(); } catch(_) {}
-            loadGraphFromLocal(iri);
+            await loadGraphFromLocalOrAPI(iri);
             setTimeout(() => { ontoState.suspendAutosave = false; }, 50);
           }
           // Show model-level props when nothing selected
@@ -2035,7 +2035,7 @@
         const row = document.createElement('div');
         row.className = 'node-row';
         row.tabIndex = 0;
-        row.onclick = (e) => { selectNode(li); handleTreeSelection(li); };
+        row.onclick = async (e) => { selectNode(li); await handleTreeSelection(li); };
         row.onkeydown = (e) => handleKey(e, li);
         // Inline rename on double-click for ontology nodes
         row.ondblclick = (e) => {
@@ -2286,7 +2286,7 @@
             selectNode(li);
             // Prevent workbench switching when restoring selection on load
             suppressWorkbenchSwitch = true;
-            try { handleTreeSelection(li); } finally { suppressWorkbenchSwitch = false; }
+            try { await handleTreeSelection(li); } finally { suppressWorkbenchSwitch = false; }
           } else {
             // Saved IRI no longer present; reset to empty state
             activeOntologyIri = null;
@@ -2346,7 +2346,7 @@
                   const lbl = li.querySelector('.node-label'); if (lbl) lbl.textContent = created.label || label;
                   li.dataset.label = created.label || label;
                   selectNode(li);
-                  handleTreeSelection(li);
+                  await handleTreeSelection(li);
                 } else {
                   // Fallback: set selection and force refresh display
                   activeOntologyIri = created.graphIri;
@@ -2646,6 +2646,168 @@
       } catch(_) {}
     }
 
+    function convertOntologyToCytoscape(ontologyData) {
+      // Convert API ontology format to Cytoscape format
+      const nodes = [];
+      const edges = [];
+      
+      // Create nodes for classes
+      const classes = ontologyData.classes || [];
+      const classNameToId = {}; // Map class names to simple IDs
+      
+      classes.forEach((cls, index) => {
+        // Use simple sequential IDs like Class1, Class2, etc.
+        const classId = `Class${index + 1}`;
+        classNameToId[cls.name] = classId;
+        
+        // Arrange in a grid layout
+        const row = Math.floor(index / 4);
+        const col = index % 4;
+        
+        const node = {
+          data: {
+            id: classId,
+            label: cls.label || cls.name,
+            type: 'class'
+          },
+          position: {
+            x: 150 + (col * 200),
+            y: 100 + (row * 150)
+          }
+        };
+        nodes.push(node);
+      });
+      
+      // Create edges for object properties
+      let edgeId = 1;
+      const objectProps = ontologyData.object_properties || [];
+      objectProps.forEach(prop => {
+        if (prop.domain && prop.range && classNameToId[prop.domain] && classNameToId[prop.range]) {
+          const edge = {
+            data: {
+              id: `e${edgeId}`,
+              source: classNameToId[prop.domain],
+              target: classNameToId[prop.range],
+              predicate: prop.name,
+              label: prop.label || prop.name,
+              type: 'objectProperty',
+              attrs: {}
+            }
+          };
+          edges.push(edge);
+          edgeId++;
+        }
+      });
+      
+      // Create data property nodes and connect them to their domain classes
+      let dpId = 1;
+      const dataProps = ontologyData.datatype_properties || [];
+      dataProps.forEach(prop => {
+        if (prop.domain && classNameToId[prop.domain]) {
+          const dataPropertyId = `DP${dpId}`;
+          
+          // Create data property node
+          const domainClassId = classNameToId[prop.domain];
+          const domainNode = nodes.find(n => n.data.id === domainClassId);
+          let dpX = 150, dpY = 100; // fallback position
+          
+          if (domainNode) {
+            // Position data property near its domain class
+            dpX = domainNode.position.x + 180;
+            dpY = domainNode.position.y + (dpId % 3 - 1) * 60; // stagger vertically
+          }
+          
+          const dpNode = {
+            data: {
+              id: dataPropertyId,
+              label: prop.label || prop.name,
+              type: 'dataProperty'
+            },
+            position: {
+              x: dpX,
+              y: dpY
+            }
+          };
+          nodes.push(dpNode);
+          
+          // Create edge connecting class to data property
+          const dpEdge = {
+            data: {
+              id: `edp${dpId}`,
+              source: domainClassId,
+              target: dataPropertyId,
+              predicate: prop.name,
+              type: 'objectProperty', // UI uses objectProperty type for visual connection
+              attrs: {}
+            }
+          };
+          edges.push(dpEdge);
+          
+          dpId++;
+        }
+      });
+      
+      return { nodes, edges };
+    }
+
+    async function loadGraphFromLocalOrAPI(graphIri) {
+      try {
+        // First, try to load from local storage
+        const json = localStorage.getItem(storageKeyForGraph(graphIri));
+        if (json) {
+          const data = JSON.parse(json);
+          if (data && (data.nodes || data.edges) && data.nodes?.length > 0) {
+            if (!ontoState.cy) return;
+            ontoState.cy.elements().remove();
+            ontoState.cy.add(data.nodes || []);
+            ontoState.cy.add(data.edges || []);
+            recomputeNextId();
+            requestAnimationFrame(()=>{ ontoState.cy.fit(); });
+            return;
+          }
+        }
+        
+        // If local storage is empty, fetch from API
+        console.log('Loading ontology from API:', graphIri);
+        const token = localStorage.getItem(tokenKey);
+        const apiUrl = `/api/ontology/?graph=${encodeURIComponent(graphIri)}`;
+        const response = await fetch(apiUrl, {
+          headers: token ? { 'Authorization': `Bearer ${token}` } : {}
+        });
+        
+        if (response.ok) {
+          const result = await response.json();
+          const ontologyData = result.data;
+          
+          if (ontologyData) {
+            // Convert ontology JSON to Cytoscape format
+            const cytoscapeData = convertOntologyToCytoscape(ontologyData);
+            
+            if (!ontoState.cy) return;
+            ontoState.cy.elements().remove();
+            ontoState.cy.add(cytoscapeData.nodes || []);
+            ontoState.cy.add(cytoscapeData.edges || []);
+            recomputeNextId();
+            
+            // Save to local storage for future use
+            const storageData = {
+              nodes: cytoscapeData.nodes || [],
+              edges: cytoscapeData.edges || []
+            };
+            localStorage.setItem(storageKeyForGraph(graphIri), JSON.stringify(storageData));
+            
+            requestAnimationFrame(()=>{ ontoState.cy.fit(); });
+            console.log('Ontology loaded from API with', cytoscapeData.nodes?.length || 0, 'nodes and', cytoscapeData.edges?.length || 0, 'edges');
+          }
+        } else {
+          console.error('Failed to load ontology from API:', response.status, response.statusText);
+        }
+        
+      } catch(err) {
+        console.error('Error loading ontology:', err);
+      }
+    }
+
     // Ontology toolbar events and import handling
     (function(){
       document.addEventListener('click', async (e) => {
@@ -2845,7 +3007,7 @@
           focusNext(li); e.preventDefault(); break;
         case ENTER:
         case SPACE:
-          selectNode(li); handleTreeSelection(li); e.preventDefault(); break;
+          selectNode(li); handleTreeSelection(li).catch(console.error); e.preventDefault(); break;
       }
     }
 
