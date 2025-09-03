@@ -1,0 +1,246 @@
+<?xml version="1.0" encoding="UTF-8"?>
+  <bpmn:definitions xmlns:bpmn="http://www.omg.org/spec/BPMN/20100524/MODEL" xmlns:bpmndi="http://www.omg.org/spec/BPMN/20100524/DI" xmlns:dc="http://www.omg.org/spec/DD/20100524/DC" xmlns:di="http://www.omg.org/spec/DD/20100524/DI" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xmlns:camunda="http://camunda.org/schema/1.0/bpmn" id="Definitions_DocumentIngestion" targetNamespace="http://bpmn.io/schema/bpmn" exporter="Camunda Modeler" exporterVersion="5.34.0">
+  <bpmn:process id="document_ingestion_process" name="Document Ingestion Process" isExecutable="true" camunda:historyTimeToLive="180">
+    <bpmn:startEvent id="StartEvent_DocumentIngestion" name="Document Upload Request">
+      <bpmn:outgoing>Flow_ToValidation</bpmn:outgoing>
+    </bpmn:startEvent>
+    
+    <bpmn:serviceTask id="Task_ValidateDocument" name="Validate Document" camunda:type="external" camunda:topic="validate-document">
+      <bpmn:documentation>
+        Validate uploaded document format, size, and content type.
+        Check for malware, OCR requirements, and access permissions.
+      </bpmn:documentation>
+      <bpmn:incoming>Flow_ToValidation</bpmn:incoming>
+      <bpmn:outgoing>Flow_ToValidationGateway</bpmn:outgoing>
+    </bpmn:serviceTask>
+    
+    <bpmn:exclusiveGateway id="Gateway_ValidationResult" name="Document Valid?">
+      <bpmn:incoming>Flow_ToValidationGateway</bpmn:incoming>
+      <bpmn:outgoing>Flow_ValidationSuccess</bpmn:outgoing>
+      <bpmn:outgoing>Flow_ValidationFailure</bpmn:outgoing>
+    </bpmn:exclusiveGateway>
+    
+    <bpmn:endEvent id="EndEvent_ValidationFailure" name="Validation Failed">
+      <bpmn:incoming>Flow_ValidationFailure</bpmn:incoming>
+      <bpmn:errorEventDefinition id="ErrorEventDefinition_1" errorRef="ValidationError" />
+    </bpmn:endEvent>
+    
+    <bpmn:serviceTask id="Task_ParseDocument" name="Parse Document Content" camunda:type="external" camunda:topic="parse-document">
+      <bpmn:documentation>
+        Extract text content from document. Handle PDF, DOCX, TXT formats.
+        Apply OCR if needed. Extract metadata and structure.
+      </bpmn:documentation>
+      <bpmn:incoming>Flow_ValidationSuccess</bpmn:incoming>
+      <bpmn:outgoing>Flow_ToParsing</bpmn:outgoing>
+    </bpmn:serviceTask>
+    
+    <bpmn:serviceTask id="Task_ChunkDocument" name="Chunk Document" camunda:type="external" camunda:topic="chunk-document">
+      <bpmn:documentation>
+        Split document into chunks using sliding window approach.
+        Configurable chunk size (800-1200 tokens) and overlap (10-20%).
+        Preserve document structure and metadata.
+      </bpmn:documentation>
+      <bpmn:incoming>Flow_ToParsing</bpmn:incoming>
+      <bpmn:outgoing>Flow_ToEmbedding</bpmn:outgoing>
+    </bpmn:serviceTask>
+    
+    <bpmn:serviceTask id="Task_GenerateEmbeddings" name="Generate Embeddings" camunda:type="external" camunda:topic="generate-embeddings">
+      <bpmn:documentation>
+        Create vector embeddings for each chunk using configured model.
+        Support for multiple embedding providers (OpenAI, local models).
+        Store embedding metadata and versioning information.
+      </bpmn:documentation>
+      <bpmn:incoming>Flow_ToEmbedding</bpmn:incoming>
+      <bpmn:outgoing>Flow_ToVectorStore</bpmn:outgoing>
+    </bpmn:serviceTask>
+    
+    <bpmn:serviceTask id="Task_StoreVectorDB" name="Store in Vector Database" camunda:type="external" camunda:topic="store-vector-rag">
+      <bpmn:documentation>
+        Store embeddings and metadata in Qdrant vector database.
+        Include document ID, chunk index, page references, and timestamps.
+        Handle collection creation and indexing.
+      </bpmn:documentation>
+      <bpmn:incoming>Flow_ToVectorStore</bpmn:incoming>
+      <bpmn:outgoing>Flow_ToMetadataStore</bpmn:outgoing>
+    </bpmn:serviceTask>
+    
+    <bpmn:serviceTask id="Task_StoreMetadata" name="Store Document Metadata" camunda:type="external" camunda:topic="store-metadata">
+      <bpmn:documentation>
+        Store document metadata in relational database.
+        Track ingestion status, processing pipeline versions, and provenance.
+        Link to vector store entries and enable traceability.
+      </bpmn:documentation>
+      <bpmn:incoming>Flow_ToMetadataStore</bpmn:incoming>
+      <bpmn:outgoing>Flow_ToIndexing</bpmn:outgoing>
+    </bpmn:serviceTask>
+    
+    <bpmn:serviceTask id="Task_UpdateSearchIndex" name="Update Search Index" camunda:type="external" camunda:topic="update-search-index">
+      <bpmn:documentation>
+        Update full-text search indices for document discovery.
+        Create semantic search capabilities and cross-references.
+        Enable hybrid search combining vector and keyword search.
+      </bpmn:documentation>
+      <bpmn:incoming>Flow_ToIndexing</bpmn:incoming>
+      <bpmn:outgoing>Flow_ToCompletion</bpmn:outgoing>
+    </bpmn:serviceTask>
+    
+    <bpmn:endEvent id="EndEvent_Success" name="Document Ingestion Complete">
+      <bpmn:incoming>Flow_ToCompletion</bpmn:incoming>
+    </bpmn:endEvent>
+    
+    <!-- Sequence Flows -->
+    <bpmn:sequenceFlow id="Flow_ToValidation" sourceRef="StartEvent_DocumentIngestion" targetRef="Task_ValidateDocument" />
+    <bpmn:sequenceFlow id="Flow_ToValidationGateway" sourceRef="Task_ValidateDocument" targetRef="Gateway_ValidationResult" />
+    <bpmn:sequenceFlow id="Flow_ValidationSuccess" name="Valid" sourceRef="Gateway_ValidationResult" targetRef="Task_ParseDocument">
+      <bpmn:conditionExpression xsi:type="bpmn:tFormalExpression">${validation_result == 'success'}</bpmn:conditionExpression>
+    </bpmn:sequenceFlow>
+    <bpmn:sequenceFlow id="Flow_ValidationFailure" name="Invalid" sourceRef="Gateway_ValidationResult" targetRef="EndEvent_ValidationFailure">
+      <bpmn:conditionExpression xsi:type="bpmn:tFormalExpression">${validation_result == 'failure'}</bpmn:conditionExpression>
+    </bpmn:sequenceFlow>
+    <bpmn:sequenceFlow id="Flow_ToParsing" sourceRef="Task_ParseDocument" targetRef="Task_ChunkDocument" />
+    <bpmn:sequenceFlow id="Flow_ToEmbedding" sourceRef="Task_ChunkDocument" targetRef="Task_GenerateEmbeddings" />
+    <bpmn:sequenceFlow id="Flow_ToVectorStore" sourceRef="Task_GenerateEmbeddings" targetRef="Task_StoreVectorDB" />
+    <bpmn:sequenceFlow id="Flow_ToMetadataStore" sourceRef="Task_StoreVectorDB" targetRef="Task_StoreMetadata" />
+    <bpmn:sequenceFlow id="Flow_ToIndexing" sourceRef="Task_StoreMetadata" targetRef="Task_UpdateSearchIndex" />
+    <bpmn:sequenceFlow id="Flow_ToCompletion" sourceRef="Task_UpdateSearchIndex" targetRef="EndEvent_Success" />
+  </bpmn:process>
+  
+  <bpmn:error id="ValidationError" name="Validation Error" errorCode="VALIDATION_FAILED" />
+  
+  <!-- BPMN Diagram Information -->
+  <bpmndi:BPMNDiagram id="BPMNDiagram_DocumentIngestion">
+    <bpmndi:BPMNPlane id="BPMNPlane_DocumentIngestion" bpmnElement="document_ingestion_process">
+      <!-- Start Event -->
+      <bpmndi:BPMNShape id="StartEvent_DocumentIngestion_di" bpmnElement="StartEvent_DocumentIngestion">
+        <dc:Bounds x="152" y="102" width="36" height="36" />
+        <bpmndi:BPMNLabel>
+          <dc:Bounds x="134" y="145" width="72" height="27" />
+        </bpmndi:BPMNLabel>
+      </bpmndi:BPMNShape>
+      
+      <!-- Validate Document -->
+      <bpmndi:BPMNShape id="Task_ValidateDocument_di" bpmnElement="Task_ValidateDocument">
+        <dc:Bounds x="240" y="80" width="100" height="80" />
+        <bpmndi:BPMNLabel />
+      </bpmndi:BPMNShape>
+      
+      <!-- Validation Gateway -->
+      <bpmndi:BPMNShape id="Gateway_ValidationResult_di" bpmnElement="Gateway_ValidationResult" isMarkerVisible="true">
+        <dc:Bounds x="395" y="95" width="50" height="50" />
+        <bpmndi:BPMNLabel>
+          <dc:Bounds x="379" y="65" width="82" height="14" />
+        </bpmndi:BPMNLabel>
+      </bpmndi:BPMNShape>
+      
+      <!-- Validation Failure End Event -->
+      <bpmndi:BPMNShape id="EndEvent_ValidationFailure_di" bpmnElement="EndEvent_ValidationFailure">
+        <dc:Bounds x="522" y="182" width="36" height="36" />
+        <bpmndi:BPMNLabel>
+          <dc:Bounds x="505" y="225" width="70" height="14" />
+        </bpmndi:BPMNLabel>
+      </bpmndi:BPMNShape>
+      
+      <!-- Parse Document -->
+      <bpmndi:BPMNShape id="Task_ParseDocument_di" bpmnElement="Task_ParseDocument">
+        <dc:Bounds x="520" y="80" width="100" height="80" />
+        <bpmndi:BPMNLabel />
+      </bpmndi:BPMNShape>
+      
+      <!-- Chunk Document -->
+      <bpmndi:BPMNShape id="Task_ChunkDocument_di" bpmnElement="Task_ChunkDocument">
+        <dc:Bounds x="680" y="80" width="100" height="80" />
+        <bpmndi:BPMNLabel />
+      </bpmndi:BPMNShape>
+      
+      <!-- Generate Embeddings -->
+      <bpmndi:BPMNShape id="Task_GenerateEmbeddings_di" bpmnElement="Task_GenerateEmbeddings">
+        <dc:Bounds x="840" y="80" width="100" height="80" />
+        <bpmndi:BPMNLabel />
+      </bpmndi:BPMNShape>
+      
+      <!-- Store Vector DB -->
+      <bpmndi:BPMNShape id="Task_StoreVectorDB_di" bpmnElement="Task_StoreVectorDB">
+        <dc:Bounds x="1000" y="80" width="100" height="80" />
+        <bpmndi:BPMNLabel />
+      </bpmndi:BPMNShape>
+      
+      <!-- Store Metadata -->
+      <bpmndi:BPMNShape id="Task_StoreMetadata_di" bpmnElement="Task_StoreMetadata">
+        <dc:Bounds x="1160" y="80" width="100" height="80" />
+        <bpmndi:BPMNLabel />
+      </bpmndi:BPMNShape>
+      
+      <!-- Update Search Index -->
+      <bpmndi:BPMNShape id="Task_UpdateSearchIndex_di" bpmnElement="Task_UpdateSearchIndex">
+        <dc:Bounds x="1320" y="80" width="100" height="80" />
+        <bpmndi:BPMNLabel />
+      </bpmndi:BPMNShape>
+      
+      <!-- Success End Event -->
+      <bpmndi:BPMNShape id="EndEvent_Success_di" bpmnElement="EndEvent_Success">
+        <dc:Bounds x="1482" y="102" width="36" height="36" />
+        <bpmndi:BPMNLabel>
+          <dc:Bounds x="1455" y="145" width="90" height="27" />
+        </bpmndi:BPMNLabel>
+      </bpmndi:BPMNShape>
+      
+      <!-- Sequence Flow Edges -->
+      <bpmndi:BPMNEdge id="Flow_ToValidation_di" bpmnElement="Flow_ToValidation">
+        <di:waypoint x="188" y="120" />
+        <di:waypoint x="240" y="120" />
+      </bpmndi:BPMNEdge>
+      
+      <bpmndi:BPMNEdge id="Flow_ToValidationGateway_di" bpmnElement="Flow_ToValidationGateway">
+        <di:waypoint x="340" y="120" />
+        <di:waypoint x="395" y="120" />
+      </bpmndi:BPMNEdge>
+      
+      <bpmndi:BPMNEdge id="Flow_ValidationSuccess_di" bpmnElement="Flow_ValidationSuccess">
+        <di:waypoint x="445" y="120" />
+        <di:waypoint x="520" y="120" />
+        <bpmndi:BPMNLabel>
+          <dc:Bounds x="470" y="102" width="25" height="14" />
+        </bpmndi:BPMNLabel>
+      </bpmndi:BPMNEdge>
+      
+      <bpmndi:BPMNEdge id="Flow_ValidationFailure_di" bpmnElement="Flow_ValidationFailure">
+        <di:waypoint x="420" y="145" />
+        <di:waypoint x="420" y="200" />
+        <di:waypoint x="522" y="200" />
+        <bpmndi:BPMNLabel>
+          <dc:Bounds x="419" y="170" width="32" height="14" />
+        </bpmndi:BPMNLabel>
+      </bpmndi:BPMNEdge>
+      
+      <bpmndi:BPMNEdge id="Flow_ToParsing_di" bpmnElement="Flow_ToParsing">
+        <di:waypoint x="620" y="120" />
+        <di:waypoint x="680" y="120" />
+      </bpmndi:BPMNEdge>
+      
+      <bpmndi:BPMNEdge id="Flow_ToEmbedding_di" bpmnElement="Flow_ToEmbedding">
+        <di:waypoint x="780" y="120" />
+        <di:waypoint x="840" y="120" />
+      </bpmndi:BPMNEdge>
+      
+      <bpmndi:BPMNEdge id="Flow_ToVectorStore_di" bpmnElement="Flow_ToVectorStore">
+        <di:waypoint x="940" y="120" />
+        <di:waypoint x="1000" y="120" />
+      </bpmndi:BPMNEdge>
+      
+      <bpmndi:BPMNEdge id="Flow_ToMetadataStore_di" bpmnElement="Flow_ToMetadataStore">
+        <di:waypoint x="1100" y="120" />
+        <di:waypoint x="1160" y="120" />
+      </bpmndi:BPMNEdge>
+      
+      <bpmndi:BPMNEdge id="Flow_ToIndexing_di" bpmnElement="Flow_ToIndexing">
+        <di:waypoint x="1260" y="120" />
+        <di:waypoint x="1320" y="120" />
+      </bpmndi:BPMNEdge>
+      
+      <bpmndi:BPMNEdge id="Flow_ToCompletion_di" bpmnElement="Flow_ToCompletion">
+        <di:waypoint x="1420" y="120" />
+        <di:waypoint x="1482" y="120" />
+      </bpmndi:BPMNEdge>
+    </bpmndi:BPMNPlane>
+  </bpmndi:BPMNDiagram>
+</bpmn:definitions>

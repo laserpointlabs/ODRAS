@@ -186,7 +186,51 @@ show_app_logs() {
         print_status "Showing application logs (Ctrl+C to exit):"
         tail -f "$LOG_FILE"
     else
-        print_warning "No log file found"
+        print_warning "No log file found at $LOG_FILE"
+        
+        # Check if app is running and suggest alternatives
+        if is_app_running; then
+            print_status "Application is running but was likely started outside of odras.sh"
+            print_status "Available log viewing options:"
+            
+            # Check for common log locations
+            local alt_logs_found=false
+            
+            # Check for systemd/journal logs
+            if systemctl --user is-active odras >/dev/null 2>&1 || systemctl is-active odras >/dev/null 2>&1; then
+                print_status "  1. View systemd logs: journalctl -u odras -f"
+                alt_logs_found=true
+            fi
+            
+            # Check for Docker logs if running in container
+            local docker_containers=$(docker ps --format "{{.Names}}" 2>/dev/null | grep -i odras | head -1)
+            if [[ -n "$docker_containers" ]]; then
+                print_status "  2. View Docker logs: docker logs -f [container_name]"
+                print_status "     Available containers: $(docker ps --format "{{.Names}}" 2>/dev/null | grep -i odras | tr '\n' ' ')"
+                alt_logs_found=true
+            fi
+            
+            # Check for nohup.out in current directory
+            if [[ -f "nohup.out" ]]; then
+                print_status "  3. View nohup output: tail -f nohup.out"
+                alt_logs_found=true
+            fi
+            
+            # Always offer restart option for proper logging
+            local main_pid=$(ps aux | grep "python -m backend.main" | grep -v grep | awk '{print $2}' | head -1)
+            if [[ -n "$main_pid" ]]; then
+                local option_num=$((alt_logs_found == true ? 4 : 1))
+                print_status "  $option_num. Restart app with odras.sh to generate logs: ./odras.sh restart"
+                alt_logs_found=true
+            fi
+            
+            if [[ "$alt_logs_found" == "false" ]]; then
+                print_status "  1. Restart the app with odras.sh to generate logs: ./odras.sh restart"
+            fi
+        else
+            print_status "Application is not running. Start it to generate logs:"
+            print_status "  ./odras.sh start"
+        fi
     fi
 }
 

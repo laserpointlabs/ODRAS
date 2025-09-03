@@ -1,0 +1,527 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<bpmn:definitions xmlns:bpmn="http://www.omg.org/spec/BPMN/20100524/MODEL" xmlns:bpmndi="http://www.omg.org/spec/BPMN/20100524/DI" xmlns:dc="http://www.omg.org/spec/DD/20100524/DC" xmlns:di="http://www.omg.org/spec/DD/20100524/DI" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" id="Definitions_AddKnowledge" targetNamespace="http://bpmn.io/schema/bpmn" exporter="Camunda Modeler" exporterVersion="5.34.0">
+  <bpmn:process id="add_to_knowledge_process" name="Add to Knowledge Process" isExecutable="true">
+    <bpmn:startEvent id="StartEvent_KnowledgeRequest" name="Knowledge Addition Request">
+      <bpmn:outgoing>Flow_ToKnowledgeValidation</bpmn:outgoing>
+    </bpmn:startEvent>
+    
+    <bpmn:serviceTask id="Task_ValidateKnowledgeInput" name="Validate Knowledge Input">
+      <bpmn:documentation>
+        Validate knowledge input format, content quality, and completeness.
+        Check for required metadata, source attribution, and content structure.
+        Ensure knowledge meets quality standards and guidelines.
+      </bpmn:documentation>
+      <bpmn:incoming>Flow_ToKnowledgeValidation</bpmn:incoming>
+      <bpmn:outgoing>Flow_ToInputValidationGateway</bpmn:outgoing>
+      <bpmn:script>
+        # External script reference
+        # Script: scripts/task_validate_knowledge_input.py
+      </bpmn:script>
+    </bpmn:serviceTask>
+    
+    <bpmn:exclusiveGateway id="Gateway_InputValidation" name="Input Valid?">
+      <bpmn:incoming>Flow_ToInputValidationGateway</bpmn:incoming>
+      <bpmn:outgoing>Flow_InputValid</bpmn:outgoing>
+      <bpmn:outgoing>Flow_InputInvalid</bpmn:outgoing>
+    </bpmn:exclusiveGateway>
+    
+    <bpmn:userTask id="Task_ReviewKnowledgeInput" name="Review and Correct Input">
+      <bpmn:documentation>
+        Allow user to review validation feedback and correct knowledge input.
+        Provide guidance on required improvements and quality standards.
+        Enable iterative refinement of knowledge content.
+      </bpmn:documentation>
+      <bpmn:incoming>Flow_InputInvalid</bpmn:incoming>
+      <bpmn:outgoing>Flow_BackToValidation</bpmn:outgoing>
+    </bpmn:userTask>
+    
+    <bpmn:serviceTask id="Task_CheckDuplicateKnowledge" name="Check for Duplicate Knowledge">
+      <bpmn:documentation>
+        Search existing knowledge base for similar or duplicate content.
+        Use semantic similarity and keyword matching to identify overlaps.
+        Flag potential duplicates for review and consolidation.
+      </bpmn:documentation>
+      <bpmn:incoming>Flow_InputValid</bpmn:incoming>
+      <bpmn:outgoing>Flow_ToDuplicateGateway</bpmn:outgoing>
+      <bpmn:script>
+        # External script reference
+        # Script: scripts/task_check_duplicate_knowledge.py
+      </bpmn:script>
+    </bpmn:serviceTask>
+    
+    <bpmn:exclusiveGateway id="Gateway_DuplicateCheck" name="Duplicates Found?">
+      <bpmn:incoming>Flow_ToDuplicateGateway</bpmn:incoming>
+      <bpmn:outgoing>Flow_NoDuplicates</bpmn:outgoing>
+      <bpmn:outgoing>Flow_DuplicatesFound</bpmn:outgoing>
+    </bpmn:exclusiveGateway>
+    
+    <bpmn:userTask id="Task_ResolveDuplicates" name="Resolve Duplicate Knowledge">
+      <bpmn:documentation>
+        Present duplicate knowledge candidates to user for resolution.
+        Allow merge, replace, or keep both options with conflict resolution.
+        Maintain knowledge provenance and version history.
+      </bpmn:documentation>
+      <bpmn:incoming>Flow_DuplicatesFound</bpmn:incoming>
+      <bpmn:outgoing>Flow_DuplicatesResolved</bpmn:outgoing>
+    </bpmn:userTask>
+    
+    <bpmn:serviceTask id="Task_TransformKnowledge" name="Transform Knowledge Format">
+      <bpmn:documentation>
+        Convert knowledge to standard internal format and schema.
+        Extract entities, relationships, and semantic structures.
+        Apply ontology mapping and knowledge graph integration.
+      </bpmn:documentation>
+      <bpmn:incoming>Flow_NoDuplicates</bpmn:incoming>
+      <bpmn:incoming>Flow_DuplicatesResolved</bpmn:incoming>
+      <bpmn:outgoing>Flow_ToEnrichment</bpmn:outgoing>
+      <bpmn:script>
+        # External script reference
+        # Script: scripts/task_transform_knowledge.py
+      </bpmn:script>
+    </bpmn:serviceTask>
+    
+    <bpmn:serviceTask id="Task_EnrichKnowledge" name="Enrich Knowledge with Context">
+      <bpmn:documentation>
+        Add contextual information and metadata to knowledge.
+        Link to related concepts, generate cross-references.
+        Apply automatic categorization and tagging.
+      </bpmn:documentation>
+      <bpmn:incoming>Flow_ToEnrichment</bpmn:incoming>
+      <bpmn:outgoing>Flow_ToQualityCheck</bpmn:outgoing>
+      <bpmn:script>
+        # External script reference
+        # Script: scripts/task_enrich_knowledge.py
+      </bpmn:script>
+    </bpmn:serviceTask>
+    
+    <bpmn:serviceTask id="Task_QualityAssurance" name="Quality Assurance Check">
+      <bpmn:documentation>
+        Perform automated quality checks on processed knowledge.
+        Validate consistency, completeness, and accuracy.
+        Check compliance with knowledge management policies.
+      </bpmn:documentation>
+      <bpmn:incoming>Flow_ToQualityCheck</bpmn:incoming>
+      <bpmn:outgoing>Flow_ToQualityGateway</bpmn:outgoing>
+      <bpmn:script>
+        # External script reference
+        # Script: scripts/task_quality_assurance.py
+      </bpmn:script>
+    </bpmn:serviceTask>
+    
+    <bpmn:exclusiveGateway id="Gateway_QualityCheck" name="Quality Acceptable?">
+      <bpmn:incoming>Flow_ToQualityGateway</bpmn:incoming>
+      <bpmn:outgoing>Flow_QualityAccepted</bpmn:outgoing>
+      <bpmn:outgoing>Flow_QualityRejected</bpmn:outgoing>
+    </bpmn:exclusiveGateway>
+    
+    <bpmn:userTask id="Task_ReviewQualityIssues" name="Review Quality Issues">
+      <bpmn:documentation>
+        Allow user to review quality issues and make corrections.
+        Provide detailed feedback on quality problems.
+        Enable manual override for acceptable quality variations.
+      </bpmn:documentation>
+      <bpmn:incoming>Flow_QualityRejected</bpmn:incoming>
+      <bpmn:outgoing>Flow_BackToTransform</bpmn:outgoing>
+    </bpmn:userTask>
+    
+    <bpmn:parallelGateway id="Gateway_ParallelStorage" name="Parallel Storage">
+      <bpmn:incoming>Flow_QualityAccepted</bpmn:incoming>
+      <bpmn:outgoing>Flow_ToVectorStorage</bpmn:outgoing>
+      <bpmn:outgoing>Flow_ToGraphStorage</bpmn:outgoing>
+      <bpmn:outgoing>Flow_ToRDFStorage</bpmn:outgoing>
+    </bpmn:parallelGateway>
+    
+    <bpmn:serviceTask id="Task_StoreInVectorDB" name="Store in Vector Database">
+      <bpmn:documentation>
+        Store knowledge embeddings in vector database for similarity search.
+        Create searchable vector representations with metadata.
+        Enable semantic search and retrieval capabilities.
+      </bpmn:documentation>
+      <bpmn:incoming>Flow_ToVectorStorage</bpmn:incoming>
+      <bpmn:outgoing>Flow_VectorStorageComplete</bpmn:outgoing>
+      <bpmn:script>
+        # External script reference
+        # Script: scripts/task_store_knowledge_vector.py
+      </bpmn:script>
+    </bpmn:serviceTask>
+    
+    <bpmn:serviceTask id="Task_StoreInGraphDB" name="Store in Graph Database">
+      <bpmn:documentation>
+        Store knowledge entities and relationships in graph database.
+        Create nodes for concepts and edges for relationships.
+        Enable graph-based queries and knowledge discovery.
+      </bpmn:documentation>
+      <bpmn:incoming>Flow_ToGraphStorage</bpmn:incoming>
+      <bpmn:outgoing>Flow_GraphStorageComplete</bpmn:outgoing>
+      <bpmn:script>
+        # External script reference
+        # Script: scripts/task_store_knowledge_graph.py
+      </bpmn:script>
+    </bpmn:serviceTask>
+    
+    <bpmn:serviceTask id="Task_StoreInRDF" name="Store in RDF Triple Store">
+      <bpmn:documentation>
+        Store knowledge as RDF triples in semantic database.
+        Apply ontology mappings and semantic annotations.
+        Enable SPARQL queries and reasoning capabilities.
+      </bpmn:documentation>
+      <bpmn:incoming>Flow_ToRDFStorage</bpmn:incoming>
+      <bpmn:outgoing>Flow_RDFStorageComplete</bpmn:outgoing>
+      <bpmn:script>
+        # External script reference
+        # Script: scripts/task_store_knowledge_rdf.py
+      </bpmn:script>
+    </bpmn:serviceTask>
+    
+    <bpmn:parallelGateway id="Gateway_StorageComplete" name="Storage Complete">
+      <bpmn:incoming>Flow_VectorStorageComplete</bpmn:incoming>
+      <bpmn:incoming>Flow_GraphStorageComplete</bpmn:incoming>
+      <bpmn:incoming>Flow_RDFStorageComplete</bpmn:incoming>
+      <bpmn:outgoing>Flow_ToIndexing</bpmn:outgoing>
+    </bpmn:parallelGateway>
+    
+    <bpmn:serviceTask id="Task_UpdateKnowledgeIndex" name="Update Knowledge Indices">
+      <bpmn:documentation>
+        Update search indices and knowledge catalogs.
+        Refresh recommendation engines and similarity mappings.
+        Trigger knowledge graph analytics and insights generation.
+      </bpmn:documentation>
+      <bpmn:incoming>Flow_ToIndexing</bpmn:incoming>
+      <bpmn:outgoing>Flow_ToNotification</bpmn:outgoing>
+      <bpmn:script>
+        # External script reference
+        # Script: scripts/task_update_knowledge_index.py
+      </bpmn:script>
+    </bpmn:serviceTask>
+    
+    <bpmn:serviceTask id="Task_NotifyStakeholders" name="Notify Stakeholders">
+      <bpmn:documentation>
+        Send notifications about new knowledge addition.
+        Update knowledge subscribers and interested parties.
+        Generate knowledge addition reports and summaries.
+      </bpmn:documentation>
+      <bpmn:incoming>Flow_ToNotification</bpmn:incoming>
+      <bpmn:outgoing>Flow_ToCompletion</bpmn:outgoing>
+      <bpmn:script>
+        # External script reference
+        # Script: scripts/task_notify_stakeholders.py
+      </bpmn:script>
+    </bpmn:serviceTask>
+    
+    <bpmn:endEvent id="EndEvent_KnowledgeAdded" name="Knowledge Successfully Added">
+      <bpmn:incoming>Flow_ToCompletion</bpmn:incoming>
+    </bpmn:endEvent>
+    
+    <!-- Sequence Flows -->
+    <bpmn:sequenceFlow id="Flow_ToKnowledgeValidation" sourceRef="StartEvent_KnowledgeRequest" targetRef="Task_ValidateKnowledgeInput" />
+    <bpmn:sequenceFlow id="Flow_ToInputValidationGateway" sourceRef="Task_ValidateKnowledgeInput" targetRef="Gateway_InputValidation" />
+    <bpmn:sequenceFlow id="Flow_InputValid" name="Valid" sourceRef="Gateway_InputValidation" targetRef="Task_CheckDuplicateKnowledge">
+      <bpmn:conditionExpression xsi:type="bpmn:tFormalExpression">${input_validation_result == 'valid'}</bpmn:conditionExpression>
+    </bpmn:sequenceFlow>
+    <bpmn:sequenceFlow id="Flow_InputInvalid" name="Invalid" sourceRef="Gateway_InputValidation" targetRef="Task_ReviewKnowledgeInput">
+      <bpmn:conditionExpression xsi:type="bpmn:tFormalExpression">${input_validation_result == 'invalid'}</bpmn:conditionExpression>
+    </bpmn:sequenceFlow>
+    <bpmn:sequenceFlow id="Flow_BackToValidation" sourceRef="Task_ReviewKnowledgeInput" targetRef="Task_ValidateKnowledgeInput" />
+    <bpmn:sequenceFlow id="Flow_ToDuplicateGateway" sourceRef="Task_CheckDuplicateKnowledge" targetRef="Gateway_DuplicateCheck" />
+    <bpmn:sequenceFlow id="Flow_NoDuplicates" name="No Duplicates" sourceRef="Gateway_DuplicateCheck" targetRef="Task_TransformKnowledge">
+      <bpmn:conditionExpression xsi:type="bpmn:tFormalExpression">${duplicates_found == 'false'}</bpmn:conditionExpression>
+    </bpmn:sequenceFlow>
+    <bpmn:sequenceFlow id="Flow_DuplicatesFound" name="Duplicates Found" sourceRef="Gateway_DuplicateCheck" targetRef="Task_ResolveDuplicates">
+      <bpmn:conditionExpression xsi:type="bpmn:tFormalExpression">${duplicates_found == 'true'}</bpmn:conditionExpression>
+    </bpmn:sequenceFlow>
+    <bpmn:sequenceFlow id="Flow_DuplicatesResolved" sourceRef="Task_ResolveDuplicates" targetRef="Task_TransformKnowledge" />
+    <bpmn:sequenceFlow id="Flow_ToEnrichment" sourceRef="Task_TransformKnowledge" targetRef="Task_EnrichKnowledge" />
+    <bpmn:sequenceFlow id="Flow_ToQualityCheck" sourceRef="Task_EnrichKnowledge" targetRef="Task_QualityAssurance" />
+    <bpmn:sequenceFlow id="Flow_ToQualityGateway" sourceRef="Task_QualityAssurance" targetRef="Gateway_QualityCheck" />
+    <bpmn:sequenceFlow id="Flow_QualityAccepted" name="Accepted" sourceRef="Gateway_QualityCheck" targetRef="Gateway_ParallelStorage">
+      <bpmn:conditionExpression xsi:type="bpmn:tFormalExpression">${quality_check_result == 'accepted'}</bpmn:conditionExpression>
+    </bpmn:sequenceFlow>
+    <bpmn:sequenceFlow id="Flow_QualityRejected" name="Rejected" sourceRef="Gateway_QualityCheck" targetRef="Task_ReviewQualityIssues">
+      <bpmn:conditionExpression xsi:type="bpmn:tFormalExpression">${quality_check_result == 'rejected'}</bpmn:conditionExpression>
+    </bpmn:sequenceFlow>
+    <bpmn:sequenceFlow id="Flow_BackToTransform" sourceRef="Task_ReviewQualityIssues" targetRef="Task_TransformKnowledge" />
+    <bpmn:sequenceFlow id="Flow_ToVectorStorage" sourceRef="Gateway_ParallelStorage" targetRef="Task_StoreInVectorDB" />
+    <bpmn:sequenceFlow id="Flow_ToGraphStorage" sourceRef="Gateway_ParallelStorage" targetRef="Task_StoreInGraphDB" />
+    <bpmn:sequenceFlow id="Flow_ToRDFStorage" sourceRef="Gateway_ParallelStorage" targetRef="Task_StoreInRDF" />
+    <bpmn:sequenceFlow id="Flow_VectorStorageComplete" sourceRef="Task_StoreInVectorDB" targetRef="Gateway_StorageComplete" />
+    <bpmn:sequenceFlow id="Flow_GraphStorageComplete" sourceRef="Task_StoreInGraphDB" targetRef="Gateway_StorageComplete" />
+    <bpmn:sequenceFlow id="Flow_RDFStorageComplete" sourceRef="Task_StoreInRDF" targetRef="Gateway_StorageComplete" />
+    <bpmn:sequenceFlow id="Flow_ToIndexing" sourceRef="Gateway_StorageComplete" targetRef="Task_UpdateKnowledgeIndex" />
+    <bpmn:sequenceFlow id="Flow_ToNotification" sourceRef="Task_UpdateKnowledgeIndex" targetRef="Task_NotifyStakeholders" />
+    <bpmn:sequenceFlow id="Flow_ToCompletion" sourceRef="Task_NotifyStakeholders" targetRef="EndEvent_KnowledgeAdded" />
+  </bpmn:process>
+  
+  <!-- BPMN Diagram Information -->
+  <bpmndi:BPMNDiagram id="BPMNDiagram_AddKnowledge">
+    <bpmndi:BPMNPlane id="BPMNPlane_AddKnowledge" bpmnElement="add_to_knowledge_process">
+      <!-- Row 1 - Start and Initial Validation -->
+      <bpmndi:BPMNShape id="StartEvent_KnowledgeRequest_di" bpmnElement="StartEvent_KnowledgeRequest">
+        <dc:Bounds x="152" y="102" width="36" height="36" />
+        <bpmndi:BPMNLabel>
+          <dc:Bounds x="132" y="145" width="76" height="27" />
+        </bpmndi:BPMNLabel>
+      </bpmndi:BPMNShape>
+      
+      <bpmndi:BPMNShape id="Task_ValidateKnowledgeInput_di" bpmnElement="Task_ValidateKnowledgeInput">
+        <dc:Bounds x="240" y="80" width="100" height="80" />
+        <bpmndi:BPMNLabel />
+      </bpmndi:BPMNShape>
+      
+      <bpmndi:BPMNShape id="Gateway_InputValidation_di" bpmnElement="Gateway_InputValidation" isMarkerVisible="true">
+        <dc:Bounds x="395" y="95" width="50" height="50" />
+        <bpmndi:BPMNLabel>
+          <dc:Bounds x="386" y="65" width="68" height="14" />
+        </bpmndi:BPMNLabel>
+      </bpmndi:BPMNShape>
+      
+      <bpmndi:BPMNShape id="Task_ReviewKnowledgeInput_di" bpmnElement="Task_ReviewKnowledgeInput">
+        <dc:Bounds x="370" y="200" width="100" height="80" />
+        <bpmndi:BPMNLabel />
+      </bpmndi:BPMNShape>
+      
+      <bpmndi:BPMNShape id="Task_CheckDuplicateKnowledge_di" bpmnElement="Task_CheckDuplicateKnowledge">
+        <dc:Bounds x="520" y="80" width="100" height="80" />
+        <bpmndi:BPMNLabel />
+      </bpmndi:BPMNShape>
+      
+      <!-- Row 2 - Duplicate Processing -->
+      <bpmndi:BPMNShape id="Gateway_DuplicateCheck_di" bpmnElement="Gateway_DuplicateCheck" isMarkerVisible="true">
+        <dc:Bounds x="675" y="95" width="50" height="50" />
+        <bpmndi:BPMNLabel>
+          <dc:Bounds x="655" y="65" width="90" height="14" />
+        </bpmndi:BPMNLabel>
+      </bpmndi:BPMNShape>
+      
+      <bpmndi:BPMNShape id="Task_ResolveDuplicates_di" bpmnElement="Task_ResolveDuplicates">
+        <dc:Bounds x="650" y="200" width="100" height="80" />
+        <bpmndi:BPMNLabel />
+      </bpmndi:BPMNShape>
+      
+      <bpmndi:BPMNShape id="Task_TransformKnowledge_di" bpmnElement="Task_TransformKnowledge">
+        <dc:Bounds x="800" y="80" width="100" height="80" />
+        <bpmndi:BPMNLabel />
+      </bpmndi:BPMNShape>
+      
+      <!-- Row 3 - Enrichment and Quality -->
+      <bpmndi:BPMNShape id="Task_EnrichKnowledge_di" bpmnElement="Task_EnrichKnowledge">
+        <dc:Bounds x="960" y="80" width="100" height="80" />
+        <bpmndi:BPMNLabel />
+      </bpmndi:BPMNShape>
+      
+      <bpmndi:BPMNShape id="Task_QualityAssurance_di" bpmnElement="Task_QualityAssurance">
+        <dc:Bounds x="1120" y="80" width="100" height="80" />
+        <bpmndi:BPMNLabel />
+      </bpmndi:BPMNShape>
+      
+      <bpmndi:BPMNShape id="Gateway_QualityCheck_di" bpmnElement="Gateway_QualityCheck" isMarkerVisible="true">
+        <dc:Bounds x="1275" y="95" width="50" height="50" />
+        <bpmndi:BPMNLabel>
+          <dc:Bounds x="1258" y="65" width="84" height="14" />
+        </bpmndi:BPMNLabel>
+      </bpmndi:BPMNShape>
+      
+      <bpmndi:BPMNShape id="Task_ReviewQualityIssues_di" bpmnElement="Task_ReviewQualityIssues">
+        <dc:Bounds x="1250" y="200" width="100" height="80" />
+        <bpmndi:BPMNLabel />
+      </bpmndi:BPMNShape>
+      
+      <!-- Row 4 - Parallel Storage -->
+      <bpmndi:BPMNShape id="Gateway_ParallelStorage_di" bpmnElement="Gateway_ParallelStorage">
+        <dc:Bounds x="1395" y="95" width="50" height="50" />
+        <bpmndi:BPMNLabel>
+          <dc:Bounds x="1379" y="65" width="82" height="14" />
+        </bpmndi:BPMNLabel>
+      </bpmndi:BPMNShape>
+      
+      <bpmndi:BPMNShape id="Task_StoreInVectorDB_di" bpmnElement="Task_StoreInVectorDB">
+        <dc:Bounds x="1500" y="20" width="100" height="80" />
+        <bpmndi:BPMNLabel />
+      </bpmndi:BPMNShape>
+      
+      <bpmndi:BPMNShape id="Task_StoreInGraphDB_di" bpmnElement="Task_StoreInGraphDB">
+        <dc:Bounds x="1500" y="120" width="100" height="80" />
+        <bpmndi:BPMNLabel />
+      </bpmndi:BPMNShape>
+      
+      <bpmndi:BPMNShape id="Task_StoreInRDF_di" bpmnElement="Task_StoreInRDF">
+        <dc:Bounds x="1500" y="220" width="100" height="80" />
+        <bpmndi:BPMNLabel />
+      </bpmndi:BPMNShape>
+      
+      <bpmndi:BPMNShape id="Gateway_StorageComplete_di" bpmnElement="Gateway_StorageComplete">
+        <dc:Bounds x="1675" y="95" width="50" height="50" />
+        <bpmndi:BPMNLabel>
+          <dc:Bounds x="1656" y="65" width="88" height="14" />
+        </bpmndi:BPMNLabel>
+      </bpmndi:BPMNShape>
+      
+      <!-- Row 5 - Final Steps -->
+      <bpmndi:BPMNShape id="Task_UpdateKnowledgeIndex_di" bpmnElement="Task_UpdateKnowledgeIndex">
+        <dc:Bounds x="1800" y="80" width="100" height="80" />
+        <bpmndi:BPMNLabel />
+      </bpmndi:BPMNShape>
+      
+      <bpmndi:BPMNShape id="Task_NotifyStakeholders_di" bpmnElement="Task_NotifyStakeholders">
+        <dc:Bounds x="1960" y="80" width="100" height="80" />
+        <bpmndi:BPMNLabel />
+      </bpmndi:BPMNShape>
+      
+      <bpmndi:BPMNShape id="EndEvent_KnowledgeAdded_di" bpmnElement="EndEvent_KnowledgeAdded">
+        <dc:Bounds x="2122" y="102" width="36" height="36" />
+        <bpmndi:BPMNLabel>
+          <dc:Bounds x="2101" y="145" width="78" height="27" />
+        </bpmndi:BPMNLabel>
+      </bpmndi:BPMNShape>
+      
+      <!-- Sequence Flow Edges -->
+      <bpmndi:BPMNEdge id="Flow_ToKnowledgeValidation_di" bpmnElement="Flow_ToKnowledgeValidation">
+        <di:waypoint x="188" y="120" />
+        <di:waypoint x="240" y="120" />
+      </bpmndi:BPMNEdge>
+      
+      <bpmndi:BPMNEdge id="Flow_ToInputValidationGateway_di" bpmnElement="Flow_ToInputValidationGateway">
+        <di:waypoint x="340" y="120" />
+        <di:waypoint x="395" y="120" />
+      </bpmndi:BPMNEdge>
+      
+      <bpmndi:BPMNEdge id="Flow_InputValid_di" bpmnElement="Flow_InputValid">
+        <di:waypoint x="445" y="120" />
+        <di:waypoint x="520" y="120" />
+        <bpmndi:BPMNLabel>
+          <dc:Bounds x="470" y="102" width="25" height="14" />
+        </bpmndi:BPMNLabel>
+      </bpmndi:BPMNEdge>
+      
+      <bpmndi:BPMNEdge id="Flow_InputInvalid_di" bpmnElement="Flow_InputInvalid">
+        <di:waypoint x="420" y="145" />
+        <di:waypoint x="420" y="200" />
+        <bpmndi:BPMNLabel>
+          <dc:Bounds x="419" y="170" width="32" height="14" />
+        </bpmndi:BPMNLabel>
+      </bpmndi:BPMNEdge>
+      
+      <bpmndi:BPMNEdge id="Flow_BackToValidation_di" bpmnElement="Flow_BackToValidation">
+        <di:waypoint x="370" y="240" />
+        <di:waypoint x="290" y="240" />
+        <di:waypoint x="290" y="160" />
+      </bpmndi:BPMNEdge>
+      
+      <bpmndi:BPMNEdge id="Flow_ToDuplicateGateway_di" bpmnElement="Flow_ToDuplicateGateway">
+        <di:waypoint x="620" y="120" />
+        <di:waypoint x="675" y="120" />
+      </bpmndi:BPMNEdge>
+      
+      <bpmndi:BPMNEdge id="Flow_NoDuplicates_di" bpmnElement="Flow_NoDuplicates">
+        <di:waypoint x="725" y="120" />
+        <di:waypoint x="800" y="120" />
+        <bpmndi:BPMNLabel>
+          <dc:Bounds x="737" y="102" width="71" height="14" />
+        </bpmndi:BPMNLabel>
+      </bpmndi:BPMNEdge>
+      
+      <bpmndi:BPMNEdge id="Flow_DuplicatesFound_di" bpmnElement="Flow_DuplicatesFound">
+        <di:waypoint x="700" y="145" />
+        <di:waypoint x="700" y="200" />
+        <bpmndi:BPMNLabel>
+          <dc:Bounds x="686" y="170" width="88" height="14" />
+        </bpmndi:BPMNLabel>
+      </bpmndi:BPMNEdge>
+      
+      <bpmndi:BPMNEdge id="Flow_DuplicatesResolved_di" bpmnElement="Flow_DuplicatesResolved">
+        <di:waypoint x="750" y="240" />
+        <di:waypoint x="850" y="240" />
+        <di:waypoint x="850" y="160" />
+      </bpmndi:BPMNEdge>
+      
+      <bpmndi:BPMNEdge id="Flow_ToEnrichment_di" bpmnElement="Flow_ToEnrichment">
+        <di:waypoint x="900" y="120" />
+        <di:waypoint x="960" y="120" />
+      </bpmndi:BPMNEdge>
+      
+      <bpmndi:BPMNEdge id="Flow_ToQualityCheck_di" bpmnElement="Flow_ToQualityCheck">
+        <di:waypoint x="1060" y="120" />
+        <di:waypoint x="1120" y="120" />
+      </bpmndi:BPMNEdge>
+      
+      <bpmndi:BPMNEdge id="Flow_ToQualityGateway_di" bpmnElement="Flow_ToQualityGateway">
+        <di:waypoint x="1220" y="120" />
+        <di:waypoint x="1275" y="120" />
+      </bpmndi:BPMNEdge>
+      
+      <bpmndi:BPMNEdge id="Flow_QualityAccepted_di" bpmnElement="Flow_QualityAccepted">
+        <di:waypoint x="1325" y="120" />
+        <di:waypoint x="1395" y="120" />
+        <bpmndi:BPMNLabel>
+          <dc:Bounds x="1344" y="102" width="48" height="14" />
+        </bpmndi:BPMNLabel>
+      </bpmndi:BPMNEdge>
+      
+      <bpmndi:BPMNEdge id="Flow_QualityRejected_di" bpmnElement="Flow_QualityRejected">
+        <di:waypoint x="1300" y="145" />
+        <di:waypoint x="1300" y="200" />
+        <bpmndi:BPMNLabel>
+          <dc:Bounds x="1299" y="170" width="44" height="14" />
+        </bpmndi:BPMNLabel>
+      </bpmndi:BPMNEdge>
+      
+      <bpmndi:BPMNEdge id="Flow_BackToTransform_di" bpmnElement="Flow_BackToTransform">
+        <di:waypoint x="1250" y="240" />
+        <di:waypoint x="850" y="240" />
+        <di:waypoint x="850" y="160" />
+      </bpmndi:BPMNEdge>
+      
+      <bpmndi:BPMNEdge id="Flow_ToVectorStorage_di" bpmnElement="Flow_ToVectorStorage">
+        <di:waypoint x="1420" y="95" />
+        <di:waypoint x="1420" y="60" />
+        <di:waypoint x="1500" y="60" />
+      </bpmndi:BPMNEdge>
+      
+      <bpmndi:BPMNEdge id="Flow_ToGraphStorage_di" bpmnElement="Flow_ToGraphStorage">
+        <di:waypoint x="1445" y="120" />
+        <di:waypoint x="1500" y="160" />
+      </bpmndi:BPMNEdge>
+      
+      <bpmndi:BPMNEdge id="Flow_ToRDFStorage_di" bpmnElement="Flow_ToRDFStorage">
+        <di:waypoint x="1420" y="145" />
+        <di:waypoint x="1420" y="260" />
+        <di:waypoint x="1500" y="260" />
+      </bpmndi:BPMNEdge>
+      
+      <bpmndi:BPMNEdge id="Flow_VectorStorageComplete_di" bpmnElement="Flow_VectorStorageComplete">
+        <di:waypoint x="1600" y="60" />
+        <di:waypoint x="1700" y="60" />
+        <di:waypoint x="1700" y="95" />
+      </bpmndi:BPMNEdge>
+      
+      <bpmndi:BPMNEdge id="Flow_GraphStorageComplete_di" bpmnElement="Flow_GraphStorageComplete">
+        <di:waypoint x="1600" y="160" />
+        <di:waypoint x="1675" y="120" />
+      </bpmndi:BPMNEdge>
+      
+      <bpmndi:BPMNEdge id="Flow_RDFStorageComplete_di" bpmnElement="Flow_RDFStorageComplete">
+        <di:waypoint x="1600" y="260" />
+        <di:waypoint x="1700" y="260" />
+        <di:waypoint x="1700" y="145" />
+      </bpmndi:BPMNEdge>
+      
+      <bpmndi:BPMNEdge id="Flow_ToIndexing_di" bpmnElement="Flow_ToIndexing">
+        <di:waypoint x="1725" y="120" />
+        <di:waypoint x="1800" y="120" />
+      </bpmndi:BPMNEdge>
+      
+      <bpmndi:BPMNEdge id="Flow_ToNotification_di" bpmnElement="Flow_ToNotification">
+        <di:waypoint x="1900" y="120" />
+        <di:waypoint x="1960" y="120" />
+      </bpmndi:BPMNEdge>
+      
+      <bpmndi:BPMNEdge id="Flow_ToCompletion_di" bpmnElement="Flow_ToCompletion">
+        <di:waypoint x="2060" y="120" />
+        <di:waypoint x="2122" y="120" />
+      </bpmndi:BPMNEdge>
+    </bpmndi:BPMNPlane>
+  </bpmndi:BPMNDiagram>
+</bpmn:definitions>
+
+
+
+
