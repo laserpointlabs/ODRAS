@@ -656,33 +656,24 @@ Please provide a comprehensive answer based on the context provided. If the cont
         
         context_text = '\n'.join(context_lines)
         
-        # Create a context-aware response instead of hardcoded mock
-        if 'position accuracy' in user_question.lower() and '3 meters CEP' in context_text:
-            mock_response = """Based on the navigation system requirements provided in the context:
-
-The required position accuracy is 3 meters CEP (Circular Error Probable).
-
-Additional accuracy specifications from the context:
-- Heading accuracy: ±2 degrees  
-- Speed accuracy: ±0.1 m/s
-
-This information is sourced from the Navigation System Requirements documentation."""
-        elif 'navigation' in user_question.lower() and 'Navigation System' in context_text:
-            mock_response = """Based on the context provided, I can provide information about the navigation system from the requirements documentation:
-
-""" + context_text + """
-
-This information is sourced from the Navigation System Requirements documentation."""
-        elif context_text and len(context_text) > 50:
-            # Use actual context when available
-            mock_response = f"""Based on the information provided in the context:
+        # Create a context-aware response that works for ANY query with context
+        if context_text and len(context_text) > 20:  # Much lower threshold
+            # Always use the actual context when available
+            mock_response = f"""Based on the information retrieved from the knowledge base:
 
 {context_text}
 
-This response is based on the relevant documentation retrieved from the knowledge base."""
+This response is based on the relevant documentation found in your knowledge assets."""
+        elif context_text:
+            # Even minimal context is better than none
+            mock_response = f"""Based on the available context:
+
+{context_text}
+
+Note: Limited context available for this query."""
         else:
-            # Fallback for minimal context
-            mock_response = """I don't have enough specific information in the provided context to answer your question accurately. Please try rephrasing your question or ensure the relevant documentation is available in the knowledge base."""
+            # Only use fallback when absolutely no context
+            mock_response = """I couldn't find relevant information in the knowledge base to answer your question. You may want to try rephrasing your question or adding more relevant documentation to your knowledge assets."""
         
         return {
             'llm_response': mock_response,
@@ -755,12 +746,13 @@ This response is based on the relevant documentation retrieved from the knowledg
             real_user_id = "d027b062-a6e0-47e6-b193-50fbec328a05"  # jdehart user
             real_project_id = "8e929f77-e7d0-48ad-9da3-6a4e392c49f3"  # Default Project
             
+            # Use the same parameters as the original working RAG
             chunks = asyncio.run(rag_service._retrieve_relevant_chunks(
                 question=query_text,
                 project_id=real_project_id,
                 user_id=real_user_id, 
                 max_chunks=search_parameters.get('max_results', 5),
-                similarity_threshold=search_parameters.get('min_similarity_threshold', 0.4)  # Lower threshold
+                similarity_threshold=0.4  # Match original RAG threshold
             ))
             
             print(f"RAG service retrieved {len(chunks)} chunks")
@@ -781,7 +773,8 @@ This response is based on the relevant documentation retrieved from the knowledg
                 'retrieved_chunks': retrieved_chunks,
                 'retrieval_stats': {
                     'total_results': len(retrieved_chunks),
-                    'search_method': 'existing_rag_service'
+                    'search_method': 'existing_rag_service',
+                    'avg_similarity': sum(chunk.get('similarity_score', 0) for chunk in retrieved_chunks) / len(retrieved_chunks) if retrieved_chunks else 0.0
                 },
                 'processing_status': 'success',
                 'errors': []
