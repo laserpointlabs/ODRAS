@@ -37,7 +37,8 @@ This file contains data dumps of just one lines for want, needs, and nice to hav
 [] Manage Ontology Attributes
 [] Manage Ontology base object names
 [] Add user task workbench
-[] Add nested ontology view by checkmark in imports 
+[] Add nested ontology view by checkmark in imports
+[] Keep knowledge project specific
 
 ## 🎯 NEXT PRIORITIES
 
