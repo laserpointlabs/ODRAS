@@ -470,8 +470,8 @@ async def toggle_reference_ontology(body: Dict, user=Depends(get_admin_user)):
 
 
 @app.post("/api/ontologies/import-url")
-async def import_ontology_from_url(body: Dict, user=Depends(get_admin_user)):
-    """Import an ontology from a remote URL. Admin only."""
+async def import_ontology_from_url(body: Dict, user=Depends(get_user)):
+    """Import an ontology from a remote URL. Any authenticated user can import, but only admins can set as reference."""
     import httpx
     from rdflib import Graph, RDF
     from rdflib.namespace import OWL, RDFS
@@ -480,7 +480,13 @@ async def import_ontology_from_url(body: Dict, user=Depends(get_admin_user)):
     project_id = body.get("project_id", "").strip()
     name = body.get("name", "").strip()
     label = body.get("label", "").strip()
-    is_reference = body.get("is_reference", True)  # Default to reference for URL imports
+    
+    # Only admins can set ontologies as reference
+    is_admin = user.get("is_admin", False)
+    if is_admin:
+        is_reference = body.get("is_reference", True)  # Default to reference for URL imports
+    else:
+        is_reference = False  # Non-admins cannot set as reference
     
     if not url:
         raise HTTPException(status_code=400, detail="URL parameter is required")
