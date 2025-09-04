@@ -371,7 +371,19 @@
           <div class="ontology-toolbar">
             <span id="ontoGraphLabel" class="muted" style="max-width:55%; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">No graph selected</span>
             <div class="spacer"></div>
-            <button class="btn" id="ontoLayoutBtn" title="Auto layout">Layout</button>
+            <select id="ontoLayoutSelector" class="btn" style="padding: 6px 8px; border: 1px solid var(--border); background: var(--bg); color: var(--text); border-radius: 4px; font-size: 12px;">
+              <option value="cose">Force-Directed (CoSE) - Recommended</option>
+              <option value="dagre">Hierarchical (Dagre) - Best for Taxonomies</option>
+              <option value="concentric">Concentric - Shows Centrality</option>
+              <option value="breadthfirst">Breadthfirst - Tree-like Structure</option>
+              <option value="circle">Circle - Simple Overview</option>
+              <option value="grid">Grid - Organized Grid</option>
+              <option value="cola">Constraint-Based (Cola)</option>
+              <option value="spread">Spread - Maximize Distance</option>
+            </select>
+            <button class="btn" id="ontoLayoutBtn" title="Apply selected layout">Apply Layout</button>
+            <button class="btn" id="ontoQuickCoseBtn" title="Quick Force-Directed Layout" style="font-size: 11px; padding: 4px 6px;">CoSE</button>
+            <button class="btn" id="ontoQuickDagreBtn" title="Quick Hierarchical Layout" style="font-size: 11px; padding: 4px 6px;">Dagre</button>
             <button class="btn" id="ontoFitBtn" title="Fit to view">Fit</button>
             <button class="btn" id="ontoFullscreenBtn" title="Enter fullscreen">Fullscreen</button>
             <button class="btn" id="ontoDeleteBtn" title="Delete selected">Delete</button>
@@ -1306,9 +1318,160 @@
     }
 
     function runAutoLayout() {
+      // Legacy function - now uses advanced layout
+      runAdvancedLayout('cose');
+    }
+
+    function runAdvancedLayout(layoutType) {
       ensureOntologyInitialized();
-      const layout = ontoState.cy.layout({ name: 'cose', animate: 'end', animationDuration: 200 });
-      layout.run();
+      if (!ontoState.cy) return;
+
+      let layoutOptions = {
+        animate: true,
+        animationDuration: 800,
+        animationEasing: 'ease-out'
+      };
+
+      switch (layoutType) {
+        case 'grid':
+          layoutOptions = {
+            ...layoutOptions,
+            name: 'grid',
+            cols: Math.ceil(Math.sqrt(ontoState.cy.nodes().length)),
+            rows: Math.ceil(ontoState.cy.nodes().length / Math.ceil(Math.sqrt(ontoState.cy.nodes().length))),
+            spacingFactor: 1.5
+          };
+          break;
+
+        case 'circle':
+          layoutOptions = {
+            ...layoutOptions,
+            name: 'circle',
+            radius: Math.max(200, ontoState.cy.nodes().length * 30),
+            spacingFactor: 1.2
+          };
+          break;
+
+        case 'concentric':
+          layoutOptions = {
+            ...layoutOptions,
+            name: 'concentric',
+            concentric: (node) => {
+              // Use node degree as concentric level
+              return node.degree();
+            },
+            levelWidth: (nodes) => {
+              return Math.max(100, nodes.length * 20);
+            },
+            spacingFactor: 1.5
+          };
+          break;
+
+        case 'breadthfirst':
+          layoutOptions = {
+            ...layoutOptions,
+            name: 'breadthfirst',
+            directed: true,
+            spacingFactor: 1.5,
+            avoidOverlap: true,
+            nodeDimensionsIncludeLabels: true
+          };
+          break;
+
+        case 'cose':
+          layoutOptions = {
+            ...layoutOptions,
+            name: 'cose',
+            idealEdgeLength: 150,
+            nodeOverlap: 20,
+            refresh: 20,
+            fit: true,
+            padding: 30,
+            randomize: false,
+            componentSpacing: 100,
+            nodeRepulsion: 400000,
+            edgeElasticity: 100,
+            nestingFactor: 5,
+            gravity: 80,
+            numIter: 1000,
+            initialTemp: 200,
+            coolingFactor: 0.95,
+            minTemp: 1.0
+          };
+          break;
+
+        case 'dagre':
+          layoutOptions = {
+            ...layoutOptions,
+            name: 'dagre',
+            rankDir: 'TB', // Top to Bottom
+            rankSep: 100,
+            nodeSep: 50,
+            edgeSep: 10,
+            ranker: 'tight-tree'
+          };
+          break;
+
+        case 'cola':
+          layoutOptions = {
+            ...layoutOptions,
+            name: 'cola',
+            animate: true,
+            refresh: 1,
+            maxSimulationTime: 4000,
+            ungrabifyWhileSimulating: false,
+            fit: true,
+            padding: 30,
+            randomize: false,
+            avoidOverlap: true,
+            handleDisconnected: true,
+            convergenceThreshold: 0.01,
+            nodeSpacing: 20,
+            flow: { axis: 'y', minSeparation: 30 },
+            alignment: undefined,
+            gapInequalities: undefined,
+            centerGraph: true
+          };
+          break;
+
+        case 'spread':
+          layoutOptions = {
+            ...layoutOptions,
+            name: 'spread',
+            minDist: 100,
+            expandingFactor: -1.0,
+            maxExpandingIterations: 4,
+            maxContractingIterations: 4,
+            initialTemp: 200,
+            finalTemp: 0.1,
+            coolingFactor: 0.99
+          };
+          break;
+
+        default:
+          console.warn('Unknown layout type:', layoutType);
+          layoutOptions.name = 'cose';
+      }
+
+      try {
+        const layout = ontoState.cy.layout(layoutOptions);
+        layout.run();
+        
+        // Fit the graph after layout completes
+        setTimeout(() => {
+          ontoState.cy.fit(undefined, 20);
+        }, layoutOptions.animationDuration + 100);
+        
+      } catch (error) {
+        console.error('Layout error:', error);
+        // Fallback to basic cose layout
+        const fallbackLayout = ontoState.cy.layout({ 
+          name: 'cose', 
+          animate: true, 
+          animationDuration: 500 
+        });
+        fallbackLayout.run();
+      }
     }
 
     function setConnectMode(enabled) {
@@ -4312,9 +4475,12 @@
         const richClass = classMetadataMap[cls.uri] || {};
         const displayLabel = richClass.label || cls.label || cls.name;
         
-        // Arrange in a grid layout
-        const row = Math.floor(index / 4);
-        const col = index % 4;
+        // Arrange in a circular layout for better initial positioning
+        const totalClasses = classes.length;
+        const angle = (2 * Math.PI * index) / totalClasses;
+        const radius = Math.max(200, totalClasses * 25);
+        const centerX = 400;
+        const centerY = 300;
         
         const node = {
           data: {
@@ -4324,8 +4490,8 @@
             attrs: richClass.attrs || {}
           },
           position: {
-            x: 150 + (col * 200),
-            y: 100 + (row * 150)
+            x: centerX + radius * Math.cos(angle),
+            y: centerY + radius * Math.sin(angle)
           }
         };
         nodes.push(node);
@@ -4574,7 +4740,13 @@
             // Complete loading
             if (isImportedOntology) {
               updateOntologyLoadingProgress('Complete!', 100);
-              setTimeout(() => hideOntologyLoadingIndicator(), 500);
+              setTimeout(() => {
+                hideOntologyLoadingIndicator();
+                // Apply a nice layout after loading
+                setTimeout(() => {
+                  runAdvancedLayout('cose'); // Use force-directed layout for imported ontologies
+                }, 200);
+              }, 500);
             }
             
             console.log('Ontology loaded from API with', cytoscapeData.nodes?.length || 0, 'nodes and', cytoscapeData.edges?.length || 0, 'edges');
@@ -4597,7 +4769,12 @@
     (function(){
       document.addEventListener('click', async (e) => {
         if (e.target === qs('#ontoLayoutBtn')) {
-          runAutoLayout();
+          const selectedLayout = qs('#ontoLayoutSelector').value;
+          runAdvancedLayout(selectedLayout);
+        } else if (e.target === qs('#ontoQuickCoseBtn')) {
+          runAdvancedLayout('cose');
+        } else if (e.target === qs('#ontoQuickDagreBtn')) {
+          runAdvancedLayout('dagre');
         } else if (e.target === qs('#ontoFitBtn')) {
           try { if (ontoState.cy) ontoState.cy.fit(undefined, 20); } catch(_) {}
         } else if (e.target === qs('#ontoFullscreenBtn')) {
