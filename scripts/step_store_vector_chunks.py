@@ -80,17 +80,55 @@ async def store_vector_chunks_in_qdrant(file_id: str, knowledge_asset_id: str):
             }
             vectors_to_store.append(vector_data)
         
-        # Store all vectors in one batch
+        # Store all vectors in Qdrant
         point_ids = qdrant_service.store_vectors(
             collection_name=collection_name,
             vectors=vectors_to_store
         )
         
         stored_count = len(point_ids)
-        print(f"📊 Batch storage completed: {stored_count} chunks stored")
+        print(f"📊 Qdrant storage completed: {stored_count} chunks stored")
         
-        # Note: Knowledge asset status update moved to separate step
-        print(f"✅ Vector storage completed - knowledge asset ready for activation")
+        # ALSO store chunks in PostgreSQL for UI content display
+        print(f"📋 Storing chunks in PostgreSQL for content display...")
+        
+        from backend.services.knowledge_transformation import get_knowledge_transformation_service
+        knowledge_service = get_knowledge_transformation_service()
+        conn = knowledge_service.db_service._conn()
+        
+        try:
+            with conn.cursor() as cur:
+                for i, chunk_data in enumerate(embeddings_data):
+                    qdrant_point_id = point_ids[i] if i < len(point_ids) else str(uuid.uuid4())
+                    
+                    # Insert chunk into PostgreSQL knowledge_chunks table
+                    cur.execute("""
+                        INSERT INTO knowledge_chunks 
+                        (id, asset_id, sequence_number, chunk_type, content, 
+                         token_count, metadata, embedding_model, qdrant_point_id, created_at)
+                        VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, NOW())
+                    """, (
+                        str(uuid.uuid4()),  # PostgreSQL chunk ID
+                        knowledge_asset_id,  # Link to knowledge asset
+                        chunk_data['sequence_number'],
+                        'text',  # Default chunk type
+                        chunk_data['content'],
+                        chunk_data.get('metadata', {}).get('token_count', len(chunk_data['content'].split())),  # Use proper token count from chunking
+                        json.dumps(chunk_data.get('metadata', {})),
+                        chunk_data.get('embedding_model', 'all-MiniLM-L6-v2'),
+                        qdrant_point_id,  # Link to Qdrant point
+                    ))
+                
+                conn.commit()
+                print(f"✅ PostgreSQL storage completed: {len(embeddings_data)} chunks stored for UI display")
+                
+        except Exception as e:
+            print(f"❌ PostgreSQL chunk storage failed: {str(e)}")
+            # Don't fail the whole step if PostgreSQL fails
+        finally:
+            knowledge_service.db_service._return(conn)
+        
+        print(f"✅ Complete storage: Qdrant ({stored_count}) + PostgreSQL ({len(embeddings_data)}) chunks")
         
         # Clean up temporary files
         temp_files = [

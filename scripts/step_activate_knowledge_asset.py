@@ -21,12 +21,14 @@ sys.path.insert(0, str(project_root))
 
 from backend.services.config import Settings
 
-async def activate_knowledge_asset(knowledge_asset_id: str):
+async def activate_knowledge_asset(knowledge_asset_id: str, processing_data: dict = None):
     """Activate knowledge asset by updating status to 'active'."""
     try:
         settings = Settings()
         
         print(f"🔄 Step 6: Activating knowledge asset {knowledge_asset_id}")
+        if processing_data:
+            print(f"📊 Processing stats: {processing_data}")
         
         # Get database connection using knowledge service approach
         from backend.services.knowledge_transformation import get_knowledge_transformation_service
@@ -36,12 +38,60 @@ async def activate_knowledge_asset(knowledge_asset_id: str):
         
         try:
             with conn.cursor() as cur:
-                # Update status to active and set updated timestamp
+                # Get current asset data to extract correct processing stats
+                cur.execute("""
+                    SELECT metadata, title, document_type
+                    FROM knowledge_assets 
+                    WHERE id = %s
+                """, (knowledge_asset_id,))
+                
+                asset_data = cur.fetchone()
+                if not asset_data:
+                    raise ValueError(f"Knowledge asset {knowledge_asset_id} not found")
+                
+                current_metadata, title, doc_type = asset_data
+                
+                # Calculate total tokens from chunks (what the UI needs!)
+                cur.execute("""
+                    SELECT COALESCE(SUM(token_count), 0) as total_tokens,
+                           COUNT(*) as actual_chunks
+                    FROM knowledge_chunks 
+                    WHERE asset_id = %s
+                """, (knowledge_asset_id,))
+                
+                token_data = cur.fetchone()
+                total_tokens = token_data[0] if token_data else 0
+                actual_chunks = token_data[1] if token_data else 0
+                
+                print(f"📊 Calculated from chunks: {actual_chunks} chunks, {total_tokens} total tokens")
+                
+                # Extract correct stats from metadata (where they're properly stored)
+                processing_stats = {
+                    'chunk_count': current_metadata.get('chunk_count', actual_chunks),
+                    'token_count': total_tokens,  # CORRECT FIELD NAME FOR UI!
+                    'text_length': current_metadata.get('total_content_length', 0),
+                    'embedding_model': 'all-MiniLM-L6-v2',  # From workflow
+                    'chunking_strategy': 'hybrid',  # From workflow  
+                    'embedding_dimensions': 384,  # Standard for all-MiniLM-L6-v2
+                    'processing_method': 'bpmn_workflow',
+                    'workflow_completed': True,
+                    'source_filename': current_metadata.get('source_filename', 'unknown'),
+                    'created_via': current_metadata.get('created_via', 'bpmn_workflow')
+                }
+                
+                print(f"📊 Processing stats from metadata: chunk_count={processing_stats['chunk_count']}")
+                
+                # Update status and copy correct stats to processing_stats field
                 cur.execute("""
                     UPDATE knowledge_assets 
-                    SET status = 'active', updated_at = NOW()
-                    WHERE id = %s AND status = 'processing'
-                """, (knowledge_asset_id,))
+                    SET status = 'active', 
+                        updated_at = NOW(),
+                        processing_stats = %s
+                    WHERE id = %s
+                """, (
+                    json.dumps(processing_stats),
+                    knowledge_asset_id
+                ))
                 
                 rows_updated = cur.rowcount
                 conn.commit()
@@ -133,13 +183,23 @@ async def activate_knowledge_asset(knowledge_asset_id: str):
 def main():
     """Main function for command line usage."""
     if len(sys.argv) < 2:
-        print("Usage: python3 step_activate_knowledge_asset.py <knowledge_asset_id>")
+        print("Usage: python3 step_activate_knowledge_asset.py <knowledge_asset_id> [processing_data_json]")
         sys.exit(1)
     
     knowledge_asset_id = sys.argv[1]
+    processing_data = None
+    
+    # Parse processing data if provided
+    if len(sys.argv) > 2:
+        try:
+            processing_data = json.loads(sys.argv[2])
+            print(f"📊 Received processing data: {len(processing_data)} fields")
+        except json.JSONDecodeError as e:
+            print(f"⚠️ Failed to parse processing data: {e}")
+            processing_data = None
     
     # Run async activation
-    asyncio.run(activate_knowledge_asset(knowledge_asset_id))
+    asyncio.run(activate_knowledge_asset(knowledge_asset_id, processing_data))
 
 if __name__ == "__main__":
     main()
