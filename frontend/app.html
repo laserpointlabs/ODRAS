@@ -1249,7 +1249,7 @@
 
       container.addEventListener('dragenter', (ev) => { ev.preventDefault(); });
       container.addEventListener('dragover', (ev) => { ev.preventDefault(); ontoState.isCanvasActive = true; try { ev.dataTransfer.dropEffect = 'copy'; } catch(_) {} });
-      container.addEventListener('drop', (ev) => {
+      container.addEventListener('drop', async (ev) => {
         ev.preventDefault();
         ontoState.isCanvasActive = true;
         const ontoType = ev.dataTransfer.getData('text/onto-type') || 'class';
@@ -1260,7 +1260,7 @@
         const pos = { x: (renderedPos.x - pan.x) / zoom, y: (renderedPos.y - pan.y) / zoom };
         if (ontoType === 'class') {
           const label = `Class ${ontoState.nextId}`;
-          const id = addClassNodeAt(label, pos);
+          const id = await addClassNodeAt(label, pos);
           if (id) { ontoState.cy.$('#' + id).select(); }
         } else if (ontoType === 'objectProperty') {
           ontoState.currentPredicateType = 'objectProperty';
@@ -1299,20 +1299,80 @@
       updateElementIriDisplay();
     }
 
-    function addClassNode(label) {
+    async function addClassNode(label) {
       ensureOntologyInitialized();
       const id = `Class${ontoState.nextId++}`;
       const x = 100 + Math.random() * 400;
       const y = 100 + Math.random() * 300;
+      
+      // Add to Cytoscape graph first
       ontoState.cy.add({ group: 'nodes', data: { id, label, type: 'class', attrs: {} }, position: { x, y } });
+      
+      // Call backend API to persist to Fuseki with correct graph context
+      try {
+        const graphUri = activeOntologyIri;
+        const url = graphUri ? `/api/ontology/classes?graph=${encodeURIComponent(graphUri)}` : '/api/ontology/classes';
+        
+        const response = await fetch(url, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${localStorage.getItem('odras_token')}`
+          },
+          body: JSON.stringify({
+            name: id,
+            label: label,
+            comment: ''
+          })
+        });
+        
+        if (response.ok) {
+          console.log('✅ Class created in Fuseki:', label);
+        } else {
+          console.error('❌ Failed to create class in Fuseki:', response.status, response.statusText);
+        }
+      } catch (error) {
+        console.error('❌ Error creating class in Fuseki:', error);
+      }
+      
       refreshOntologyTree();
       persistOntologyToLocalStorage();
     }
 
-    function addClassNodeAt(label, position) {
+    async function addClassNodeAt(label, position) {
       ensureOntologyInitialized();
       const id = `Class${ontoState.nextId++}`;
+      
+      // Add to Cytoscape graph first
       ontoState.cy.add({ group: 'nodes', data: { id, label, type: 'class', attrs: {} }, position });
+      
+      // Call backend API to persist to Fuseki with correct graph context
+      try {
+        const graphUri = activeOntologyIri;
+        const url = graphUri ? `/api/ontology/classes?graph=${encodeURIComponent(graphUri)}` : '/api/ontology/classes';
+        
+        const response = await fetch(url, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${localStorage.getItem('odras_token')}`
+          },
+          body: JSON.stringify({
+            name: id,
+            label: label,
+            comment: ''
+          })
+        });
+        
+        if (response.ok) {
+          console.log('✅ Class created in Fuseki:', label);
+        } else {
+          console.error('❌ Failed to create class in Fuseki:', response.status, response.statusText);
+        }
+      } catch (error) {
+        console.error('❌ Error creating class in Fuseki:', error);
+      }
+      
       refreshOntologyTree();
       persistOntologyToLocalStorage();
       return id;
@@ -1957,7 +2017,54 @@
 
     async function fetchImportGraphSnapshot(importIri) {
       try {
-        // Enhanced SPARQL queries to fetch comprehensive ontological metadata
+        // First try to get data from local storage (consistent with importEquivCount)
+        const pid = (activeProject && (activeProject.id || activeProject.project_id)) ? (activeProject.id || activeProject.project_id) : 'default';
+        const importKey = `onto_graph__${pid}__` + encodeURIComponent(importIri);
+        const importData = localStorage.getItem(importKey);
+        
+        if (importData) {
+          console.log('🔍 Using local storage data for import snapshot:', importIri);
+          const importOntology = JSON.parse(importData);
+          console.log('🔍 Import ontology data:', importOntology);
+          const importNodes = importOntology.nodes || [];
+          const importEdges = importOntology.edges || [];
+          console.log('🔍 Import nodes count:', importNodes.length);
+          console.log('🔍 Import edges count:', importEdges.length);
+          
+          // Convert Cytoscape nodes to snapshot format
+          const classes = importNodes
+            .filter(node => (node.data && node.data.type === 'class') || !node.data?.type)
+            .map(node => {
+              console.log('🔍 Import node data:', node);
+              return {
+                iri: node.data?.iri || node.id,
+                label: node.data?.label || node.data?.id || node.id,
+                comment: node.data?.comment || '',
+                attrs: node.data?.attrs || {}
+              };
+            });
+          
+          // Convert Cytoscape edges to snapshot format
+          const edges = importEdges
+            .filter(edge => edge.data && edge.data.source && edge.data.target)
+            .map(edge => ({
+              sourceIri: edge.data.source,
+              targetIri: edge.data.target,
+              label: edge.data.predicate || 'relatedTo',
+              attrs: edge.data.attrs || {}
+            }));
+          
+          console.log('🔍 Processed edges count:', edges.length);
+          
+          console.log('🔍 Final import classes:', classes);
+          classes.forEach((cls, i) => {
+            console.log(`🔍 Class ${i}:`, cls);
+          });
+          return { classes, edges, importNodes };
+        }
+        
+        // Fallback to SPARQL if no local storage data
+        console.log('🔍 No local storage data, using SPARQL for import snapshot:', importIri);
         const qClasses = `
           PREFIX owl: <http://www.w3.org/2002/07/owl#>
           PREFIX rdfs: <http://www.w3.org/2000/01/rdf-schema#>
@@ -2117,11 +2224,13 @@
           }
           // Add class nodes in a simple grid within the cluster; apply saved positions if available
           const savedPos = loadOverlayPositions(activeOntologyIri, imp);
-          snap.classes.forEach(c => {
-            const id = `imp:${imp}#${c.iri}`;
+          snap.classes.forEach((c, index) => {
+            // Use the original node ID from the local storage data if available, otherwise generate one
+            const originalId = snap.importNodes?.[index]?.data?.id || `Class${index + 1}`;
+            const id = `imp:${imp}#${originalId}`;
             if (ontoState.cy.$(`#${CSS.escape(id)}`).length) return;
             const pos = savedPos[id] ? savedPos[id] : nextPos();
-            added.push(ontoState.cy.add({ group: 'nodes', data: { id, iri: c.iri, label: c.label, type: 'class', importSource: imp, attrs: c.attrs || {} }, position: pos, classes: 'imported' }));
+            added.push(ontoState.cy.add({ group: 'nodes', data: { id, iri: c.iri || originalId, label: c.label, type: 'class', importSource: imp, attrs: c.attrs || {} }, position: pos, classes: 'imported' }));
           });
           // Add edges where both endpoints available; create missing nodes on demand
           let idx = 0;
@@ -3647,36 +3756,45 @@
               return 0;
             }
             const norm = s => String(s||'').trim().toLowerCase();
+            
+            // Get base classes from current Cytoscape graph (local storage)
             const baseClasses = ontoState.cy.nodes().filter(n => (n.data('type')||'class') === 'class' && !n.hasClass('imported'));
             console.log('🔍 Base classes found:', baseClasses.length);
             const baseByLabel = new Map();
-            baseClasses.forEach(n => { baseByLabel.set(norm(n.data('label')||n.id()), n); });
+            baseClasses.forEach(n => { 
+              const label = n.data('label') || n.id();
+              const normalized = norm(label);
+              baseByLabel.set(normalized, n);
+              console.log('🔍 Base class details - ID:', n.id(), 'Label:', label, 'Normalized:', normalized);
+            });
             console.log('🔍 Base classes by label:', Array.from(baseByLabel.keys()));
             
-            const q = `PREFIX owl: <http://www.w3.org/2002/07/owl#>\nPREFIX rdfs: <http://www.w3.org/2000/01/rdf-schema#>\nSELECT ?c ?label WHERE { GRAPH <${importIri}> { ?c a owl:Class . OPTIONAL { ?c rdfs:label ?label } } }`;
-            console.log('🔍 SPARQL query:', q);
-            const res = await fetch('/api/ontology/sparql', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ query: q }) });
-            if (!res.ok) {
-              console.log('🔍 SPARQL query failed:', res.status, res.statusText);
-              const errorText = await res.text();
-              console.log('🔍 Error response:', errorText);
+            // Get imported classes from local storage for the imported ontology
+            const pid = (activeProject && (activeProject.id || activeProject.project_id)) ? (activeProject.id || activeProject.project_id) : 'default';
+            const importKey = `onto_graph__${pid}__` + encodeURIComponent(importIri);
+            const importData = localStorage.getItem(importKey);
+            if (!importData) {
+              console.log('🔍 No local storage data found for import:', importIri);
               return 0;
             }
-            const json = await res.json();
-            console.log('🔍 SPARQL response:', json);
-            const rows = (json && json.results && json.results.bindings) ? json.results.bindings : [];
-            console.log('🔍 Import classes found:', rows.length);
-            if (rows.length > 0) {
-              console.log('🔍 Import class details:', rows);
-            }
+            
+            const importOntology = JSON.parse(importData);
+            const importNodes = importOntology.nodes || [];
+            const importClasses = importNodes.filter(node => (node.data && node.data.type === 'class') || !node.data?.type);
+            console.log('🔍 Import classes found in local storage:', importClasses.length);
             
             const matched = new Set();
-            rows.forEach(b => {
-              const iri = b.c && b.c.value; const label = b.label && b.label.value;
-              const local = iri ? (iri.includes('#') ? iri.split('#').pop() : iri.split('/').pop()) : '';
-              const key = norm(label || local);
+            importClasses.forEach(node => {
+              const label = node.data?.label || node.data?.id || node.id;
+              const key = norm(label);
               console.log('🔍 Checking match:', key, 'in base classes:', baseByLabel.has(key));
-              if (baseByLabel.has(key) && iri) matched.add(iri);
+              console.log('🔍 Import class details - ID:', node.data?.id || node.id, 'Label:', label, 'Key:', key);
+              if (baseByLabel.has(key)) {
+                matched.add(node.data?.id || node.id);
+                console.log('🔍 ✅ MATCH FOUND for:', key);
+              } else {
+                console.log('🔍 ❌ No match for:', key, 'Available base classes:', Array.from(baseByLabel.keys()));
+              }
             });
             console.log('🔍 Matched classes:', matched.size);
             return matched.size;

@@ -549,7 +549,8 @@ class OntologyManager:
                 continue
             if uri.startswith('_:'):
                 continue
-            if not uri.startswith('http://') and not uri.startswith('https://'):
+            # Skip empty or invalid URIs
+            if not uri or uri.strip() == '':
                 continue
                 
             entity_name = extract_name(uri)

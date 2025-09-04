@@ -366,6 +366,9 @@ clean_databases() {
         # Clean local storage
         clean_local_storage
         
+        # Clean browser local storage data
+        clean_browser_storage
+        
         print_success "All databases cleaned successfully!"
         
         # DO NOT create users here - that's what init-db is for!
@@ -751,6 +754,57 @@ clean_local_storage() {
     print_success "✓ Local storage cleaned"
 }
 
+# Clean browser local storage data
+clean_browser_storage() {
+    print_status "Cleaning browser local storage data..."
+    
+    # Create a simple HTML file that clears localStorage when opened
+    local clear_script="
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Clear ODRAS Local Storage</title>
+</head>
+<body>
+    <h1>Clearing ODRAS Local Storage...</h1>
+    <script>
+        // Clear all localStorage data
+        localStorage.clear();
+        sessionStorage.clear();
+        
+        // Clear specific ODRAS keys
+        const odrasKeys = [
+            'odras_token',
+            'odras_user',
+            'activeOntologyIri',
+            'visibleImports',
+            'ontologyLayouts',
+            'projectData',
+            'knowledgeAssets'
+        ];
+        
+        odrasKeys.forEach(key => {
+            localStorage.removeItem(key);
+            sessionStorage.removeItem(key);
+        });
+        
+        document.body.innerHTML = '<h1>✅ ODRAS Local Storage Cleared!</h1><p>You can close this tab now.</p>';
+    </script>
+</body>
+</html>"
+    
+    # Write the script to a temporary file
+    echo "$clear_script" > /tmp/clear_odras_storage.html
+    
+    print_status "  Created browser storage clearing script: /tmp/clear_odras_storage.html"
+    print_status "  💡 To clear browser storage:"
+    print_status "     1. Open: file:///tmp/clear_odras_storage.html in your browser"
+    print_status "     2. Or manually clear localStorage in browser dev tools"
+    print_status "     3. Or restart your browser"
+    
+    print_success "✓ Browser storage clearing instructions provided"
+}
+
 # Clean everything (containers + volumes)
 clean_all() {
     # Check if -y flag was passed
@@ -801,6 +855,9 @@ clean_all() {
         
         # Clean local storage
         clean_local_storage
+        
+        # Clean browser local storage data
+        clean_browser_storage
         
         print_success "Complete cleanup completed"
         print_status "Run './odras.sh up' to start fresh containers"
