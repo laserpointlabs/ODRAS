@@ -1,0 +1,254 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<bpmn:definitions xmlns:bpmn="http://www.omg.org/spec/BPMN/20100524/MODEL" xmlns:bpmndi="http://www.omg.org/spec/BPMN/20100524/DI" xmlns:dc="http://www.omg.org/spec/DD/20100524/DC" xmlns:di="http://www.omg.org/spec/DD/20100524/DI" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xmlns:camunda="http://camunda.org/schema/1.0/bpmn" id="Definitions_RAGQuery" targetNamespace="http://bpmn.io/schema/bpmn" exporter="Camunda Modeler" exporterVersion="5.34.0">
+  <bpmn:process id="rag_query_process" name="RAG Query Process" isExecutable="true" camunda:historyTimeToLive="180">
+    <bpmn:startEvent id="StartEvent_UserQuery" name="User Query Received">
+      <bpmn:outgoing>Flow_ToQueryProcessing</bpmn:outgoing>
+    </bpmn:startEvent>
+    
+    <bpmn:serviceTask id="Task_ProcessQuery" name="Process User Query" camunda:type="external" camunda:topic="process-user-query">
+      <bpmn:documentation>
+        Process and understand user query intent.
+        Extract key terms, classify query type, and prepare for retrieval.
+      </bpmn:documentation>
+      <bpmn:incoming>Flow_ToQueryProcessing</bpmn:incoming>
+      <bpmn:outgoing>Flow_ToRetrieval</bpmn:outgoing>
+    </bpmn:serviceTask>
+    
+    <bpmn:serviceTask id="Task_RetrieveContext" name="Retrieve Relevant Context" camunda:type="external" camunda:topic="retrieve-context">
+      <bpmn:documentation>
+        Search vector database for relevant document chunks.
+        Use semantic similarity to find contextually relevant information.
+        Rank and filter results based on relevance score.
+      </bpmn:documentation>
+      <bpmn:incoming>Flow_ToRetrieval</bpmn:incoming>
+      <bpmn:outgoing>Flow_ToReranking</bpmn:outgoing>
+    </bpmn:serviceTask>
+    
+    <bpmn:serviceTask id="Task_RerankContext" name="Rerank and Filter Context" camunda:type="external" camunda:topic="rerank-context">
+      <bpmn:documentation>
+        Apply advanced reranking algorithms to improve context relevance.
+        Filter out low-quality or irrelevant chunks.
+        Optimize context size for LLM input limits.
+      </bpmn:documentation>
+      <bpmn:incoming>Flow_ToReranking</bpmn:incoming>
+      <bpmn:outgoing>Flow_ToContextValidation</bpmn:outgoing>
+    </bpmn:serviceTask>
+    
+    <bpmn:exclusiveGateway id="Gateway_ContextQuality" name="Context Quality Check">
+      <bpmn:incoming>Flow_ToContextValidation</bpmn:incoming>
+      <bpmn:outgoing>Flow_ContextGood</bpmn:outgoing>
+      <bpmn:outgoing>Flow_ContextPoor</bpmn:outgoing>
+    </bpmn:exclusiveGateway>
+    
+    <bpmn:serviceTask id="Task_FallbackSearch" name="Fallback Search Strategy" camunda:type="external" camunda:topic="fallback-search">
+      <bpmn:documentation>
+        Apply fallback search strategies when initial retrieval yields poor results.
+        Use broader search terms, alternative embeddings, or keyword search.
+      </bpmn:documentation>
+      <bpmn:incoming>Flow_ContextPoor</bpmn:incoming>
+      <bpmn:outgoing>Flow_FallbackToPrompt</bpmn:outgoing>
+    </bpmn:serviceTask>
+    
+    <bpmn:serviceTask id="Task_ConstructPrompt" name="Construct Augmented Prompt" camunda:type="external" camunda:topic="construct-prompt">
+      <bpmn:documentation>
+        Build the final prompt with retrieved context.
+        Apply prompt templates and formatting.
+        Include system instructions and context integration.
+      </bpmn:documentation>
+      <bpmn:incoming>Flow_ContextGood</bpmn:incoming>
+      <bpmn:incoming>Flow_FallbackToPrompt</bpmn:incoming>
+      <bpmn:outgoing>Flow_ToLLMGeneration</bpmn:outgoing>
+    </bpmn:serviceTask>
+    
+    <bpmn:serviceTask id="Task_LLMGeneration" name="Generate LLM Response" camunda:type="external" camunda:topic="llm-generation">
+      <bpmn:documentation>
+        Send augmented prompt to LLM for response generation.
+        Handle LLM API calls with retry logic and error handling.
+        Parse and validate LLM response.
+      </bpmn:documentation>
+      <bpmn:incoming>Flow_ToLLMGeneration</bpmn:incoming>
+      <bpmn:outgoing>Flow_ToResponseProcessing</bpmn:outgoing>
+    </bpmn:serviceTask>
+    
+    <bpmn:serviceTask id="Task_ProcessResponse" name="Process and Format Response" camunda:type="external" camunda:topic="process-response">
+      <bpmn:documentation>
+        Post-process LLM response for formatting and quality.
+        Add citations to source documents.
+        Apply safety filters and content validation.
+      </bpmn:documentation>
+      <bpmn:incoming>Flow_ToResponseProcessing</bpmn:incoming>
+      <bpmn:outgoing>Flow_ToLogging</bpmn:outgoing>
+    </bpmn:serviceTask>
+    
+    <bpmn:serviceTask id="Task_LogInteraction" name="Log Query-Response Interaction" camunda:type="external" camunda:topic="log-interaction">
+      <bpmn:documentation>
+        Log the complete query-response interaction for analytics.
+        Track retrieval performance and response quality.
+        Store interaction data for continuous improvement.
+      </bpmn:documentation>
+      <bpmn:incoming>Flow_ToLogging</bpmn:incoming>
+      <bpmn:outgoing>Flow_ToCompletion</bpmn:outgoing>
+    </bpmn:serviceTask>
+    
+    <bpmn:endEvent id="EndEvent_ResponseReady" name="Response Ready for User">
+      <bpmn:incoming>Flow_ToCompletion</bpmn:incoming>
+    </bpmn:endEvent>
+    
+    <!-- Sequence Flows -->
+    <bpmn:sequenceFlow id="Flow_ToQueryProcessing" sourceRef="StartEvent_UserQuery" targetRef="Task_ProcessQuery" />
+    <bpmn:sequenceFlow id="Flow_ToRetrieval" sourceRef="Task_ProcessQuery" targetRef="Task_RetrieveContext" />
+    <bpmn:sequenceFlow id="Flow_ToReranking" sourceRef="Task_RetrieveContext" targetRef="Task_RerankContext" />
+    <bpmn:sequenceFlow id="Flow_ToContextValidation" sourceRef="Task_RerankContext" targetRef="Gateway_ContextQuality" />
+    <bpmn:sequenceFlow id="Flow_ContextGood" name="Good Context" sourceRef="Gateway_ContextQuality" targetRef="Task_ConstructPrompt">
+      <bpmn:conditionExpression xsi:type="bpmn:tFormalExpression">${context_quality_score &gt;= 0.7}</bpmn:conditionExpression>
+    </bpmn:sequenceFlow>
+    <bpmn:sequenceFlow id="Flow_ContextPoor" name="Poor Context" sourceRef="Gateway_ContextQuality" targetRef="Task_FallbackSearch">
+      <bpmn:conditionExpression xsi:type="bpmn:tFormalExpression">${context_quality_score &lt; 0.7}</bpmn:conditionExpression>
+    </bpmn:sequenceFlow>
+    <bpmn:sequenceFlow id="Flow_FallbackToPrompt" sourceRef="Task_FallbackSearch" targetRef="Task_ConstructPrompt" />
+    <bpmn:sequenceFlow id="Flow_ToLLMGeneration" sourceRef="Task_ConstructPrompt" targetRef="Task_LLMGeneration" />
+    <bpmn:sequenceFlow id="Flow_ToResponseProcessing" sourceRef="Task_LLMGeneration" targetRef="Task_ProcessResponse" />
+    <bpmn:sequenceFlow id="Flow_ToLogging" sourceRef="Task_ProcessResponse" targetRef="Task_LogInteraction" />
+    <bpmn:sequenceFlow id="Flow_ToCompletion" sourceRef="Task_LogInteraction" targetRef="EndEvent_ResponseReady" />
+  </bpmn:process>
+  
+  <!-- BPMN Diagram Information -->
+  <bpmndi:BPMNDiagram id="BPMNDiagram_RAGQuery">
+    <bpmndi:BPMNPlane id="BPMNPlane_RAGQuery" bpmnElement="rag_query_process">
+      <!-- Start Event -->
+      <bpmndi:BPMNShape id="StartEvent_UserQuery_di" bpmnElement="StartEvent_UserQuery">
+        <dc:Bounds x="152" y="232" width="36" height="36" />
+        <bpmndi:BPMNLabel>
+          <dc:Bounds x="137" y="275" width="66" height="27" />
+        </bpmndi:BPMNLabel>
+      </bpmndi:BPMNShape>
+      
+      <!-- Process Query -->
+      <bpmndi:BPMNShape id="Task_ProcessQuery_di" bpmnElement="Task_ProcessQuery">
+        <dc:Bounds x="240" y="210" width="100" height="80" />
+        <bpmndi:BPMNLabel />
+      </bpmndi:BPMNShape>
+      
+      <!-- Retrieve Context -->
+      <bpmndi:BPMNShape id="Task_RetrieveContext_di" bpmnElement="Task_RetrieveContext">
+        <dc:Bounds x="380" y="210" width="100" height="80" />
+        <bpmndi:BPMNLabel />
+      </bpmndi:BPMNShape>
+      
+      <!-- Rerank Context -->
+      <bpmndi:BPMNShape id="Task_RerankContext_di" bpmnElement="Task_RerankContext">
+        <dc:Bounds x="520" y="210" width="100" height="80" />
+        <bpmndi:BPMNLabel />
+      </bpmndi:BPMNShape>
+      
+      <!-- Context Quality Gateway -->
+      <bpmndi:BPMNShape id="Gateway_ContextQuality_di" bpmnElement="Gateway_ContextQuality" isMarkerVisible="true">
+        <dc:Bounds x="665" y="225" width="50" height="50" />
+        <bpmndi:BPMNLabel>
+          <dc:Bounds x="651" y="195" width="78" height="27" />
+        </bpmndi:BPMNLabel>
+      </bpmndi:BPMNShape>
+      
+      <!-- Fallback Search -->
+      <bpmndi:BPMNShape id="Task_FallbackSearch_di" bpmnElement="Task_FallbackSearch">
+        <dc:Bounds x="640" y="320" width="100" height="80" />
+        <bpmndi:BPMNLabel />
+      </bpmndi:BPMNShape>
+      
+      <!-- Construct Prompt -->
+      <bpmndi:BPMNShape id="Task_ConstructPrompt_di" bpmnElement="Task_ConstructPrompt">
+        <dc:Bounds x="780" y="210" width="100" height="80" />
+        <bpmndi:BPMNLabel />
+      </bpmndi:BPMNShape>
+      
+      <!-- LLM Generation -->
+      <bpmndi:BPMNShape id="Task_LLMGeneration_di" bpmnElement="Task_LLMGeneration">
+        <dc:Bounds x="920" y="210" width="100" height="80" />
+        <bpmndi:BPMNLabel />
+      </bpmndi:BPMNShape>
+      
+      <!-- Process Response -->
+      <bpmndi:BPMNShape id="Task_ProcessResponse_di" bpmnElement="Task_ProcessResponse">
+        <dc:Bounds x="1060" y="210" width="100" height="80" />
+        <bpmndi:BPMNLabel />
+      </bpmndi:BPMNShape>
+      
+      <!-- Log Interaction -->
+      <bpmndi:BPMNShape id="Task_LogInteraction_di" bpmnElement="Task_LogInteraction">
+        <dc:Bounds x="1200" y="210" width="100" height="80" />
+        <bpmndi:BPMNLabel />
+      </bpmndi:BPMNShape>
+      
+      <!-- End Event -->
+      <bpmndi:BPMNShape id="EndEvent_ResponseReady_di" bpmnElement="EndEvent_ResponseReady">
+        <dc:Bounds x="1352" y="232" width="36" height="36" />
+        <bpmndi:BPMNLabel>
+          <dc:Bounds x="1332" y="275" width="76" height="27" />
+        </bpmndi:BPMNLabel>
+      </bpmndi:BPMNShape>
+      
+      <!-- Sequence Flow Edges -->
+      <bpmndi:BPMNEdge id="Flow_ToQueryProcessing_di" bpmnElement="Flow_ToQueryProcessing">
+        <di:waypoint x="188" y="250" />
+        <di:waypoint x="240" y="250" />
+      </bpmndi:BPMNEdge>
+      
+      <bpmndi:BPMNEdge id="Flow_ToRetrieval_di" bpmnElement="Flow_ToRetrieval">
+        <di:waypoint x="340" y="250" />
+        <di:waypoint x="380" y="250" />
+      </bpmndi:BPMNEdge>
+      
+      <bpmndi:BPMNEdge id="Flow_ToReranking_di" bpmnElement="Flow_ToReranking">
+        <di:waypoint x="480" y="250" />
+        <di:waypoint x="520" y="250" />
+      </bpmndi:BPMNEdge>
+      
+      <bpmndi:BPMNEdge id="Flow_ToContextValidation_di" bpmnElement="Flow_ToContextValidation">
+        <di:waypoint x="620" y="250" />
+        <di:waypoint x="665" y="250" />
+      </bpmndi:BPMNEdge>
+      
+      <bpmndi:BPMNEdge id="Flow_ContextGood_di" bpmnElement="Flow_ContextGood">
+        <di:waypoint x="715" y="250" />
+        <di:waypoint x="780" y="250" />
+        <bpmndi:BPMNLabel>
+          <dc:Bounds x="724" y="232" width="67" height="14" />
+        </bpmndi:BPMNLabel>
+      </bpmndi:BPMNEdge>
+      
+      <bpmndi:BPMNEdge id="Flow_ContextPoor_di" bpmnElement="Flow_ContextPoor">
+        <di:waypoint x="690" y="275" />
+        <di:waypoint x="690" y="320" />
+        <bpmndi:BPMNLabel>
+          <dc:Bounds x="684" y="295" width="66" height="14" />
+        </bpmndi:BPMNLabel>
+      </bpmndi:BPMNEdge>
+      
+      <bpmndi:BPMNEdge id="Flow_FallbackToPrompt_di" bpmnElement="Flow_FallbackToPrompt">
+        <di:waypoint x="740" y="360" />
+        <di:waypoint x="830" y="360" />
+        <di:waypoint x="830" y="290" />
+      </bpmndi:BPMNEdge>
+      
+      <bpmndi:BPMNEdge id="Flow_ToLLMGeneration_di" bpmnElement="Flow_ToLLMGeneration">
+        <di:waypoint x="880" y="250" />
+        <di:waypoint x="920" y="250" />
+      </bpmndi:BPMNEdge>
+      
+      <bpmndi:BPMNEdge id="Flow_ToResponseProcessing_di" bpmnElement="Flow_ToResponseProcessing">
+        <di:waypoint x="1020" y="250" />
+        <di:waypoint x="1060" y="250" />
+      </bpmndi:BPMNEdge>
+      
+      <bpmndi:BPMNEdge id="Flow_ToLogging_di" bpmnElement="Flow_ToLogging">
+        <di:waypoint x="1160" y="250" />
+        <di:waypoint x="1200" y="250" />
+      </bpmndi:BPMNEdge>
+      
+      <bpmndi:BPMNEdge id="Flow_ToCompletion_di" bpmnElement="Flow_ToCompletion">
+        <di:waypoint x="1300" y="250" />
+        <di:waypoint x="1352" y="250" />
+      </bpmndi:BPMNEdge>
+    </bpmndi:BPMNPlane>
+  </bpmndi:BPMNDiagram>
+</bpmn:definitions>
