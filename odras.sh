@@ -476,6 +476,58 @@ clean_neo4j() {
     fi
 }
 
+# Initialize Fuseki RDF store
+init_fuseki() {
+    print_status "Setting up Fuseki RDF datasets..."
+    
+    # Wait for Fuseki to be ready
+    local max_attempts=30
+    local attempt=1
+    
+    while [ $attempt -le $max_attempts ]; do
+        if curl -s http://localhost:3030/$/ping >/dev/null 2>&1; then
+            print_success "  ✓ Fuseki is ready"
+            break
+        fi
+        
+        if [ $attempt -eq $max_attempts ]; then
+            print_warning "  ⚠ Fuseki may not be ready, continuing anyway..."
+            return
+        fi
+        
+        sleep 2
+        attempt=$((attempt + 1))
+    done
+    
+    # Create ODRAS dataset for ontologies
+    print_status "  Creating 'odras' dataset for ontology storage..."
+    
+    # First check if dataset already exists
+    local existing_datasets=$(curl -s http://localhost:3030/$/datasets 2>/dev/null)
+    
+    if echo "$existing_datasets" | grep -q '"name":"odras"'; then
+        print_status "  Dataset 'odras' already exists, clearing it..."
+        curl -s -X POST "http://localhost:3030/odras/update" \
+             -H "Content-Type: application/sparql-update" \
+             -d "DELETE WHERE { ?s ?p ?o }" >/dev/null 2>&1
+    else
+        # Create new dataset
+        print_status "  Creating new 'odras' dataset..."
+        curl -s -X POST "http://localhost:3030/$/datasets" \
+             -H "Content-Type: application/x-www-form-urlencoded" \
+             -d "dbName=odras&dbType=tdb2" >/dev/null 2>&1
+    fi
+    
+    # Verify dataset creation
+    local verification=$(curl -s http://localhost:3030/$/server 2>/dev/null)
+    if echo "$verification" | grep -q '"/odras"'; then
+        print_success "  ✓ Fuseki 'odras' dataset ready for ontology storage"
+    else
+        print_warning "  ⚠ Fuseki dataset creation may have failed"
+        print_status "  Debug: $verification"
+    fi
+}
+
 # Clean Fuseki RDF store
 clean_fuseki() {
     print_status "Cleaning Fuseki RDF store..."
@@ -740,6 +792,10 @@ init_databases() {
     CREATE CONSTRAINT asset_id IF NOT EXISTS FOR (a:KnowledgeAsset) REQUIRE a.id IS UNIQUE;
     CREATE CONSTRAINT chunk_id IF NOT EXISTS FOR (c:Chunk) REQUIRE c.id IS UNIQUE;
     " >/dev/null 2>&1 || print_warning "  Neo4j initialization may have failed"
+    
+    # Initialize Fuseki RDF store
+    print_status "Initializing Fuseki RDF store..."
+    init_fuseki
     
     # Initialize Qdrant collections
     print_status "Initializing Qdrant collections..."
