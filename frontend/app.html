@@ -384,6 +384,7 @@
             <button class="btn" id="ontoLayoutBtn" title="Apply selected layout">Apply Layout</button>
             <button class="btn" id="ontoQuickCoseBtn" title="Quick Force-Directed Layout" style="font-size: 11px; padding: 4px 6px;">CoSE</button>
             <button class="btn" id="ontoQuickDagreBtn" title="Quick Hierarchical Layout" style="font-size: 11px; padding: 4px 6px;">Dagre</button>
+            <button class="btn" id="ontoForceRefreshBtn" title="Force refresh from API" style="font-size: 11px; padding: 4px 6px;">Refresh</button>
             <button class="btn" id="ontoFitBtn" title="Fit to view">Fit</button>
             <button class="btn" id="ontoFullscreenBtn" title="Enter fullscreen">Fullscreen</button>
             <button class="btn" id="ontoDeleteBtn" title="Delete selected">Delete</button>
@@ -4110,7 +4111,13 @@
         const nodes = ontoState.cy.nodes().filter(n => !n.hasClass('imported')).map(n => ({ data: n.data(), position: n.position() }));
         const edges = ontoState.cy.edges().filter(e => !e.hasClass('imported')).map(e => ({ data: e.data() }));
         if (activeOntologyIri) {
-          localStorage.setItem(storageKeyForGraph(activeOntologyIri), JSON.stringify({ nodes, edges }));
+          const storageData = { 
+            nodes, 
+            edges, 
+            timestamp: Date.now(),
+            source: 'local' // Mark that this data was saved locally
+          };
+          localStorage.setItem(storageKeyForGraph(activeOntologyIri), JSON.stringify(storageData));
           
           // Also save layout data to server
           saveLayoutToServer(activeOntologyIri, nodes, edges);
@@ -4222,7 +4229,13 @@
       try {
         const nodes = ontoState.cy ? ontoState.cy.nodes().jsons() : [];
         const edges = ontoState.cy ? ontoState.cy.edges().jsons() : [];
-        localStorage.setItem(storageKeyForGraph(graphIri), JSON.stringify({ nodes, edges }));
+        const storageData = { 
+          nodes, 
+          edges, 
+          timestamp: Date.now(),
+          source: 'local' // Mark that this data was saved locally
+        };
+        localStorage.setItem(storageKeyForGraph(graphIri), JSON.stringify(storageData));
       } catch(_) {}
     }
     function loadGraphFromLocal(graphIri) {
@@ -4639,34 +4652,38 @@
       try {
         console.log('🔍 loadGraphFromLocalOrAPI called for:', graphIri);
         
-        // For imported ontologies, always fetch from API to get rich metadata
         // Check if this is an imported ontology by looking for the pattern in the graph IRI
         const isImportedOntology = graphIri.includes('/onto/') && !graphIri.includes('#layout');
         
-        if (!isImportedOntology) {
-          // First, try to load from local storage for non-imported ontologies
-          const json = localStorage.getItem(storageKeyForGraph(graphIri));
-          if (json) {
-            console.log('🔍 Loading from local storage:', json.substring(0, 200) + '...');
-            const data = JSON.parse(json);
-            if (data && (data.nodes || data.edges) && data.nodes?.length > 0) {
-              if (!ontoState.cy) return;
-              ontoState.cy.elements().remove();
-              ontoState.cy.add(data.nodes || []);
-              ontoState.cy.add(data.edges || []);
-              // Ensure all loaded elements have attrs property
-              ensureAttributesExist();
-              recomputeNextId();
-              
-              // Try to load layout from server
-              await loadLayoutFromServer(graphIri);
-              return;
-            }
+        // First, try to load from local storage for ALL ontologies (including imported ones)
+        const json = localStorage.getItem(storageKeyForGraph(graphIri));
+        if (json) {
+          console.log('🔍 Loading from local storage:', json.substring(0, 200) + '...');
+          const data = JSON.parse(json);
+          if (data && (data.nodes || data.edges) && data.nodes?.length > 0) {
+            if (!ontoState.cy) return;
+            ontoState.cy.elements().remove();
+            ontoState.cy.add(data.nodes || []);
+            ontoState.cy.add(data.edges || []);
+            // Ensure all loaded elements have attrs property
+            ensureAttributesExist();
+            recomputeNextId();
+            
+            // Try to load layout from server
+            await loadLayoutFromServer(graphIri);
+            console.log('✅ Graph loaded from local storage, preserving current state');
+            console.log('📊 Data source:', data.source || 'unknown', 'Timestamp:', data.timestamp ? new Date(data.timestamp).toLocaleString() : 'unknown');
+            return;
           }
-        } else {
-          console.log('🔍 Detected imported ontology, fetching from API for rich metadata');
+        }
+        
+        // Only fetch from API if local storage is empty or invalid
+        if (isImportedOntology) {
+          console.log('🔍 No local storage found for imported ontology, fetching from API for rich metadata');
           // Show loading indicator for imported ontologies
           showOntologyLoadingIndicator();
+        } else {
+          console.log('🔍 No local storage found, fetching from API');
         }
         
         // If local storage is empty, fetch from API
@@ -4719,10 +4736,12 @@
             ontoState.cy.add(cytoscapeData.edges || []);
             recomputeNextId();
             
-            // Save to local storage for future use
+            // Save to local storage for future use with timestamp
             const storageData = {
               nodes: cytoscapeData.nodes || [],
-              edges: cytoscapeData.edges || []
+              edges: cytoscapeData.edges || [],
+              timestamp: Date.now(),
+              source: 'api' // Mark that this data came from API with rich metadata
             };
             localStorage.setItem(storageKeyForGraph(graphIri), JSON.stringify(storageData));
             
@@ -4775,6 +4794,12 @@
           runAdvancedLayout('cose');
         } else if (e.target === qs('#ontoQuickDagreBtn')) {
           runAdvancedLayout('dagre');
+        } else if (e.target === qs('#ontoForceRefreshBtn')) {
+          if (activeOntologyIri) {
+            // Clear local storage and force reload from API
+            localStorage.removeItem(storageKeyForGraph(activeOntologyIri));
+            loadGraphFromLocalOrAPI(activeOntologyIri);
+          }
         } else if (e.target === qs('#ontoFitBtn')) {
           try { if (ontoState.cy) ontoState.cy.fit(undefined, 20); } catch(_) {}
         } else if (e.target === qs('#ontoFullscreenBtn')) {
