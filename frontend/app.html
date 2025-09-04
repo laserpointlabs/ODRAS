@@ -242,7 +242,7 @@
   <body>
   <div id="app" class="layout">
     <div class="topbar">
-      <div class="brand">ODRAS</div>
+      <div class="brand">AVIAN-ODRAS</div>
       <div class="spacer"></div>
       
       <div class="spacer"></div>
@@ -2060,7 +2060,21 @@
         qs('#loginMsg').textContent = 'Login failed: ' + error.message;
       }
     };
-    qs('#logoutBtn').onclick = () => { 
+    qs('#logoutBtn').onclick = async () => { 
+      // Call backend logout endpoint to invalidate token
+      const token = localStorage.getItem(tokenKey);
+      if (token) {
+        try {
+          await fetch('/api/auth/logout', {
+            method: 'POST',
+            headers: { 'Authorization': `Bearer ${token}` }
+          });
+        } catch (error) {
+          console.warn('Logout API call failed:', error);
+          // Continue with local logout even if API call fails
+        }
+      }
+      
       isAuthenticated = false;
       stopAuthMonitoring();
       localStorage.removeItem(tokenKey); 
@@ -4726,13 +4740,11 @@
       function authHeader() {
         try { 
           const t = localStorage.getItem('odras_token'); 
-          if (!t || !isAuthenticated) {
-            // If not authenticated, trigger auth check
-            if (t && !isAuthenticated) {
-              handleAuthFailure();
-            }
+          if (!t) {
             return {}; 
           }
+          // Always return the token if it exists - let the server validate it
+          // The isAuthenticated flag is only used for UI state, not for API calls
           return { Authorization: 'Bearer ' + t }; 
         } catch(_) { 
           return {}; 

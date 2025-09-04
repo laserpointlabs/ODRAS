@@ -9,12 +9,15 @@ from fastapi import Body, FastAPI, File, Form, HTTPException, UploadFile, Depend
 from fastapi.responses import HTMLResponse
 from fastapi import Request
 import secrets
+import logging
 
 # Import services using relative imports
 from .services.config import Settings
 from .services.db import DatabaseService
-from .services.auth import get_user as auth_get_user, get_admin_user, TOKENS as AUTH_TOKENS
+from .services.auth import get_user as auth_get_user, get_admin_user, create_token, invalidate_token, cleanup_expired_tokens
 import os
+
+logger = logging.getLogger(__name__)
 # Import API routers
 from backend.api.files import router as files_router
 from backend.api.ontology import router as ontology_router
@@ -51,7 +54,6 @@ except Exception:
             return _raise
 
     db = _DBUnavailable()
-TOKENS: Dict[str, Dict] = AUTH_TOKENS
 
 # Camunda configuration  
 CAMUNDA_BASE_URL = settings.camunda_base_url
@@ -119,7 +121,15 @@ def login(body: Dict):
         is_admin_flag = (username.lower() == "admin")
         u = db.get_or_create_user(username=username, display_name=username, is_admin=is_admin_flag)
         user = {"username": u["username"], "user_id": str(u["user_id"]), "is_admin": bool(u.get("is_admin", False))}
-        TOKENS[token] = user
+        
+        # Store token in persistent database
+        create_token(
+            user_id=str(u["user_id"]),
+            username=u["username"],
+            is_admin=bool(u.get("is_admin", False)),
+            token=token
+        )
+        
         return {"token": token}
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Auth failed: {str(e)}")
@@ -127,6 +137,31 @@ def login(body: Dict):
 @app.get("/api/auth/me")
 def me(user=Depends(get_user)):
     return user
+
+
+@app.post("/api/auth/logout")
+def logout(authorization: Optional[str] = Header(None)):
+    """Logout and invalidate the current token."""
+    if not authorization or not authorization.startswith("Bearer "):
+        raise HTTPException(status_code=400, detail="No token provided")
+    
+    token = authorization.split(" ", 1)[1]
+    try:
+        invalidate_token(token)
+        return {"message": "Logged out successfully"}
+    except Exception as e:
+        logger.error(f"Error during logout: {e}")
+        return {"message": "Logged out successfully"}  # Don't reveal errors to client
+
+
+@app.on_event("startup")
+async def startup_event():
+    """Clean up expired tokens on startup."""
+    try:
+        cleanup_expired_tokens()
+        logger.info("Cleaned up expired tokens on startup")
+    except Exception as e:
+        logger.error(f"Error cleaning up expired tokens on startup: {e}")
 
 @app.get("/api/projects")
 def list_projects(state: Optional[str] = None, user=Depends(get_user)):

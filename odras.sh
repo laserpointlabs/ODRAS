@@ -902,6 +902,8 @@ init_databases() {
             "000_files_table.sql"
             "001_knowledge_management.sql" 
             "002_knowledge_public_assets.sql"
+            "003_auth_tokens.sql"
+            "004_users_table.sql"
         )
         
         for migration in "${migrations[@]}"; do
@@ -920,9 +922,6 @@ init_databases() {
     else
         print_warning "No migrations directory found"
     fi
-    
-    # Create default users and project
-    create_default_users
     
     # Initialize Neo4j schema
     print_status "Initializing Neo4j schema..."
@@ -964,17 +963,20 @@ init_databases() {
         print_warning "⚠ Could not connect to Qdrant to create collections"
     fi
     
-    # Create demo content for the Default Project
-    create_demo_content
-    
-    # Create default ontology for the Default Project
-    create_default_ontology
+    # Create default users
+    print_status "Creating default users..."
+    docker exec odras_postgres psql -U postgres -d odras -c "
+    INSERT INTO users (username, display_name, is_admin) 
+    VALUES ('admin', 'Administrator', TRUE), ('jdehart', 'J DeHart', FALSE)
+    ON CONFLICT (username) DO UPDATE SET 
+        display_name = EXCLUDED.display_name, 
+        is_admin = EXCLUDED.is_admin,
+        updated_at = NOW();
+    " >/dev/null 2>&1 && print_success "✓ Created default users: admin, jdehart"
     
     print_success "🎉 Database initialization completed!"
-    print_status "📊 Created: Default Project with demo content and ontology"
-    print_status "🔐 Login credentials:"
-    print_status "   👤 jdehart / jdehart (member)"
-    print_status "   👑 admin / admin (administrator)"
+    print_status "📊 Database schema and collections are ready"
+    print_status "👤 Default users created: admin/admin, jdehart/jdehart"
     print_status "🌐 URL: http://localhost:8000/app"
 }
 
