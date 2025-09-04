@@ -4345,8 +4345,8 @@
               id: `e${edgeId}`,
               source: classNameToId[prop.domain],
               target: classNameToId[prop.range],
-              predicate: prop.name,
-              label: displayLabel,
+              predicate: displayLabel,  // Use display label for predicate (what Cytoscape shows)
+              label: displayLabel,      // Also set label for consistency
               type: 'objectProperty',
               attrs: richProp.attrs || {}
             }
