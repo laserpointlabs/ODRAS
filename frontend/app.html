@@ -1646,20 +1646,40 @@
 
     async function overlayImportsRefresh() {
       try {
-        if (!ontoState.cy || !activeOntologyIri) return;
+        if (!ontoState.cy || !activeOntologyIri) {
+          console.log('🔍 overlayImportsRefresh: No cytoscape instance or active ontology');
+          return;
+        }
+        
         const visible = loadVisibleImports(activeOntologyIri);
         const visibleList = Array.from(visible);
+        console.log('🔍 overlayImportsRefresh: Visible imports:', visibleList);
+        
         // Before removing overlays, snapshot positions for imports being hidden
-        ontoState.cy.nodes('.imported').forEach(n => {
-          const imp = n.data('importSource') || '';
-          if (!visible.has(imp)) {
-            const curr = loadOverlayPositions(activeOntologyIri, imp);
-            curr[n.id()] = n.position();
-            saveOverlayPositions(activeOntologyIri, imp, curr);
-          }
-        });
+        try {
+          ontoState.cy.nodes('.imported').forEach(n => {
+            const imp = n.data('importSource') || '';
+            if (!visible.has(imp)) {
+              const curr = loadOverlayPositions(activeOntologyIri, imp);
+              curr[n.id()] = n.position();
+              saveOverlayPositions(activeOntologyIri, imp, curr);
+            }
+          });
+        } catch (err) {
+          console.error('🔍 Error saving overlay positions:', err);
+        }
+        
         // Remove overlays for imports no longer visible
-        ontoState.cy.elements('.imported, .imported-equivalence').forEach(el => { if (!visible.has(el.data('importSource') || '')) el.remove(); });
+        try {
+          const elementsToRemove = ontoState.cy.elements('.imported, .imported-equivalence').filter(el => {
+            const importSource = el.data('importSource') || '';
+            return !visible.has(importSource);
+          });
+          console.log('🔍 overlayImportsRefresh: Removing', elementsToRemove.length, 'elements');
+          elementsToRemove.remove();
+        } catch (err) {
+          console.error('🔍 Error removing overlay elements:', err);
+        }
         // Add overlays for newly visible imports
         for (const imp of visibleList) {
           const existing = ontoState.cy.elements('.imported').filter(e => (e.data('importSource') || '') === imp);
@@ -1736,7 +1756,10 @@
         }
         // Do not persist imported overlays to base local storage
         refreshOntologyTree();
-      } catch(_) {}
+      } catch(err) {
+        console.error('🔍 Error in overlayImportsRefresh:', err);
+        // Don't let the error crash the app
+      }
     }
 
     // Context menu helpers
@@ -3014,11 +3037,19 @@
         
         const ul = document.createElement('ul'); ul.setAttribute('role','group');
         function removeImport(iri) {
-          const key = 'onto_imports__' + encodeURIComponent(activeOntologyIri || '');
           try {
+            console.log('🔍 Removing import:', iri);
+            const key = 'onto_imports__' + encodeURIComponent(activeOntologyIri || '');
             const curr = new Set(JSON.parse(localStorage.getItem(key) || '[]'));
-            if (curr.has(iri)) { curr.delete(iri); localStorage.setItem(key, JSON.stringify(Array.from(curr))); refreshOntologyTree(); }
-          } catch(_) {}
+            if (curr.has(iri)) { 
+              curr.delete(iri); 
+              localStorage.setItem(key, JSON.stringify(Array.from(curr))); 
+              console.log('🔍 Import removed, refreshing tree');
+              refreshOntologyTree(); 
+            }
+          } catch(err) {
+            console.error('🔍 Error removing import:', err);
+          }
         }
         async function friendlyImportName(iri) {
           try {
@@ -3087,12 +3118,18 @@
           const cnt = await importEquivCount(g);
           l.textContent = `${name}${cnt ? ` (${cnt})` : ''}`;
           cb.addEventListener('change', async () => {
-            console.log('🔍 Checkbox changed for import:', g, 'checked:', cb.checked);
-            const vis = loadVisibleImports(activeOntologyIri);
-            if (cb.checked) vis.add(g); else vis.delete(g);
-            saveVisibleImports(activeOntologyIri, vis);
-            console.log('🔍 Visible imports updated:', Array.from(vis));
-            await overlayImportsRefresh();
+            try {
+              console.log('🔍 Checkbox changed for import:', g, 'checked:', cb.checked);
+              const vis = loadVisibleImports(activeOntologyIri);
+              if (cb.checked) vis.add(g); else vis.delete(g);
+              saveVisibleImports(activeOntologyIri, vis);
+              console.log('🔍 Visible imports updated:', Array.from(vis));
+              await overlayImportsRefresh();
+            } catch (err) {
+              console.error('🔍 Error handling import checkbox change:', err);
+              // Revert the checkbox state if there was an error
+              cb.checked = !cb.checked;
+            }
           });
           r.onclick = (e)=>{ Array.from(ul.querySelectorAll('.onto-node-row')).forEach(n=>n.classList.remove('selected')); r.classList.add('selected'); };
           r.onkeydown = (e)=>{ const key=e.key||e.code; if (key==='Delete' || key==='Backspace') { e.preventDefault(); removeImport(g); } };
@@ -3478,6 +3515,8 @@
 
     async function saveLayoutToServer(graphIri, nodes, edges) {
       try {
+        console.log('💾 Saving layout to server for:', graphIri);
+        
         const pan = ontoState.cy.pan();
         const zoom = ontoState.cy.zoom();
         
@@ -3494,6 +3533,13 @@
           pan: { x: pan.x, y: pan.y }
         };
 
+        console.log('💾 Layout data:', {
+          nodeCount: layoutData.nodes.length,
+          edgeCount: layoutData.edges.length,
+          zoom: layoutData.zoom,
+          pan: layoutData.pan
+        });
+
         const response = await authenticatedFetch(`/api/ontology/layout?graph=${encodeURIComponent(graphIri)}`, {
           method: 'PUT',
           headers: {
@@ -3502,8 +3548,13 @@
           body: JSON.stringify(layoutData)
         });
 
+        console.log('💾 Layout save response status:', response.status);
+        console.log('💾 Layout save response ok:', response.ok);
+
         if (!response.ok) {
-          console.warn('Failed to save layout to server:', response.status);
+          console.warn('❌ Failed to save layout to server:', response.status);
+        } else {
+          console.log('✅ Layout saved to server successfully!');
         }
       } catch (error) {
         console.warn('Error saving layout to server:', error);
@@ -3835,10 +3886,17 @@
             if (!activeOntologyIri) { alert('Select an ontology to save.'); return; }
             if (!ontoState.cy) { alert('No ontology data to save.'); return; }
             
+            console.log('💾 Starting ontology save operation...');
+            console.log('💾 Active ontology IRI:', activeOntologyIri);
+            
             // Convert current canvas to ontology JSON format
             const ontologyData = convertCytoscapeToOntology();
+            console.log('💾 Converted ontology data:', ontologyData);
+            console.log('💾 Number of nodes:', ontologyData.nodes?.length || 0);
+            console.log('💾 Number of edges:', ontologyData.edges?.length || 0);
             
             // Save ontology data to server
+            console.log('💾 Sending ontology data to server...');
             const response = await authenticatedFetch(`/api/ontology/?graph=${encodeURIComponent(activeOntologyIri)}`, {
               method: 'PUT',
               headers: {
@@ -3847,18 +3905,33 @@
               body: JSON.stringify(ontologyData)
             });
             
+            console.log('💾 Server response status:', response.status);
+            console.log('💾 Server response ok:', response.ok);
+            
             if (response.ok) {
+              console.log('✅ Ontology data saved successfully!');
+              
               // Also save layout data
+              console.log('💾 Saving layout data...');
               const nodes = ontoState.cy.nodes().filter(n => !n.hasClass('imported')).map(n => ({ data: n.data(), position: n.position() }));
               const edges = ontoState.cy.edges().filter(e => !e.hasClass('imported')).map(e => ({ data: e.data() }));
+              console.log('💾 Layout nodes:', nodes.length);
+              console.log('💾 Layout edges:', edges.length);
+              
               await saveLayoutToServer(activeOntologyIri, nodes, edges);
+              console.log('✅ Layout data saved successfully!');
+              console.log('🎉 Complete save operation successful!');
               
               alert('Ontology and layout saved successfully!');
             } else {
               const errorData = await response.json().catch(() => ({}));
+              console.error('❌ Save failed:', errorData);
+              console.error('❌ Response status:', response.status);
+              console.error('❌ Response text:', await response.text().catch(() => 'Could not read response text'));
               alert('Save failed: ' + (errorData.detail || response.status));
             }
           } catch (err) { 
+            console.error('❌ Save error:', err);
             alert('Save error: ' + err.message); 
           }
         } else if (e.target.closest && e.target.closest('#ontoLinkIdenticalBtn')) {
@@ -4147,11 +4220,34 @@
       e.preventDefault();
       try {
         if (!activeOntologyIri) { alert('Select an ontology to save.'); return; }
+        
+        console.log('💾 Starting keyboard shortcut save (Ctrl+S)...');
+        console.log('💾 Active ontology IRI:', activeOntologyIri);
+        
         const ttl = toTurtle(activeOntologyIri);
+        console.log('💾 Generated Turtle data length:', ttl.length);
+        console.log('💾 Turtle data preview:', ttl.substring(0, 200) + '...');
+        
+        console.log('💾 Sending Turtle data to Fuseki...');
         const res = await fetch(`/api/ontology/save?graph=${encodeURIComponent(activeOntologyIri)}`, { method: 'POST', headers: { 'Content-Type': 'text/turtle' }, body: ttl });
+        
+        console.log('💾 Fuseki response status:', res.status);
+        console.log('💾 Fuseki response ok:', res.ok);
+        
         const json = await res.json().catch(()=>({}));
-        if (res.ok) alert('Saved to Fuseki'); else alert('Save failed: ' + (json.detail || res.status));
-      } catch (err) { alert('Save error: ' + err.message); }
+        if (res.ok) {
+          console.log('✅ Ontology saved to Fuseki successfully!');
+          console.log('🎉 Keyboard shortcut save complete!');
+          alert('Saved to Fuseki');
+        } else {
+          console.error('❌ Fuseki save failed:', json);
+          console.error('❌ Response status:', res.status);
+          alert('Save failed: ' + (json.detail || res.status));
+        }
+      } catch (err) { 
+        console.error('❌ Keyboard shortcut save error:', err);
+        alert('Save error: ' + err.message); 
+      }
     }, false);
 
     // Delete selected canvas entities (nodes/edges) for current ontology only
