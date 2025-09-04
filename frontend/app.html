@@ -432,8 +432,14 @@
                     </select>
                   </div>
                   <div>
-                    <label class="muted" for="propAttrs">Attributes (JSON)</label>
-                    <textarea id="propAttrs" rows="6" style="width:100%; background:#0b1220; color:#e5e7eb; border:1px solid var(--border); border-radius:6px; padding:6px;"></textarea>
+                    <label class="muted" for="propAttrs">Attributes</label>
+                    <div id="propAttrsContainer" style="display:grid; gap:8px;">
+                      <!-- Dynamic attribute fields will be inserted here -->
+                    </div>
+                    <div style="margin-top:8px;">
+                      <button type="button" id="addAttrBtn" class="btn" style="font-size:12px; padding:4px 8px;">+ Add Attribute</button>
+                      <button type="button" id="resetAttrsBtn" class="btn" style="font-size:12px; padding:4px 8px; margin-left:4px;">Reset to Template</button>
+                    </div>
                   </div>
                   <div style="display:flex; gap:8px;">
                     <button type="button" class="btn" id="propSaveBtn">Save</button>
@@ -1086,7 +1092,7 @@
               const srcType = (src && (src.data('type')||'class')) || 'class';
               const tgtType = (tgt && (tgt.data('type')||'class')) || 'class';
               if (srcType !== 'note' && tgtType !== 'note' && srcType === 'class' && tgtType === 'class') {
-                ontoState.cy.add({ group: 'edges', data: { id: `e${Date.now()}`, source: from, target: to, predicate: 'relatedTo', type: 'objectProperty' } });
+                ontoState.cy.add({ group: 'edges', data: { id: `e${Date.now()}`, source: from, target: to, predicate: 'relatedTo', type: 'objectProperty', attrs: {} } });
                 refreshOntologyTree();
                 persistOntologyToLocalStorage();
               }
@@ -1186,9 +1192,9 @@
           const pos = node.position();
           const pid = `DP${Date.now()}`;
           const label = `Data Property ${Date.now()%1000}`;
-          ontoState.cy.add({ group: 'nodes', data: { id: pid, label, type: 'dataProperty' }, position: { x: pos.x + 120, y: pos.y } });
+          ontoState.cy.add({ group: 'nodes', data: { id: pid, label, type: 'dataProperty', attrs: {} }, position: { x: pos.x + 120, y: pos.y } });
           // Use objectProperty for the visual connector edge
-          ontoState.cy.add({ group: 'edges', data: { id: `edp${Date.now()}`, source: id, target: pid, predicate: label, type: 'objectProperty' } });
+          ontoState.cy.add({ group: 'edges', data: { id: `edp${Date.now()}`, source: id, target: pid, predicate: label, type: 'objectProperty', attrs: {} } });
           refreshOntologyTree(); persistOntologyToLocalStorage();
           return;
         }
@@ -1201,10 +1207,10 @@
         const srcType = cmState.sourceType || (source.data('type')||'class');
         if (source.id() !== target.id()) {
           if (srcType === 'note' && (tgtType === 'class' || tgtType === 'dataProperty')) {
-            ontoState.cy.add({ group: 'edges', data: { id: `enote${Date.now()}`, source: source.id(), target: target.id(), predicate: 'note_for', type: 'note' } });
+            ontoState.cy.add({ group: 'edges', data: { id: `enote${Date.now()}`, source: source.id(), target: target.id(), predicate: 'note_for', type: 'note', attrs: {} } });
             refreshOntologyTree(); persistOntologyToLocalStorage();
           } else if (srcType === 'class' && tgtType === 'class') {
-            ontoState.cy.add({ group: 'edges', data: { id: `e${Date.now()}`, source: source.id(), target: target.id(), predicate: 'relatedTo', type: 'objectProperty' } });
+            ontoState.cy.add({ group: 'edges', data: { id: `e${Date.now()}`, source: source.id(), target: target.id(), predicate: 'relatedTo', type: 'objectProperty', attrs: {} } });
             refreshOntologyTree(); persistOntologyToLocalStorage();
           }
         }
@@ -1245,18 +1251,18 @@
           if (sel.length !== 1) { return; }
           const prop = `Data Property ${Date.now()%1000}`;
           const pid = `DP${Date.now()}`;
-          ontoState.cy.add({ group: 'nodes', data: { id: pid, label: prop, type: 'dataProperty' }, position: pos });
+          ontoState.cy.add({ group: 'nodes', data: { id: pid, label: prop, type: 'dataProperty', attrs: {} }, position: pos });
           // Link edge is a visual connector; keep it as objectProperty for consistency
-          ontoState.cy.add({ group: 'edges', data: { id: `edp${Date.now()}`, source: sel[0].id(), target: pid, predicate: prop, type: 'objectProperty' } });
+          ontoState.cy.add({ group: 'edges', data: { id: `edp${Date.now()}`, source: sel[0].id(), target: pid, predicate: prop, type: 'objectProperty', attrs: {} } });
           refreshOntologyTree();
         } else if (ontoType === 'note') {
           const nid = `Note${Date.now()}`;
           const text = `Note ${nid.slice(-4)}`;
-          ontoState.cy.add({ group: 'nodes', data: { id: nid, label: text, type: 'note' }, position: pos, classes: 'note' });
+          ontoState.cy.add({ group: 'nodes', data: { id: nid, label: text, type: 'note', attrs: {} }, position: pos, classes: 'note' });
           // If exactly one class is selected, auto-link note -> class
           const sel = ontoState.cy.nodes(':selected').filter(n => (n.data('type')||'class') === 'class');
           if (sel && sel.length === 1) {
-            ontoState.cy.add({ group: 'edges', data: { id: `enote${Date.now()}`, source: nid, target: sel[0].id(), predicate: 'note_for', type: 'note' } });
+            ontoState.cy.add({ group: 'edges', data: { id: `enote${Date.now()}`, source: nid, target: sel[0].id(), predicate: 'note_for', type: 'note', attrs: {} } });
           }
           refreshOntologyTree(); persistOntologyToLocalStorage();
         }
@@ -1278,7 +1284,7 @@
       const id = `Class${ontoState.nextId++}`;
       const x = 100 + Math.random() * 400;
       const y = 100 + Math.random() * 300;
-      ontoState.cy.add({ group: 'nodes', data: { id, label, type: 'class' }, position: { x, y } });
+      ontoState.cy.add({ group: 'nodes', data: { id, label, type: 'class', attrs: {} }, position: { x, y } });
       refreshOntologyTree();
       persistOntologyToLocalStorage();
     }
@@ -1286,7 +1292,7 @@
     function addClassNodeAt(label, position) {
       ensureOntologyInitialized();
       const id = `Class${ontoState.nextId++}`;
-      ontoState.cy.add({ group: 'nodes', data: { id, label, type: 'class' }, position });
+      ontoState.cy.add({ group: 'nodes', data: { id, label, type: 'class', attrs: {} }, position });
       refreshOntologyTree();
       persistOntologyToLocalStorage();
       return id;
@@ -1310,8 +1316,25 @@
       }
     }
 
+    function ensureAttributesExist() {
+      // Ensure all nodes have an attrs property
+      ontoState.cy.nodes().forEach(n => {
+        if (!n.data('attrs')) {
+          n.data('attrs', {});
+        }
+      });
+      
+      // Ensure all edges have an attrs property
+      ontoState.cy.edges().forEach(e => {
+        if (!e.data('attrs')) {
+          e.data('attrs', {});
+        }
+      });
+    }
+
     function exportOntologyJSON() {
       ensureOntologyInitialized();
+      ensureAttributesExist(); // Make sure all elements have attrs property
       const nodes = ontoState.cy.nodes().map(n => ({ data: n.data(), position: n.position() }));
       const edges = ontoState.cy.edges().map(e => ({ data: e.data() }));
       const payload = { nodes, edges };
@@ -1363,8 +1386,11 @@
         if (iriMap[id]) return iriMap[id];
         const explicit = n.data('iri');
         if (explicit) { iriMap[id] = explicit; return explicit; }
+        
+        // Use model namespace instead of graph IRI for element IRIs
+        const modelNamespace = getModelNamespace();
         const base = slugId(n.data('label')||id)||id;
-        const iri = `${graphIri}#${base}`;
+        const iri = `${modelNamespace}#${base}`;
         iriMap[id] = iri;
         return iri;
       }
@@ -1393,7 +1419,8 @@
         if (e.hasClass && (e.hasClass('imported') || e.hasClass('imported-equivalence'))) return;
         const s = e.source(); const t = e.target();
         const pred = (e.data('predicate')||'relatedTo').replace(/\\/g,'\\\\').replace(/"/g,'\\"');
-        const propIri = `${graphIri}#${slugId(pred)}`;
+        const modelNamespace = getModelNamespace();
+        const propIri = `${modelNamespace}#${slugId(pred)}`;
         const sIri = nodeIri(s); const tIri = nodeIri(t);
         const isData = (e.data('type')||'objectProperty') === 'dataProperty';
         const sType = (s.data('type')||'class'); const tType = (t.data('type')||'class');
@@ -1471,6 +1498,121 @@
     function loadVisibleImports(graphIri) { try { return new Set(JSON.parse(localStorage.getItem(visibleImportsKey(graphIri)) || '[]')); } catch(_) { return new Set(); } }
     function saveVisibleImports(graphIri, set) { try { localStorage.setItem(visibleImportsKey(graphIri), JSON.stringify(Array.from(set || []))); } catch(_) {} }
 
+    // Reference ontology selector
+    async function showReferenceOntologySelector() {
+      try {
+        const token = localStorage.getItem(tokenKey);
+        const res = await fetch('/api/ontologies/reference', {
+          headers: { Authorization: 'Bearer ' + token }
+        });
+        
+        if (!res.ok) {
+          throw new Error('Failed to fetch reference ontologies');
+        }
+        
+        const json = await res.json();
+        const referenceOntologies = json.reference_ontologies || [];
+        
+        if (referenceOntologies.length === 0) {
+          toast('No reference ontologies available', true);
+          return;
+        }
+        
+        // Create overlay
+        const overlay = document.createElement('div');
+        overlay.style.position = 'fixed';
+        overlay.style.inset = '0';
+        overlay.style.background = 'rgba(0,0,0,0.4)';
+        overlay.style.zIndex = '9998';
+        
+        const panel = document.createElement('div');
+        panel.style.position = 'fixed';
+        panel.style.top = '20%';
+        panel.style.left = '50%';
+        panel.style.transform = 'translateX(-50%)';
+        panel.style.background = 'var(--panel)';
+        panel.style.border = '1px solid var(--border)';
+        panel.style.borderRadius = '12px';
+        panel.style.padding = '20px';
+        panel.style.minWidth = '500px';
+        panel.style.maxWidth = '80vw';
+        panel.style.maxHeight = '70vh';
+        panel.style.overflow = 'auto';
+        panel.style.zIndex = '9999';
+        
+        panel.innerHTML = `
+          <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:16px;">
+            <h3 style="margin:0;">Select Reference Ontology</h3>
+            <button id="refOntClose" class="btn">Close</button>
+          </div>
+          <div id="refOntList" style="max-height:400px; overflow-y:auto;"></div>
+        `;
+        
+        document.body.appendChild(overlay);
+        document.body.appendChild(panel);
+        
+        const close = () => {
+          try {
+            document.body.removeChild(panel);
+            document.body.removeChild(overlay);
+          } catch(_) {}
+        };
+        
+        panel.querySelector('#refOntClose').onclick = close;
+        overlay.onclick = close;
+        
+        const listEl = panel.querySelector('#refOntList');
+        listEl.innerHTML = referenceOntologies.map(onto => `
+          <div style="display:flex; justify-content:space-between; align-items:center; border:1px solid var(--border); border-radius:8px; padding:12px; margin-bottom:8px; cursor:pointer;" 
+               data-graph-iri="${onto.graph_iri}" class="ref-onto-item">
+            <div>
+              <div style="font-weight:500;">${onto.label || onto.graph_iri.split('/').pop()}</div>
+              <div style="font-size:0.9em; color:var(--muted);">${onto.project_name} • ${onto.graph_iri}</div>
+            </div>
+            <button class="btn" data-graph-iri="${onto.graph_iri}">Import</button>
+          </div>
+        `).join('');
+        
+        // Add hover effects
+        listEl.querySelectorAll('.ref-onto-item').forEach(item => {
+          item.onmouseover = () => item.style.background = 'var(--hover)';
+          item.onmouseout = () => item.style.background = 'transparent';
+        });
+        
+        // Handle import clicks
+        listEl.addEventListener('click', async (e) => {
+          const btn = e.target.closest('button[data-graph-iri]');
+          if (!btn) return;
+          
+          const graphIri = btn.getAttribute('data-graph-iri');
+          const importsKey = 'onto_imports__' + encodeURIComponent(activeOntologyIri || '');
+          
+          try {
+            const curr = new Set(JSON.parse(localStorage.getItem(importsKey) || '[]'));
+            console.log('🔍 Current imports:', Array.from(curr));
+            console.log('🔍 Adding import:', graphIri);
+            if (!curr.has(graphIri)) {
+              curr.add(graphIri);
+              localStorage.setItem(importsKey, JSON.stringify(Array.from(curr)));
+              console.log('🔍 Import added, refreshing tree...');
+              refreshOntologyTree();
+              toast('Reference ontology imported successfully');
+            } else {
+              console.log('🔍 Import already exists');
+              toast('Reference ontology already imported', true);
+            }
+            close();
+          } catch(err) {
+            console.error('🔍 Error importing reference ontology:', err);
+            toast('Failed to import reference ontology', true);
+          }
+        });
+        
+      } catch(err) {
+        toast('Failed to load reference ontologies', true);
+      }
+    }
+
     // Persist per-import overlay node positions
     function overlayPositionsKey(baseIri, importIri) { return 'onto_import_positions__' + encodeURIComponent(baseIri || '') + '__' + encodeURIComponent(importIri || ''); }
     function loadOverlayPositions(baseIri, importIri) { try { return JSON.parse(localStorage.getItem(overlayPositionsKey(baseIri, importIri)) || '{}'); } catch(_) { return {}; } }
@@ -1538,7 +1680,7 @@
             const id = `imp:${imp}#${c.iri}`;
             if (ontoState.cy.$(`#${CSS.escape(id)}`).length) return;
             const pos = savedPos[id] ? savedPos[id] : nextPos();
-            added.push(ontoState.cy.add({ group: 'nodes', data: { id, iri: c.iri, label: c.label, type: 'class', importSource: imp }, position: pos, classes: 'imported' }));
+            added.push(ontoState.cy.add({ group: 'nodes', data: { id, iri: c.iri, label: c.label, type: 'class', importSource: imp, attrs: {} }, position: pos, classes: 'imported' }));
           });
           // Add edges where both endpoints available; create missing nodes on demand
           let idx = 0;
@@ -1548,14 +1690,14 @@
             if (!ontoState.cy.$(`#${CSS.escape(sid)}`).length) {
               const label = e.sourceIri.includes('#') ? e.sourceIri.split('#').pop() : e.sourceIri.split('/').pop();
               const pos = savedPos[sid] ? savedPos[sid] : nextPos();
-              added.push(ontoState.cy.add({ group: 'nodes', data: { id: sid, iri: e.sourceIri, label, type: 'class', importSource: imp }, position: pos, classes: 'imported' }));
+              added.push(ontoState.cy.add({ group: 'nodes', data: { id: sid, iri: e.sourceIri, label, type: 'class', importSource: imp, attrs: {} }, position: pos, classes: 'imported' }));
             }
             if (!ontoState.cy.$(`#${CSS.escape(tid)}`).length) {
               const label = e.targetIri.includes('#') ? e.targetIri.split('#').pop() : e.targetIri.split('/').pop();
               const pos = savedPos[tid] ? savedPos[tid] : nextPos();
-              added.push(ontoState.cy.add({ group: 'nodes', data: { id: tid, iri: e.targetIri, label, type: 'class', importSource: imp }, position: pos, classes: 'imported' }));
+              added.push(ontoState.cy.add({ group: 'nodes', data: { id: tid, iri: e.targetIri, label, type: 'class', importSource: imp, attrs: {} }, position: pos, classes: 'imported' }));
             }
-            added.push(ontoState.cy.add({ group: 'edges', data: { id: `impE${Date.now()}_${idx++}`, source: sid, target: tid, predicate: e.label, type: 'objectProperty', importSource: imp }, classes: 'imported' }));
+            added.push(ontoState.cy.add({ group: 'edges', data: { id: `impE${Date.now()}_${idx++}`, source: sid, target: tid, predicate: e.label, type: 'objectProperty', importSource: imp, attrs: {} }, classes: 'imported' }));
           });
           // Make overlays semi-interactive for positioning: allow drag, but don't select or edit
           added.forEach(el => {
@@ -1580,7 +1722,7 @@
               const base = baseMap.get(key);
               if (base) {
                 const eid = `impEq${Date.now()}_${idx2++}`;
-                ontoState.cy.add({ group: 'edges', data: { id: eid, source: base.id(), target: n.id(), predicate: 'equivalentClass', type: 'objectProperty', importSource: imp }, classes: 'imported imported-equivalence' });
+                ontoState.cy.add({ group: 'edges', data: { id: eid, source: base.id(), target: n.id(), predicate: 'equivalentClass', type: 'objectProperty', importSource: imp, attrs: {} }, classes: 'imported imported-equivalence' });
               }
             });
           } catch(_) {}
@@ -2340,45 +2482,147 @@
           addBtn.onclick = async (e) => {
             e.stopPropagation();
             if (!project || !(project.id || project.project_id)) { alert('Create a project first'); return; }
-            const disp = prompt('Display label for new ontology'); if (!disp) return;
-            const base = slugify(disp) || `ontology-${Date.now()}`;
-            const label = disp;
+            
+            // Check if user is admin
+            const token = localStorage.getItem(tokenKey);
+            let isAdmin = false;
             try {
-              const token = localStorage.getItem(tokenKey);
-              const pid2 = project.id || project.project_id;
-              const res = await fetch('/api/ontologies', { method: 'POST', headers: { 'Content-Type':'application/json', Authorization: 'Bearer ' + token }, body: JSON.stringify({ project: pid2, name: base, label }) });
-              if (!res.ok) {
-                const msg = await res.text().catch(()=>String(res.status));
-                alert('Create ontology failed: ' + msg);
+              const userRes = await fetch('/api/auth/me', { headers: { Authorization: 'Bearer ' + token } });
+              if (userRes.ok) {
+                const user = await userRes.json();
+                isAdmin = user.is_admin || false;
+                console.log('User admin status:', isAdmin, user);
+              }
+            } catch (err) {
+              console.error('Failed to get user info:', err);
+            }
+            
+            // Create dialog for ontology creation
+            const overlay = document.createElement('div');
+            overlay.style.position = 'fixed';
+            overlay.style.inset = '0';
+            overlay.style.background = 'rgba(0,0,0,0.4)';
+            overlay.style.zIndex = '9998';
+            
+            const panel = document.createElement('div');
+            panel.style.position = 'fixed';
+            panel.style.top = '30%';
+            panel.style.left = '50%';
+            panel.style.transform = 'translateX(-50%)';
+            panel.style.background = 'var(--panel)';
+            panel.style.border = '1px solid var(--border)';
+            panel.style.borderRadius = '12px';
+            panel.style.padding = '20px';
+            panel.style.minWidth = '400px';
+            panel.style.zIndex = '9999';
+            
+            panel.innerHTML = `
+              <div style="margin-bottom:16px;">
+                <h3 style="margin:0 0 16px 0;">Create New Ontology</h3>
+                <div style="margin-bottom:12px;">
+                  <label style="display:block; margin-bottom:4px; font-weight:500;">Display Label:</label>
+                  <input type="text" id="ontoLabel" placeholder="Enter ontology label" style="width:100%; padding:8px; border:1px solid var(--border); border-radius:4px; background:var(--input-bg); color:var(--text);" />
+                </div>
+                ${isAdmin ? `
+                <div style="margin-bottom:16px;">
+                  <label style="display:flex; align-items:center; cursor:pointer;">
+                    <input type="checkbox" id="isReference" style="margin-right:8px;" />
+                    <span>Mark as Reference Ontology (Admin only)</span>
+                  </label>
+                  <div style="font-size:0.9em; color:var(--muted); margin-top:4px;">
+                    Reference ontologies can be imported by other projects
+                  </div>
+                </div>
+                ` : ''}
+                <div style="display:flex; justify-content:flex-end; gap:8px;">
+                  <button id="cancelOnto" class="btn">Cancel</button>
+                  <button id="createOnto" class="btn btn-primary">Create</button>
+                </div>
+              </div>
+            `;
+            
+            document.body.appendChild(overlay);
+            document.body.appendChild(panel);
+            
+            const close = () => {
+              try {
+                document.body.removeChild(panel);
+                document.body.removeChild(overlay);
+              } catch(_) {}
+            };
+            
+            panel.querySelector('#cancelOnto').onclick = close;
+            overlay.onclick = close;
+            
+            panel.querySelector('#createOnto').onclick = async () => {
+              const labelInput = panel.querySelector('#ontoLabel');
+              const disp = labelInput.value.trim();
+              if (!disp) {
+                alert('Please enter a label for the ontology');
                 return;
               }
-              const created = await res.json();
-              if (created && created.graphIri) {
-                try { saveOntologyLabel(created.graphIri, created.label || label); } catch(_) {}
-              }
-              await renderTree(project);
-              // Ensure label is shown and select the created ontology (guard for valid response)
-              if (created && created.graphIri) {
-                const newRoot = qs('#treeRoot');
-                const li = Array.from(newRoot.querySelectorAll('li[role="treeitem"]')).find(el => el.dataset && el.dataset.iri === created.graphIri);
-                // Update top node label immediately
-                try {
-                  const ontoTop = qs('#ontoTreeRoot .onto-node-label');
-                  if (ontoTop) ontoTop.textContent = created.label || label;
-                } catch(_) {}
-                if (li) {
-                  const lbl = li.querySelector('.node-label'); if (lbl) lbl.textContent = created.label || label;
-                  li.dataset.label = created.label || label;
-                  selectNode(li);
-                  await handleTreeSelection(li);
-                } else {
-                  // Fallback: set selection and force refresh display
-                  activeOntologyIri = created.graphIri;
-                  updateOntoGraphLabel();
-                  refreshOntologyTree();
+              
+              const isReference = isAdmin && panel.querySelector('#isReference').checked;
+              const base = slugify(disp) || `ontology-${Date.now()}`;
+              const label = disp;
+              
+              try {
+                const pid2 = project.id || project.project_id;
+                const body = { project: pid2, name: base, label };
+                if (isReference) {
+                  body.is_reference = true;
                 }
+                
+                const res = await fetch('/api/ontologies', { 
+                  method: 'POST', 
+                  headers: { 'Content-Type':'application/json', Authorization: 'Bearer ' + token }, 
+                  body: JSON.stringify(body) 
+                });
+                
+                if (!res.ok) {
+                  const msg = await res.text().catch(()=>String(res.status));
+                  alert('Create ontology failed: ' + msg);
+                  return;
+                }
+                
+                const created = await res.json();
+                if (created && created.graphIri) {
+                  try { saveOntologyLabel(created.graphIri, created.label || label); } catch(_) {}
+                }
+                
+                close();
+                await renderTree(project);
+                
+                // Ensure label is shown and select the created ontology (guard for valid response)
+                if (created && created.graphIri) {
+                  const newRoot = qs('#treeRoot');
+                  const li = Array.from(newRoot.querySelectorAll('li[role="treeitem"]')).find(el => el.dataset && el.dataset.iri === created.graphIri);
+                  // Update top node label immediately
+                  try {
+                    const ontoTop = qs('#ontoTreeRoot .onto-node-label');
+                    if (ontoTop) ontoTop.textContent = created.label || label;
+                  } catch(_) {}
+                  if (li) {
+                    const lbl = li.querySelector('.node-label'); if (lbl) lbl.textContent = created.label || label;
+                    li.dataset.label = created.label || label;
+                    selectNode(li);
+                    await handleTreeSelection(li);
+                  } else {
+                    // Fallback: set selection and force refresh display
+                    activeOntologyIri = created.graphIri;
+                    updateOntoGraphLabel();
+                    refreshOntologyTree();
+                  }
+                }
+              } catch(err) {
+                alert('Failed to create ontology: ' + err.message);
               }
-            } catch(_) {}
+            };
+            
+            // Focus the input
+            setTimeout(() => {
+              panel.querySelector('#ontoLabel').focus();
+            }, 100);
           };
           headerRow.appendChild(addBtn);
         }
@@ -2512,7 +2756,31 @@
         const importsKey = 'onto_imports__' + encodeURIComponent(activeOntologyIri || '');
         const imports = JSON.parse(localStorage.getItem(importsKey) || '[]');
         const importsRoot = document.createElement('li'); importsRoot.setAttribute('role','treeitem'); importsRoot.setAttribute('aria-expanded','true');
-        const row = document.createElement('div'); row.className = 'onto-node-row'; const tw = document.createElement('span'); tw.className = 'onto-twist'; const lbl = document.createElement('span'); lbl.className='onto-node-label'; lbl.textContent='Imports'; row.appendChild(tw); row.appendChild(lbl); importsRoot.appendChild(row);
+        const row = document.createElement('div'); row.className = 'onto-node-row'; 
+        const tw = document.createElement('span'); tw.className = 'onto-twist'; 
+        const lbl = document.createElement('span'); lbl.className='onto-node-label'; lbl.textContent='Imports'; 
+        
+        // Add + button for adding reference ontologies
+        const addBtn = document.createElement('button');
+        addBtn.className = 'btn tree-add-btn';
+        addBtn.title = 'Add Reference Ontology';
+        addBtn.textContent = '+';
+        addBtn.style.marginLeft = '8px';
+        addBtn.style.fontSize = '12px';
+        addBtn.style.padding = '2px 6px';
+        addBtn.style.minWidth = '20px';
+        addBtn.style.height = '20px';
+        addBtn.onclick = async (e) => {
+          e.stopPropagation();
+          console.log('➕ Add Reference Ontology button clicked');
+          await showReferenceOntologySelector();
+        };
+        
+        row.appendChild(tw); 
+        row.appendChild(lbl); 
+        row.appendChild(addBtn);
+        importsRoot.appendChild(row);
+        
         const ul = document.createElement('ul'); ul.setAttribute('role','group');
         function removeImport(iri) {
           const key = 'onto_imports__' + encodeURIComponent(activeOntologyIri || '');
@@ -2534,25 +2802,48 @@
         }
         async function importEquivCount(importIri) {
           try {
-            if (!ontoState.cy) return 0;
+            if (!ontoState.cy) {
+              console.log('🔍 No cytoscape instance for equivalence counting');
+              return 0;
+            }
             const norm = s => String(s||'').trim().toLowerCase();
             const baseClasses = ontoState.cy.nodes().filter(n => (n.data('type')||'class') === 'class' && !n.hasClass('imported'));
+            console.log('🔍 Base classes found:', baseClasses.length);
             const baseByLabel = new Map();
             baseClasses.forEach(n => { baseByLabel.set(norm(n.data('label')||n.id()), n); });
+            console.log('🔍 Base classes by label:', Array.from(baseByLabel.keys()));
+            
             const q = `PREFIX owl: <http://www.w3.org/2002/07/owl#>\nPREFIX rdfs: <http://www.w3.org/2000/01/rdf-schema#>\nSELECT ?c ?label WHERE { GRAPH <${importIri}> { ?c a owl:Class . OPTIONAL { ?c rdfs:label ?label } } }`;
+            console.log('🔍 SPARQL query:', q);
             const res = await fetch('/api/ontology/sparql', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ query: q }) });
-            if (!res.ok) return 0;
+            if (!res.ok) {
+              console.log('🔍 SPARQL query failed:', res.status, res.statusText);
+              const errorText = await res.text();
+              console.log('🔍 Error response:', errorText);
+              return 0;
+            }
             const json = await res.json();
+            console.log('🔍 SPARQL response:', json);
             const rows = (json && json.results && json.results.bindings) ? json.results.bindings : [];
+            console.log('🔍 Import classes found:', rows.length);
+            if (rows.length > 0) {
+              console.log('🔍 Import class details:', rows);
+            }
+            
             const matched = new Set();
             rows.forEach(b => {
               const iri = b.c && b.c.value; const label = b.label && b.label.value;
               const local = iri ? (iri.includes('#') ? iri.split('#').pop() : iri.split('/').pop()) : '';
               const key = norm(label || local);
+              console.log('🔍 Checking match:', key, 'in base classes:', baseByLabel.has(key));
               if (baseByLabel.has(key) && iri) matched.add(iri);
             });
+            console.log('🔍 Matched classes:', matched.size);
             return matched.size;
-          } catch(_) { return 0; }
+          } catch(err) { 
+            console.error('🔍 Error in importEquivCount:', err);
+            return 0; 
+          }
         }
         const visibleSet = loadVisibleImports(activeOntologyIri);
         imports.forEach(async g => {
@@ -2565,9 +2856,11 @@
           const cnt = await importEquivCount(g);
           l.textContent = `${name}${cnt ? ` (${cnt})` : ''}`;
           cb.addEventListener('change', async () => {
+            console.log('🔍 Checkbox changed for import:', g, 'checked:', cb.checked);
             const vis = loadVisibleImports(activeOntologyIri);
             if (cb.checked) vis.add(g); else vis.delete(g);
             saveVisibleImports(activeOntologyIri, vis);
+            console.log('🔍 Visible imports updated:', Array.from(vis));
             await overlayImportsRefresh();
           });
           r.onclick = (e)=>{ Array.from(ul.querySelectorAll('.onto-node-row')).forEach(n=>n.classList.remove('selected')); r.classList.add('selected'); };
@@ -2592,34 +2885,253 @@
 
     // (empty-state banner removed)
 
+    // Attribute templates for different object types
+    const attributeTemplates = {
+      class: {
+        comment: { type: 'text', label: 'Comment', placeholder: 'Description of the class' },
+        subclass_of: { type: 'text', label: 'Subclass of', placeholder: 'Parent class name' },
+        priority: { type: 'select', label: 'Priority', options: ['High', 'Medium', 'Low'], placeholder: 'Select priority' },
+        status: { type: 'select', label: 'Status', options: ['Draft', 'Review', 'Approved', 'Deprecated'], placeholder: 'Select status' }
+      },
+      objectProperty: {
+        comment: { type: 'text', label: 'Comment', placeholder: 'Description of the property' },
+        domain: { type: 'text', label: 'Domain', placeholder: 'Source class' },
+        range: { type: 'text', label: 'Range', placeholder: 'Target class' },
+        functional: { type: 'checkbox', label: 'Functional', placeholder: 'Is this a functional property?' },
+        inverse_functional: { type: 'checkbox', label: 'Inverse Functional', placeholder: 'Is this inverse functional?' }
+      },
+      dataProperty: {
+        comment: { type: 'text', label: 'Comment', placeholder: 'Description of the property' },
+        domain: { type: 'text', label: 'Domain', placeholder: 'Source class' },
+        range: { type: 'select', label: 'Range', options: ['xsd:string', 'xsd:integer', 'xsd:float', 'xsd:boolean', 'xsd:dateTime'], placeholder: 'Data type' },
+        functional: { type: 'checkbox', label: 'Functional', placeholder: 'Is this a functional property?' }
+      },
+      note: {
+        content: { type: 'textarea', label: 'Content', placeholder: 'Note content' },
+        author: { type: 'text', label: 'Author', placeholder: 'Note author' },
+        created_date: { type: 'date', label: 'Created Date', placeholder: 'Creation date' }
+      },
+      model: {
+        description: { type: 'textarea', label: 'Description', placeholder: 'Model description' },
+        version: { type: 'text', label: 'Version', placeholder: 'Model version' },
+        namespace: { type: 'text', label: 'Namespace', placeholder: 'Model namespace' }
+      }
+    };
+
     function updatePropertiesPanelFromSelection() {
       const form = qs('#ontoPropsForm'); if (!form || !ontoState.cy) return;
       const sel = ontoState.cy.$(':selected');
       const nameEl = qs('#propName');
       const typeEl = qs('#propType');
-      const attrsEl = qs('#propAttrs');
+      
+      let currentAttrs = {};
+      let objectType = 'class';
+      
       if (sel.length === 1 && sel[0].isNode()) {
         const n = sel[0];
         nameEl.value = n.data('label') || n.id();
         typeEl.value = n.data('type') || 'class';
-        attrsEl.value = JSON.stringify(n.data('attrs') || {}, null, 2);
+        currentAttrs = n.data('attrs') || {};
+        objectType = n.data('type') || 'class';
       } else if (sel.length === 1 && sel[0].isEdge()) {
         const e = sel[0];
         nameEl.value = e.data('predicate') || e.id();
         typeEl.value = e.data('type') || 'objectProperty';
-        attrsEl.value = JSON.stringify(e.data('attrs') || {}, null, 2);
+        currentAttrs = e.data('attrs') || {};
+        objectType = e.data('type') || 'objectProperty';
       } else {
         const pid = (activeProject && (activeProject.id || activeProject.project_id)) ? (activeProject.id || activeProject.project_id) : 'default';
         nameEl.value = localStorage.getItem(`onto_model_name__${pid}`) || 'Ontology Model';
         typeEl.value = 'model';
+        objectType = 'model';
         try {
-          const json = JSON.parse(localStorage.getItem(`onto_model_attrs__${pid}`) || '{}');
-          attrsEl.value = JSON.stringify(json, null, 2);
-        } catch(_) { attrsEl.value = '{}'; }
+          currentAttrs = JSON.parse(localStorage.getItem(`onto_model_attrs__${pid}`) || '{}');
+        } catch(_) { currentAttrs = {}; }
       }
+      
+      // Update attribute editor
+      updateAttributeEditor(objectType, currentAttrs);
       
       // Update element IRI display
       updateElementIriDisplay();
+    }
+
+    function updateAttributeEditor(objectType, currentAttrs) {
+      const container = qs('#propAttrsContainer');
+      if (!container) return;
+      
+      container.innerHTML = '';
+      
+      const template = attributeTemplates[objectType] || {};
+      
+      // Add template attributes
+      Object.entries(template).forEach(([key, config]) => {
+        const attrDiv = createAttributeField(key, config, currentAttrs[key] || '');
+        container.appendChild(attrDiv);
+      });
+      
+      // Add any custom attributes not in template
+      Object.entries(currentAttrs).forEach(([key, value]) => {
+        if (!template[key]) {
+          const attrDiv = createAttributeField(key, { type: 'text', label: key }, value);
+          container.appendChild(attrDiv);
+        }
+      });
+    }
+
+    function createAttributeField(key, config, value) {
+      const div = document.createElement('div');
+      div.style.display = 'grid';
+      div.style.gridTemplateColumns = '1fr auto';
+      div.style.gap = '8px';
+      div.style.alignItems = 'center';
+      
+      const label = document.createElement('label');
+      label.textContent = config.label || key;
+      label.style.fontSize = '12px';
+      label.style.color = '#9ca3af';
+      
+      const inputContainer = document.createElement('div');
+      inputContainer.style.display = 'flex';
+      inputContainer.style.gap = '4px';
+      
+      let input;
+      if (config.type === 'select') {
+        input = document.createElement('select');
+        input.style.width = '100%';
+        input.style.background = '#0b1220';
+        input.style.color = '#e5e7eb';
+        input.style.border = '1px solid var(--border)';
+        input.style.borderRadius = '4px';
+        input.style.padding = '4px';
+        input.style.fontSize = '12px';
+        
+        const defaultOption = document.createElement('option');
+        defaultOption.value = '';
+        defaultOption.textContent = config.placeholder || 'Select...';
+        input.appendChild(defaultOption);
+        
+        if (config.options) {
+          config.options.forEach(option => {
+            const opt = document.createElement('option');
+            opt.value = option;
+            opt.textContent = option;
+            if (value === option) opt.selected = true;
+            input.appendChild(opt);
+          });
+        }
+      } else if (config.type === 'checkbox') {
+        input = document.createElement('input');
+        input.type = 'checkbox';
+        input.checked = value === true || value === 'true';
+      } else if (config.type === 'textarea') {
+        input = document.createElement('textarea');
+        input.rows = 3;
+        input.value = value || '';
+        input.style.width = '100%';
+        input.style.background = '#0b1220';
+        input.style.color = '#e5e7eb';
+        input.style.border = '1px solid var(--border)';
+        input.style.borderRadius = '4px';
+        input.style.padding = '4px';
+        input.style.fontSize = '12px';
+        input.style.resize = 'vertical';
+      } else if (config.type === 'date') {
+        input = document.createElement('input');
+        input.type = 'date';
+        input.value = value || '';
+      } else {
+        input = document.createElement('input');
+        input.type = config.type || 'text';
+        input.value = value || '';
+        input.placeholder = config.placeholder || '';
+      }
+      
+      if (input.type !== 'checkbox' && input.type !== 'textarea') {
+        input.style.width = '100%';
+        input.style.background = '#0b1220';
+        input.style.color = '#e5e7eb';
+        input.style.border = '1px solid var(--border)';
+        input.style.borderRadius = '4px';
+        input.style.padding = '4px';
+        input.style.fontSize = '12px';
+      }
+      
+      input.dataset.attrKey = key;
+      input.dataset.attrType = config.type || 'text';
+      
+      const deleteBtn = document.createElement('button');
+      deleteBtn.type = 'button';
+      deleteBtn.textContent = '×';
+      deleteBtn.style.background = '#dc2626';
+      deleteBtn.style.color = 'white';
+      deleteBtn.style.border = 'none';
+      deleteBtn.style.borderRadius = '4px';
+      deleteBtn.style.width = '24px';
+      deleteBtn.style.height = '24px';
+      deleteBtn.style.fontSize = '14px';
+      deleteBtn.style.cursor = 'pointer';
+      deleteBtn.title = 'Remove attribute';
+      
+      // Only show delete button for custom attributes (not in template)
+      const template = attributeTemplates[qs('#propType')?.value || 'class'] || {};
+      if (template[key]) {
+        deleteBtn.style.display = 'none';
+      }
+      
+      deleteBtn.onclick = () => {
+        div.remove();
+      };
+      
+      inputContainer.appendChild(input);
+      inputContainer.appendChild(deleteBtn);
+      
+      div.appendChild(label);
+      div.appendChild(inputContainer);
+      
+      return div;
+    }
+
+    function getCurrentAttributes() {
+      const container = qs('#propAttrsContainer');
+      if (!container) return {};
+      
+      const attrs = {};
+      const inputs = container.querySelectorAll('input, select, textarea');
+      
+      inputs.forEach(input => {
+        const key = input.dataset.attrKey;
+        const type = input.dataset.attrType;
+        
+        if (key) {
+          let value;
+          if (type === 'checkbox') {
+            value = input.checked;
+          } else if (type === 'select' && input.value === '') {
+            value = null; // Don't include empty selects
+          } else {
+            value = input.value.trim();
+            if (value === '') value = null; // Don't include empty strings
+          }
+          
+          if (value !== null) {
+            attrs[key] = value;
+          }
+        }
+      });
+      
+      return attrs;
+    }
+
+    function getModelNamespace() {
+      // Get model namespace from attributes or use default
+      const pid = (activeProject && (activeProject.id || activeProject.project_id)) ? (activeProject.id || activeProject.project_id) : 'default';
+      try {
+        const modelAttrs = JSON.parse(localStorage.getItem(`onto_model_attrs__${pid}`) || '{}');
+        return modelAttrs.namespace || 'http://odras.system/ontology';
+      } catch(_) {
+        return 'http://odras.system/ontology';
+      }
     }
 
     function updateElementIriDisplay() {
@@ -2642,18 +3154,18 @@
         const elementId = element.id();
         const elementType = element.data('type') || (element.isNode() ? 'class' : 'objectProperty');
         
-        // Generate IRI based on the active ontology and element ID
+        // Generate IRI using model namespace instead of ontology IRI
         let iri = '';
-        if (activeOntologyIri) {
-          // Use the active ontology IRI as base
-          iri = `${activeOntologyIri}#${elementId}`;
-        } else {
-          // Fallback to default namespace
-          iri = `http://odras.local/onto/default#${elementId}`;
-        }
+        const modelNamespace = getModelNamespace();
+        
+        // Use element label if available, otherwise use ID
+        const elementLabel = element.data('label') || elementId;
+        const sluggedLabel = slugId(elementLabel) || elementId;
+        
+        iri = `${modelNamespace}#${sluggedLabel}`;
         
         iriEl.textContent = iri;
-        iriEl.title = `IRI: ${iri}\nType: ${elementType}\nClick to copy`;
+        iriEl.title = `IRI: ${iri}\nType: ${elementType}\nModel Namespace: ${modelNamespace}\nClick to copy`;
         iriEl.style.color = '#60a5fa';
         iriEl.style.opacity = '1';
         
@@ -2840,6 +3352,8 @@
         ontoState.cy.elements().remove();
         ontoState.cy.add(data.nodes || []);
         ontoState.cy.add(data.edges || []);
+        // Ensure all loaded elements have attrs property
+        ensureAttributesExist();
         // After loading, ensure nextId is advanced beyond existing ClassNNN
         recomputeNextId();
         requestAnimationFrame(()=>{ ontoState.cy.fit(); });
@@ -3018,6 +3532,8 @@
             ontoState.cy.elements().remove();
             ontoState.cy.add(data.nodes || []);
             ontoState.cy.add(data.edges || []);
+            // Ensure all loaded elements have attrs property
+            ensureAttributesExist();
             recomputeNextId();
             
             // Try to load layout from server
@@ -3167,22 +3683,22 @@
             const sel = ontoState.cy.$(':selected');
             const nameEl = qs('#propName');
             const typeEl = qs('#propType');
-            const attrsEl = qs('#propAttrs');
+            const attrs = getCurrentAttributes();
+            
             if (sel.length === 1 && sel[0].isNode()) {
               const n = sel[0];
               n.data('label', nameEl.value.trim() || n.data('label'));
               n.data('type', typeEl.value || n.data('type'));
-              const parsed = JSON.parse(attrsEl.value || '{}');
-              n.data('attrs', parsed);
+              n.data('attrs', attrs);
             } else if (sel.length === 1 && sel[0].isEdge()) {
               const ed = sel[0];
               ed.data('predicate', nameEl.value.trim() || ed.data('predicate'));
               ed.data('type', typeEl.value || ed.data('type'));
-              const parsed = JSON.parse(attrsEl.value || '{}');
-              ed.data('attrs', parsed);
+              ed.data('attrs', attrs);
             } else {
-              localStorage.setItem('onto_model_name', nameEl.value.trim() || 'Ontology Model');
-              try { localStorage.setItem('onto_model_attrs', JSON.stringify(JSON.parse(attrsEl.value || '{}'))); } catch(_) { localStorage.setItem('onto_model_attrs', '{}'); }
+              const pid = (activeProject && (activeProject.id || activeProject.project_id)) ? (activeProject.id || activeProject.project_id) : 'default';
+              localStorage.setItem(`onto_model_name__${pid}`, nameEl.value.trim() || 'Ontology Model');
+              localStorage.setItem(`onto_model_attrs__${pid}`, JSON.stringify(attrs));
             }
             refreshOntologyTree();
             persistOntologyToLocalStorage();
@@ -3190,6 +3706,21 @@
           } catch (_) {
             const st = qs('#propSaveStatus'); if (st) { st.textContent = 'Error'; setTimeout(()=>{ const s=qs('#propSaveStatus'); if (s) s.textContent=''; }, 1200); }
           }
+        } else if (e.target === qs('#addAttrBtn')) {
+          // Add custom attribute
+          const key = prompt('Enter attribute name:');
+          if (key && key.trim()) {
+            const container = qs('#propAttrsContainer');
+            if (container) {
+              const attrDiv = createAttributeField(key.trim(), { type: 'text', label: key.trim() }, '');
+              container.appendChild(attrDiv);
+            }
+          }
+        } else if (e.target === qs('#resetAttrsBtn')) {
+          // Reset to template
+          const typeEl = qs('#propType');
+          const objectType = typeEl ? typeEl.value : 'class';
+          updateAttributeEditor(objectType, {});
         }
       });
       // Keep Cytoscape sized correctly in fullscreen and update button title
@@ -3208,6 +3739,16 @@
         const toggleBtn = qs('#ontoPropsToggle');
         if (toggleBtn) toggleBtn.click();
       });
+      
+      // Add event listener for type changes
+      const typeEl = qs('#propType');
+      if (typeEl) {
+        typeEl.addEventListener('change', () => {
+          const objectType = typeEl.value;
+          const currentAttrs = getCurrentAttributes();
+          updateAttributeEditor(objectType, currentAttrs);
+        });
+      }
       const fileInput = () => qs('#ontoImportFile');
       document.addEventListener('change', async (e) => {
         if (e.target === fileInput()) {
@@ -4950,7 +5491,7 @@
         const data = await response.json();
         console.log('🧠 Loaded knowledge assets:', data);
         
-        displayKnowledgeAssets(data.assets || []);
+        await displayKnowledgeAssets(data.assets || []);
         updateProcessingStatus();
 
       } catch (error) {
@@ -4967,7 +5508,7 @@
       }
     }
 
-    function displayKnowledgeAssets(assets) {
+    async function displayKnowledgeAssets(assets) {
       const listElement = document.getElementById('knowledgeAssetsList');
       if (!listElement) return;
 
@@ -4981,8 +5522,8 @@
         return;
       }
 
-      // Check if current user is admin (simple check based on token payload)
-      const currentUser = getCurrentUser();
+      // Check if current user is admin
+      const currentUser = await getCurrentUser();
       const isAdmin = currentUser && currentUser.is_admin;
 
       const assetsHtml = assets.map(asset => {
@@ -5270,14 +5811,18 @@
     }
 
     // Helper function to get current user info
-    function getCurrentUser() {
+    async function getCurrentUser() {
       try {
-        const token = localStorage.getItem('authToken');
+        const token = localStorage.getItem(tokenKey);
         if (!token) return null;
         
-        // Simple JWT decode (just for demo, in production use proper JWT library)
-        const payload = JSON.parse(atob(token.split('.')[1]));
-        return payload;
+        const response = await fetch('/api/auth/me', { 
+          headers: { Authorization: 'Bearer ' + token } 
+        });
+        if (response.ok) {
+          return await response.json();
+        }
+        return null;
       } catch (error) {
         console.error('Error getting current user:', error);
         return null;

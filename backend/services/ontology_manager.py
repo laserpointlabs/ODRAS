@@ -39,12 +39,19 @@ class OntologyManager:
         # Define ODRAS namespace
         self.odras_ns = Namespace("http://odras.system/ontology#")
         self.base_uri = "http://odras.system/ontology"
+        self.current_graph_uri = None
 
         # Initialize RDF graph for working copy
         self.graph = Graph()
         self.graph.bind("odras", self.odras_ns)
         self.graph.bind("owl", OWL)
         self.graph.bind("rdfs", RDFS)
+
+    def set_graph_context(self, graph_uri: str):
+        """Set the current graph context for operations."""
+        self.current_graph_uri = graph_uri
+        # Update base_uri to use the graph URI as the namespace
+        self.base_uri = graph_uri
 
     def get_current_ontology_json(self) -> Dict[str, Any]:
         """
@@ -758,11 +765,21 @@ class OntologyManager:
                 else:
                     insert_data.append(f"<{s}> <{p}> <{o}> .")
 
-            query = f"""
-            INSERT DATA {{
-                {' '.join(insert_data)}
-            }}
-            """
+            # Use current graph context if available
+            if self.current_graph_uri:
+                query = f"""
+                INSERT DATA {{
+                    GRAPH <{self.current_graph_uri}> {{
+                        {' '.join(insert_data)}
+                    }}
+                }}
+                """
+            else:
+                query = f"""
+                INSERT DATA {{
+                    {' '.join(insert_data)}
+                }}
+                """
 
             return self._execute_sparql_update(query)
 

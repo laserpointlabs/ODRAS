@@ -125,17 +125,22 @@ async def update_ontology(
 
 
 @router.post("/classes", response_model=OntologyResponse)
-async def add_class(class_data: OntologyClass, manager: OntologyManager = Depends(get_ontology_manager)):
+async def add_class(class_data: OntologyClass, graph: Optional[str] = None, manager: OntologyManager = Depends(get_ontology_manager)):
     """
     Add a new class to the ontology.
 
     Args:
         class_data: Class information
+        graph: Optional graph IRI to add class to specific ontology
 
     Returns:
         Operation result
     """
     try:
+        # Set the graph context if provided
+        if graph:
+            manager.set_graph_context(graph)
+        
         result = manager.add_class(class_data.dict())
 
         if result["success"]:

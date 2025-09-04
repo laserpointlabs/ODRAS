@@ -359,14 +359,20 @@ async def list_ontologies(project: Optional[str] = None):
 async def create_ontology(body: Dict, user=Depends(get_user)):
     """Create a new empty ontology as a named graph with owl:Ontology and rdfs:label.
 
-    Body: { project: string, name: string, label?: string }
+    Body: { project: string, name: string, label?: string, is_reference?: boolean }
     Returns: { graphIri, label }
     """
     project = (body.get("project") or "").strip()
     name = (body.get("name") or "").strip().strip("/")
     label = (body.get("label") or name or "New Ontology").strip()
+    is_reference = body.get("is_reference", False)
     if not project or not name:
         raise HTTPException(status_code=400, detail="project and name are required")
+    
+    # Only admins can create reference ontologies
+    if is_reference and not user.get("is_admin", False):
+        raise HTTPException(status_code=403, detail="Only admins can create reference ontologies")
+    
     graph_iri = f"http://odras.local/onto/{project}/{name}"
     turtle = f"""
 @prefix owl: <http://www.w3.org/2002/07/owl#> .
@@ -389,13 +395,23 @@ async def create_ontology(body: Dict, user=Depends(get_user)):
         if 200 <= resp.status_code < 300:
             # Register in ontologies_registry
             try:
-                db.add_ontology(project_id=project, graph_iri=graph_iri, label=label, role="base")
+                db.add_ontology(project_id=project, graph_iri=graph_iri, label=label, role="base", is_reference=is_reference)
             except Exception:
                 pass
             return {"graphIri": graph_iri, "label": label}
         raise HTTPException(status_code=500, detail=f"Fuseki returned {resp.status_code}: {resp.text}")
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Failed to create ontology: {str(e)}")
+
+
+@app.get("/api/ontologies/reference")
+async def list_reference_ontologies(user=Depends(get_user)):
+    """List all reference ontologies across all projects."""
+    try:
+        reference_ontologies = db.list_reference_ontologies()
+        return {"reference_ontologies": reference_ontologies}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Failed to list reference ontologies: {str(e)}")
 
 
 @app.delete("/api/ontologies")

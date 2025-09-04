@@ -164,13 +164,13 @@ class DatabaseService:
             self._return(conn)
 
     # Ontologies registry
-    def add_ontology(self, project_id: str, graph_iri: str, label: Optional[str], role: str = "base") -> Dict[str, Any]:
+    def add_ontology(self, project_id: str, graph_iri: str, label: Optional[str], role: str = "base", is_reference: bool = False) -> Dict[str, Any]:
         conn = self._conn()
         try:
             with conn.cursor(cursor_factory=RealDictCursor) as cur:
                 cur.execute(
-                    "INSERT INTO public.ontologies_registry (project_id, graph_iri, label, role) VALUES (%s, %s, %s, %s) RETURNING id, project_id, graph_iri, label, role, created_at, updated_at",
-                    (project_id, graph_iri, label, role),
+                    "INSERT INTO public.ontologies_registry (project_id, graph_iri, label, role, is_reference) VALUES (%s, %s, %s, %s, %s) RETURNING id, project_id, graph_iri, label, role, is_reference, created_at, updated_at",
+                    (project_id, graph_iri, label, role, is_reference),
                 )
                 row = cur.fetchone()
                 conn.commit()
@@ -192,8 +192,20 @@ class DatabaseService:
         try:
             with conn.cursor(cursor_factory=RealDictCursor) as cur:
                 cur.execute(
-                    "SELECT graph_iri, label, role FROM public.ontologies_registry WHERE project_id=%s ORDER BY created_at DESC",
+                    "SELECT graph_iri, label, role, is_reference FROM public.ontologies_registry WHERE project_id=%s ORDER BY created_at DESC",
                     (project_id,),
+                )
+                return [dict(r) for r in cur.fetchall()]
+        finally:
+            self._return(conn)
+
+    def list_reference_ontologies(self) -> List[Dict[str, Any]]:
+        """List all reference ontologies across all projects."""
+        conn = self._conn()
+        try:
+            with conn.cursor(cursor_factory=RealDictCursor) as cur:
+                cur.execute(
+                    "SELECT o.graph_iri, o.label, o.role, p.name as project_name FROM public.ontologies_registry o JOIN public.projects p ON o.project_id = p.project_id WHERE o.is_reference = TRUE ORDER BY o.created_at DESC"
                 )
                 return [dict(r) for r in cur.fetchall()]
         finally:
