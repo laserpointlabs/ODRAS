@@ -1,0 +1,154 @@
+{
+  "nodes": [
+    {
+      "data": {
+        "id": "Class1",
+        "label": "Constraint",
+        "type": "class"
+      },
+      "position": {
+        "x": 725.0042176218653,
+        "y": 152.48902371655538
+      }
+    },
+    {
+      "data": {
+        "id": "Class2",
+        "label": "Requirement",
+        "type": "class"
+      },
+      "position": {
+        "x": 439.04417496605504,
+        "y": 151.9854234924941
+      }
+    },
+    {
+      "data": {
+        "id": "Class3",
+        "label": "Component",
+        "type": "class"
+      },
+      "position": {
+        "x": 438.1132765651263,
+        "y": 336.4706656264405
+      }
+    },
+    {
+      "data": {
+        "id": "Class4",
+        "label": "Process",
+        "type": "class"
+      },
+      "position": {
+        "x": 616.642675174385,
+        "y": 489.04956669155786
+      }
+    },
+    {
+      "data": {
+        "id": "Class5",
+        "label": "Function",
+        "type": "class"
+      },
+      "position": {
+        "x": 260.1925575563085,
+        "y": 492.0648191382069
+      }
+    },
+    {
+      "data": {
+        "id": "Note1755708664995",
+        "label": "This is a note that is attached to the requirement.",
+        "type": "note",
+        "attrs": {}
+      },
+      "position": {
+        "x": 191.28386569606414,
+        "y": 67.12095355765895
+      }
+    },
+    {
+      "data": {
+        "id": "Class6",
+        "label": "Interface",
+        "type": "class"
+      },
+      "position": {
+        "x": 724.0776692073008,
+        "y": 335.67795254630846
+      }
+    }
+  ],
+  "edges": [
+    {
+      "data": {
+        "id": "e1755706954416",
+        "source": "Class4",
+        "target": "Class5",
+        "predicate": "realizes",
+        "type": "objectProperty",
+        "attrs": {}
+      }
+    },
+    {
+      "data": {
+        "id": "e1755706950997",
+        "source": "Class3",
+        "target": "Class4",
+        "predicate": "performs",
+        "type": "objectProperty",
+        "attrs": {}
+      }
+    },
+    {
+      "data": {
+        "id": "e1755708669642",
+        "source": "Note1755708664995",
+        "target": "Class2",
+        "predicate": "note_for",
+        "type": "objectProperty",
+        "attrs": {}
+      }
+    },
+    {
+      "data": {
+        "id": "e1755706959011",
+        "source": "Class5",
+        "target": "Class3",
+        "predicate": "specifically_depends_upon",
+        "type": "objectProperty",
+        "attrs": {}
+      }
+    },
+    {
+      "data": {
+        "id": "e1755706771670",
+        "source": "Class2",
+        "target": "Class1",
+        "predicate": "has_constraint",
+        "type": "objectProperty",
+        "attrs": {}
+      }
+    },
+    {
+      "data": {
+        "id": "e1755706831510",
+        "source": "Class2",
+        "target": "Class3",
+        "predicate": "specifies",
+        "type": "objectProperty",
+        "attrs": {}
+      }
+    },
+    {
+      "data": {
+        "id": "e1756992429910",
+        "source": "Class3",
+        "target": "Class6",
+        "predicate": "presents",
+        "type": "objectProperty",
+        "attrs": {}
+      }
+    }
+  ]
+}

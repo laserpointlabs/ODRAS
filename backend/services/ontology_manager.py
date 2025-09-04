@@ -700,16 +700,44 @@ class OntologyManager:
     def _upload_rdf_to_fuseki(self, turtle_content: str) -> Dict[str, Any]:
         """Upload RDF content to Fuseki."""
         try:
-            sparql = SPARQLWrapper(self.fuseki_update_url)
-            sparql.setMethod(POST)
+            # Parse the turtle content into an RDF graph
+            graph = Graph()
+            graph.parse(data=turtle_content, format="turtle")
+            
+            # Convert to SPARQL INSERT DATA format
+            insert_data = []
+            for s, p, o in graph:
+                if isinstance(o, Literal):
+                    # Handle literals with proper escaping
+                    if o.datatype:
+                        insert_data.append(f'<{s}> <{p}> "{o}"^^<{o.datatype}> .')
+                    elif o.language:
+                        insert_data.append(f'<{s}> <{p}> "{o}"@{o.language} .')
+                    else:
+                        insert_data.append(f'<{s}> <{p}> "{o}" .')
+                else:
+                    insert_data.append(f"<{s}> <{p}> <{o}> .")
 
-            # Insert data using SPARQL UPDATE
+            if not insert_data:
+                return {"success": True, "message": "No data to insert"}
+
+            # Build SPARQL query with proper prefixes
+            prefixes = []
+            for prefix, namespace in graph.namespaces():
+                prefixes.append(f"PREFIX {prefix}: <{namespace}>")
+            
+            prefixes_block = "\n".join(prefixes)
+            data_block = "\n                ".join(insert_data)
+            
             query = f"""
+            {prefixes_block}
             INSERT DATA {{
-                {turtle_content}
+                {data_block}
             }}
             """
 
+            sparql = SPARQLWrapper(self.fuseki_update_url)
+            sparql.setMethod(POST)
             sparql.setQuery(query)
             sparql.query()
 

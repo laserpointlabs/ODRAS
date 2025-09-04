@@ -121,27 +121,43 @@ class PersistenceLayer:
             # Fall through to SPARQL Update fallback
             pass
 
-        # SPARQL Update fallback: convert @prefix -> PREFIX and insert TTL body
+        # SPARQL Update fallback: properly convert Turtle to SPARQL INSERT DATA
         try:
-            prefix_lines = []
-            body_lines = []
-            for line in ttl.splitlines():
-                stripped = line.strip()
-                if stripped.startswith("@prefix"):
-                    # Example: @prefix ex: <http://example/> .
-                    # Convert to: PREFIX ex: <http://example/>
-                    try:
-                        # Remove trailing '.' and replace '@prefix' with 'PREFIX'
-                        without_dot = stripped[:-1] if stripped.endswith(".") else stripped
-                        prefix_lines.append(without_dot.replace("@prefix", "PREFIX"))
-                    except Exception:
-                        # If parsing fails, just skip; SPARQL may still work if QNames are not used
-                        pass
+            # Parse the turtle content into an RDF graph
+            graph = Graph()
+            graph.parse(data=ttl, format="turtle")
+            
+            # Convert to SPARQL INSERT DATA format
+            insert_data = []
+            for s, p, o in graph:
+                if isinstance(o, Literal):
+                    # Handle literals with proper escaping
+                    if o.datatype:
+                        insert_data.append(f'<{s}> <{p}> "{o}"^^<{o.datatype}> .')
+                    elif o.language:
+                        insert_data.append(f'<{s}> <{p}> "{o}"@{o.language} .')
+                    else:
+                        insert_data.append(f'<{s}> <{p}> "{o}" .')
                 else:
-                    body_lines.append(line)
+                    insert_data.append(f"<{s}> <{p}> <{o}> .")
 
-            prefixes_block = "\n".join(prefix_lines)
-            body_block = "\n".join(body_lines)
+            if not insert_data:
+                return  # No data to insert
+
+            # Build SPARQL query with proper prefixes
+            prefixes = []
+            for prefix, namespace in graph.namespaces():
+                prefixes.append(f"PREFIX {prefix}: <{namespace}>")
+            
+            prefixes_block = "\n".join(prefixes)
+            data_block = "\n                ".join(insert_data)
+            
+            query = f"""
+            {prefixes_block}
+            INSERT DATA {{
+                {data_block}
+            }}
+            """
 
             sparql = SPARQLWrapper(base + "/update")
             sparql.setMethod(POST)
@@ -152,12 +168,6 @@ class PersistenceLayer:
                 except Exception:
                     pass
 
-            query = f"""
-                {prefixes_block}
-                INSERT DATA {{
-                {body_block}
-                }}
-            """
             sparql.setQuery(query)
             sparql.query()
         except Exception as e:
