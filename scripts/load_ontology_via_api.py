@@ -10,7 +10,7 @@ from pathlib import Path
 
 # Configuration
 BACKEND_BASE_URL = "http://localhost:8000"
-PROJECT_ID = "1f5d5fe5-4ef0-42c7-8361-2afd91bb3223"
+PROJECT_ID = "6b705b95-3499-46a5-bb0e-d8559618732b"
 
 def create_ontology_iri(ontology_name):
     """Create the full IRI for an ontology."""
@@ -88,13 +88,13 @@ def main():
     # Define the ontologies to load
     ontologies = [
         {
-            'name': 'bseo-v1',
-            'label': 'BSEO_V1',
+            'name': 'my-ontology',
+            'label': 'My Ontology',
             'file': 'data/beso_v1.json'
         },
         {
-            'name': 'bseo-mrs-v1', 
-            'label': 'BSEO_RS_V1',
+            'name': 'my-onto2', 
+            'label': 'My Ontology 2',
             'file': 'data/bseo_rs_v1.json'
         }
     ]
