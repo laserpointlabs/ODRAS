@@ -544,6 +544,14 @@ class OntologyManager:
 
         # Convert entities to structured JSON
         for uri, props in entities.items():
+            # Skip blank nodes and non-URI entities
+            if uri.startswith('b') and uri[1:].isdigit():
+                continue
+            if uri.startswith('_:'):
+                continue
+            if not uri.startswith('http://') and not uri.startswith('https://'):
+                continue
+                
             entity_name = extract_name(uri)
             rdf_type = str(RDF.type)
             rdfs_label = str(RDFS.label)

@@ -2956,6 +2956,14 @@
                         headers: { Authorization: 'Bearer ' + token } 
                       });
                       if (res.ok) {
+                        // Clear local storage for this ontology
+                        try {
+                          localStorage.removeItem(storageKeyForGraph(o.graphIri));
+                          console.log('🗑️ Cleared local storage for deleted ontology:', o.graphIri);
+                        } catch (e) {
+                          console.warn('Failed to clear local storage:', e);
+                        }
+                        
                         await renderTree(project);
                         if (activeOntologyIri === o.graphIri) { 
                           activeOntologyIri = null; 

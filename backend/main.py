@@ -593,9 +593,20 @@ async def delete_ontology(graph: str, project: Optional[str] = None, user=Depend
             raise HTTPException(status_code=403, detail="Not a member of project")
         s = Settings()
         update_url = f"{s.fuseki_url.rstrip('/')}/update"
+        
+        # Delete the main ontology graph
         query = f"DROP GRAPH <{graph}>"
         headers = {"Content-Type": "application/sparql-update"}
         r = requests.post(update_url, data=query.encode("utf-8"), headers=headers, timeout=20)
+        
+        # Also delete the associated layout graph if it exists
+        layout_graph = f"{graph}#layout"
+        layout_query = f"DROP GRAPH <{layout_graph}>"
+        try:
+            requests.post(update_url, data=layout_query.encode("utf-8"), headers=headers, timeout=20)
+        except Exception:
+            pass  # Layout graph might not exist, that's okay
+        
         if 200 <= r.status_code < 300:
             try:
                 db.delete_ontology(graph_iri=graph)
