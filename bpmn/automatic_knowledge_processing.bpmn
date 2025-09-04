@@ -52,6 +52,16 @@
         Enable semantic similarity search and retrieval.
       </bpmn:documentation>
       <bpmn:incoming>Flow_ToVectorStorage</bpmn:incoming>
+      <bpmn:outgoing>Flow_ToActivation</bpmn:outgoing>
+    </bpmn:serviceTask>
+    
+    <bpmn:serviceTask id="Task_ActivateKnowledgeAsset" name="Activate Knowledge Asset" camunda:type="external" camunda:topic="activate-knowledge-asset">
+      <bpmn:documentation>
+        Update knowledge asset status from 'processing' to 'active'.
+        Makes the asset visible in the UI and available for RAG queries.
+        Final step of the knowledge processing pipeline.
+      </bpmn:documentation>
+      <bpmn:incoming>Flow_ToActivation</bpmn:incoming>
       <bpmn:outgoing>Flow_ToCompletion</bpmn:outgoing>
     </bpmn:serviceTask>
     
@@ -65,7 +75,8 @@
     <bpmn:sequenceFlow id="Flow_ToEmbeddings" sourceRef="Task_ChunkDocument" targetRef="Task_GenerateEmbeddings" />
     <bpmn:sequenceFlow id="Flow_ToKnowledgeAsset" sourceRef="Task_GenerateEmbeddings" targetRef="Task_CreateKnowledgeAsset" />
     <bpmn:sequenceFlow id="Flow_ToVectorStorage" sourceRef="Task_CreateKnowledgeAsset" targetRef="Task_StoreVectorChunks" />
-    <bpmn:sequenceFlow id="Flow_ToCompletion" sourceRef="Task_StoreVectorChunks" targetRef="EndEvent_KnowledgeReady" />
+    <bpmn:sequenceFlow id="Flow_ToActivation" sourceRef="Task_StoreVectorChunks" targetRef="Task_ActivateKnowledgeAsset" />
+    <bpmn:sequenceFlow id="Flow_ToCompletion" sourceRef="Task_ActivateKnowledgeAsset" targetRef="EndEvent_KnowledgeReady" />
   </bpmn:process>
   
   <!-- BPMN Diagram Information -->
@@ -104,10 +115,15 @@
         <bpmndi:BPMNLabel />
       </bpmndi:BPMNShape>
       
+      <bpmndi:BPMNShape id="Task_ActivateKnowledgeAsset_di" bpmnElement="Task_ActivateKnowledgeAsset">
+        <dc:Bounds x="1040" y="80" width="100" height="80" />
+        <bpmndi:BPMNLabel />
+      </bpmndi:BPMNShape>
+      
       <bpmndi:BPMNShape id="EndEvent_KnowledgeReady_di" bpmnElement="EndEvent_KnowledgeReady">
-        <dc:Bounds x="1042" y="102" width="36" height="36" />
+        <dc:Bounds x="1202" y="102" width="36" height="36" />
         <bpmndi:BPMNLabel>
-          <dc:Bounds x="1026" y="145" width="68" height="27" />
+          <dc:Bounds x="1186" y="145" width="68" height="27" />
         </bpmndi:BPMNLabel>
       </bpmndi:BPMNShape>
       
@@ -137,9 +153,14 @@
         <di:waypoint x="880" y="120" />
       </bpmndi:BPMNEdge>
       
-      <bpmndi:BPMNEdge id="Flow_ToCompletion_di" bpmnElement="Flow_ToCompletion">
+      <bpmndi:BPMNEdge id="Flow_ToActivation_di" bpmnElement="Flow_ToActivation">
         <di:waypoint x="980" y="120" />
-        <di:waypoint x="1042" y="120" />
+        <di:waypoint x="1040" y="120" />
+      </bpmndi:BPMNEdge>
+      
+      <bpmndi:BPMNEdge id="Flow_ToCompletion_di" bpmnElement="Flow_ToCompletion">
+        <di:waypoint x="1140" y="120" />
+        <di:waypoint x="1202" y="120" />
       </bpmndi:BPMNEdge>
     </bpmndi:BPMNPlane>
   </bpmndi:BPMNDiagram>

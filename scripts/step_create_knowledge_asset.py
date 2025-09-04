@@ -23,7 +23,7 @@ from backend.services.knowledge_transformation import get_knowledge_transformati
 from backend.services.file_storage import get_file_storage_service
 from backend.services.config import Settings
 
-async def create_knowledge_asset_record(file_id: str, project_id: str, document_type: str = "text"):
+async def create_knowledge_asset_record(file_id: str, project_id: str, document_type: str = "text", filename: str = "unknown_file"):
     """Create knowledge asset record in database."""
     try:
         settings = Settings()
@@ -34,13 +34,9 @@ async def create_knowledge_asset_record(file_id: str, project_id: str, document_
         
         print(f"📋 Step 4: Creating knowledge asset for file {file_id}")
         
-        # Get file metadata
-        file_data = await file_storage.retrieve_file(file_id)
-        if not file_data:
-            raise FileNotFoundError(f"File {file_id} not found")
-        
-        filename = file_data.get('filename', 'unknown_file')
+        # Use filename parameter passed from BPMN workflow
         title = filename.rsplit('.', 1)[0] if '.' in filename else filename  # Remove extension
+        print(f"📄 Using filename from BPMN: {filename} → title: {title}")
         
         # Read chunks info from previous step
         embeddings_file = f"/tmp/odras_embeddings_{file_id}.json"
@@ -54,6 +50,8 @@ async def create_knowledge_asset_record(file_id: str, project_id: str, document_
             total_content_length = sum(len(chunk.get('content', '')) for chunk in embeddings_data)
         
         # Create knowledge asset using service
+        print(f"📊 Creating asset with: chunks={chunk_count}, length={total_content_length}")
+        
         asset_id = await knowledge_service.create_knowledge_asset(
             source_file_id=file_id,
             project_id=project_id,
@@ -124,15 +122,16 @@ async def create_knowledge_asset_record(file_id: str, project_id: str, document_
 def main():
     """Main function for command line usage."""
     if len(sys.argv) < 3:
-        print("Usage: python3 step_create_knowledge_asset.py <file_id> <project_id> [document_type]")
+        print("Usage: python3 step_create_knowledge_asset.py <file_id> <project_id> [document_type] [filename]")
         sys.exit(1)
     
     file_id = sys.argv[1]
     project_id = sys.argv[2]
     document_type = sys.argv[3] if len(sys.argv) > 3 else "text"
+    filename = sys.argv[4] if len(sys.argv) > 4 else "unknown_file"
     
     # Run async asset creation
-    asyncio.run(create_knowledge_asset_record(file_id, project_id, document_type))
+    asyncio.run(create_knowledge_asset_record(file_id, project_id, document_type, filename))
 
 if __name__ == "__main__":
     main()

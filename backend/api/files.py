@@ -238,15 +238,31 @@ async def upload_file(
                         'extract_relationships': True
                     }
                     
-                    # Use the reliable transformation service (proven working)
-                    transformation_service = get_knowledge_transformation_service()
-                    knowledge_asset_id = await transformation_service.transform_file_to_knowledge(
-                        file_id=file_id,
-                        project_id=project_id,
-                        processing_options=processing_options
-                    )
+                    # START BPMN WORKFLOW (use what we built!)
+                    import httpx
                     
-                    logger.info(f"✅ Knowledge asset created: {knowledge_asset_id} for file {file_id}")
+                    camunda_url = "http://localhost:8080/engine-rest"
+                    start_url = f"{camunda_url}/process-definition/key/automatic_knowledge_processing/start"
+                    
+                    payload = {
+                        "variables": {
+                            "file_id": {"value": file_id, "type": "String"},
+                            "project_id": {"value": project_id, "type": "String"}, 
+                            "filename": {"value": file.filename, "type": "String"},
+                            "document_type": {"value": final_doc_type, "type": "String"},
+                            "embedding_model": {"value": embedding_model or 'all-MiniLM-L6-v2', "type": "String"},
+                            "chunking_strategy": {"value": final_chunking, "type": "String"},
+                            "chunk_size": {"value": 512, "type": "Integer"}
+                        }
+                    }
+                    
+                    async with httpx.AsyncClient(timeout=10) as client:  # Shorter timeout
+                        response = await client.post(start_url, json=payload)
+                        response.raise_for_status()
+                        result = response.json()
+                        process_instance_id = result.get("id")
+                    
+                    logger.info(f"🔄 Started BPMN knowledge processing workflow: {process_instance_id} for file {file_id}")
                     
                 except Exception as e:
                     logger.error(f"❌ Knowledge processing failed for file {file_id}: {str(e)}")
@@ -254,10 +270,10 @@ async def upload_file(
                     pass
             
             # Build response
-            if knowledge_asset_id:
-                response_message = f"File uploaded and automatically processed as knowledge asset {knowledge_asset_id}"
+            if process_instance_id:
+                response_message = f"File uploaded and BPMN knowledge processing started (workflow: {process_instance_id})"
             else:
-                response_message = "File uploaded successfully (automatic knowledge processing failed - check logs)"
+                response_message = "File uploaded successfully (BPMN knowledge processing failed to start - check logs)"
             
             return FileUploadResponse(
                 success=True,
@@ -265,7 +281,7 @@ async def upload_file(
                 filename=metadata["filename"],
                 size=metadata["size"],
                 content_type=metadata["content_type"],
-                knowledge_asset_id=knowledge_asset_id,  # Include knowledge asset ID
+                knowledge_asset_id=process_instance_id,  # Include BPMN process instance ID
                 message=response_message,
             )
         else:

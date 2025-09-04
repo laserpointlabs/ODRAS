@@ -33,7 +33,8 @@ class SimpleExternalWorker:
             'chunk-document': 'step_chunk_document.py', 
             'generate-embeddings': 'step_generate_embeddings.py',
             'create-knowledge-asset': 'step_create_knowledge_asset.py',
-            'store-vector-chunks': 'step_store_vector_chunks.py'
+            'store-vector-chunks': 'step_store_vector_chunks.py',
+            'activate-knowledge-asset': 'step_activate_knowledge_asset.py'
         }
         
         print(f"🔧 Simple External Worker initialized: {self.worker_id}")
@@ -145,10 +146,14 @@ class SimpleExternalWorker:
                 cmd = ['python3', str(script_path), file_id, embedding_model]
             elif topic == 'create-knowledge-asset':
                 document_type = variables.get('document_type', 'text')
-                cmd = ['python3', str(script_path), file_id, project_id, document_type]
+                filename = variables.get('filename', 'unknown_file')
+                cmd = ['python3', str(script_path), file_id, project_id, document_type, filename]
             elif topic == 'store-vector-chunks':
                 knowledge_asset_id = variables.get('knowledge_asset_id', 'auto')
                 cmd = ['python3', str(script_path), file_id, knowledge_asset_id]
+            elif topic == 'activate-knowledge-asset':
+                knowledge_asset_id = variables.get('knowledge_asset_id', 'auto')
+                cmd = ['python3', str(script_path), knowledge_asset_id]
             else:
                 cmd = ['python3', str(script_path), file_id, project_id]
             

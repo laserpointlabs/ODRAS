@@ -89,6 +89,9 @@ async def store_vector_chunks_in_qdrant(file_id: str, knowledge_asset_id: str):
         stored_count = len(point_ids)
         print(f"📊 Batch storage completed: {stored_count} chunks stored")
         
+        # Note: Knowledge asset status update moved to separate step
+        print(f"✅ Vector storage completed - knowledge asset ready for activation")
+        
         # Clean up temporary files
         temp_files = [
             f"/tmp/odras_text_{file_id}.txt",
@@ -111,7 +114,8 @@ async def store_vector_chunks_in_qdrant(file_id: str, knowledge_asset_id: str):
             "project_id": project_id,
             "step": "vector_storage",
             "step_status": "completed",
-            "cleanup_completed": True
+            "cleanup_completed": True,
+            "asset_status_updated": "active"  # Indicate final status update
         }
         
         print(f"✅ Vector storage completed: {stored_count} chunks stored")
