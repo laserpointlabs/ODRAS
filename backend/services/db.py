@@ -211,4 +211,19 @@ class DatabaseService:
         finally:
             self._return(conn)
 
+    def update_ontology_reference_status(self, graph_iri: str, is_reference: bool) -> bool:
+        """Update the reference status of an ontology."""
+        conn = self._conn()
+        try:
+            with conn.cursor() as cur:
+                cur.execute(
+                    "UPDATE public.ontologies_registry SET is_reference = %s, updated_at = NOW() WHERE graph_iri = %s RETURNING id",
+                    (is_reference, graph_iri)
+                )
+                result = cur.fetchone()
+                conn.commit()
+                return result is not None
+        finally:
+            self._return(conn)
+
 

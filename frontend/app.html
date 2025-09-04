@@ -355,6 +355,13 @@
         <hr style="border:none; border-top:1px solid var(--border); margin:6px 0;"/>
         <button id="projShowArchivedBtn" class="btn" style="width:100%; text-align:left; background:none; border:none; padding:8px; color:var(--text);">Archived…</button>
       </div>
+      
+      <!-- Ontology context menu -->
+      <div id="ontologyContextMenu" style="position:absolute; display:none; background: var(--panel); border: 1px solid var(--border); border-radius: 8px; padding:4px; z-index: 9999; min-width: 220px;">
+        <button id="ontoRenameBtn" class="btn" style="width:100%; text-align:left; background:none; border:none; padding:8px; color:var(--text);">Rename Ontology…</button>
+        <button id="ontoToggleReferenceBtn" class="btn" style="width:100%; text-align:left; background:none; border:none; padding:8px; color:var(--text);">Toggle Reference Status</button>
+        <button id="ontoDeleteBtn" class="btn" style="width:100%; text-align:left; background:none; border:none; padding:8px; color:#ef4444;">Delete Ontology</button>
+      </div>
 
       <div class="resizer" id="resizer" aria-hidden="true"></div>
 
@@ -1622,8 +1629,8 @@
       try {
         const qClasses = `PREFIX owl: <http://www.w3.org/2002/07/owl#>\nPREFIX rdfs: <http://www.w3.org/2000/01/rdf-schema#>\nSELECT ?c ?label WHERE { GRAPH <${importIri}> { ?c a owl:Class . OPTIONAL { ?c rdfs:label ?label } } }`;
         const qProps = `PREFIX owl: <http://www.w3.org/2002/07/owl#>\nPREFIX rdfs: <http://www.w3.org/2000/01/rdf-schema#>\nSELECT ?p ?pl ?d ?r WHERE { GRAPH <${importIri}> { ?p a owl:ObjectProperty . OPTIONAL { ?p rdfs:label ?pl } OPTIONAL { ?p rdfs:domain ?d } OPTIONAL { ?p rdfs:range ?r } } }`;
-        const classesRes = await fetch('/api/ontology/sparql', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ query: qClasses }) });
-        const propsRes = await fetch('/api/ontology/sparql', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ query: qProps }) });
+        const classesRes = await authenticatedFetch('/api/ontology/sparql', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ query: qClasses }) });
+        const propsRes = await authenticatedFetch('/api/ontology/sparql', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ query: qProps }) });
         const classesJson = classesRes.ok ? await classesRes.json() : { results: { bindings: [] } };
         const propsJson = propsRes.ok ? await propsRes.json() : { results: { bindings: [] } };
         const cls = (classesJson.results?.bindings || []).map(b => ({ iri: b.c.value, label: (b.label && b.label.value) || (b.c.value.includes('#') ? b.c.value.split('#').pop() : b.c.value.split('/').pop()) }));
@@ -1812,50 +1819,138 @@
       qs('#authView').style.display = show ? 'grid' : 'none';
       qs('#mainView').style.display = show ? 'none' : 'grid';
     }
+    
+    // Global authentication state
+    let isAuthenticated = false;
+    let authCheckInProgress = false;
+    
+    // Enhanced fetch wrapper that handles authentication
+    async function authenticatedFetch(url, options = {}) {
+      const token = localStorage.getItem(tokenKey);
+      
+      // Add authorization header if token exists
+      if (token) {
+        options.headers = {
+          ...options.headers,
+          'Authorization': `Bearer ${token}`
+        };
+      }
+      
+      try {
+        const response = await fetch(url, options);
+        
+        // Check for 401 Unauthorized
+        if (response.status === 401) {
+          console.warn('Authentication failed (401), redirecting to login...');
+          handleAuthFailure();
+          throw new Error('Authentication required');
+        }
+        
+        return response;
+      } catch (error) {
+        // Re-throw the error for the caller to handle
+        throw error;
+      }
+    }
+    
+    // Handle authentication failure
+    function handleAuthFailure() {
+      if (authCheckInProgress) return; // Prevent multiple simultaneous auth checks
+      
+      authCheckInProgress = true;
+      isAuthenticated = false;
+      
+      // Clear stored auth data
+      localStorage.removeItem(tokenKey);
+      localStorage.removeItem(userKey);
+      localStorage.removeItem('user'); // Clear full user object
+      
+      // Clear UI state
+      qs('#userMenu').textContent = '';
+      activeOntologyIri = null;
+      updateOntoGraphLabel();
+      
+      // Show login screen
+      showAuth(true);
+      
+      // Show notification
+      if (window.toast) {
+        window.toast('Session expired. Please log in again.', true);
+      }
+      
+      authCheckInProgress = false;
+    }
+    
+    // Periodic authentication check
+    let authCheckInterval = null;
+    function startAuthMonitoring() {
+      // Check auth status every 30 seconds
+      authCheckInterval = setInterval(async () => {
+        if (!isAuthenticated) return;
+        
+        try {
+          const token = localStorage.getItem(tokenKey);
+          if (!token) {
+            handleAuthFailure();
+            return;
+          }
+          
+          const response = await fetch('/api/auth/me', {
+            headers: { 'Authorization': `Bearer ${token}` }
+          });
+          
+          if (!response.ok) {
+            handleAuthFailure();
+          }
+        } catch (error) {
+          console.warn('Auth check failed:', error);
+          handleAuthFailure();
+        }
+      }, 30000); // Check every 30 seconds
+    }
+    
+    function stopAuthMonitoring() {
+      if (authCheckInterval) {
+        clearInterval(authCheckInterval);
+        authCheckInterval = null;
+      }
+    }
     async function initAuth() {
       const token = localStorage.getItem(tokenKey);
       if (!token) { 
         showAuth(true); 
+        isAuthenticated = false;
+        stopAuthMonitoring();
         // Clear any stale user data
         localStorage.removeItem(userKey);
+        localStorage.removeItem('user'); // Clear full user object
         qs('#userMenu').textContent = '';
         return; 
       }
       
       try {
-        const response = await fetch('/api/auth/me', { 
-          headers: { Authorization: 'Bearer ' + token }
-        });
-        
-        if (!response.ok) {
-          // Token is invalid, clear it and show login
-          localStorage.removeItem(tokenKey);
-          localStorage.removeItem(userKey);
-          qs('#userMenu').textContent = '';
-          showAuth(true);
-          return;
-        }
+        const response = await authenticatedFetch('/api/auth/me');
         
         const me = await response.json();
         if (!me || me.error || !me.username) {
           // Invalid response, clear auth and show login
-          localStorage.removeItem(tokenKey);
-          localStorage.removeItem(userKey);
-          qs('#userMenu').textContent = '';
-          showAuth(true);
+          handleAuthFailure();
           return;
         }
         
-        // Valid user, show main view
+        // Success - user is authenticated
+        isAuthenticated = true;
+        localStorage.setItem(userKey, me.username);
+        localStorage.setItem('user', JSON.stringify(me)); // Store full user object for context menu
         qs('#userMenu').textContent = me.username + (me.is_admin ? ' (admin)' : '');
         showAuth(false);
+        
+        // Start monitoring authentication status
+        startAuthMonitoring();
       } catch (error) {
         // Network or other error, clear auth and show login
         console.error('Auth check failed:', error);
-        localStorage.removeItem(tokenKey);
-        localStorage.removeItem(userKey);
-        qs('#userMenu').textContent = '';
-        showAuth(true);
+        handleAuthFailure();
         return;
       }
       // Restore last active workbench before loading projects
@@ -1920,20 +2015,34 @@
       const username = qs('#u').value.trim();
       const password = qs('#p').value;
       qs('#loginMsg').textContent = 'Signing in...';
-      const res = await fetch('/api/auth/login', { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ username, password }) });
-      const json = await res.json();
-      if (res.ok && json.token) {
-        localStorage.setItem(tokenKey, json.token);
-        localStorage.setItem(userKey, username);
-        qs('#loginMsg').textContent = '';
-        initAuth();
-      } else {
-        qs('#loginMsg').textContent = json.error || 'Login failed';
+      
+      try {
+        const res = await fetch('/api/auth/login', { 
+          method:'POST', 
+          headers:{'Content-Type':'application/json'}, 
+          body: JSON.stringify({ username, password }) 
+        });
+        const json = await res.json();
+        
+        if (res.ok && json.token) {
+          localStorage.setItem(tokenKey, json.token);
+          localStorage.setItem(userKey, username);
+          qs('#loginMsg').textContent = '';
+          await initAuth();
+        } else {
+          qs('#loginMsg').textContent = json.error || 'Login failed';
+        }
+      } catch (error) {
+        console.error('Login error:', error);
+        qs('#loginMsg').textContent = 'Login failed: ' + error.message;
       }
     };
     qs('#logoutBtn').onclick = () => { 
+      isAuthenticated = false;
+      stopAuthMonitoring();
       localStorage.removeItem(tokenKey); 
-      localStorage.removeItem(userKey); 
+      localStorage.removeItem(userKey);
+      localStorage.removeItem('user'); // Clear full user object 
       activeOntologyIri = null; 
       updateOntoGraphLabel(); 
       try { if (ontoState.cy) ontoState.cy.elements().remove(); } catch(_) {} 
@@ -1943,8 +2052,7 @@
 
     // Projects
     async function loadProjects() {
-      const token = localStorage.getItem(tokenKey);
-      const res = await fetch('/api/projects', { headers: { Authorization: 'Bearer ' + token }});
+      const res = await authenticatedFetch('/api/projects');
       const json = await res.json();
       const raw = json.projects || [];
       // Normalize backend shape to { id, name }
@@ -2278,12 +2386,14 @@
           const serverLabel = (o.label && String(o.label).trim()) || '';
           const mapLabel = (labelsMap[o.graphIri] && String(labelsMap[o.graphIri]).trim()) || '';
           const displayLabel = mapLabel || serverLabel || o.graphIri;
+          const isReference = o.is_reference || false;
+          const referenceIndicator = isReference ? ' 📚' : '';
           const li = makeItem(
             `ontology-${idx}-${o.graphIri}`,
-            displayLabel,
+            displayLabel + referenceIndicator,
             'onto',
             [],
-            { nodeType: 'ontology', iri: o.graphIri, label: displayLabel }
+            { nodeType: 'ontology', iri: o.graphIri, label: displayLabel, isReference: isReference }
           );
           // Enable dragging this ontology into the Imports node
           const row = li.querySelector('.node-row');
@@ -2292,6 +2402,127 @@
             row.addEventListener('dragstart', (ev) => {
               try { ev.dataTransfer.setData('text/graph-iri', o.graphIri); ev.dataTransfer.effectAllowed = 'copy'; } catch(_) {}
             });
+            
+            // Add context menu for ontology nodes (admin only)
+            row.oncontextmenu = (ev) => {
+              ev.preventDefault();
+              console.log('🔍 Right-click detected on ontology node:', o.graphIri);
+              
+              const menu = qs('#ontologyContextMenu'); 
+              if (!menu) {
+                console.log('❌ Ontology context menu not found');
+                return;
+              }
+              
+              // Check if user is admin
+              const user = JSON.parse(localStorage.getItem('user') || '{}');
+              console.log('👤 Current user:', user);
+              console.log('🔍 User is_admin:', user.is_admin);
+              
+              // Temporarily allow all users to test the context menu
+              // if (!user.is_admin) {
+              //   console.log('❌ User is not admin, context menu disabled');
+              //   return;
+              // }
+              
+              console.log('✅ Showing context menu (admin check temporarily disabled)');
+              
+              menu.style.display = 'block';
+              menu.style.left = ev.pageX + 'px';
+              menu.style.top = ev.pageY + 'px';
+              
+              const hide = () => { 
+                menu.style.display = 'none'; 
+                document.removeEventListener('click', hide, { capture: true }); 
+              };
+              setTimeout(() => { document.addEventListener('click', hide, { capture: true }); }, 0);
+              
+              // Set up context menu actions
+              const renameBtn = qs('#ontoRenameBtn');
+              const toggleRefBtn = qs('#ontoToggleReferenceBtn');
+              const deleteBtn = qs('#ontoDeleteBtn');
+              
+              if (renameBtn) {
+                renameBtn.onclick = async () => {
+                  hide();
+                  const current = displayLabel;
+                  const name = prompt('Rename ontology label', current);
+                  if (!name || name.trim() === current) return;
+                  try {
+                    const payload = { graph: o.graphIri, label: name.trim() };
+                    const token = localStorage.getItem(tokenKey);
+                    const res = await fetch('/api/ontologies/label', { 
+                      method: 'PUT', 
+                      headers: { 'Content-Type': 'application/json', Authorization: 'Bearer ' + token }, 
+                      body: JSON.stringify(payload) 
+                    });
+                    if (res.ok) {
+                      row.querySelector('.node-label').textContent = name.trim() + referenceIndicator;
+                      li.dataset.label = name.trim();
+                      saveOntologyLabel(o.graphIri, name.trim());
+                      await renderTree(project);
+                    } else {
+                      alert('Rename failed');
+                    }
+                  } catch(_) {
+                    alert('Rename failed');
+                  }
+                };
+              }
+              
+              if (toggleRefBtn) {
+                const currentRefStatus = isReference;
+                toggleRefBtn.textContent = currentRefStatus ? 'Remove Reference Status' : 'Mark as Reference';
+                toggleRefBtn.onclick = async () => {
+                  hide();
+                  try {
+                    const payload = { graph: o.graphIri, is_reference: !currentRefStatus };
+                    const token = localStorage.getItem(tokenKey);
+                    const res = await fetch('/api/ontologies/reference', { 
+                      method: 'PUT', 
+                      headers: { 'Content-Type': 'application/json', Authorization: 'Bearer ' + token }, 
+                      body: JSON.stringify(payload) 
+                    });
+                    if (res.ok) {
+                      await renderTree(project);
+                    } else {
+                      alert('Failed to update reference status');
+                    }
+                  } catch(_) {
+                    alert('Failed to update reference status');
+                  }
+                };
+              }
+              
+              if (deleteBtn) {
+                deleteBtn.onclick = async () => {
+                  hide();
+                  if (confirm(`Delete ontology "${displayLabel}"?`)) {
+                    try {
+                      const token = localStorage.getItem(tokenKey);
+                      const res = await fetch(`/api/ontologies?graph=${encodeURIComponent(o.graphIri)}`, { 
+                        method: 'DELETE', 
+                        headers: { Authorization: 'Bearer ' + token } 
+                      });
+                      if (res.ok) {
+                        await renderTree(project);
+                        if (activeOntologyIri === o.graphIri) { 
+                          activeOntologyIri = null; 
+                          updateOntoGraphLabel(); 
+                          ensureOntologyInitialized(); 
+                          ontoState.cy?.elements().remove(); 
+                          refreshOntologyTree(); 
+                        }
+                      } else {
+                        alert('Delete failed');
+                      }
+                    } catch(_) {
+                      alert('Delete failed');
+                    }
+                  }
+                };
+              }
+            };
           }
           // Initialize label map from server only if missing
           if (!mapLabel && serverLabel) {
@@ -3263,12 +3494,10 @@
           pan: { x: pan.x, y: pan.y }
         };
 
-        const token = localStorage.getItem(tokenKey);
-        const response = await fetch(`/api/ontology/layout?graph=${encodeURIComponent(graphIri)}`, {
+        const response = await authenticatedFetch(`/api/ontology/layout?graph=${encodeURIComponent(graphIri)}`, {
           method: 'PUT',
           headers: {
-            'Content-Type': 'application/json',
-            ...(token ? { 'Authorization': `Bearer ${token}` } : {})
+            'Content-Type': 'application/json'
           },
           body: JSON.stringify(layoutData)
         });
@@ -3283,10 +3512,7 @@
 
     async function loadLayoutFromServer(graphIri) {
       try {
-        const token = localStorage.getItem(tokenKey);
-        const response = await fetch(`/api/ontology/layout?graph=${encodeURIComponent(graphIri)}`, {
-          headers: token ? { 'Authorization': `Bearer ${token}` } : {}
-        });
+        const response = await authenticatedFetch(`/api/ontology/layout?graph=${encodeURIComponent(graphIri)}`);
 
         if (response.ok) {
           const result = await response.json();
@@ -3613,12 +3839,10 @@
             const ontologyData = convertCytoscapeToOntology();
             
             // Save ontology data to server
-            const token = localStorage.getItem(tokenKey);
-            const response = await fetch(`/api/ontology/?graph=${encodeURIComponent(activeOntologyIri)}`, {
+            const response = await authenticatedFetch(`/api/ontology/?graph=${encodeURIComponent(activeOntologyIri)}`, {
               method: 'PUT',
               headers: {
-                'Content-Type': 'application/json',
-                ...(token ? { 'Authorization': `Bearer ${token}` } : {})
+                'Content-Type': 'application/json'
               },
               body: JSON.stringify(ontologyData)
             });
@@ -3875,6 +4099,46 @@
 
     // Boot
     initAuth();
+    
+    // Global error handler for unhandled authentication errors
+    window.addEventListener('unhandledrejection', (event) => {
+      if (event.reason && event.reason.message === 'Authentication required') {
+        console.warn('Unhandled authentication error, redirecting to login...');
+        handleAuthFailure();
+        event.preventDefault(); // Prevent the error from being logged to console
+      }
+    });
+    
+    // Add toast notification system if it doesn't exist
+    if (!window.toast) {
+      window.toast = function(message, isError = false) {
+        // Create a simple toast notification
+        const toast = document.createElement('div');
+        toast.style.cssText = `
+          position: fixed;
+          top: 20px;
+          right: 20px;
+          background: ${isError ? 'var(--err)' : 'var(--ok)'};
+          color: white;
+          padding: 12px 16px;
+          border-radius: 6px;
+          z-index: 10000;
+          font-size: 14px;
+          max-width: 300px;
+          box-shadow: 0 4px 12px rgba(0,0,0,0.3);
+        `;
+        toast.textContent = message;
+        document.body.appendChild(toast);
+        
+        // Auto-remove after 3 seconds
+        setTimeout(() => {
+          if (toast.parentNode) {
+            toast.parentNode.removeChild(toast);
+          }
+        }, 3000);
+      };
+    }
+    
     // Per-project restore happens inside renderTree; avoid global restore that can clobber state
     // Save shortcut Ctrl/Cmd+S
     document.addEventListener('keydown', async (e) => {
@@ -4364,7 +4628,19 @@
       const statusSel = qs('#filesStatus');
       const tags = qs('#filesTags');
       function authHeader() {
-        try { const t = localStorage.getItem('odras_token'); return t ? { Authorization: 'Bearer ' + t } : {}; } catch(_) { return {}; }
+        try { 
+          const t = localStorage.getItem('odras_token'); 
+          if (!t || !isAuthenticated) {
+            // If not authenticated, trigger auth check
+            if (t && !isAuthenticated) {
+              handleAuthFailure();
+            }
+            return {}; 
+          }
+          return { Authorization: 'Bearer ' + t }; 
+        } catch(_) { 
+          return {}; 
+        }
       }
       function currentProjectId() {
         try { const pid = (activeProject && (activeProject.id || activeProject.project_id)) ? (activeProject.id || activeProject.project_id) : localStorage.getItem('active_project_id'); return pid || ''; } catch(_) { return ''; }
@@ -4536,6 +4812,8 @@
         window.odrasLoadLibrary = loadLibraryFromApi; 
         window.loadLibraryFromApi = loadLibraryFromApi; // Also expose without prefix for internal use
         window.authHeader = authHeader; // Expose auth header function globally
+        window.authenticatedFetch = authenticatedFetch; // Expose authenticated fetch globally
+        window.handleAuthFailure = handleAuthFailure; // Expose auth failure handler globally
         window.editDocType = editDocType; // Expose document type editor globally
       } catch(_) {}
       

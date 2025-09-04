@@ -13,7 +13,7 @@ import secrets
 # Import services using relative imports
 from .services.config import Settings
 from .services.db import DatabaseService
-from .services.auth import get_user as auth_get_user, TOKENS as AUTH_TOKENS
+from .services.auth import get_user as auth_get_user, get_admin_user, TOKENS as AUTH_TOKENS
 import os
 # Import API routers
 from backend.api.files import router as files_router
@@ -288,7 +288,7 @@ async def list_ontologies(project: Optional[str] = None):
                 if regs:
                     return {
                         "ontologies": [
-                            {"graphIri": r.get("graph_iri"), "label": r.get("label"), "role": r.get("role")}
+                            {"graphIri": r.get("graph_iri"), "label": r.get("label"), "role": r.get("role"), "is_reference": r.get("is_reference", False)}
                             for r in regs if r.get("graph_iri")
                         ]
                     }
@@ -412,6 +412,26 @@ async def list_reference_ontologies(user=Depends(get_user)):
         return {"reference_ontologies": reference_ontologies}
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Failed to list reference ontologies: {str(e)}")
+
+
+@app.put("/api/ontologies/reference")
+async def toggle_reference_ontology(body: Dict, user=Depends(get_admin_user)):
+    """Toggle reference status of an ontology. Admin only."""
+    graph_iri = (body.get("graph") or "").strip()
+    is_reference = body.get("is_reference", False)
+    
+    if not graph_iri:
+        raise HTTPException(status_code=400, detail="graph parameter is required")
+    
+    try:
+        # Update the reference status in the database
+        result = db.update_ontology_reference_status(graph_iri=graph_iri, is_reference=is_reference)
+        if result:
+            return {"success": True, "graph_iri": graph_iri, "is_reference": is_reference}
+        else:
+            raise HTTPException(status_code=404, detail="Ontology not found")
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Failed to update reference status: {str(e)}")
 
 
 @app.delete("/api/ontologies")
