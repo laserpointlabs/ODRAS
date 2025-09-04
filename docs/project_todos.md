@@ -39,6 +39,9 @@ This file contains data dumps of just one lines for want, needs, and nice to hav
 [] Add user task workbench
 [] Add nested ontology view by checkmark in imports
 [] Keep knowledge project specific
+[] Process driven projects
+[] Add users tasks page for wf/pl
+[] Eliminate hardcoded workers and use small scripts in the bpmn process
 
 ## 🎯 NEXT PRIORITIES
 

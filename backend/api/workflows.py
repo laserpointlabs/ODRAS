@@ -47,6 +47,7 @@ _PROCESS_KEY_TO_BPMN: Dict[str, str] = {
     "document_ingestion_process": "document_ingestion_pipeline.bpmn",
     "rag_query_process": "rag_query_pipeline.bpmn",
     "add_to_knowledge_process": "add_to_knowledge.bpmn",
+    "automatic_knowledge_processing": "automatic_knowledge_processing.bpmn",
 }
 
 
