@@ -69,7 +69,8 @@ async def store_vector_chunks_in_qdrant(file_id: str, knowledge_asset_id: str):
                 'vector': chunk_data['embedding'],
                 'payload': {
                     'content': chunk_data['content'],
-                    'source_asset': knowledge_asset_id,
+                    'asset_id': knowledge_asset_id,  # FIELD RAG SERVICE EXPECTS!
+                    'source_asset': knowledge_asset_id,  # Keep for compatibility
                     'source_file': file_id,
                     'project_id': project_id,
                     'chunk_sequence': chunk_data['sequence_number'],

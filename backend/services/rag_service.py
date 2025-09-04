@@ -301,7 +301,7 @@ Please provide a helpful response based on the context provided. If the context 
         
         for i, chunk in enumerate(chunks):
             chunk_data = chunk.get("payload", {})
-            content = chunk_data.get("text", "")
+            content = chunk_data.get("content", "")  # FIXED: content not text!
             source = chunk_data.get("source_asset", "Unknown")
             doc_type = chunk_data.get("document_type", "document")
             
@@ -315,25 +315,39 @@ Please provide a helpful response based on the context provided. If the context 
 
     def _format_sources(self, chunks: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
         """
-        Format source information for response metadata.
+        Format source information with proper asset titles from database.
         """
         sources = []
         seen_assets = set()
         
-        for chunk in chunks:
-            chunk_data = chunk.get("payload", {})
-            asset_id = chunk_data.get("asset_id")
-            
-            if asset_id and asset_id not in seen_assets:
-                source = {
-                    "asset_id": asset_id,
-                    "title": chunk_data.get("source_asset", "Unknown Document"),
-                    "document_type": chunk_data.get("document_type", "document"),
-                    "chunk_id": chunk_data.get("chunk_id"),
-                    "relevance_score": chunk.get("score", 0.0)
-                }
-                sources.append(source)
-                seen_assets.add(asset_id)
+        # Get database connection to look up asset titles
+        from .db import DatabaseService
+        db_service = DatabaseService(self.settings)
+        conn = db_service._conn()
+        
+        try:
+            with conn.cursor() as cur:
+                for chunk in chunks:
+                    chunk_data = chunk.get("payload", {})
+                    asset_id = chunk_data.get("asset_id")
+                    
+                    if asset_id and asset_id not in seen_assets:
+                        # Look up actual asset title from database
+                        cur.execute("SELECT title FROM knowledge_assets WHERE id = %s", (asset_id,))
+                        result = cur.fetchone()
+                        asset_title = result[0] if result else "Unknown Document"
+                        
+                        source = {
+                            "asset_id": asset_id,
+                            "title": asset_title,  # ACTUAL ASSET TITLE FROM DATABASE!
+                            "document_type": chunk_data.get("document_type", "document"),
+                            "chunk_id": chunk_data.get("chunk_id"),
+                            "relevance_score": chunk.get("score", 0.0)
+                        }
+                        sources.append(source)
+                        seen_assets.add(asset_id)
+        finally:
+            db_service._return(conn)
         
         return sources
 
