@@ -672,21 +672,30 @@ stop_external_worker() {
 clean_fuseki() {
     print_status "Cleaning Fuseki RDF store..."
     
-    # Get all datasets and clear them
-    local datasets=$(curl -s http://localhost:3030/$/datasets 2>/dev/null | jq -r '.datasets[].name' 2>/dev/null)
+    # Get all datasets and delete them completely
+    local datasets=$(curl -s http://localhost:3030/$/datasets 2>/dev/null | jq -r '.datasets[]."ds.name"' 2>/dev/null)
     
     if [[ $? -eq 0 ]] && [[ -n "$datasets" ]]; then
         for dataset in $datasets; do
             if [[ "$dataset" != "null" ]] && [[ -n "$dataset" ]]; then
-                print_status "  Clearing dataset: $dataset"
-                curl -s -X POST "http://localhost:3030/$dataset/update" \
-                     -H "Content-Type: application/sparql-update" \
-                     -d "DELETE WHERE { ?s ?p ?o }" >/dev/null 2>&1
+                # Remove leading slash from dataset name
+                local clean_dataset=$(echo "$dataset" | sed 's|^/||')
+                print_status "  Deleting dataset: $clean_dataset"
+                # Delete the entire dataset (not just clear data)
+                curl -s -X DELETE "http://localhost:3030/$/datasets/$clean_dataset" >/dev/null 2>&1
             fi
         done
-        print_success "✓ Fuseki cleaned"
+        print_success "✓ Fuseki datasets deleted"
     else
         print_warning "⚠ Could not connect to Fuseki or no datasets found"
+    fi
+    
+    # Also clear any persistent data in the volume
+    print_status "Clearing Fuseki persistent volume data..."
+    if docker exec odras_fuseki rm -rf /fuseki/databases/* 2>/dev/null; then
+        print_success "✓ Fuseki persistent data cleared"
+    else
+        print_warning "⚠ Could not clear Fuseki persistent data (container may not be running)"
     fi
 }
 
@@ -770,8 +779,11 @@ clean_all() {
         # Stop and remove containers with volumes
         docker-compose -f "$DOCKER_COMPOSE_FILE" down -v --remove-orphans
         
-        # Remove any remaining volumes
+        # Remove any remaining volumes (including Fuseki data)
         docker volume rm $(docker volume ls -q | grep odras) 2>/dev/null || true
+        
+        # Ensure Fuseki volume is completely removed
+        docker volume rm odras_fuseki_data 2>/dev/null || true
         
         # Clean up PID and log files (only if application is not running)
         if [[ -f "$PID_FILE" ]]; then
