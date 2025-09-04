@@ -790,15 +790,18 @@ class OntologyManager:
     def _execute_sparql_update(self, query: str) -> Dict[str, Any]:
         """Execute a SPARQL UPDATE query."""
         try:
+            logger.debug(f"Executing SPARQL UPDATE: {query}")
             sparql = SPARQLWrapper(self.fuseki_update_url)
             sparql.setMethod(POST)
             sparql.setQuery(query)
-            sparql.query()
+            result = sparql.query()
+            logger.debug(f"SPARQL UPDATE result: {result}")
 
             return {"success": True}
 
         except Exception as e:
             logger.error(f"SPARQL UPDATE failed: {e}")
+            logger.error(f"Query was: {query}")
             return {"success": False, "error": str(e)}
 
     def _class_exists(self, class_uri: URIRef) -> bool:
@@ -923,13 +926,18 @@ class OntologyManager:
             """
             
             # Insert new layout data
+            nodes_json = json.dumps(layout_data.get('nodes', [])).replace('"', '\\"')
+            edges_json = json.dumps(layout_data.get('edges', [])).replace('"', '\\"')
+            zoom_value = layout_data.get('zoom', 1.0)
+            pan_json = json.dumps(layout_data.get('pan', {'x': 0, 'y': 0})).replace('"', '\\"')
+            
             insert_query = f"""
             INSERT DATA {{
                 GRAPH <{layout_graph_iri}> {{
-                    <{layout_graph_iri}#{layout_id}> <http://odras.system/layout#nodes> "{json.dumps(layout_data.get('nodes', []))}" ;
-                                                    <http://odras.system/layout#edges> "{json.dumps(layout_data.get('edges', []))}" ;
-                                                    <http://odras.system/layout#zoom> "{layout_data.get('zoom', 1.0)}"^^<http://www.w3.org/2001/XMLSchema#float> ;
-                                                    <http://odras.system/layout#pan> "{json.dumps(layout_data.get('pan', {{'x': 0, 'y': 0}}))}" .
+                    <{layout_graph_iri}#{layout_id}> <http://odras.system/layout#nodes> "{nodes_json}" ;
+                                                    <http://odras.system/layout#edges> "{edges_json}" ;
+                                                    <http://odras.system/layout#zoom> "{zoom_value}"^^<http://www.w3.org/2001/XMLSchema#float> ;
+                                                    <http://odras.system/layout#pan> "{pan_json}" .
                 }}
             }}
             """
