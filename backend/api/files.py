@@ -28,6 +28,7 @@ class FileUploadResponse(BaseModel):
     filename: Optional[str] = None
     size: Optional[int] = None
     content_type: Optional[str] = None
+    knowledge_asset_id: Optional[str] = None  # Include knowledge asset ID
     message: Optional[str] = None
     error: Optional[str] = None
 
@@ -93,12 +94,53 @@ def get_db_service() -> DatabaseService:
     return DatabaseService(Settings())
 
 
+def _detect_file_type_and_strategy(filename: str, content_type: str = None) -> Dict[str, str]:
+    """
+    Intelligently detect document type and optimal processing strategy based on file.
+    
+    Returns:
+        Dict with 'document_type' and 'chunking_strategy'
+    """
+    filename_lower = filename.lower()
+    
+    # Document type detection
+    if any(filename_lower.endswith(ext) for ext in ['.pdf', '.doc', '.docx']):
+        document_type = 'document'
+        chunking_strategy = 'semantic'  # Better for documents
+    elif any(filename_lower.endswith(ext) for ext in ['.txt', '.md', '.rst']):
+        document_type = 'text'
+        chunking_strategy = 'hybrid'    # Balanced approach
+    elif any(filename_lower.endswith(ext) for ext in ['.json', '.xml', '.yml', '.yaml']):
+        document_type = 'structured'
+        chunking_strategy = 'fixed'     # Preserve structure
+    elif any(filename_lower.endswith(ext) for ext in ['.py', '.js', '.java', '.cpp', '.c']):
+        document_type = 'code'
+        chunking_strategy = 'fixed'     # Preserve code blocks
+    elif any(filename_lower.endswith(ext) for ext in ['.csv', '.xlsx', '.xls']):
+        document_type = 'data'
+        chunking_strategy = 'fixed'     # Preserve tabular structure
+    elif 'requirements' in filename_lower or 'specification' in filename_lower:
+        document_type = 'requirements'
+        chunking_strategy = 'semantic'  # Extract requirement relationships
+    elif any(term in filename_lower for term in ['manual', 'guide', 'procedure']):
+        document_type = 'knowledge'
+        chunking_strategy = 'semantic'  # Extract procedural knowledge
+    else:
+        document_type = 'unknown'
+        chunking_strategy = 'hybrid'    # Safe default
+    
+    return {
+        'document_type': document_type,
+        'chunking_strategy': chunking_strategy
+    }
+
+
 @router.post("/upload", response_model=FileUploadResponse)
 async def upload_file(
     file: UploadFile = File(...),
     project_id: Optional[str] = Form(None),
     tags: Optional[str] = Form(None),  # JSON string of tags
-    process_for_knowledge: Optional[bool] = Form(False),  # Trigger knowledge processing
+    process_for_knowledge: Optional[bool] = Form(True),  # Auto-process for knowledge (default True)
     embedding_model: Optional[str] = Form("all-MiniLM-L6-v2"),  # Embedding model for knowledge processing
     chunking_strategy: Optional[str] = Form("hybrid"),  # Chunking strategy for knowledge processing
     storage_service: FileStorageService = Depends(get_file_storage_service),
@@ -106,18 +148,20 @@ async def upload_file(
     authorization: Optional[str] = Header(None),
 ):
     """
-    Upload a file to the storage backend with optional knowledge processing.
+    Upload a file to the storage backend with automatic knowledge processing.
+
+    All uploaded files are automatically processed for knowledge management
+    with intelligent defaults based on file type and content.
 
     Args:
         file: The file to upload
         project_id: Optional project ID to associate with the file
         tags: Optional JSON string of metadata tags
-        process_for_knowledge: Whether to automatically process file for knowledge management
         embedding_model: Embedding model to use for knowledge processing (default: all-MiniLM-L6-v2)
         chunking_strategy: Chunking strategy for knowledge processing (fixed/semantic/hybrid, default: hybrid)
 
     Returns:
-        Upload result with file metadata and optional knowledge asset ID
+        Upload result with file metadata and knowledge asset ID
     """
     try:
         # Validate project membership
@@ -161,41 +205,75 @@ async def upload_file(
             metadata = result["metadata"]
             file_id = result["file_id"]
             
-            # Trigger knowledge processing if requested
+            # Automatic knowledge processing - only if enabled
             knowledge_asset_id = None
             if process_for_knowledge:
                 try:
+                    # Use the proven working knowledge transformation service
                     from ..services.knowledge_transformation import get_knowledge_transformation_service
+                    
+                    # Intelligent file type detection and processing strategy
+                    file_detection = _detect_file_type_and_strategy(
+                        file.filename, 
+                        file.content_type
+                    )
+                    
+                    # Use detected type or tag override
+                    detected_doc_type = file_detection['document_type']
+                    final_doc_type = file_tags.get('docType', detected_doc_type) if file_tags else detected_doc_type
+                    
+                    # Use detected strategy or user preference
+                    detected_chunking = file_detection['chunking_strategy']
+                    final_chunking = chunking_strategy or detected_chunking
+                    
+                    logger.info(f"🤖 Auto-detected: {final_doc_type} document, {final_chunking} chunking")
                     
                     # Prepare processing options
                     processing_options = {
-                        'document_type': file_tags.get('docType', 'unknown') if file_tags else 'unknown',
+                        'document_type': final_doc_type,
                         'embedding_model': embedding_model or 'all-MiniLM-L6-v2',
-                        'chunking_strategy': chunking_strategy or 'hybrid',
+                        'chunking_strategy': final_chunking,
                         'chunk_size': 512,
                         'chunk_overlap': 50,
                         'extract_relationships': True
                     }
                     
-                    # Start knowledge transformation (async)
-                    transformation_service = get_knowledge_transformation_service()
-                    knowledge_asset_id = await transformation_service.transform_file_to_knowledge(
-                        file_id=file_id,
-                        project_id=project_id,
-                        processing_options=processing_options
-                    )
+                    # START BPMN WORKFLOW (use what we built!)
+                    import httpx
                     
-                    logger.info(f"Created knowledge asset {knowledge_asset_id} for file {file_id}")
+                    camunda_url = "http://localhost:8080/engine-rest"
+                    start_url = f"{camunda_url}/process-definition/key/automatic_knowledge_processing/start"
+                    
+                    payload = {
+                        "variables": {
+                            "file_id": {"value": file_id, "type": "String"},
+                            "project_id": {"value": project_id, "type": "String"}, 
+                            "filename": {"value": file.filename, "type": "String"},
+                            "document_type": {"value": final_doc_type, "type": "String"},
+                            "embedding_model": {"value": embedding_model or 'all-MiniLM-L6-v2', "type": "String"},
+                            "chunking_strategy": {"value": final_chunking, "type": "String"},
+                            "chunk_size": {"value": 512, "type": "Integer"}
+                        }
+                    }
+                    
+                    async with httpx.AsyncClient(timeout=10) as client:  # Shorter timeout
+                        response = await client.post(start_url, json=payload)
+                        response.raise_for_status()
+                        result = response.json()
+                        process_instance_id = result.get("id")
+                    
+                    logger.info(f"🔄 Started BPMN knowledge processing workflow: {process_instance_id} for file {file_id}")
                     
                 except Exception as e:
-                    logger.error(f"Knowledge processing failed for file {file_id}: {str(e)}")
-                    # Don't fail the upload if knowledge processing fails
+                    logger.error(f"❌ Knowledge processing failed for file {file_id}: {str(e)}")
+                    # Don't fail the upload if processing fails
                     pass
             
             # Build response
-            response_message = "File uploaded successfully"
-            if knowledge_asset_id:
-                response_message += f" and processed as knowledge asset {knowledge_asset_id}"
+            if process_instance_id:
+                response_message = f"File uploaded and BPMN knowledge processing started (workflow: {process_instance_id})"
+            else:
+                response_message = "File uploaded successfully (BPMN knowledge processing failed to start - check logs)"
             
             return FileUploadResponse(
                 success=True,
@@ -203,6 +281,7 @@ async def upload_file(
                 filename=metadata["filename"],
                 size=metadata["size"],
                 content_type=metadata["content_type"],
+                knowledge_asset_id=process_instance_id,  # Include BPMN process instance ID
                 message=response_message,
             )
         else:

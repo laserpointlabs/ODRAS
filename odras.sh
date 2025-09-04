@@ -92,6 +92,10 @@ start_app() {
         print_success "Application started successfully (PID: $pid)"
         print_status "Logs: tail -f $LOG_FILE"
         print_status "URL: http://localhost:$APP_PORT"
+        
+        # Start external worker for BPMN processing
+        sleep 5  # Give app time to fully start
+        start_external_worker
     else
         print_error "Failed to start application"
         rm -f "$PID_FILE"
@@ -102,6 +106,9 @@ start_app() {
 # Stop the Python application
 stop_app() {
     print_status "Stopping ODRAS application..."
+    
+    # Stop external worker first
+    stop_external_worker
     
     if [[ -f "$PID_FILE" ]]; then
         local pid=$(cat "$PID_FILE")
@@ -159,8 +166,8 @@ show_app_status() {
     
     if is_app_running; then
         if [[ -f "$PID_FILE" ]]; then
-            local pid=$(cat "$PID_FILE")
-            print_success "✓ Running (PID: $pid)"
+        local pid=$(cat "$PID_FILE")
+        print_success "✓ Running (PID: $pid)"
         else
             local port_pid=$(lsof -Pi :$APP_PORT -sTCP:LISTEN -t 2>/dev/null | head -1)
             print_success "✓ Running (PID: ${port_pid:-unknown})"
@@ -186,7 +193,51 @@ show_app_logs() {
         print_status "Showing application logs (Ctrl+C to exit):"
         tail -f "$LOG_FILE"
     else
-        print_warning "No log file found"
+        print_warning "No log file found at $LOG_FILE"
+        
+        # Check if app is running and suggest alternatives
+        if is_app_running; then
+            print_status "Application is running but was likely started outside of odras.sh"
+            print_status "Available log viewing options:"
+            
+            # Check for common log locations
+            local alt_logs_found=false
+            
+            # Check for systemd/journal logs
+            if systemctl --user is-active odras >/dev/null 2>&1 || systemctl is-active odras >/dev/null 2>&1; then
+                print_status "  1. View systemd logs: journalctl -u odras -f"
+                alt_logs_found=true
+            fi
+            
+            # Check for Docker logs if running in container
+            local docker_containers=$(docker ps --format "{{.Names}}" 2>/dev/null | grep -i odras | head -1)
+            if [[ -n "$docker_containers" ]]; then
+                print_status "  2. View Docker logs: docker logs -f [container_name]"
+                print_status "     Available containers: $(docker ps --format "{{.Names}}" 2>/dev/null | grep -i odras | tr '\n' ' ')"
+                alt_logs_found=true
+            fi
+            
+            # Check for nohup.out in current directory
+            if [[ -f "nohup.out" ]]; then
+                print_status "  3. View nohup output: tail -f nohup.out"
+                alt_logs_found=true
+            fi
+            
+            # Always offer restart option for proper logging
+            local main_pid=$(ps aux | grep "python -m backend.main" | grep -v grep | awk '{print $2}' | head -1)
+            if [[ -n "$main_pid" ]]; then
+                local option_num=$((alt_logs_found == true ? 4 : 1))
+                print_status "  $option_num. Restart app with odras.sh to generate logs: ./odras.sh restart"
+                alt_logs_found=true
+            fi
+            
+            if [[ "$alt_logs_found" == "false" ]]; then
+                print_status "  1. Restart the app with odras.sh to generate logs: ./odras.sh restart"
+            fi
+        else
+            print_status "Application is not running. Start it to generate logs:"
+            print_status "  ./odras.sh start"
+        fi
     fi
 }
 
@@ -432,6 +483,191 @@ clean_neo4j() {
     fi
 }
 
+# Initialize Fuseki RDF store
+init_fuseki() {
+    print_status "Setting up Fuseki RDF datasets..."
+    
+    # Wait for Fuseki to be ready
+    local max_attempts=30
+    local attempt=1
+    
+    while [ $attempt -le $max_attempts ]; do
+        if curl -s http://localhost:3030/$/ping >/dev/null 2>&1; then
+            print_success "  ✓ Fuseki is ready"
+            break
+        fi
+        
+        if [ $attempt -eq $max_attempts ]; then
+            print_warning "  ⚠ Fuseki may not be ready, continuing anyway..."
+            return
+        fi
+        
+        sleep 2
+        attempt=$((attempt + 1))
+    done
+    
+    # Create ODRAS dataset for ontologies
+    print_status "  Creating 'odras' dataset for ontology storage..."
+    
+    # First check if dataset already exists
+    local existing_datasets=$(curl -s http://localhost:3030/$/datasets 2>/dev/null)
+    
+    if echo "$existing_datasets" | grep -q '"name":"odras"'; then
+        print_status "  Dataset 'odras' already exists, clearing it..."
+        curl -s -X POST "http://localhost:3030/odras/update" \
+             -H "Content-Type: application/sparql-update" \
+             -d "DELETE WHERE { ?s ?p ?o }" >/dev/null 2>&1
+    else
+        # Create new dataset
+        print_status "  Creating new 'odras' dataset..."
+        curl -s -X POST "http://localhost:3030/$/datasets" \
+             -H "Content-Type: application/x-www-form-urlencoded" \
+             -d "dbName=odras&dbType=tdb2" >/dev/null 2>&1
+    fi
+    
+    # Verify dataset creation
+    local verification=$(curl -s http://localhost:3030/$/server 2>/dev/null)
+    if echo "$verification" | grep -q '"/odras"'; then
+        print_success "  ✓ Fuseki 'odras' dataset ready for ontology storage"
+    else
+        print_warning "  ⚠ Fuseki dataset creation may have failed"
+        print_status "  Debug: $verification"
+    fi
+}
+
+# Deploy BPMN workflows to Camunda
+deploy_bpmn_workflows() {
+    print_status "Deploying BPMN workflows to Camunda..."
+    
+    # Wait for Camunda to be ready
+    local max_attempts=30
+    local attempt=1
+    
+    while [ $attempt -le $max_attempts ]; do
+        if curl -s http://localhost:8080/camunda/ >/dev/null 2>&1; then
+            print_success "  ✓ Camunda is ready"
+            break
+        fi
+        
+        if [ $attempt -eq $max_attempts ]; then
+            print_warning "  ⚠ Camunda may not be ready, skipping BPMN deployment..."
+            return
+        fi
+        
+        sleep 2
+        attempt=$((attempt + 1))
+    done
+    
+    # Deploy all BPMN workflow files
+    local bpmn_files=(
+        "automatic_knowledge_processing.bpmn:ODRAS Automatic Knowledge Processing"
+        "rag_query_pipeline.bpmn:ODRAS RAG Query Pipeline"
+        "requirements_extraction.bpmn:ODRAS Requirements Extraction"
+        "add_to_knowledge.bpmn:ODRAS Add to Knowledge"
+        "knowledge_enrichment.bpmn:ODRAS Knowledge Enrichment"
+    )
+    
+    local deployed_count=0
+    
+    for bpmn_entry in "${bpmn_files[@]}"; do
+        local bpmn_file=$(echo "$bpmn_entry" | cut -d':' -f1)
+        local deployment_name=$(echo "$bpmn_entry" | cut -d':' -f2)
+        
+        if [[ -f "bpmn/$bpmn_file" ]]; then
+            print_status "  Deploying $bpmn_file..."
+            
+            local deployment_response=$(curl -s -X POST "http://localhost:8080/engine-rest/deployment/create" \
+                -F "deployment-name=$deployment_name" \
+                -F "deployment-source=ODRAS Init-DB" \
+                -F "$bpmn_file=@bpmn/$bpmn_file" 2>/dev/null)
+            
+            if echo "$deployment_response" | grep -q '"id"'; then
+                print_success "    ✓ $bpmn_file deployed successfully"
+                deployed_count=$((deployed_count + 1))
+            else
+                print_warning "    ⚠ $bpmn_file deployment may have failed"
+            fi
+        else
+            print_warning "    ⚠ BPMN file not found: bpmn/$bpmn_file"
+        fi
+    done
+    
+    print_success "✓ Deployed $deployed_count BPMN workflows to Camunda"
+    print_status "  🖥️  Monitor workflows at: http://localhost:8080/camunda/app/cockpit/"
+    
+    # Start the external worker for BPMN task processing
+    print_status "Starting external worker for BPMN task processing..."
+    start_external_worker
+}
+
+# Start external worker for BPMN task processing
+start_external_worker() {
+    print_status "Starting BPMN external worker..."
+    
+    local worker_script="scripts/simple_external_worker.py"
+    local worker_log="/tmp/odras_worker.log"
+    local worker_pid_file="/tmp/odras_worker.pid"
+    
+    if [[ ! -f "$worker_script" ]]; then
+        print_warning "  ⚠ External worker script not found: $worker_script"
+        return
+    fi
+    
+    # Kill existing worker if running
+    if [[ -f "$worker_pid_file" ]]; then
+        local old_pid=$(cat "$worker_pid_file")
+        if kill -0 "$old_pid" 2>/dev/null; then
+            print_status "  Stopping existing worker (PID: $old_pid)..."
+            kill "$old_pid" 2>/dev/null
+            sleep 2
+        fi
+        rm -f "$worker_pid_file"
+    fi
+    
+    # Start new worker in background
+    print_status "  Starting external worker daemon..."
+    nohup python3 "$worker_script" > "$worker_log" 2>&1 &
+    local worker_pid=$!
+    
+    # Save PID for management
+    echo "$worker_pid" > "$worker_pid_file"
+    
+    # Verify worker started
+    sleep 3
+    if kill -0 "$worker_pid" 2>/dev/null; then
+        print_success "  ✓ External worker started (PID: $worker_pid)"
+        print_status "    📋 Worker handles: extract-text, chunk-document, generate-embeddings,"
+        print_status "                      create-knowledge-asset, store-vector-chunks"
+        print_status "    📄 Logs: $worker_log"
+    else
+        print_warning "  ⚠ External worker may have failed to start"
+        if [[ -f "$worker_log" ]]; then
+            print_status "    Error: $(tail -n 1 "$worker_log")"
+        fi
+    fi
+}
+
+# Stop external worker
+stop_external_worker() {
+    local worker_pid_file="/tmp/odras_worker.pid"
+    
+    if [[ -f "$worker_pid_file" ]]; then
+        local worker_pid=$(cat "$worker_pid_file")
+        if kill -0 "$worker_pid" 2>/dev/null; then
+            print_status "Stopping external worker (PID: $worker_pid)..."
+            kill "$worker_pid" 2>/dev/null
+            sleep 2
+            if ! kill -0 "$worker_pid" 2>/dev/null; then
+                print_success "✓ External worker stopped"
+            else
+                kill -9 "$worker_pid" 2>/dev/null
+                print_success "✓ External worker terminated"
+            fi
+        fi
+        rm -f "$worker_pid_file"
+    fi
+}
+
 # Clean Fuseki RDF store
 clean_fuseki() {
     print_status "Cleaning Fuseki RDF store..."
@@ -516,7 +752,7 @@ clean_all() {
     
     if [[ "$skip_confirm" == "false" ]]; then
         print_warning "This will DESTROY ALL DATA and remove Docker containers/volumes. Are you sure? (y/N)"
-        read -r response
+    read -r response
         if [[ ! "$response" =~ ^([yY][eE][sS]|[yY])$ ]]; then
             print_status "Cleanup cancelled"
             return
@@ -542,7 +778,7 @@ clean_all() {
             local pid=$(cat "$PID_FILE")
             if ! ps -p "$pid" > /dev/null 2>&1; then
                 print_status "Cleaning up stale PID and log files..."
-                rm -f "$PID_FILE" "$LOG_FILE"
+        rm -f "$PID_FILE" "$LOG_FILE"
             else
                 print_warning "Application is running (PID: $pid) - keeping log files"
             fi
@@ -696,6 +932,14 @@ init_databases() {
     CREATE CONSTRAINT asset_id IF NOT EXISTS FOR (a:KnowledgeAsset) REQUIRE a.id IS UNIQUE;
     CREATE CONSTRAINT chunk_id IF NOT EXISTS FOR (c:Chunk) REQUIRE c.id IS UNIQUE;
     " >/dev/null 2>&1 || print_warning "  Neo4j initialization may have failed"
+    
+    # Initialize Fuseki RDF store
+    print_status "Initializing Fuseki RDF store..."
+    init_fuseki
+    
+    # Deploy BPMN workflows to Camunda
+    print_status "Deploying BPMN workflows to Camunda..."
+    deploy_bpmn_workflows
     
     # Initialize Qdrant collections
     print_status "Initializing Qdrant collections..."

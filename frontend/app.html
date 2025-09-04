@@ -454,11 +454,11 @@
           <h2>File Management</h2>
           <div class="muted">Upload requirements and knowledge docs (MinIO).</div>
           <div class="card" style="margin-top:8px;">
-            <div class="muted" style="font-weight:600; margin-bottom:6px;">Quick steps</div>
+            <div class="muted" style="font-weight:600; margin-bottom:6px;">How it works</div>
             <ol style="margin:0; padding-left:18px; color:#9aa4b2;">
-              <li>Choose Files (or drop) → files appear under Staged files</li>
-              <li>Click Upload next to a file (or Upload All)</li>
-              <li>Select uploaded file in Library → click 🧠 Knowledge or 📋 Extract Requirements</li>
+              <li>Upload files (drag & drop or choose files)</li>
+              <li>Files are automatically processed for knowledge</li>
+              <li>View processing status in the Library section</li>
             </ol>
           </div>
           <div id="filesToast" class="muted" style="margin-top:6px;"></div>
@@ -484,8 +484,8 @@
             <button class="btn" id="filesRefreshBtn" title="Refresh">Refresh</button>
             <div class="spacer"></div>
             <button class="btn" id="filesBulkProcessBtn" title="Extract requirements using BPMN workflows">📋 Extract Requirements</button>
-            <button class="btn" id="filesBulkIngestBtn" title="Transform into searchable knowledge for AI & semantic search">🧠 Add to Knowledge Base</button>
             <button class="btn" id="filesBulkDeleteBtn" title="Delete selected">Delete Selected</button>
+
           </div>
 
           <div class="card" style="margin-top:8px;">
@@ -498,6 +498,7 @@
             </div>
             <div id="fileDropZone" tabindex="0" role="button" aria-label="Drop files or click to select" style="margin-top:10px; border:2px dashed var(--border); border-radius:8px; padding:20px; text-align:center; color:#9aa4b2; user-select:none; cursor:pointer; background:rgba(15, 22, 40, 0.3); transition:all 0.2s ease;">
               Drag & drop files here, or use the Choose Files button above
+
             </div>
             <div id="uploadPreview" class="muted" style="margin-top:6px;"></div>
           </div>
@@ -529,18 +530,14 @@
                   </div>
                 </div>
                 
-                <!-- Knowledge Processing Options -->
-                <div id="knowledgeProcessingOptions" style="display:none; margin:6px 0; padding:8px; background:rgba(37, 99, 235, 0.1); border:1px solid var(--accent); border-radius:6px;">
+                <!-- Automatic Knowledge Processing Options -->
+                <div id="knowledgeProcessingOptions" style="display:none; margin:6px 0; padding:8px; background:rgba(34, 197, 94, 0.1); border:1px solid #22c55e; border-radius:6px;">
                   <div style="margin-bottom:8px;">
-                    <label class="muted" style="display:flex; align-items:center; font-size:12px;">
-                      <input type="checkbox" id="enableKnowledgeProcessing" style="margin-right:8px;" /> 
-                      🧠 Process for Knowledge Management
-                    </label>
-                    <div class="muted" style="font-size:10px; margin-left:20px; color:var(--muted);">
-                      Transform documents into searchable knowledge with embeddings and semantic chunking
+                    <div class="muted" style="font-size:11px; color:var(--muted);">
+                      Files are processed for knowledge with intelligent defaults
                     </div>
                   </div>
-                  <div id="knowledgeProcessingConfig" style="display:none; margin-left:20px; display:grid; grid-template-columns:1fr 1fr; gap:8px;">
+                  <div id="knowledgeProcessingConfig" style="display:grid; grid-template-columns:1fr 1fr; gap:8px;">
                     <div>
                       <label class="muted" style="font-size:10px; display:block; margin-bottom:2px;">Embedding Model:</label>
                       <select id="embeddingModel" style="background:#0b1220; color:#e5e7eb; border:1px solid var(--border); border-radius:4px; padding:2px 4px; font-size:10px; width:100%;">
@@ -551,7 +548,8 @@
                     <div>
                       <label class="muted" style="font-size:10px; display:block; margin-bottom:2px;">Chunking Strategy:</label>
                       <select id="chunkingStrategy" style="background:#0b1220; color:#e5e7eb; border:1px solid var(--border); border-radius:4px; padding:2px 4px; font-size:10px; width:100%;">
-                        <option value="hybrid">Hybrid (Recommended)</option>
+                        <option value="">Smart Default</option>
+                        <option value="hybrid">Hybrid</option>
                         <option value="semantic">Semantic</option>
                         <option value="fixed">Fixed Size</option>
                       </select>
@@ -662,11 +660,13 @@
           <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:16px;">
             <div>
               <h2>Knowledge Management</h2>
-              <div class="muted">Transform documents into searchable knowledge with AI-powered insights</div>
+              <div class="muted">All uploaded files are automatically transformed into searchable knowledge with AI-powered insights</div>
             </div>
-            <div style="display:flex; gap:8px;">
-              <button class="btn" id="knowledgeProcessBtn" disabled>Process Documents</button>
+            <div style="display:flex; gap:8px; align-items:center;">
               <button class="btn" id="knowledgeRefreshBtn">Refresh</button>
+              <div class="muted" style="font-size:11px; color:#22c55e; display:flex; align-items:center; gap:4px;">
+                ⚙️ Auto-processing enabled
+              </div>
             </div>
           </div>
 
@@ -1905,7 +1905,15 @@
       } catch(_) {}
       if (wb === 'graph') refreshGraphSummary();
       if (wb === 'ontology') { ensureOntologyInitialized(); if (ontoState.cy) ontoState.cy.resize(); }
-      if (wb === 'files') { ensureFilesInitialized(); }
+      if (wb === 'files') { 
+        ensureFilesInitialized(); 
+        // Load library when files workbench becomes active
+        try { 
+          if (window.loadLibraryFromApi) {
+            setTimeout(() => window.loadLibraryFromApi(), 100); // Small delay to ensure auth/project context is ready
+          }
+        } catch(_) {} 
+      }
     });
 
     // Tree collapsible sections
@@ -3106,6 +3114,54 @@
       if (!msg) return;
       setTimeout(()=>{ if (el.textContent === msg) el.textContent=''; }, 3000);
     }
+    
+    // Check if file has been processed into knowledge asset
+    async function getKnowledgeProcessingStatus(fileId) {
+      try {
+        const headers = window.authHeader ? window.authHeader() : {};
+        if (!headers.Authorization) {
+          return ``; // Don't show status badge if not logged in
+        }
+        
+        // Get current project ID
+        const projectId = window.currentProjectId ? window.currentProjectId() : null;
+        if (!projectId) {
+          return ``; // Don't show status badge if no project
+        }
+        
+        // Check if knowledge asset exists for this file
+        const response = await fetch(`/api/knowledge/assets?project_id=${projectId}`, {
+          headers
+        });
+        
+        if (!response.ok) {
+          return `<span style="background:rgba(239, 68, 68, 0.2); border:1px solid #ef4444; border-radius:6px; padding:2px 6px; font-size:12px; color:#ef4444;" title="Error checking knowledge status">Error</span>`;
+        }
+        
+        const data = await response.json();
+        const assets = data.assets || [];
+        
+        // Find asset with matching source_file_id
+        const matchingAsset = assets.find(asset => asset.source_file_id === fileId);
+        
+        if (matchingAsset) {
+          if (matchingAsset.status === 'active') {
+            return `<span style="background:rgba(34, 197, 94, 0.2); border:1px solid #22c55e; border-radius:6px; padding:2px 6px; font-size:12px; color:#22c55e;" title="Successfully processed for knowledge">Processed</span>`;
+          } else if (matchingAsset.status === 'processing') {
+            return `<span style="background:rgba(245, 158, 11, 0.2); border:1px solid #f59e0b; border-radius:6px; padding:2px 6px; font-size:12px; color:#f59e0b;" title="Processing in progress">Processing</span>`;
+          } else {
+            return `<span style="background:rgba(239, 68, 68, 0.2); border:1px solid #ef4444; border-radius:6px; padding:2px 6px; font-size:12px; color:#ef4444;" title="Processing failed">Failed</span>`;
+          }
+        } else {
+          // No knowledge asset found - file not processed yet
+          return `<span style="background:var(--panel-2); border:1px solid var(--border); border-radius:6px; padding:2px 6px; font-size:12px; color:var(--muted);" title="Not processed for knowledge">Pending</span>`;
+        }
+        
+      } catch (error) {
+        console.error('Error checking knowledge status:', error);
+        return `<span style="background:var(--panel-2); border:1px solid var(--border); border-radius:6px; padding:2px 6px; font-size:12px; color:var(--muted);" title="Error checking status">Unknown</span>`;
+      }
+    }
     function renderFilesList(items, projectId = null) {
       const list = qs('#filesList'); if (!list) return;
       list.innerHTML = '';
@@ -3127,6 +3183,15 @@
         }
       }
       const toBadge = (text) => `<span style="border:1px solid var(--border); padding:2px 6px; border-radius:6px; font-size:12px;">${text}</span>`;
+      
+      // Get status badges including file status and knowledge processing status
+      const getStatusBadges = (fileStatus, fileId) => {
+        const fileStatusBadge = toBadge(fileStatus);
+        const knowledgeStatusId = `knowledge-status-${fileId}`;
+        // Knowledge processing badge with styling consistent with visibility badges
+        const knowledgeStatusBadge = `<span id="${knowledgeStatusId}" style="background:var(--panel-2); border:1px solid var(--border); border-radius:6px; padding:2px 6px; font-size:12px; color:var(--muted);" title="Checking knowledge processing status...">Checking</span>`;
+        return `<div style="display:flex; gap:4px; flex-wrap:wrap;">${fileStatusBadge} ${knowledgeStatusBadge}</div>`;
+      };
         const getVisibilityBadge = (visibility, fileProjectId, currentProjectId) => {
           const isPublic = visibility === 'public';
           const isFromOtherProject = fileProjectId !== currentProjectId;
@@ -3145,13 +3210,6 @@
           const isAdminUser = username === 'admin';
           
           let buttons = [];
-          
-          // Knowledge ingest button - disabled for shared files for non-admin users
-          if (!isSharedFile || isAdminUser) {
-            buttons.push(`<button class="btn" data-action="ingest" data-id="${id}" title="Add to Knowledge Base">🧠 Knowledge</button>`);
-          } else {
-            buttons.push(`<button class="btn" data-action="ingest" data-id="${id}" disabled style="opacity:0.5; cursor:not-allowed;" title="Cannot ingest shared files">🧠 Knowledge</button>`);
-          }
           
           // URL button - always available
           buttons.push(`<button class="btn" data-action="url" data-id="${id}">URL</button>`);
@@ -3208,7 +3266,7 @@
           <td style="width:32px; text-align:center;"><input type="checkbox" class="file-select" data-id="${id}" /></td>
           <td><div style="display:flex; flex-direction:column;"><span style="font-weight:600;">${name}</span><span class="muted" style="font-size:12px;">${id}</span></div></td>
           <td>${getEditableDocTypeBadge(tags.docType || 'unknown', id, projectId, meta)}</td>
-          <td>${toBadge(status)}</td>
+          <td>${getStatusBadges(status, id)}</td>
           <td>${getVisibilityBadge(meta.visibility || 'private', meta.project_id, projectId)}</td>
           <td style="text-align:right;">${sizeStr}</td>
           <td class="muted" style="font-size:12px;">${created}</td>
@@ -3394,15 +3452,15 @@
           const url = await getFileUrlViaApi(id);
           if (url) { try { await navigator.clipboard.writeText(url); toast('URL copied'); } catch(_) { window.open(url, '_blank'); } }
         } else if (action === 'ingest') {
-          const pid = window.currentProjectId ? window.currentProjectId() : ''; if (!pid) { toast('Select a project first', true); return; }
-          if (window.openIngestParamsModal) window.openIngestParamsModal(pid, [id]);
+          // Individual ingest action removed - knowledge processing is now streamlined
+          toast('✅ This file is already processed for knowledge!', false);
         }
       };
       // Bulk buttons
       try {
         const bulkDelete = qs('#filesBulkDeleteBtn');
         const bulkProcess = qs('#filesBulkProcessBtn');
-        const bulkIngest = qs('#filesBulkIngestBtn');
+        // bulkIngest button removed - knowledge processing is now automatic
         const selectedIds = () => Array.from(list.querySelectorAll('.file-select:checked')).map(c => c.getAttribute('data-id'));
         if (bulkDelete) bulkDelete.onclick = async () => {
           const ids = selectedIds(); if (!ids.length) { toast('No files selected', true); return; }
@@ -3420,12 +3478,23 @@
           let ok = 0; for (const id of ids) { if (await processFileViaApi(id)) ok++; }
           toast(`Started ${ok}/${ids.length}`);
         };
-        if (bulkIngest) bulkIngest.onclick = async () => {
-          const ids = selectedIds(); if (!ids.length) { toast('No files selected', true); return; }
-          const pid = window.currentProjectId ? window.currentProjectId() : ''; if (!pid) { toast('Select a project first', true); return; }
-          if (window.openIngestParamsModal) window.openIngestParamsModal(pid, ids);
-        };
+        // bulkIngest removed - all uploaded files now automatically processed for knowledge
       } catch(_) {}
+      
+      // Update knowledge processing status badges asynchronously
+      setTimeout(async () => {
+        const statusElements = list.querySelectorAll('[id^="knowledge-status-"]');
+        for (const element of statusElements) {
+          const fileId = element.id.replace('knowledge-status-', '');
+          try {
+            const status = await getKnowledgeProcessingStatus(fileId);
+            element.outerHTML = status;
+          } catch (error) {
+            console.error('Error updating knowledge status for file', fileId, error);
+            element.outerHTML = `<span style="background:var(--panel-2); border:1px solid var(--border); border-radius:6px; padding:2px 6px; font-size:12px; color:var(--muted);" title="Error checking status">Unknown</span>`;
+          }
+        }
+      }, 100); // Small delay to ensure DOM is ready
     }
     function renderStagedList() {
       const list = qs('#stagedList'); if (!list) return;
@@ -3508,22 +3577,14 @@
         fd.append('file', fileMeta);
         fd.append('project_id', pid);
         
-        // Check knowledge processing options
-        const enableKnowledgeProcessing = qs('#enableKnowledgeProcessing');
-        const knowledgeEnabled = enableKnowledgeProcessing && enableKnowledgeProcessing.checked;
+        // Always include knowledge processing options (automatic now)
+        const embeddingModel = qs('#embeddingModel')?.value || 'all-MiniLM-L6-v2';
+        const chunkingStrategy = qs('#chunkingStrategy')?.value || '';  // Empty = auto-detect
         
-        if (knowledgeEnabled) {
-          fd.append('process_for_knowledge', 'true');
-          
-          // Add embedding model and chunking strategy
-          const embeddingModel = qs('#embeddingModel')?.value || 'all-MiniLM-L6-v2';
-          const chunkingStrategy = qs('#chunkingStrategy')?.value || 'hybrid';
-          
-          fd.append('embedding_model', embeddingModel);
-          fd.append('chunking_strategy', chunkingStrategy);
-          
-          console.log('🧠 Knowledge processing enabled:', embeddingModel, chunkingStrategy);
-        }
+        fd.append('embedding_model', embeddingModel);
+        fd.append('chunking_strategy', chunkingStrategy);
+        
+        console.log('📝 Processing:', embeddingModel, chunkingStrategy || 'smart-default');
         
         try {
           const t = (tags && tags.value || '').trim();
@@ -3871,18 +3932,13 @@
         });
       }
       
-      // Handle knowledge processing checkbox
-      const enableKnowledgeProcessing = qs('#enableKnowledgeProcessing');
+      // Knowledge processing is now automatic - no checkbox needed
       const knowledgeProcessingConfig = qs('#knowledgeProcessingConfig');
       
-      if (enableKnowledgeProcessing && knowledgeProcessingConfig) {
-        enableKnowledgeProcessing.addEventListener('change', () => {
-          knowledgeProcessingConfig.style.display = enableKnowledgeProcessing.checked ? 'grid' : 'none';
-          
-          if (enableKnowledgeProcessing.checked) {
-            toast('🧠 Knowledge processing enabled - files will be automatically processed for search and retrieval');
-          }
-        });
+      if (knowledgeProcessingConfig) {
+        // Always show config since processing is automatic
+        knowledgeProcessingConfig.style.display = 'grid';
+        console.log('⚙️ Knowledge processing ready');
       }
       if (uploadAll) uploadAll.addEventListener('click', async ()=>{
         if (!filesState.staged.length) { toast('Nothing to upload', true); return; }
@@ -3953,6 +4009,9 @@
       }
       
       function openIngestParamsModal(projectId, fileIds) {
+        // Modal disabled - knowledge processing is now automatic
+        toast('✅ Knowledge processing is automatic! No configuration needed.', false);
+        return; // Early return - don't show modal
         modalCtx = { projectId, fileIds };
         loadEmbeddingModels(); // Load latest models when modal opens
         if (modal) modal.style.display = 'flex';
@@ -3992,6 +4051,7 @@
         if (res.ok) { toast('Ingestion started'); try { refreshRunsPanel(); } catch(_) {} } else { toast(`Ingestion failed: ${res.error}`, true); }
       });
       // Expose for bulk handler
+      // Modal functionality disabled since knowledge processing is now automatic
       window.openIngestParamsModal = openIngestParamsModal;
     }
 

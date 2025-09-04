@@ -31,6 +31,17 @@ This file contains data dumps of just one lines for want, needs, and nice to hav
 [] Ensure that the requirements.txt stays up to date.
 [] Add tabs to main screen to open more than one workbench at a time. 
 [] Keep project questions as approved by the project and we can continue to test with these.
+[] Consider a task script registry to select known and tested scripts for the bpmn tool.
+[] Keep requirements.txt up to date as we install new packages.
+[] Manage Ontology URI per object
+[] Manage Ontology Attributes
+[] Manage Ontology base object names
+[] Add user task workbench
+[] Add nested ontology view by checkmark in imports
+[] Keep knowledge project specific
+[] Process driven projects
+[] Add users tasks page for wf/pl
+[] Eliminate hardcoded workers and use small scripts in the bpmn process
 
 ## 🎯 NEXT PRIORITIES
 
