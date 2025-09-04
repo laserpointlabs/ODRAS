@@ -347,3 +347,111 @@ async def export_ontology(format: str, manager: OntologyManager = Depends(get_on
     except Exception as e:
         logger.error(f"Failed to export ontology: {e}")
         raise HTTPException(status_code=500, detail=f"Export failed: {str(e)}")
+
+
+@router.get("/layout", response_model=Dict[str, Any])
+async def get_layout(graph: str, manager: OntologyManager = Depends(get_ontology_manager)):
+    """
+    Retrieve layout data for a specific ontology graph.
+
+    Args:
+        graph: Graph IRI to retrieve layout for
+
+    Returns:
+        Layout data including node positions, zoom, and pan
+    """
+    try:
+        layout_data = manager.get_layout_by_graph(graph)
+        return {"success": True, "data": layout_data, "message": "Layout retrieved successfully"}
+    except Exception as e:
+        logger.error(f"Failed to get layout: {e}")
+        raise HTTPException(status_code=500, detail=f"Failed to retrieve layout: {str(e)}")
+
+
+@router.put("/layout", response_model=OntologyResponse)
+async def save_layout(
+    graph: str,
+    layout_data: Dict[str, Any] = Body(...),
+    manager: OntologyManager = Depends(get_ontology_manager)
+):
+    """
+    Save layout data for a specific ontology graph.
+
+    Args:
+        graph: Graph IRI to save layout for
+        layout_data: Layout data including node positions, zoom, and pan
+
+    Returns:
+        Save operation result
+    """
+    try:
+        result = manager.save_layout_by_graph(graph, layout_data)
+        
+        if result["success"]:
+            return OntologyResponse(
+                success=True,
+                message=result["message"],
+                data={"layout_id": result.get("layout_id")}
+            )
+        else:
+            raise HTTPException(status_code=400, detail=result["error"])
+
+    except Exception as e:
+        logger.error(f"Failed to save layout: {e}")
+        raise HTTPException(status_code=500, detail=f"Failed to save layout: {str(e)}")
+
+
+@router.post("/mint-iri", response_model=Dict[str, Any])
+async def mint_unique_iri(
+    base_name: str = Body(..., description="Base name for the entity"),
+    entity_type: str = Body(..., description="Type of entity (class, objectProperty, datatypeProperty)"),
+    graph: Optional[str] = Body(None, description="Graph IRI to check within"),
+    manager: OntologyManager = Depends(get_ontology_manager)
+):
+    """
+    Mint a unique IRI for a new entity.
+
+    Args:
+        base_name: Base name for the entity
+        entity_type: Type of entity
+        graph: Optional graph IRI to check within
+
+    Returns:
+        Unique IRI string
+    """
+    try:
+        unique_iri = manager.mint_unique_iri(base_name, entity_type, graph)
+        return {
+            "success": True,
+            "data": {"iri": unique_iri},
+            "message": f"Unique IRI minted for {entity_type}"
+        }
+    except Exception as e:
+        logger.error(f"Failed to mint IRI: {e}")
+        raise HTTPException(status_code=500, detail=f"Failed to mint IRI: {str(e)}")
+
+
+@router.get("/validate-integrity", response_model=Dict[str, Any])
+async def validate_ontology_integrity(
+    graph: str,
+    manager: OntologyManager = Depends(get_ontology_manager)
+):
+    """
+    Validate IRI integrity for an ontology graph.
+
+    Args:
+        graph: Graph IRI to validate
+
+    Returns:
+        Validation results with warnings and errors
+    """
+    try:
+        validation_result = manager.validate_iri_integrity(graph)
+        return {
+            "success": True,
+            "data": validation_result,
+            "message": "Integrity validation completed"
+        }
+    except Exception as e:
+        logger.error(f"Failed to validate integrity: {e}")
+        raise HTTPException(status_code=500, detail=f"Failed to validate integrity: {str(e)}")

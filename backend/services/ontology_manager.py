@@ -791,3 +791,306 @@ class OntologyManager:
         """Log ontology changes for audit trail."""
         # Implementation would log to database
         pass
+
+    def get_layout_by_graph(self, graph_iri: str) -> Dict[str, Any]:
+        """
+        Retrieve layout data for a specific ontology graph.
+
+        Args:
+            graph_iri: The IRI of the named graph to retrieve layout for
+
+        Returns:
+            Dict containing layout data (nodes, edges, zoom, pan)
+        """
+        try:
+            # Query for layout data in a separate layout graph
+            layout_graph_iri = f"{graph_iri}#layout"
+            query = f"""
+            PREFIX layout: <http://odras.system/layout#>
+            
+            SELECT ?nodes ?edges ?zoom ?pan WHERE {{
+                GRAPH <{layout_graph_iri}> {{
+                    ?layout layout:nodes ?nodes ;
+                            layout:edges ?edges ;
+                            layout:zoom ?zoom ;
+                            layout:pan ?pan .
+                }}
+            }}
+            """
+
+            sparql = SPARQLWrapper(self.fuseki_query_url)
+            sparql.setQuery(query)
+            sparql.setReturnFormat(SPARQL_JSON)
+            results = sparql.query().convert()
+
+            if results["results"]["bindings"]:
+                binding = results["results"]["bindings"][0]
+                return {
+                    "graphIri": graph_iri,
+                    "nodes": json.loads(binding.get("nodes", {}).get("value", "[]")),
+                    "edges": json.loads(binding.get("edges", {}).get("value", "[]")),
+                    "zoom": float(binding.get("zoom", {}).get("value", 1.0)),
+                    "pan": json.loads(binding.get("pan", {}).get("value", '{"x": 0, "y": 0}'))
+                }
+            else:
+                # Return default layout if none exists
+                return {
+                    "graphIri": graph_iri,
+                    "nodes": [],
+                    "edges": [],
+                    "zoom": 1.0,
+                    "pan": {"x": 0, "y": 0}
+                }
+
+        except Exception as e:
+            logger.error(f"Failed to retrieve layout for {graph_iri}: {e}")
+            # Return default layout on error
+            return {
+                "graphIri": graph_iri,
+                "nodes": [],
+                "edges": [],
+                "zoom": 1.0,
+                "pan": {"x": 0, "y": 0}
+            }
+
+    def save_layout_by_graph(self, graph_iri: str, layout_data: Dict[str, Any]) -> Dict[str, Any]:
+        """
+        Save layout data for a specific ontology graph.
+
+        Args:
+            graph_iri: The IRI of the named graph to save layout for
+            layout_data: Layout data including node positions, zoom, and pan
+
+        Returns:
+            Dict containing save operation result
+        """
+        try:
+            layout_graph_iri = f"{graph_iri}#layout"
+            layout_id = str(uuid.uuid4())
+            
+            # Clear existing layout data
+            clear_query = f"""
+            DELETE WHERE {{
+                GRAPH <{layout_graph_iri}> {{
+                    ?s ?p ?o .
+                }}
+            }}
+            """
+            
+            # Insert new layout data
+            insert_query = f"""
+            INSERT DATA {{
+                GRAPH <{layout_graph_iri}> {{
+                    <{layout_graph_iri}#{layout_id}> <http://odras.system/layout#nodes> "{json.dumps(layout_data.get('nodes', []))}" ;
+                                                    <http://odras.system/layout#edges> "{json.dumps(layout_data.get('edges', []))}" ;
+                                                    <http://odras.system/layout#zoom> "{layout_data.get('zoom', 1.0)}"^^<http://www.w3.org/2001/XMLSchema#float> ;
+                                                    <http://odras.system/layout#pan> "{json.dumps(layout_data.get('pan', {{'x': 0, 'y': 0}}))}" .
+                }}
+            }}
+            """
+
+            # Execute clear and insert
+            clear_result = self._execute_sparql_update(clear_query)
+            if not clear_result["success"]:
+                return {"success": False, "error": "Failed to clear existing layout"}
+            
+            insert_result = self._execute_sparql_update(insert_query)
+            if insert_result["success"]:
+                return {
+                    "success": True,
+                    "message": f"Layout saved successfully for {graph_iri}",
+                    "layout_id": layout_id,
+                    "timestamp": datetime.now(timezone.utc).isoformat()
+                }
+            else:
+                return {"success": False, "error": "Failed to save layout data"}
+
+        except Exception as e:
+            logger.error(f"Failed to save layout for {graph_iri}: {e}")
+            return {"success": False, "error": f"Save failed: {str(e)}"}
+
+    def mint_unique_iri(self, base_name: str, entity_type: str, graph_iri: str = None) -> str:
+        """
+        Mint a unique IRI for a new entity, ensuring no conflicts exist.
+
+        Args:
+            base_name: Base name for the entity
+            entity_type: Type of entity ('class', 'objectProperty', 'datatypeProperty')
+            graph_iri: Optional graph IRI to check within
+
+        Returns:
+            Unique IRI string
+        """
+        # Clean the base name to be IRI-safe
+        safe_name = self._sanitize_iri_name(base_name)
+        
+        # Use the graph IRI as base if provided, otherwise use default
+        if graph_iri:
+            base_uri = graph_iri
+        else:
+            base_uri = self.base_uri
+        
+        # Try the base name first
+        candidate_iri = f"{base_uri}#{safe_name}"
+        if not self._iri_exists(candidate_iri, entity_type, graph_iri):
+            return candidate_iri
+        
+        # If base name exists, try with numbers
+        counter = 1
+        while counter < 1000:  # Prevent infinite loop
+            candidate_iri = f"{base_uri}#{safe_name}_{counter}"
+            if not self._iri_exists(candidate_iri, entity_type, graph_iri):
+                return candidate_iri
+            counter += 1
+        
+        # Fallback to UUID if all else fails
+        unique_id = str(uuid.uuid4())[:8]
+        return f"{base_uri}#{safe_name}_{unique_id}"
+
+    def _sanitize_iri_name(self, name: str) -> str:
+        """
+        Sanitize a name to be safe for use in IRIs.
+
+        Args:
+            name: Raw name to sanitize
+
+        Returns:
+            Sanitized name safe for IRI use
+        """
+        # Remove or replace problematic characters
+        import re
+        # Replace spaces and special chars with underscores
+        sanitized = re.sub(r'[^\w\-]', '_', name)
+        # Remove multiple consecutive underscores
+        sanitized = re.sub(r'_+', '_', sanitized)
+        # Remove leading/trailing underscores
+        sanitized = sanitized.strip('_')
+        # Ensure it starts with a letter or underscore
+        if sanitized and not re.match(r'^[a-zA-Z_]', sanitized):
+            sanitized = f"_{sanitized}"
+        # Ensure it's not empty
+        if not sanitized:
+            sanitized = "entity"
+        return sanitized
+
+    def _iri_exists(self, iri: str, entity_type: str, graph_iri: str = None) -> bool:
+        """
+        Check if an IRI already exists in the ontology.
+
+        Args:
+            iri: IRI to check
+            entity_type: Type of entity to check for
+            graph_iri: Optional graph IRI to check within
+
+        Returns:
+            True if IRI exists, False otherwise
+        """
+        try:
+            # Map entity types to RDF types
+            type_mapping = {
+                'class': str(OWL.Class),
+                'objectProperty': str(OWL.ObjectProperty),
+                'datatypeProperty': str(OWL.DatatypeProperty),
+                'annotationProperty': str(OWL.AnnotationProperty)
+            }
+            
+            rdf_type = type_mapping.get(entity_type, str(OWL.Class))
+            
+            # Build query
+            if graph_iri:
+                query = f"""
+                ASK {{
+                    GRAPH <{graph_iri}> {{
+                        <{iri}> a <{rdf_type}> .
+                    }}
+                }}
+                """
+            else:
+                query = f"""
+                ASK {{
+                    <{iri}> a <{rdf_type}> .
+                }}
+                """
+            
+            sparql = SPARQLWrapper(self.fuseki_query_url)
+            sparql.setQuery(query)
+            sparql.setReturnFormat(SPARQL_JSON)
+            result = sparql.query().convert()
+            
+            return result.get('boolean', False)
+            
+        except Exception as e:
+            logger.warn(f"Error checking if IRI exists: {e}")
+            return False  # Assume it doesn't exist if we can't check
+
+    def validate_iri_integrity(self, graph_iri: str) -> Dict[str, Any]:
+        """
+        Validate IRI integrity for an ontology graph.
+
+        Args:
+            graph_iri: Graph IRI to validate
+
+        Returns:
+            Validation results with warnings and errors
+        """
+        try:
+            query = f"""
+            PREFIX owl: <http://www.w3.org/2002/07/owl#>
+            PREFIX rdfs: <http://www.w3.org/2000/01/rdf-schema#>
+            
+            SELECT ?s ?p ?o WHERE {{
+                GRAPH <{graph_iri}> {{
+                    ?s ?p ?o .
+                }}
+            }}
+            """
+            
+            sparql = SPARQLWrapper(self.fuseki_query_url)
+            sparql.setQuery(query)
+            sparql.setReturnFormat(SPARQL_JSON)
+            results = sparql.query().convert()
+            
+            warnings = []
+            errors = []
+            
+            # Check for duplicate labels
+            labels = {}
+            for binding in results["results"]["bindings"]:
+                if binding["p"]["value"] == str(RDFS.label):
+                    label = binding["o"]["value"]
+                    subject = binding["s"]["value"]
+                    if label in labels:
+                        warnings.append(f"Duplicate label '{label}' found for {subject} and {labels[label]}")
+                    else:
+                        labels[label] = subject
+            
+            # Check for missing labels
+            entities_without_labels = set()
+            for binding in results["results"]["bindings"]:
+                subject = binding["s"]["value"]
+                if binding["p"]["value"] == str(RDF.type):
+                    entities_without_labels.add(subject)
+            
+            for binding in results["results"]["bindings"]:
+                if binding["p"]["value"] == str(RDFS.label):
+                    subject = binding["s"]["value"]
+                    entities_without_labels.discard(subject)
+            
+            for entity in entities_without_labels:
+                warnings.append(f"Entity {entity} has no rdfs:label")
+            
+            return {
+                "valid": len(errors) == 0,
+                "warnings": warnings,
+                "errors": errors,
+                "entity_count": len(set(binding["s"]["value"] for binding in results["results"]["bindings"]))
+            }
+            
+        except Exception as e:
+            logger.error(f"Error validating IRI integrity: {e}")
+            return {
+                "valid": False,
+                "warnings": [],
+                "errors": [f"Validation failed: {str(e)}"],
+                "entity_count": 0
+            }
