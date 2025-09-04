@@ -1520,11 +1520,6 @@
         const json = await res.json();
         const referenceOntologies = json.reference_ontologies || [];
         
-        if (referenceOntologies.length === 0) {
-          toast('No reference ontologies available', true);
-          return;
-        }
-        
         // Create overlay
         const overlay = document.createElement('div');
         overlay.style.position = 'fixed';
@@ -1534,25 +1529,45 @@
         
         const panel = document.createElement('div');
         panel.style.position = 'fixed';
-        panel.style.top = '20%';
+        panel.style.top = '10%';
         panel.style.left = '50%';
         panel.style.transform = 'translateX(-50%)';
         panel.style.background = 'var(--panel)';
         panel.style.border = '1px solid var(--border)';
         panel.style.borderRadius = '12px';
         panel.style.padding = '20px';
-        panel.style.minWidth = '500px';
+        panel.style.minWidth = '600px';
         panel.style.maxWidth = '80vw';
-        panel.style.maxHeight = '70vh';
+        panel.style.maxHeight = '80vh';
         panel.style.overflow = 'auto';
         panel.style.zIndex = '9999';
         
         panel.innerHTML = `
           <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:16px;">
-            <h3 style="margin:0;">Select Reference Ontology</h3>
+            <h3 style="margin:0;">Import Reference Ontology</h3>
             <button id="refOntClose" class="btn">Close</button>
           </div>
-          <div id="refOntList" style="max-height:400px; overflow-y:auto;"></div>
+          
+          
+          <!-- Existing Reference Ontologies Section -->
+          <div>
+            <h4 style="margin:0 0 12px 0;">📚 Existing Reference Ontologies</h4>
+            <div id="refOntList" style="max-height:300px; overflow-y:auto;">
+              ${referenceOntologies.length === 0 ? 
+                '<div style="text-align:center; color:var(--muted); padding:20px;">No reference ontologies available</div>' :
+                referenceOntologies.map(onto => `
+                  <div style="display:flex; justify-content:space-between; align-items:center; border:1px solid var(--border); border-radius:8px; padding:12px; margin-bottom:8px; cursor:pointer;" 
+                       data-graph-iri="${onto.graph_iri}" class="ref-onto-item">
+                    <div>
+                      <div style="font-weight:500;">${onto.label || onto.graph_iri.split('/').pop()}</div>
+                      <div style="font-size:0.9em; color:var(--muted);">${onto.project_name} • ${onto.graph_iri}</div>
+                    </div>
+                    <button class="btn" data-graph-iri="${onto.graph_iri}">Import</button>
+                  </div>
+                `).join('')
+              }
+            </div>
+          </div>
         `;
         
         document.body.appendChild(overlay);
@@ -1568,25 +1583,15 @@
         panel.querySelector('#refOntClose').onclick = close;
         overlay.onclick = close;
         
-        const listEl = panel.querySelector('#refOntList');
-        listEl.innerHTML = referenceOntologies.map(onto => `
-          <div style="display:flex; justify-content:space-between; align-items:center; border:1px solid var(--border); border-radius:8px; padding:12px; margin-bottom:8px; cursor:pointer;" 
-               data-graph-iri="${onto.graph_iri}" class="ref-onto-item">
-            <div>
-              <div style="font-weight:500;">${onto.label || onto.graph_iri.split('/').pop()}</div>
-              <div style="font-size:0.9em; color:var(--muted);">${onto.project_name} • ${onto.graph_iri}</div>
-            </div>
-            <button class="btn" data-graph-iri="${onto.graph_iri}">Import</button>
-          </div>
-        `).join('');
         
-        // Add hover effects
-        listEl.querySelectorAll('.ref-onto-item').forEach(item => {
+        // Add hover effects for existing ontologies
+        panel.querySelectorAll('.ref-onto-item').forEach(item => {
           item.onmouseover = () => item.style.background = 'var(--hover)';
           item.onmouseout = () => item.style.background = 'transparent';
         });
         
-        // Handle import clicks
+        // Handle import clicks for existing ontologies
+        const listEl = panel.querySelector('#refOntList');
         listEl.addEventListener('click', async (e) => {
           const btn = e.target.closest('button[data-graph-iri]');
           if (!btn) return;
@@ -1627,19 +1632,103 @@
 
     async function fetchImportGraphSnapshot(importIri) {
       try {
-        const qClasses = `PREFIX owl: <http://www.w3.org/2002/07/owl#>\nPREFIX rdfs: <http://www.w3.org/2000/01/rdf-schema#>\nSELECT ?c ?label WHERE { GRAPH <${importIri}> { ?c a owl:Class . OPTIONAL { ?c rdfs:label ?label } } }`;
-        const qProps = `PREFIX owl: <http://www.w3.org/2002/07/owl#>\nPREFIX rdfs: <http://www.w3.org/2000/01/rdf-schema#>\nSELECT ?p ?pl ?d ?r WHERE { GRAPH <${importIri}> { ?p a owl:ObjectProperty . OPTIONAL { ?p rdfs:label ?pl } OPTIONAL { ?p rdfs:domain ?d } OPTIONAL { ?p rdfs:range ?r } } }`;
+        // Enhanced SPARQL queries to fetch comprehensive ontological metadata
+        const qClasses = `
+          PREFIX owl: <http://www.w3.org/2002/07/owl#>
+          PREFIX rdfs: <http://www.w3.org/2000/01/rdf-schema#>
+          PREFIX skos: <http://www.w3.org/2004/02/skos/core#>
+          PREFIX dc11: <http://purl.org/dc/elements/1.1/>
+          PREFIX dcterms: <http://purl.org/dc/terms/>
+          PREFIX obo: <http://purl.obolibrary.org/obo/>
+          SELECT ?c ?label ?comment ?definition ?example ?identifier ?subclassOf ?equivalentClass WHERE {
+            GRAPH <${importIri}> { 
+              ?c a owl:Class . 
+              OPTIONAL { ?c rdfs:label ?label }
+              OPTIONAL { ?c rdfs:comment ?comment }
+              OPTIONAL { ?c skos:definition ?definition }
+              OPTIONAL { ?c skos:example ?example }
+              OPTIONAL { ?c dc11:identifier ?identifier }
+              OPTIONAL { ?c rdfs:subClassOf ?subclassOf }
+              OPTIONAL { ?c owl:equivalentClass ?equivalentClass }
+            } 
+          }`;
+        
+        const qProps = `
+          PREFIX owl: <http://www.w3.org/2002/07/owl#>
+          PREFIX rdfs: <http://www.w3.org/2000/01/rdf-schema#>
+          PREFIX skos: <http://www.w3.org/2004/02/skos/core#>
+          PREFIX dc11: <http://purl.org/dc/elements/1.1/>
+          PREFIX dcterms: <http://purl.org/dc/terms/>
+          SELECT ?p ?label ?comment ?definition ?example ?identifier ?domain ?range ?inverseOf ?subPropertyOf ?equivalentProperty ?propertyType WHERE {
+            GRAPH <${importIri}> { 
+              ?p a owl:ObjectProperty . 
+              OPTIONAL { ?p rdfs:label ?label }
+              OPTIONAL { ?p rdfs:comment ?comment }
+              OPTIONAL { ?p skos:definition ?definition }
+              OPTIONAL { ?p skos:example ?example }
+              OPTIONAL { ?p dc11:identifier ?identifier }
+              OPTIONAL { ?p rdfs:domain ?domain }
+              OPTIONAL { ?p rdfs:range ?range }
+              OPTIONAL { ?p owl:inverseOf ?inverseOf }
+              OPTIONAL { ?p rdfs:subPropertyOf ?subPropertyOf }
+              OPTIONAL { ?p owl:equivalentProperty ?equivalentProperty }
+              OPTIONAL { ?p a ?propertyType }
+            } 
+          }`;
+        
         const classesRes = await authenticatedFetch('/api/ontology/sparql', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ query: qClasses }) });
         const propsRes = await authenticatedFetch('/api/ontology/sparql', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ query: qProps }) });
         const classesJson = classesRes.ok ? await classesRes.json() : { results: { bindings: [] } };
         const propsJson = propsRes.ok ? await propsRes.json() : { results: { bindings: [] } };
-        const cls = (classesJson.results?.bindings || []).map(b => ({ iri: b.c.value, label: (b.label && b.label.value) || (b.c.value.includes('#') ? b.c.value.split('#').pop() : b.c.value.split('/').pop()) }));
+        
+        // Enhanced class processing with rich metadata
+        const cls = (classesJson.results?.bindings || []).map(b => {
+          const iri = b.c.value;
+          const label = (b.label && b.label.value) || (iri.includes('#') ? iri.split('#').pop() : iri.split('/').pop());
+          const attrs = {};
+          
+          // Store all available metadata
+          if (b.comment && b.comment.value) attrs.comment = b.comment.value;
+          if (b.definition && b.definition.value) attrs.definition = b.definition.value;
+          if (b.example && b.example.value) attrs.example = b.example.value;
+          if (b.identifier && b.identifier.value) attrs.identifier = b.identifier.value;
+          if (b.subclassOf && b.subclassOf.value) attrs.subclassOf = b.subclassOf.value;
+          if (b.equivalentClass && b.equivalentClass.value) attrs.equivalentClass = b.equivalentClass.value;
+          
+          return { iri, label, attrs };
+        });
+        
+        // Enhanced property processing with rich metadata
         const edges = [];
         (propsJson.results?.bindings || []).forEach(b => {
-          const d = b.d && b.d.value; const r = b.r && b.r.value; if (!d || !r) return;
-          const label = (b.pl && b.pl.value) || (b.p && b.p.value ? (b.p.value.includes('#') ? b.p.value.split('#').pop() : b.p.value.split('/').pop()) : 'relatedTo');
-          edges.push({ sourceIri: d, targetIri: r, label });
+          const p = b.p.value;
+          const label = (b.label && b.label.value) || (p.includes('#') ? p.split('#').pop() : p.split('/').pop());
+          const attrs = {};
+          
+          // Store all available metadata
+          if (b.comment && b.comment.value) attrs.comment = b.comment.value;
+          if (b.definition && b.definition.value) attrs.definition = b.definition.value;
+          if (b.example && b.example.value) attrs.example = b.example.value;
+          if (b.identifier && b.identifier.value) attrs.identifier = b.identifier.value;
+          if (b.domain && b.domain.value) attrs.domain = b.domain.value;
+          if (b.range && b.range.value) attrs.range = b.range.value;
+          if (b.inverseOf && b.inverseOf.value) attrs.inverseOf = b.inverseOf.value;
+          if (b.subPropertyOf && b.subPropertyOf.value) attrs.subPropertyOf = b.subPropertyOf.value;
+          if (b.equivalentProperty && b.equivalentProperty.value) attrs.equivalentProperty = b.equivalentProperty.value;
+          if (b.propertyType && b.propertyType.value) attrs.propertyType = b.propertyType.value;
+          
+          // Create edges for domain-range relationships
+          if (b.domain && b.range) {
+            edges.push({ 
+              sourceIri: b.domain.value, 
+              targetIri: b.range.value, 
+              label,
+              predicate: p,
+              attrs
+            });
+          }
         });
+        
         return { classes: cls, edges };
       } catch(_) { return { classes: [], edges: [] }; }
     }
@@ -1707,7 +1796,7 @@
             const id = `imp:${imp}#${c.iri}`;
             if (ontoState.cy.$(`#${CSS.escape(id)}`).length) return;
             const pos = savedPos[id] ? savedPos[id] : nextPos();
-            added.push(ontoState.cy.add({ group: 'nodes', data: { id, iri: c.iri, label: c.label, type: 'class', importSource: imp, attrs: {} }, position: pos, classes: 'imported' }));
+            added.push(ontoState.cy.add({ group: 'nodes', data: { id, iri: c.iri, label: c.label, type: 'class', importSource: imp, attrs: c.attrs || {} }, position: pos, classes: 'imported' }));
           });
           // Add edges where both endpoints available; create missing nodes on demand
           let idx = 0;
@@ -1717,14 +1806,14 @@
             if (!ontoState.cy.$(`#${CSS.escape(sid)}`).length) {
               const label = e.sourceIri.includes('#') ? e.sourceIri.split('#').pop() : e.sourceIri.split('/').pop();
               const pos = savedPos[sid] ? savedPos[sid] : nextPos();
-              added.push(ontoState.cy.add({ group: 'nodes', data: { id: sid, iri: e.sourceIri, label, type: 'class', importSource: imp, attrs: {} }, position: pos, classes: 'imported' }));
+              added.push(ontoState.cy.add({ group: 'nodes', data: { id: sid, iri: e.sourceIri, label, type: 'class', importSource: imp, attrs: e.attrs || {} }, position: pos, classes: 'imported' }));
             }
             if (!ontoState.cy.$(`#${CSS.escape(tid)}`).length) {
               const label = e.targetIri.includes('#') ? e.targetIri.split('#').pop() : e.targetIri.split('/').pop();
               const pos = savedPos[tid] ? savedPos[tid] : nextPos();
-              added.push(ontoState.cy.add({ group: 'nodes', data: { id: tid, iri: e.targetIri, label, type: 'class', importSource: imp, attrs: {} }, position: pos, classes: 'imported' }));
+              added.push(ontoState.cy.add({ group: 'nodes', data: { id: tid, iri: e.targetIri, label, type: 'class', importSource: imp, attrs: e.attrs || {} }, position: pos, classes: 'imported' }));
             }
-            added.push(ontoState.cy.add({ group: 'edges', data: { id: `impE${Date.now()}_${idx++}`, source: sid, target: tid, predicate: e.label, type: 'objectProperty', importSource: imp, attrs: {} }, classes: 'imported' }));
+            added.push(ontoState.cy.add({ group: 'edges', data: { id: `impE${Date.now()}_${idx++}`, source: sid, target: tid, predicate: e.label, type: 'objectProperty', importSource: imp, attrs: e.attrs || {} }, classes: 'imported' }));
           });
           // Make overlays semi-interactive for positioning: allow drag, but don't select or edit
           added.forEach(el => {
@@ -2786,25 +2875,66 @@
             
             panel.innerHTML = `
               <div style="margin-bottom:16px;">
-                <h3 style="margin:0 0 16px 0;">Create New Ontology</h3>
-                <div style="margin-bottom:12px;">
-                  <label style="display:block; margin-bottom:4px; font-weight:500;">Display Label:</label>
-                  <input type="text" id="ontoLabel" placeholder="Enter ontology label" style="width:100%; padding:8px; border:1px solid var(--border); border-radius:4px; background:var(--input-bg); color:var(--text);" />
-                </div>
-                ${isAdmin ? `
+                <h3 style="margin:0 0 16px 0;">Create or Import Ontology</h3>
+                
+                <!-- Creation/Import Mode Toggle -->
                 <div style="margin-bottom:16px;">
-                  <label style="display:flex; align-items:center; cursor:pointer;">
-                    <input type="checkbox" id="isReference" style="margin-right:8px;" />
-                    <span>Mark as Reference Ontology (Admin only)</span>
-                  </label>
-                  <div style="font-size:0.9em; color:var(--muted); margin-top:4px;">
-                    Reference ontologies can be imported by other projects
+                  <div style="display:flex; gap:8px; margin-bottom:12px;">
+                    <button id="createMode" class="btn btn-primary" style="flex:1;">Create New</button>
+                    <button id="importMode" class="btn" style="flex:1;">Import from URL</button>
                   </div>
                 </div>
-                ` : ''}
+                
+                <!-- Create New Ontology Section -->
+                <div id="createSection">
+                  <div style="margin-bottom:12px;">
+                    <label style="display:block; margin-bottom:4px; font-weight:500;">Display Label:</label>
+                    <input type="text" id="ontoLabel" placeholder="Enter ontology label" style="width:100%; padding:8px; border:1px solid var(--border); border-radius:4px; background:var(--input-bg); color:var(--text);" />
+                  </div>
+                  ${isAdmin ? `
+                  <div style="margin-bottom:16px;">
+                    <label style="display:flex; align-items:center; cursor:pointer;">
+                      <input type="checkbox" id="isReference" style="margin-right:8px;" />
+                      <span>Mark as Reference Ontology (Admin only)</span>
+                    </label>
+                    <div style="font-size:0.9em; color:var(--muted); margin-top:4px;">
+                      Reference ontologies can be imported by other projects
+                    </div>
+                  </div>
+                  ` : ''}
+                </div>
+                
+                <!-- Import from URL Section -->
+                <div id="importSection" style="display:none;">
+                  <div style="margin-bottom:12px;">
+                    <label style="display:block; margin-bottom:4px; font-weight:500;">Ontology URL:</label>
+                    <input type="url" id="importUrl" placeholder="https://example.com/ontology.owl" style="width:100%; padding:8px; border:1px solid var(--border); border-radius:4px; background:var(--input-bg); color:var(--text);" />
+                  </div>
+                  <div style="margin-bottom:12px;">
+                    <label style="display:block; margin-bottom:4px; font-weight:500;">Display Name:</label>
+                    <input type="text" id="importName" placeholder="Enter display name" style="width:100%; padding:8px; border:1px solid var(--border); border-radius:4px; background:var(--input-bg); color:var(--text);" />
+                  </div>
+                  <div style="margin-bottom:12px;">
+                    <label style="display:block; margin-bottom:4px; font-weight:500;">Display Label:</label>
+                    <input type="text" id="importLabel" placeholder="Enter display label" style="width:100%; padding:8px; border:1px solid var(--border); border-radius:4px; background:var(--input-bg); color:var(--text);" />
+                  </div>
+                  ${isAdmin ? `
+                  <div style="margin-bottom:16px;">
+                    <label style="display:flex; align-items:center; cursor:pointer;">
+                      <input type="checkbox" id="importIsReference" style="margin-right:8px;" />
+                      <span>Mark as Reference Ontology (Admin only)</span>
+                    </label>
+                    <div style="font-size:0.9em; color:var(--muted); margin-top:4px;">
+                      Reference ontologies can be imported by other projects
+                    </div>
+                  </div>
+                  ` : ''}
+                </div>
+                
                 <div style="display:flex; justify-content:flex-end; gap:8px;">
                   <button id="cancelOnto" class="btn">Cancel</button>
                   <button id="createOnto" class="btn btn-primary">Create</button>
+                  <button id="importOnto" class="btn btn-primary" style="display:none;">Import</button>
                 </div>
               </div>
             `;
@@ -2821,6 +2951,25 @@
             
             panel.querySelector('#cancelOnto').onclick = close;
             overlay.onclick = close;
+            
+            // Mode toggle handlers
+            panel.querySelector('#createMode').onclick = () => {
+              panel.querySelector('#createMode').className = 'btn btn-primary';
+              panel.querySelector('#importMode').className = 'btn';
+              panel.querySelector('#createSection').style.display = 'block';
+              panel.querySelector('#importSection').style.display = 'none';
+              panel.querySelector('#createOnto').style.display = 'inline-block';
+              panel.querySelector('#importOnto').style.display = 'none';
+            };
+            
+            panel.querySelector('#importMode').onclick = () => {
+              panel.querySelector('#importMode').className = 'btn btn-primary';
+              panel.querySelector('#createMode').className = 'btn';
+              panel.querySelector('#createSection').style.display = 'none';
+              panel.querySelector('#importSection').style.display = 'block';
+              panel.querySelector('#createOnto').style.display = 'none';
+              panel.querySelector('#importOnto').style.display = 'inline-block';
+            };
             
             panel.querySelector('#createOnto').onclick = async () => {
               const labelInput = panel.querySelector('#ontoLabel');
@@ -2884,6 +3033,88 @@
                 }
               } catch(err) {
                 alert('Failed to create ontology: ' + err.message);
+              }
+            };
+            
+            // Import from URL handler
+            panel.querySelector('#importOnto').onclick = async () => {
+              const urlInput = panel.querySelector('#importUrl');
+              const nameInput = panel.querySelector('#importName');
+              const labelInput = panel.querySelector('#importLabel');
+              
+              const url = urlInput.value.trim();
+              const name = nameInput.value.trim();
+              const label = labelInput.value.trim();
+              
+              if (!url) {
+                alert('Please enter an ontology URL');
+                return;
+              }
+              
+              if (!name) {
+                alert('Please enter a display name');
+                return;
+              }
+              
+              if (!label) {
+                alert('Please enter a display label');
+                return;
+              }
+              
+              const isReference = isAdmin && panel.querySelector('#importIsReference').checked;
+              
+              try {
+                const response = await fetch('/api/ontologies/import-url', {
+                  method: 'POST',
+                  headers: {
+                    'Content-Type': 'application/json',
+                    'Authorization': 'Bearer ' + token
+                  },
+                  body: JSON.stringify({
+                    url: url,
+                    project_id: (activeProject && (activeProject.id || activeProject.project_id)) ? (activeProject.id || activeProject.project_id) : 'default',
+                    name: name,
+                    label: label,
+                    is_reference: isReference
+                  })
+                });
+                
+                if (!response.ok) {
+                  const error = await response.text();
+                  throw new Error(error);
+                }
+                
+                const result = await response.json();
+                toast(`Successfully imported ontology: ${result.label}`);
+                close();
+                await renderTree(project);
+                
+                // Select the imported ontology
+                if (result.graph_iri) {
+                  const newRoot = qs('#treeRoot');
+                  const li = Array.from(newRoot.querySelectorAll('li[role="treeitem"]')).find(el => el.dataset && el.dataset.iri === result.graph_iri);
+                  if (li) {
+                    const lbl = li.querySelector('.node-label'); 
+                    if (lbl) lbl.textContent = result.label || label;
+                    li.dataset.label = result.label || label;
+                    selectNode(li);
+                    await handleTreeSelection(li);
+                  }
+                }
+                
+              } catch (error) {
+                console.error('URL import error:', error);
+                
+                // Check if it's a duplicate ontology error
+                if (error.message && (
+                  error.message.includes('duplicate key value violates unique constraint') ||
+                  error.message.includes('ontologies_registry_graph_iri_key') ||
+                  error.message.includes('already exists')
+                )) {
+                  toast('This ontology has already been imported. Each ontology can only be imported once per project.', true);
+                } else {
+                  toast(`Failed to import ontology: ${error.message}`, true);
+                }
               }
             };
             
@@ -3170,22 +3401,45 @@
     // Attribute templates for different object types
     const attributeTemplates = {
       class: {
-        comment: { type: 'text', label: 'Comment', placeholder: 'Description of the class' },
-        subclass_of: { type: 'text', label: 'Subclass of', placeholder: 'Parent class name' },
+        // Standard ontological properties
+        comment: { type: 'textarea', label: 'Comment (rdfs:comment)', placeholder: 'Description of the class' },
+        definition: { type: 'textarea', label: 'Definition (skos:definition)', placeholder: 'Formal definition of the class' },
+        example: { type: 'textarea', label: 'Example (skos:example)', placeholder: 'Usage example' },
+        identifier: { type: 'text', label: 'Identifier (dc:identifier)', placeholder: 'Unique identifier' },
+        subclassOf: { type: 'text', label: 'Subclass of (rdfs:subClassOf)', placeholder: 'Parent class IRI' },
+        equivalentClass: { type: 'text', label: 'Equivalent Class (owl:equivalentClass)', placeholder: 'Equivalent class IRI' },
+        disjointWith: { type: 'text', label: 'Disjoint With (owl:disjointWith)', placeholder: 'Disjoint class IRI' },
+        // Custom properties
         priority: { type: 'select', label: 'Priority', options: ['High', 'Medium', 'Low'], placeholder: 'Select priority' },
         status: { type: 'select', label: 'Status', options: ['Draft', 'Review', 'Approved', 'Deprecated'], placeholder: 'Select status' }
       },
       objectProperty: {
-        comment: { type: 'text', label: 'Comment', placeholder: 'Description of the property' },
-        domain: { type: 'text', label: 'Domain', placeholder: 'Source class' },
-        range: { type: 'text', label: 'Range', placeholder: 'Target class' },
+        // Standard ontological properties
+        comment: { type: 'textarea', label: 'Comment (rdfs:comment)', placeholder: 'Description of the property' },
+        definition: { type: 'textarea', label: 'Definition (skos:definition)', placeholder: 'Formal definition of the property' },
+        example: { type: 'textarea', label: 'Example (skos:example)', placeholder: 'Usage example' },
+        identifier: { type: 'text', label: 'Identifier (dc:identifier)', placeholder: 'Unique identifier' },
+        domain: { type: 'text', label: 'Domain (rdfs:domain)', placeholder: 'Source class IRI' },
+        range: { type: 'text', label: 'Range (rdfs:range)', placeholder: 'Target class IRI' },
+        inverseOf: { type: 'text', label: 'Inverse Of (owl:inverseOf)', placeholder: 'Inverse property IRI' },
+        subPropertyOf: { type: 'text', label: 'Sub Property Of (rdfs:subPropertyOf)', placeholder: 'Parent property IRI' },
+        equivalentProperty: { type: 'text', label: 'Equivalent Property (owl:equivalentProperty)', placeholder: 'Equivalent property IRI' },
+        propertyType: { type: 'text', label: 'Property Type (rdf:type)', placeholder: 'Property characteristics (e.g., TransitiveProperty)' },
+        // Custom properties
         functional: { type: 'checkbox', label: 'Functional', placeholder: 'Is this a functional property?' },
         inverse_functional: { type: 'checkbox', label: 'Inverse Functional', placeholder: 'Is this inverse functional?' }
       },
       dataProperty: {
-        comment: { type: 'text', label: 'Comment', placeholder: 'Description of the property' },
-        domain: { type: 'text', label: 'Domain', placeholder: 'Source class' },
-        range: { type: 'select', label: 'Range', options: ['xsd:string', 'xsd:integer', 'xsd:float', 'xsd:boolean', 'xsd:dateTime'], placeholder: 'Data type' },
+        // Standard ontological properties
+        comment: { type: 'textarea', label: 'Comment (rdfs:comment)', placeholder: 'Description of the property' },
+        definition: { type: 'textarea', label: 'Definition (skos:definition)', placeholder: 'Formal definition of the property' },
+        example: { type: 'textarea', label: 'Example (skos:example)', placeholder: 'Usage example' },
+        identifier: { type: 'text', label: 'Identifier (dc:identifier)', placeholder: 'Unique identifier' },
+        domain: { type: 'text', label: 'Domain (rdfs:domain)', placeholder: 'Source class IRI' },
+        range: { type: 'select', label: 'Range (rdfs:range)', options: ['xsd:string', 'xsd:integer', 'xsd:float', 'xsd:boolean', 'xsd:dateTime'], placeholder: 'Data type' },
+        subPropertyOf: { type: 'text', label: 'Sub Property Of (rdfs:subPropertyOf)', placeholder: 'Parent property IRI' },
+        equivalentProperty: { type: 'text', label: 'Equivalent Property (owl:equivalentProperty)', placeholder: 'Equivalent property IRI' },
+        // Custom properties
         functional: { type: 'checkbox', label: 'Functional', placeholder: 'Is this a functional property?' }
       },
       note: {
@@ -3194,9 +3448,12 @@
         created_date: { type: 'date', label: 'Created Date', placeholder: 'Creation date' }
       },
       model: {
-        description: { type: 'textarea', label: 'Description', placeholder: 'Model description' },
-        version: { type: 'text', label: 'Version', placeholder: 'Model version' },
-        namespace: { type: 'text', label: 'Namespace', placeholder: 'Model namespace' }
+        // Standard ontological properties
+        comment: { type: 'textarea', label: 'Comment (rdfs:comment)', placeholder: 'Description of the ontology' },
+        definition: { type: 'textarea', label: 'Definition (skos:definition)', placeholder: 'Formal definition of the ontology' },
+        version: { type: 'text', label: 'Version (owl:versionInfo)', placeholder: 'Ontology version' },
+        namespace: { type: 'text', label: 'Namespace', placeholder: 'Base namespace URI' },
+        imports: { type: 'textarea', label: 'Imports (owl:imports)', placeholder: 'Imported ontology URIs' }
       }
     };
 

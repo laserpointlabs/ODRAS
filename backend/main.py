@@ -469,6 +469,119 @@ async def toggle_reference_ontology(body: Dict, user=Depends(get_admin_user)):
         raise HTTPException(status_code=500, detail=f"Failed to update reference status: {str(e)}")
 
 
+@app.post("/api/ontologies/import-url")
+async def import_ontology_from_url(body: Dict, user=Depends(get_admin_user)):
+    """Import an ontology from a remote URL. Admin only."""
+    import httpx
+    from rdflib import Graph, RDF
+    from rdflib.namespace import OWL, RDFS
+    
+    url = body.get("url", "").strip()
+    project_id = body.get("project_id", "").strip()
+    name = body.get("name", "").strip()
+    label = body.get("label", "").strip()
+    is_reference = body.get("is_reference", True)  # Default to reference for URL imports
+    
+    if not url:
+        raise HTTPException(status_code=400, detail="URL parameter is required")
+    
+    if not project_id:
+        raise HTTPException(status_code=400, detail="project_id parameter is required")
+    
+    if not name:
+        raise HTTPException(status_code=400, detail="name parameter is required")
+    
+    try:
+        # Fetch the ontology from the URL
+        async with httpx.AsyncClient(timeout=30.0) as client:
+            response = await client.get(url)
+            response.raise_for_status()
+            content = response.text
+        
+        # Parse the RDF content
+        graph = Graph()
+        try:
+            # Try to detect format from content-type or content
+            content_type = response.headers.get('content-type', '').lower()
+            if 'xml' in content_type or 'rdf' in content_type:
+                format = 'xml'
+            elif 'turtle' in content_type or 'ttl' in content_type:
+                format = 'turtle'
+            elif 'n3' in content_type:
+                format = 'n3'
+            else:
+                # Try to auto-detect format
+                if content.strip().startswith('<?xml') or content.strip().startswith('<rdf'):
+                    format = 'xml'
+                elif content.strip().startswith('@prefix') or content.strip().startswith('PREFIX'):
+                    format = 'turtle'
+                else:
+                    format = 'xml'  # Default fallback
+            
+            graph.parse(data=content, format=format)
+        except Exception as parse_error:
+            raise HTTPException(status_code=400, detail=f"Failed to parse RDF content: {str(parse_error)}")
+        
+        # Extract ontology IRI and label
+        ontology_iri = None
+        ontology_label = label or name
+        
+        # Look for owl:Ontology declarations
+        for s, p, o in graph.triples((None, RDF.type, OWL.Ontology)):
+            ontology_iri = str(s)
+            # Try to get the label
+            for label_triple in graph.triples((s, RDFS.label, None)):
+                ontology_label = str(label_triple[2])
+                break
+            break
+        
+        if not ontology_iri:
+            # If no owl:Ontology found, use the URL as the IRI
+            ontology_iri = url
+        
+        # Create the graph IRI for our system
+        graph_iri = f"http://odras.local/onto/{project_id}/{name}"
+        
+        # Store the ontology in Fuseki using the REST API
+        fuseki_url = "http://localhost:3030/odras"
+        fuseki_data_url = f"{fuseki_url}/data"
+        
+        # Convert graph to turtle format for storage
+        turtle_content = graph.serialize(format='turtle')
+        
+        # Upload the ontology to Fuseki as a named graph
+        async with httpx.AsyncClient(timeout=30.0) as client:
+            response = await client.put(
+                f"{fuseki_data_url}?graph={graph_iri}",
+                content=turtle_content,
+                headers={'Content-Type': 'text/turtle'}
+            )
+            response.raise_for_status()
+        
+        # Register the ontology in our database
+        db.add_ontology(
+            project_id=project_id,
+            graph_iri=graph_iri,
+            label=ontology_label,
+            role="imported",
+            is_reference=is_reference
+        )
+        
+        return {
+            "success": True,
+            "graph_iri": graph_iri,
+            "label": ontology_label,
+            "original_iri": ontology_iri,
+            "source_url": url,
+            "is_reference": is_reference
+        }
+        
+    except httpx.HTTPError as e:
+        raise HTTPException(status_code=400, detail=f"Failed to fetch ontology from URL: {str(e)}")
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Failed to import ontology: {str(e)}")
+
+
 @app.delete("/api/ontologies")
 async def delete_ontology(graph: str, project: Optional[str] = None, user=Depends(get_user)):
     """Delete a named graph (drop ontology)."""
