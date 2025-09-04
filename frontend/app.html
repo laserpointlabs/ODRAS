@@ -1339,6 +1339,167 @@
       });
     }
 
+    // Ontology loading progress indicator functions
+    function showOntologyLoadingIndicator() {
+      // Remove any existing indicator
+      hideOntologyLoadingIndicator();
+      
+      // Create loading overlay
+      const overlay = document.createElement('div');
+      overlay.id = 'ontology-loading-overlay';
+      overlay.style.cssText = `
+        position: fixed;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        background: rgba(0, 0, 0, 0.7);
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        z-index: 10000;
+        font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+      `;
+      
+      const container = document.createElement('div');
+      container.style.cssText = `
+        background: white;
+        border-radius: 12px;
+        padding: 30px;
+        box-shadow: 0 20px 40px rgba(0, 0, 0, 0.3);
+        text-align: center;
+        min-width: 300px;
+        max-width: 500px;
+      `;
+      
+      const title = document.createElement('h3');
+      title.textContent = 'Loading Ontology';
+      title.style.cssText = `
+        margin: 0 0 20px 0;
+        color: #333;
+        font-size: 18px;
+        font-weight: 600;
+      `;
+      
+      const progressBar = document.createElement('div');
+      progressBar.style.cssText = `
+        width: 100%;
+        height: 8px;
+        background: #e0e0e0;
+        border-radius: 4px;
+        overflow: hidden;
+        margin-bottom: 15px;
+      `;
+      
+      const progressFill = document.createElement('div');
+      progressFill.id = 'ontology-progress-fill';
+      progressFill.style.cssText = `
+        height: 100%;
+        background: linear-gradient(90deg, #4CAF50, #45a049);
+        width: 0%;
+        transition: width 0.3s ease;
+        border-radius: 4px;
+      `;
+      
+      const statusText = document.createElement('div');
+      statusText.id = 'ontology-status-text';
+      statusText.textContent = 'Initializing...';
+      statusText.style.cssText = `
+        color: #666;
+        font-size: 14px;
+        margin-bottom: 10px;
+      `;
+      
+      const progressText = document.createElement('div');
+      progressText.id = 'ontology-progress-text';
+      progressText.textContent = '0%';
+      progressText.style.cssText = `
+        color: #999;
+        font-size: 12px;
+      `;
+      
+      progressBar.appendChild(progressFill);
+      container.appendChild(title);
+      container.appendChild(progressBar);
+      container.appendChild(statusText);
+      container.appendChild(progressText);
+      overlay.appendChild(container);
+      document.body.appendChild(overlay);
+    }
+
+    function updateOntologyLoadingProgress(status, percentage) {
+      const statusText = document.getElementById('ontology-status-text');
+      const progressText = document.getElementById('ontology-progress-text');
+      const progressFill = document.getElementById('ontology-progress-fill');
+      
+      if (statusText) statusText.textContent = status;
+      if (progressText) progressText.textContent = `${percentage}%`;
+      if (progressFill) progressFill.style.width = `${percentage}%`;
+    }
+
+    function hideOntologyLoadingIndicator() {
+      const overlay = document.getElementById('ontology-loading-overlay');
+      if (overlay) {
+        overlay.remove();
+      }
+    }
+
+    // Lazy load additional metadata when user clicks on elements
+    async function loadAdditionalMetadataForElement(elementId, graphIri) {
+      try {
+        // Check if we already have rich metadata for this element
+        const element = ontoState.cy.getElementById(elementId);
+        if (!element || element.data('attrs')?.definition) {
+          return; // Already loaded or element doesn't exist
+        }
+
+        // Fetch additional metadata for this specific element
+        const query = `
+          PREFIX owl: <http://www.w3.org/2002/07/owl#>
+          PREFIX rdfs: <http://www.w3.org/2000/01/rdf-schema#>
+          PREFIX skos: <http://www.w3.org/2004/02/skos/core#>
+          PREFIX dc11: <http://purl.org/dc/elements/1.1/>
+          SELECT ?label ?comment ?definition ?example ?identifier WHERE {
+            GRAPH <${graphIri}> { 
+              <${elementId}> rdfs:label ?label .
+              OPTIONAL { <${elementId}> rdfs:comment ?comment }
+              OPTIONAL { <${elementId}> skos:definition ?definition }
+              OPTIONAL { <${elementId}> skos:example ?example }
+              OPTIONAL { <${elementId}> dc11:identifier ?identifier }
+            } 
+          }`;
+
+        const response = await authenticatedFetch('/api/ontology/sparql', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ query })
+        });
+
+        if (response.ok) {
+          const result = await response.json();
+          if (result.results?.bindings?.length > 0) {
+            const binding = result.results.bindings[0];
+            const attrs = element.data('attrs') || {};
+            
+            // Add the additional metadata
+            if (binding.definition) attrs.definition = binding.definition.value;
+            if (binding.example) attrs.example = binding.example.value;
+            if (binding.identifier) attrs.identifier = binding.identifier.value;
+            if (binding.comment) attrs.comment = binding.comment.value;
+            
+            element.data('attrs', attrs);
+            
+            // Update the properties panel if this element is selected
+            if (ontoState.selectedElement && ontoState.selectedElement.id() === elementId) {
+              updatePropertiesPanelFromSelection();
+            }
+          }
+        }
+      } catch (error) {
+        console.error('Error loading additional metadata:', error);
+      }
+    }
+
     function exportOntologyJSON() {
       ensureOntologyInitialized();
       ensureAttributesExist(); // Make sure all elements have attrs property
@@ -3472,11 +3633,21 @@
         typeEl.value = n.data('type') || 'class';
         currentAttrs = n.data('attrs') || {};
         objectType = n.data('type') || 'class';
+        
+        // Lazy load additional metadata for imported ontologies
+        if (activeOntologyIri && activeOntologyIri.includes('/onto/') && !currentAttrs.definition) {
+          loadAdditionalMetadataForElement(n.id(), activeOntologyIri);
+        }
       } else if (sel.length === 1 && sel[0].isEdge()) {
         const e = sel[0];
         nameEl.value = e.data('predicate') || e.id();
         typeEl.value = e.data('type') || 'objectProperty';
         currentAttrs = e.data('attrs') || {};
+        
+        // Lazy load additional metadata for imported ontologies
+        if (activeOntologyIri && activeOntologyIri.includes('/onto/') && !currentAttrs.definition) {
+          loadAdditionalMetadataForElement(e.id(), activeOntologyIri);
+        }
         objectType = e.data('type') || 'objectProperty';
       } else {
         const pid = (activeProject && (activeProject.id || activeProject.project_id)) ? (activeProject.id || activeProject.project_id) : 'default';
@@ -3908,6 +4079,106 @@
       } catch(_) {}
     }
 
+    async function fetchRichMetadata(graphIri) {
+      try {
+        console.log('🔍 fetchRichMetadata called for:', graphIri);
+        
+        // Optimized SPARQL queries - fetch only essential metadata first
+        // We'll fetch labels and basic info first, then load other metadata on demand
+        const qClasses = `
+          PREFIX owl: <http://www.w3.org/2002/07/owl#>
+          PREFIX rdfs: <http://www.w3.org/2000/01/rdf-schema#>
+          PREFIX skos: <http://www.w3.org/2004/02/skos/core#>
+          PREFIX dc11: <http://purl.org/dc/elements/1.1/>
+          PREFIX dcterms: <http://purl.org/dc/terms/>
+          PREFIX obo: <http://purl.obolibrary.org/obo/>
+          SELECT ?c ?label ?comment ?definition ?example ?identifier ?subclassOf ?equivalentClass WHERE {
+            GRAPH <${graphIri}> { 
+              ?c a owl:Class . 
+              OPTIONAL { ?c rdfs:label ?label }
+              OPTIONAL { ?c rdfs:comment ?comment }
+              OPTIONAL { ?c skos:definition ?definition }
+              OPTIONAL { ?c skos:example ?example }
+              OPTIONAL { ?c dc11:identifier ?identifier }
+              OPTIONAL { ?c rdfs:subClassOf ?subclassOf }
+              OPTIONAL { ?c owl:equivalentClass ?equivalentClass }
+            } 
+          }`;
+        
+        const qProps = `
+          PREFIX owl: <http://www.w3.org/2002/07/owl#>
+          PREFIX rdfs: <http://www.w3.org/2000/01/rdf-schema#>
+          PREFIX skos: <http://www.w3.org/2004/02/skos/core#>
+          PREFIX dc11: <http://purl.org/dc/elements/1.1/>
+          PREFIX dcterms: <http://purl.org/dc/terms/>
+          SELECT ?p ?label ?comment ?definition ?example ?identifier ?domain ?range ?inverseOf ?subPropertyOf ?equivalentProperty ?propertyType WHERE {
+            GRAPH <${graphIri}> { 
+              ?p a owl:ObjectProperty . 
+              OPTIONAL { ?p rdfs:label ?label }
+              OPTIONAL { ?p rdfs:comment ?comment }
+              OPTIONAL { ?p skos:definition ?definition }
+              OPTIONAL { ?p skos:example ?example }
+              OPTIONAL { ?p dc11:identifier ?identifier }
+              OPTIONAL { ?p rdfs:domain ?domain }
+              OPTIONAL { ?p rdfs:range ?range }
+              OPTIONAL { ?p owl:inverseOf ?inverseOf }
+              OPTIONAL { ?p rdfs:subPropertyOf ?subPropertyOf }
+              OPTIONAL { ?p owl:equivalentProperty ?equivalentProperty }
+              OPTIONAL { ?p a ?propertyType }
+            } 
+          }`;
+        
+        const classesRes = await authenticatedFetch('/api/ontology/sparql', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ query: qClasses }) });
+        const propsRes = await authenticatedFetch('/api/ontology/sparql', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ query: qProps }) });
+        const classesJson = classesRes.ok ? await classesRes.json() : { results: { bindings: [] } };
+        const propsJson = propsRes.ok ? await propsRes.json() : { results: { bindings: [] } };
+        
+        // Enhanced class processing with rich metadata
+        const classes = (classesJson.results?.bindings || []).map(b => {
+          const iri = b.c.value;
+          const label = (b.label && b.label.value) || (iri.includes('#') ? iri.split('#').pop() : iri.split('/').pop());
+          const attrs = {};
+          
+          // Store all available metadata
+          if (b.comment && b.comment.value) attrs.comment = b.comment.value;
+          if (b.definition && b.definition.value) attrs.definition = b.definition.value;
+          if (b.example && b.example.value) attrs.example = b.example.value;
+          if (b.identifier && b.identifier.value) attrs.identifier = b.identifier.value;
+          if (b.subclassOf && b.subclassOf.value) attrs.subclassOf = b.subclassOf.value;
+          if (b.equivalentClass && b.equivalentClass.value) attrs.equivalentClass = b.equivalentClass.value;
+          
+          return { iri, label, attrs };
+        });
+        
+        // Enhanced property processing with rich metadata
+        const properties = [];
+        (propsJson.results?.bindings || []).forEach(b => {
+          const p = b.p.value;
+          const label = (b.label && b.label.value) || (p.includes('#') ? p.split('#').pop() : p.split('/').pop());
+          const attrs = {};
+          
+          // Store all available metadata
+          if (b.comment && b.comment.value) attrs.comment = b.comment.value;
+          if (b.definition && b.definition.value) attrs.definition = b.definition.value;
+          if (b.example && b.example.value) attrs.example = b.example.value;
+          if (b.identifier && b.identifier.value) attrs.identifier = b.identifier.value;
+          if (b.domain && b.domain.value) attrs.domain = b.domain.value;
+          if (b.range && b.range.value) attrs.range = b.range.value;
+          if (b.inverseOf && b.inverseOf.value) attrs.inverseOf = b.inverseOf.value;
+          if (b.subPropertyOf && b.subPropertyOf.value) attrs.subPropertyOf = b.subPropertyOf.value;
+          if (b.equivalentProperty && b.equivalentProperty.value) attrs.equivalentProperty = b.equivalentProperty.value;
+          if (b.propertyType && b.propertyType.value) attrs.propertyType = b.propertyType.value;
+          
+          properties.push({ iri: p, label, attrs });
+        });
+        
+        return { classes, properties };
+      } catch (error) {
+        console.error('Failed to fetch rich metadata:', error);
+        return { classes: [], properties: [] };
+      }
+    }
+
     function convertOntologyToCytoscape(ontologyData) {
       // Convert API ontology format to Cytoscape format
       const nodes = [];
@@ -4012,6 +4283,135 @@
       return { nodes, edges };
     }
 
+    function convertOntologyToCytoscapeWithMetadata(ontologyData, richMetadata) {
+      // Convert API ontology format to Cytoscape format with rich metadata
+      const nodes = [];
+      const edges = [];
+      
+      // Create a map of URI to rich metadata
+      const classMetadataMap = {};
+      richMetadata.classes.forEach(cls => {
+        classMetadataMap[cls.iri] = cls;
+      });
+      
+      const propertyMetadataMap = {};
+      richMetadata.properties.forEach(prop => {
+        propertyMetadataMap[prop.iri] = prop;
+      });
+      
+      // Create nodes for classes
+      const classes = ontologyData.classes || [];
+      const classNameToId = {}; // Map class names to simple IDs
+      
+      classes.forEach((cls, index) => {
+        // Use simple sequential IDs like Class1, Class2, etc.
+        const classId = `Class${index + 1}`;
+        classNameToId[cls.name] = classId;
+        
+        // Get rich metadata for this class
+        const richClass = classMetadataMap[cls.uri] || {};
+        const displayLabel = richClass.label || cls.label || cls.name;
+        
+        // Arrange in a grid layout
+        const row = Math.floor(index / 4);
+        const col = index % 4;
+        
+        const node = {
+          data: {
+            id: classId,
+            label: displayLabel,
+            type: 'class',
+            attrs: richClass.attrs || {}
+          },
+          position: {
+            x: 150 + (col * 200),
+            y: 100 + (row * 150)
+          }
+        };
+        nodes.push(node);
+      });
+      
+      // Create edges for object properties
+      let edgeId = 1;
+      const objectProps = ontologyData.object_properties || [];
+      objectProps.forEach(prop => {
+        if (prop.domain && prop.range && classNameToId[prop.domain] && classNameToId[prop.range]) {
+          // Get rich metadata for this property
+          const richProp = propertyMetadataMap[prop.uri] || {};
+          const displayLabel = richProp.label || prop.label || prop.name;
+          
+          const edge = {
+            data: {
+              id: `e${edgeId}`,
+              source: classNameToId[prop.domain],
+              target: classNameToId[prop.range],
+              predicate: prop.name,
+              label: displayLabel,
+              type: 'objectProperty',
+              attrs: richProp.attrs || {}
+            }
+          };
+          edges.push(edge);
+          edgeId++;
+        }
+      });
+      
+      // Create data property nodes and connect them to their domain classes
+      let dpId = 1;
+      const dataProps = ontologyData.datatype_properties || [];
+      dataProps.forEach(prop => {
+        if (prop.domain && classNameToId[prop.domain]) {
+          const dataPropertyId = `DP${dpId}`;
+          
+          // Get rich metadata for this property
+          const richProp = propertyMetadataMap[prop.uri] || {};
+          const displayLabel = richProp.label || prop.label || prop.name;
+          
+          // Create data property node
+          const domainClassId = classNameToId[prop.domain];
+          const domainNode = nodes.find(n => n.data.id === domainClassId);
+          let dpX = 150, dpY = 100; // fallback position
+          
+          if (domainNode) {
+            // Position data property near its domain class
+            dpX = domainNode.position.x + 180;
+            dpY = domainNode.position.y + (dpId % 3 - 1) * 60; // stagger vertically
+          }
+          
+          const dpNode = {
+            data: {
+              id: dataPropertyId,
+              label: displayLabel,
+              type: 'dataProperty',
+              attrs: richProp.attrs || {}
+            },
+            position: {
+              x: dpX,
+              y: dpY
+            }
+          };
+          nodes.push(dpNode);
+          
+          // Create edge connecting class to data property
+          const dpEdge = {
+            data: {
+              id: `edp${dpId}`,
+              source: domainClassId,
+              target: dataPropertyId,
+              predicate: prop.name,
+              type: 'objectProperty', // UI uses objectProperty type for visual connection
+              attrs: {}
+            }
+          };
+          edges.push(dpEdge);
+          
+          dpId++;
+        }
+      });
+      
+      return { nodes, edges };
+    }
+
     function convertCytoscapeToOntology() {
       // Convert current Cytoscape canvas to ontology JSON format
       if (!ontoState.cy) return null;
@@ -4071,27 +4471,46 @@
 
     async function loadGraphFromLocalOrAPI(graphIri) {
       try {
-        // First, try to load from local storage
-        const json = localStorage.getItem(storageKeyForGraph(graphIri));
-        if (json) {
-          const data = JSON.parse(json);
-          if (data && (data.nodes || data.edges) && data.nodes?.length > 0) {
-            if (!ontoState.cy) return;
-            ontoState.cy.elements().remove();
-            ontoState.cy.add(data.nodes || []);
-            ontoState.cy.add(data.edges || []);
-            // Ensure all loaded elements have attrs property
-            ensureAttributesExist();
-            recomputeNextId();
-            
-            // Try to load layout from server
-            await loadLayoutFromServer(graphIri);
-            return;
+        console.log('🔍 loadGraphFromLocalOrAPI called for:', graphIri);
+        
+        // For imported ontologies, always fetch from API to get rich metadata
+        // Check if this is an imported ontology by looking for the pattern in the graph IRI
+        const isImportedOntology = graphIri.includes('/onto/') && !graphIri.includes('#layout');
+        
+        if (!isImportedOntology) {
+          // First, try to load from local storage for non-imported ontologies
+          const json = localStorage.getItem(storageKeyForGraph(graphIri));
+          if (json) {
+            console.log('🔍 Loading from local storage:', json.substring(0, 200) + '...');
+            const data = JSON.parse(json);
+            if (data && (data.nodes || data.edges) && data.nodes?.length > 0) {
+              if (!ontoState.cy) return;
+              ontoState.cy.elements().remove();
+              ontoState.cy.add(data.nodes || []);
+              ontoState.cy.add(data.edges || []);
+              // Ensure all loaded elements have attrs property
+              ensureAttributesExist();
+              recomputeNextId();
+              
+              // Try to load layout from server
+              await loadLayoutFromServer(graphIri);
+              return;
+            }
           }
+        } else {
+          console.log('🔍 Detected imported ontology, fetching from API for rich metadata');
+          // Show loading indicator for imported ontologies
+          showOntologyLoadingIndicator();
         }
         
         // If local storage is empty, fetch from API
         console.log('Loading ontology from API:', graphIri);
+        
+        // Update progress: Fetching basic ontology data
+        if (isImportedOntology) {
+          updateOntologyLoadingProgress('Fetching ontology data...', 20);
+        }
+        
         const token = localStorage.getItem(tokenKey);
         const apiUrl = `/api/ontology/?graph=${encodeURIComponent(graphIri)}`;
         const response = await fetch(apiUrl, {
@@ -4103,8 +4522,30 @@
           const ontologyData = result.data;
           
           if (ontologyData) {
-            // Convert ontology JSON to Cytoscape format
-            const cytoscapeData = convertOntologyToCytoscape(ontologyData);
+            console.log('🔍 Loading ontology data from API:', ontologyData);
+            
+            // Update progress: Fetching rich metadata
+            if (isImportedOntology) {
+              updateOntologyLoadingProgress('Fetching rich metadata...', 40);
+            }
+            
+            // Fetch rich metadata using the same queries as fetchImportGraphSnapshot
+            const richMetadata = await fetchRichMetadata(graphIri);
+            console.log('🔍 Rich metadata fetched:', richMetadata);
+            
+            // Update progress: Converting to graph format
+            if (isImportedOntology) {
+              updateOntologyLoadingProgress('Converting to graph format...', 60);
+            }
+            
+            // Convert ontology JSON to Cytoscape format with rich metadata
+            const cytoscapeData = convertOntologyToCytoscapeWithMetadata(ontologyData, richMetadata);
+            console.log('🔍 Cytoscape data with metadata:', cytoscapeData);
+            
+            // Update progress: Loading graph
+            if (isImportedOntology) {
+              updateOntologyLoadingProgress('Loading graph...', 80);
+            }
             
             if (!ontoState.cy) return;
             ontoState.cy.elements().remove();
@@ -4119,19 +4560,36 @@
             };
             localStorage.setItem(storageKeyForGraph(graphIri), JSON.stringify(storageData));
             
+            // Update progress: Loading layout
+            if (isImportedOntology) {
+              updateOntologyLoadingProgress('Loading layout...', 90);
+            }
+            
             // Try to load layout from server, fallback to fit if no layout
             const layoutLoaded = await loadLayoutFromServer(graphIri);
             if (!layoutLoaded) {
               requestAnimationFrame(()=>{ ontoState.cy.fit(); });
             }
+            
+            // Complete loading
+            if (isImportedOntology) {
+              updateOntologyLoadingProgress('Complete!', 100);
+              setTimeout(() => hideOntologyLoadingIndicator(), 500);
+            }
+            
             console.log('Ontology loaded from API with', cytoscapeData.nodes?.length || 0, 'nodes and', cytoscapeData.edges?.length || 0, 'edges');
           }
         } else {
           console.error('Failed to load ontology from API:', response.status, response.statusText);
+          if (isImportedOntology) {
+            hideOntologyLoadingIndicator();
+          }
         }
         
       } catch(err) {
         console.error('Error loading ontology:', err);
+        // Hide loading indicator on error
+        hideOntologyLoadingIndicator();
       }
     }
 
