@@ -1164,7 +1164,7 @@
           return;
         }
 
-        const token = localStorage.getItem('token');
+        const token = localStorage.getItem('odras_token');
         const response = await fetch(`/api/admin/namespaces/${namespaceId}`, {
           method: 'DELETE',
           headers: {
