@@ -8548,12 +8548,23 @@
         return;
       }
 
-      const html = namespaces.map(ns => `
-        <div style="display: flex; justify-content: space-between; align-items: center; padding: 12px; border: 1px solid var(--border); border-radius: 6px; margin-bottom: 8px; background: var(--panel-2);">
+      const html = namespaces.map(ns => {
+        const statusColor = ns.status === 'released' ? 'var(--success)' : 
+                           ns.status === 'deprecated' ? 'var(--warning)' : 'var(--muted)';
+        const statusIcon = ns.status === 'released' ? '✓' : 
+                          ns.status === 'deprecated' ? '⚠' : '📝';
+        
+        return `
+        <div style="display: flex; justify-content: space-between; align-items: center; padding: 12px; border: 1px solid var(--border); border-radius: 6px; margin-bottom: 8px; background: var(--panel-2); ${ns.status !== 'released' ? 'opacity: 0.8;' : ''}">
           <div>
-            <div style="font-weight: 600; color: var(--text);">${ns.name}</div>
+            <div style="font-weight: 600; color: var(--text); display: flex; align-items: center; gap: 8px;">
+              ${ns.name}
+              <span style="font-size: 0.8em; color: ${statusColor}; font-weight: normal;">
+                ${statusIcon} ${ns.status.toUpperCase()}
+              </span>
+            </div>
             <div style="font-size: 0.9em; color: var(--muted);">
-              Type: ${ns.type} | Prefix: ${ns.prefix} | Status: ${ns.status}
+              Type: ${ns.type} | Prefix: ${ns.prefix}
             </div>
             <div style="font-size: 0.8em; color: var(--muted); margin-top: 4px;">
               Path: ${ns.path} | Owners: ${ns.owners.join(', ')}
@@ -8567,7 +8578,8 @@
             <button class="btn" onclick="deleteNamespace('${ns.id}', '${ns.name}')" style="font-size: 0.8em; background: var(--err); color: white; border-color: var(--err);">Delete</button>
           </div>
         </div>
-      `).join('');
+      `;
+      }).join('');
 
       container.innerHTML = html;
     }
@@ -9085,7 +9097,7 @@
     async function loadPrefixes() {
       console.log('🔄 Loading prefixes...');
       try {
-        const response = await fetch('/api/admin/prefixes/');
+        const response = await fetch('/api/admin/prefixes/?status_filter=all');
         if (response.ok) {
           const prefixes = await response.json();
           console.log('✅ Loaded prefixes:', prefixes.length);
@@ -9110,12 +9122,23 @@
         return;
       }
 
-      const html = prefixes.map(prefix => `
-        <div style="display: flex; justify-content: space-between; align-items: center; padding: 12px; border: 1px solid var(--border); border-radius: 6px; margin-bottom: 8px; background: var(--panel-2);">
+      const html = prefixes.map(prefix => {
+        const statusColor = prefix.status === 'active' ? 'var(--success)' : 
+                           prefix.status === 'deprecated' ? 'var(--warning)' : 'var(--muted)';
+        const statusIcon = prefix.status === 'active' ? '✓' : 
+                          prefix.status === 'deprecated' ? '⚠' : '📁';
+        
+        return `
+        <div style="display: flex; justify-content: space-between; align-items: center; padding: 12px; border: 1px solid var(--border); border-radius: 6px; margin-bottom: 8px; background: var(--panel-2); ${prefix.status !== 'active' ? 'opacity: 0.8;' : ''}">
           <div>
-            <div style="font-weight: 600; color: var(--text);">${prefix.prefix}</div>
+            <div style="font-weight: 600; color: var(--text); display: flex; align-items: center; gap: 8px;">
+              ${prefix.prefix}
+              <span style="font-size: 0.8em; color: ${statusColor}; font-weight: normal;">
+                ${statusIcon} ${prefix.status.toUpperCase()}
+              </span>
+            </div>
             <div style="font-size: 0.9em; color: var(--muted);">
-              ${prefix.description} | Owner: ${prefix.owner} | Status: ${prefix.status}
+              ${prefix.description} | Owner: ${prefix.owner}
             </div>
           </div>
           <div style="display: flex; gap: 8px;">
@@ -9123,7 +9146,8 @@
             <button class="btn" onclick="deletePrefix('${prefix.id}', '${prefix.prefix}')" style="font-size: 0.8em; background: var(--err); color: white; border-color: var(--err);">Delete</button>
           </div>
         </div>
-      `).join('');
+      `;
+      }).join('');
 
       container.innerHTML = html;
     }
@@ -9233,9 +9257,123 @@
       }
     }
 
+    function showEditPrefixModal(prefix) {
+      const modal = document.createElement('div');
+      modal.className = 'modal';
+      modal.innerHTML = `
+        <div>
+          <h3>Edit Prefix: ${prefix.prefix}</h3>
+          
+          <div style="margin-bottom: 16px;">
+            <label>Prefix:</label>
+            <input type="text" id="editPfxPrefix" value="${prefix.prefix}" readonly style="background: var(--muted); color: var(--text-muted);" />
+            <div style="font-size: 0.8em; color: var(--muted); margin-top: 4px;">
+              Prefix cannot be changed after creation
+            </div>
+          </div>
+          
+          <div style="margin-bottom: 16px;">
+            <label>Description:</label>
+            <input type="text" id="editPfxDescription" value="${prefix.description}" placeholder="e.g., Department of Defense" />
+          </div>
+          
+          <div style="margin-bottom: 16px;">
+            <label>Owner:</label>
+            <input type="text" id="editPfxOwner" value="${prefix.owner}" placeholder="admin@odras.local" />
+          </div>
+          
+          <div style="margin-bottom: 20px;">
+            <label>Status:</label>
+            <select id="editPfxStatus" style="width: 100%; padding: 8px; border: 1px solid var(--border); border-radius: 4px; background: var(--panel); color: var(--text);">
+              <option value="active" ${prefix.status === 'active' ? 'selected' : ''}>Active</option>
+              <option value="deprecated" ${prefix.status === 'deprecated' ? 'selected' : ''}>Deprecated</option>
+              <option value="archived" ${prefix.status === 'archived' ? 'selected' : ''}>Archived</option>
+            </select>
+          </div>
+          
+          <div class="button-group">
+            <button class="btn" onclick="this.closest('.modal').remove()" style="background: var(--muted);">Cancel</button>
+            <button class="btn" onclick="updatePrefix('${prefix.id}')" style="background: var(--accent); color: white; border-color: var(--accent);">Update</button>
+          </div>
+        </div>
+      `;
+      
+      document.body.appendChild(modal);
+    }
+
+    async function updatePrefix(prefixId) {
+      try {
+        const description = document.getElementById('editPfxDescription').value.trim();
+        const owner = document.getElementById('editPfxOwner').value.trim();
+        const status = document.getElementById('editPfxStatus').value;
+
+        if (!description || !owner) {
+          alert('Please fill in all fields');
+          return;
+        }
+
+        const token = localStorage.getItem('odras_token');
+        if (!token) {
+          alert('No auth token found');
+          return;
+        }
+
+        const response = await fetch(`/api/admin/prefixes/${prefixId}`, {
+          method: 'PUT',
+          headers: {
+            'Authorization': `Bearer ${token}`,
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify({
+            description,
+            owner,
+            status
+          })
+        });
+
+        if (response.ok) {
+          alert('Prefix updated successfully');
+          document.querySelector('.modal').remove();
+          loadPrefixes();
+        } else {
+          const error = await response.json();
+          alert(`Error updating prefix: ${error.detail || 'Unknown error'}`);
+        }
+      } catch (error) {
+        console.error('Error updating prefix:', error);
+        alert('Error updating prefix: ' + error.message);
+      }
+    }
+
     async function editPrefix(prefixId) {
-      // Placeholder for edit functionality
-      alert('Edit prefix functionality coming soon');
+      try {
+        // First, get the current prefix data
+        const token = localStorage.getItem('odras_token');
+        const response = await fetch(`/api/admin/prefixes/?status_filter=all`, {
+          headers: {
+            'Authorization': `Bearer ${token}`
+          }
+        });
+        
+        if (!response.ok) {
+          throw new Error('Failed to load prefixes');
+        }
+        
+        const prefixes = await response.json();
+        const prefix = prefixes.find(p => p.id === prefixId);
+        
+        if (!prefix) {
+          alert('Prefix not found');
+          return;
+        }
+        
+        // Show edit modal
+        showEditPrefixModal(prefix);
+        
+      } catch (error) {
+        console.error('Error loading prefix for edit:', error);
+        alert('Error loading prefix: ' + error.message);
+      }
     }
 
     async function deletePrefix(prefixId, prefixName) {
@@ -9302,6 +9440,8 @@
     window.deletePrefix = deletePrefix;
     window.loadPrefixesForNamespace = loadPrefixesForNamespace;
     window.toggleSection = toggleSection;
+    window.showEditPrefixModal = showEditPrefixModal;
+    window.updatePrefix = updatePrefix;
     
           // Test function for debugging
       function testToggle() {

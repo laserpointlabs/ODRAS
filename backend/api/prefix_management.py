@@ -111,10 +111,10 @@ def list_prefixes(
                 query = "SELECT * FROM prefix_registry"
                 params = []
                 
-                if status_filter:
+                if status_filter and status_filter != 'all':
                     query += " WHERE status = %s"
                     params.append(status_filter)
-                else:
+                elif not status_filter:
                     query += " WHERE status = 'active'"
                 
                 query += " ORDER BY prefix ASC"
