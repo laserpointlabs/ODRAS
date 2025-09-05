@@ -47,6 +47,22 @@ class Settings(BaseSettings):
     environment: str = "development"
     log_level: str = "INFO"
     
+    # Installation Configuration for Organizational Namespaces
+    installation_organization: str = "ODRAS Development"
+    installation_base_uri: str = "http://odras.local"  # Override this for production!
+    installation_prefix: str = "odras"
+    installation_type: str = "development"  # navy, airforce, army, industry, research, etc.
+    installation_program_office: str = "Development"
+    
+    # Namespace URI Templates
+    namespace_core_template: str = "{base_uri}/core#{entity}"
+    namespace_domain_template: str = "{base_uri}/{domain}#{entity}"
+    namespace_program_template: str = "{base_uri}/{program}/core#{entity}"
+    namespace_project_template: str = "{base_uri}/{program}/{project}#{entity}"
+    namespace_se_template: str = "{base_uri}/se/{se_domain}#{entity}"
+    namespace_mission_template: str = "{base_uri}/mission/{mission_type}#{entity}"
+    namespace_platform_template: str = "{base_uri}/platform/{platform_type}#{entity}"
+    
     # Pydantic v2 settings configuration
     model_config = SettingsConfigDict(
         env_file=".env",

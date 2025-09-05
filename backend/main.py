@@ -14,6 +14,7 @@ import logging
 # Import services using relative imports
 from .services.config import Settings
 from .services.db import DatabaseService
+from .services.namespace_uri_generator import NamespaceURIGenerator
 from .services.auth import get_user as auth_get_user, get_admin_user, create_token, invalidate_token, cleanup_expired_tokens
 import os
 
@@ -24,6 +25,8 @@ from backend.api.ontology import router as ontology_router
 from backend.api.workflows import router as workflows_router
 from backend.api.embedding_models import router as embedding_models_router
 from backend.api.knowledge import router as knowledge_router
+from backend.api.namespace_simple import router as namespace_router
+from backend.api.prefix_management import router as prefix_router
 from backend.run_registry import RUNS as SHARED_RUNS
 from backend.test_review_endpoint import router as test_router
 
@@ -36,6 +39,8 @@ app.include_router(files_router)
 app.include_router(workflows_router)
 app.include_router(embedding_models_router)
 app.include_router(knowledge_router)
+app.include_router(namespace_router)
+app.include_router(prefix_router)
 
 # Configuration instance
 settings = Settings()
@@ -408,13 +413,46 @@ async def create_ontology(body: Dict, user=Depends(get_user)):
     if is_reference and not user.get("is_admin", False):
         raise HTTPException(status_code=403, detail="Only admins can create reference ontologies")
     
-    graph_iri = f"http://odras.local/onto/{project}/{name}"
-    turtle = f"""
-@prefix owl: <http://www.w3.org/2002/07/owl#> .
-@prefix rdfs: <http://www.w3.org/2000/01/rdf-schema#> .
-
-<{graph_iri}> a owl:Ontology ; rdfs:label \"{label}\" .
-""".strip()
+    # Generate proper organizational URI based on installation configuration
+    settings = Settings()
+    namespace_generator = NamespaceURIGenerator(settings)
+    
+    # Determine namespace type and parameters based on project structure
+    if is_reference:
+        # For reference ontologies, use the namespace system
+        if project.startswith('core-'):
+            graph_iri = namespace_generator.generate_ontology_uri("core", ontology_name=name)
+        elif project.startswith('domain-'):
+            domain = project.replace('domain-', '')
+            graph_iri = namespace_generator.generate_ontology_uri("domain", domain=domain, ontology_name=name)
+        elif project.startswith('program-'):
+            program = project.replace('program-', '')
+            graph_iri = namespace_generator.generate_ontology_uri("program", program=program, ontology_name=name)
+        elif project.startswith('project-'):
+            # Extract program and project from project string like "project-avp-x1"
+            parts = project.replace('project-', '').split('-')
+            if len(parts) >= 2:
+                program = parts[0]
+                project_name = '-'.join(parts[1:])
+                graph_iri = namespace_generator.generate_ontology_uri("project", program=program, project=project_name, ontology_name=name)
+            else:
+                graph_iri = namespace_generator.generate_ontology_uri("project", program=project, ontology_name=name)
+        else:
+            # Fallback to simple structure
+            graph_iri = f"{settings.installation_base_uri}/{project}/{name}"
+    else:
+        # For working ontologies, use simple workspace structure
+        graph_iri = f"{settings.installation_base_uri}/{project}/{name}"
+    
+    # Generate proper ontology header
+    external_imports = namespace_generator.get_external_namespace_mappings()
+    turtle = namespace_generator.generate_ontology_header(
+        ontology_uri=graph_iri,
+        title=label,
+        description=f"Ontology created in ODRAS for {project}",
+        version="1.0.0",
+        imports=external_imports
+    )
     try:
         # Membership check
         # project here is a plain string id
@@ -447,6 +485,23 @@ async def list_reference_ontologies(user=Depends(get_user)):
         return {"reference_ontologies": reference_ontologies}
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Failed to list reference ontologies: {str(e)}")
+
+
+@app.get("/api/installation/config")
+async def get_installation_config():
+    """Get installation configuration for frontend."""
+    try:
+        settings = Settings()
+        return {
+            "organization": settings.installation_organization,
+            "baseUri": settings.installation_base_uri,
+            "prefix": settings.installation_prefix,
+            "type": settings.installation_type,
+            "programOffice": settings.installation_program_office
+        }
+    except Exception as e:
+        logger.error(f"Error getting installation config: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
 
 
 @app.put("/api/ontologies/reference")
@@ -546,7 +601,7 @@ async def import_ontology_from_url(body: Dict, user=Depends(get_user)):
             ontology_iri = url
         
         # Create the graph IRI for our system
-        graph_iri = f"http://odras.local/onto/{project_id}/{name}"
+        graph_iri = f"http://odras.local/{project_id}/{name}"
         
         # Store the ontology in Fuseki using the REST API
         fuseki_url = "http://localhost:3030/odras"

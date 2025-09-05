@@ -17,6 +17,7 @@ from SPARQLWrapper import JSON as SPARQL_JSON
 from SPARQLWrapper import POST, SPARQLWrapper
 
 from .config import Settings
+from .namespace_uri_generator import NamespaceURIGenerator
 
 logger = logging.getLogger(__name__)
 
@@ -36,9 +37,12 @@ class OntologyManager:
         self.fuseki_query_url = f"{self.fuseki_url}/query"
         self.fuseki_update_url = f"{self.fuseki_url}/update"
 
-        # Define ODRAS namespace
-        self.odras_ns = Namespace("http://odras.system/ontology#")
-        self.base_uri = "http://odras.system/ontology"
+        # Initialize namespace URI generator
+        self.namespace_generator = NamespaceURIGenerator(settings)
+        
+        # Define ODRAS namespace using installation configuration
+        self.base_uri = settings.installation_base_uri
+        self.odras_ns = Namespace(f"{self.base_uri}/#")
         self.current_graph_uri = None
 
         # Initialize RDF graph for working copy
