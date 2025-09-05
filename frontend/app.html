@@ -1516,7 +1516,7 @@
 
       try {
         const layout = ontoState.cy.layout(layoutOptions);
-        layout.run();
+      layout.run();
         
         // Fit the graph after layout completes
         setTimeout(() => {
@@ -2020,7 +2020,93 @@
         // First try to get data from local storage (consistent with importEquivCount)
         const pid = (activeProject && (activeProject.id || activeProject.project_id)) ? (activeProject.id || activeProject.project_id) : 'default';
         const importKey = `onto_graph__${pid}__` + encodeURIComponent(importIri);
-        const importData = localStorage.getItem(importKey);
+        let importData = localStorage.getItem(importKey);
+        
+        if (!importData) {
+          console.log('🔍 No local storage data found for import snapshot, attempting to load from API:', importIri);
+          try {
+            // Try to load the imported ontology data from API
+            const token = localStorage.getItem(tokenKey);
+            const apiUrl = `/api/ontology/?graph=${encodeURIComponent(importIri)}`;
+            const response = await fetch(apiUrl, {
+              headers: token ? { 'Authorization': `Bearer ${token}` } : {}
+            });
+            
+            if (response.ok) {
+              const ontologyData = await response.json();
+              console.log('🔍 Loaded imported ontology from API for snapshot:', ontologyData);
+              console.log('🔍 Snapshot API response structure - classes:', ontologyData.classes);
+              console.log('🔍 Snapshot API response structure - object_properties:', ontologyData.object_properties);
+              
+              // Convert to Cytoscape format and save to local storage
+              // Use a simpler conversion since we don't have rich metadata
+              // The API response has the data nested in a 'data' property
+              const actualOntologyData = ontologyData.data || ontologyData;
+              const cytoscapeData = convertOntologyToCytoscape(actualOntologyData);
+              console.log('🔍 Snapshot converted cytoscape data:', cytoscapeData);
+              const storageData = {
+                nodes: cytoscapeData.nodes || [],
+                edges: cytoscapeData.edges || [],
+                timestamp: Date.now(),
+                source: 'api'
+              };
+              
+              localStorage.setItem(importKey, JSON.stringify(storageData));
+              importData = JSON.stringify(storageData);
+              console.log('🔍 Saved imported ontology data to local storage for snapshot');
+            } else {
+              console.log('🔍 Failed to load imported ontology from API for snapshot:', response.status);
+              // Fall through to SPARQL fallback
+            }
+          } catch (err) {
+            console.error('🔍 Error loading imported ontology for snapshot:', err);
+            // Fall through to SPARQL fallback
+          }
+        }
+        
+        // Check if cached data is empty and force reload
+        if (importData) {
+          const cachedData = JSON.parse(importData);
+          if (cachedData.nodes && cachedData.nodes.length === 0 && cachedData.edges && cachedData.edges.length === 0) {
+            console.log('🔍 Snapshot cached data is empty, forcing reload from API:', importIri);
+            try {
+              const token = localStorage.getItem(tokenKey);
+              const apiUrl = `/api/ontology/?graph=${encodeURIComponent(importIri)}`;
+              const response = await fetch(apiUrl, {
+                headers: token ? { 'Authorization': `Bearer ${token}` } : {}
+              });
+              
+              if (response.ok) {
+                const ontologyData = await response.json();
+                console.log('🔍 Snapshot reloaded imported ontology from API:', ontologyData);
+                console.log('🔍 Snapshot reload API response structure - classes:', ontologyData.classes);
+                console.log('🔍 Snapshot reload API response structure - object_properties:', ontologyData.object_properties);
+                
+                // Convert to Cytoscape format and save to local storage
+                // The API response has the data nested in a 'data' property
+                const actualOntologyData = ontologyData.data || ontologyData;
+                console.log('🔍 Snapshot reload actual ontology data being passed to convertOntologyToCytoscape:', actualOntologyData);
+                console.log('🔍 Snapshot reload actualOntologyData.classes:', actualOntologyData.classes);
+                const cytoscapeData = convertOntologyToCytoscape(actualOntologyData);
+                console.log('🔍 Snapshot reload converted cytoscape data:', cytoscapeData);
+                const storageData = {
+                  nodes: cytoscapeData.nodes || [],
+                  edges: cytoscapeData.edges || [],
+                  timestamp: Date.now(),
+                  source: 'api'
+                };
+                
+                localStorage.setItem(importKey, JSON.stringify(storageData));
+                importData = JSON.stringify(storageData);
+                console.log('🔍 Snapshot reloaded and saved imported ontology data to local storage');
+              } else {
+                console.log('🔍 Failed to reload imported ontology from API for snapshot:', response.status);
+              }
+            } catch (err) {
+              console.error('🔍 Error reloading imported ontology for snapshot:', err);
+            }
+          }
+        }
         
         if (importData) {
           console.log('🔍 Using local storage data for import snapshot:', importIri);
@@ -2178,14 +2264,14 @@
         
         // Before removing overlays, snapshot positions for imports being hidden
         try {
-          ontoState.cy.nodes('.imported').forEach(n => {
-            const imp = n.data('importSource') || '';
-            if (!visible.has(imp)) {
-              const curr = loadOverlayPositions(activeOntologyIri, imp);
-              curr[n.id()] = n.position();
-              saveOverlayPositions(activeOntologyIri, imp, curr);
-            }
-          });
+        ontoState.cy.nodes('.imported').forEach(n => {
+          const imp = n.data('importSource') || '';
+          if (!visible.has(imp)) {
+            const curr = loadOverlayPositions(activeOntologyIri, imp);
+            curr[n.id()] = n.position();
+            saveOverlayPositions(activeOntologyIri, imp, curr);
+          }
+        });
         } catch (err) {
           console.error('🔍 Error saving overlay positions:', err);
         }
@@ -2408,11 +2494,11 @@
       
       // Clear stored auth data
       localStorage.removeItem(tokenKey);
-      localStorage.removeItem(userKey);
+        localStorage.removeItem(userKey);
       localStorage.removeItem('user'); // Clear full user object
       
       // Clear UI state
-      qs('#userMenu').textContent = '';
+        qs('#userMenu').textContent = '';
       activeOntologyIri = null;
       updateOntoGraphLabel();
       
@@ -2441,11 +2527,11 @@
             return;
           }
           
-          const response = await fetch('/api/auth/me', {
+        const response = await fetch('/api/auth/me', { 
             headers: { 'Authorization': `Bearer ${token}` }
-          });
-          
-          if (!response.ok) {
+        });
+        
+        if (!response.ok) {
             handleAuthFailure();
           }
         } catch (error) {
@@ -2468,11 +2554,11 @@
         isAuthenticated = false;
         stopAuthMonitoring();
         // Clear any stale user data
-        localStorage.removeItem(userKey);
+          localStorage.removeItem(userKey);
         localStorage.removeItem('user'); // Clear full user object
-        qs('#userMenu').textContent = '';
-        return; 
-      }
+          qs('#userMenu').textContent = '';
+          return;
+        }
       
       try {
         const response = await authenticatedFetch('/api/auth/me');
@@ -2568,15 +2654,15 @@
           headers:{'Content-Type':'application/json'}, 
           body: JSON.stringify({ username, password }) 
         });
-        const json = await res.json();
+      const json = await res.json();
         
-        if (res.ok && json.token) {
-          localStorage.setItem(tokenKey, json.token);
-          localStorage.setItem(userKey, username);
-          qs('#loginMsg').textContent = '';
+      if (res.ok && json.token) {
+        localStorage.setItem(tokenKey, json.token);
+        localStorage.setItem(userKey, username);
+        qs('#loginMsg').textContent = '';
           await initAuth();
-        } else {
-          qs('#loginMsg').textContent = json.error || 'Login failed';
+      } else {
+        qs('#loginMsg').textContent = json.error || 'Login failed';
         }
       } catch (error) {
         console.error('Login error:', error);
@@ -2601,7 +2687,7 @@
       isAuthenticated = false;
       stopAuthMonitoring();
       localStorage.removeItem(tokenKey); 
-      localStorage.removeItem(userKey);
+      localStorage.removeItem(userKey); 
       localStorage.removeItem('user'); // Clear full user object 
       activeOntologyIri = null; 
       updateOntoGraphLabel(); 
@@ -3422,11 +3508,11 @@
               }
               
               const isReference = isAdmin && panel.querySelector('#isReference').checked;
-              const base = slugify(disp) || `ontology-${Date.now()}`;
-              const label = disp;
+            const base = slugify(disp) || `ontology-${Date.now()}`;
+            const label = disp;
               
-              try {
-                const pid2 = project.id || project.project_id;
+            try {
+              const pid2 = project.id || project.project_id;
                 const body = { project: pid2, name: base, label };
                 if (isReference) {
                   body.is_reference = true;
@@ -3438,41 +3524,41 @@
                   body: JSON.stringify(body) 
                 });
                 
-                if (!res.ok) {
-                  const msg = await res.text().catch(()=>String(res.status));
-                  alert('Create ontology failed: ' + msg);
-                  return;
-                }
+              if (!res.ok) {
+                const msg = await res.text().catch(()=>String(res.status));
+                alert('Create ontology failed: ' + msg);
+                return;
+              }
                 
-                const created = await res.json();
-                if (created && created.graphIri) {
-                  try { saveOntologyLabel(created.graphIri, created.label || label); } catch(_) {}
-                }
+              const created = await res.json();
+              if (created && created.graphIri) {
+                try { saveOntologyLabel(created.graphIri, created.label || label); } catch(_) {}
+              }
                 
                 close();
-                await renderTree(project);
+              await renderTree(project);
                 
-                // Ensure label is shown and select the created ontology (guard for valid response)
-                if (created && created.graphIri) {
-                  const newRoot = qs('#treeRoot');
-                  const li = Array.from(newRoot.querySelectorAll('li[role="treeitem"]')).find(el => el.dataset && el.dataset.iri === created.graphIri);
-                  // Update top node label immediately
-                  try {
-                    const ontoTop = qs('#ontoTreeRoot .onto-node-label');
-                    if (ontoTop) ontoTop.textContent = created.label || label;
-                  } catch(_) {}
-                  if (li) {
-                    const lbl = li.querySelector('.node-label'); if (lbl) lbl.textContent = created.label || label;
-                    li.dataset.label = created.label || label;
-                    selectNode(li);
-                    await handleTreeSelection(li);
-                  } else {
-                    // Fallback: set selection and force refresh display
-                    activeOntologyIri = created.graphIri;
-                    updateOntoGraphLabel();
-                    refreshOntologyTree();
-                  }
+              // Ensure label is shown and select the created ontology (guard for valid response)
+              if (created && created.graphIri) {
+                const newRoot = qs('#treeRoot');
+                const li = Array.from(newRoot.querySelectorAll('li[role="treeitem"]')).find(el => el.dataset && el.dataset.iri === created.graphIri);
+                // Update top node label immediately
+                try {
+                  const ontoTop = qs('#ontoTreeRoot .onto-node-label');
+                  if (ontoTop) ontoTop.textContent = created.label || label;
+                } catch(_) {}
+                if (li) {
+                  const lbl = li.querySelector('.node-label'); if (lbl) lbl.textContent = created.label || label;
+                  li.dataset.label = created.label || label;
+                  selectNode(li);
+                  await handleTreeSelection(li);
+                } else {
+                  // Fallback: set selection and force refresh display
+                  activeOntologyIri = created.graphIri;
+                  updateOntoGraphLabel();
+                  refreshOntologyTree();
                 }
+              }
               } catch(err) {
                 alert('Failed to create ontology: ' + err.message);
               }
@@ -3772,10 +3858,111 @@
             // Get imported classes from local storage for the imported ontology
             const pid = (activeProject && (activeProject.id || activeProject.project_id)) ? (activeProject.id || activeProject.project_id) : 'default';
             const importKey = `onto_graph__${pid}__` + encodeURIComponent(importIri);
-            const importData = localStorage.getItem(importKey);
+            let importData = localStorage.getItem(importKey);
+            
+            // TEMPORARY: Clear cached data with generic labels to force fresh reload
+            if (importData) {
+              const cachedData = JSON.parse(importData);
+              const hasGenericLabels = cachedData.nodes && cachedData.nodes.some(node => 
+                node.data && node.data.label && node.data.label.match(/^Class \d+$/)
+              );
+              if (hasGenericLabels) {
+                console.log('🔍 Clearing cached data with generic labels to force fresh reload');
+                localStorage.removeItem(importKey);
+                importData = null;
+              }
+            }
+            
             if (!importData) {
-              console.log('🔍 No local storage data found for import:', importIri);
-              return 0;
+              console.log('🔍 No local storage data found for import, attempting to load from API:', importIri);
+              try {
+                // Try to load the imported ontology data from API
+                const token = localStorage.getItem(tokenKey);
+                const apiUrl = `/api/ontology/?graph=${encodeURIComponent(importIri)}`;
+                const response = await fetch(apiUrl, {
+                  headers: token ? { 'Authorization': `Bearer ${token}` } : {}
+                });
+                
+                if (response.ok) {
+                  const ontologyData = await response.json();
+                  console.log('🔍 Loaded imported ontology from API:', ontologyData);
+                  console.log('🔍 API response structure - classes:', ontologyData.classes);
+                  console.log('🔍 API response structure - object_properties:', ontologyData.object_properties);
+                  console.log('🔍 API response data property:', ontologyData.data);
+                  if (ontologyData.data) {
+                    console.log('🔍 Data.classes:', ontologyData.data.classes);
+                    console.log('🔍 Data.object_properties:', ontologyData.data.object_properties);
+                    console.log('🔍 Full data structure:', JSON.stringify(ontologyData.data, null, 2));
+                  }
+                  
+                  // Convert to Cytoscape format and save to local storage
+                  // Use a simpler conversion since we don't have rich metadata
+                  // The API response has the data nested in a 'data' property
+                  const actualOntologyData = ontologyData.data || ontologyData;
+                  console.log('🔍 Actual ontology data being passed to convertOntologyToCytoscape:', actualOntologyData);
+                  console.log('🔍 actualOntologyData.classes:', actualOntologyData.classes);
+                  const cytoscapeData = convertOntologyToCytoscape(actualOntologyData);
+                  console.log('🔍 Converted cytoscape data:', cytoscapeData);
+                  const storageData = {
+                    nodes: cytoscapeData.nodes || [],
+                    edges: cytoscapeData.edges || [],
+                    timestamp: Date.now(),
+                    source: 'api'
+                  };
+                  
+                  localStorage.setItem(importKey, JSON.stringify(storageData));
+                  importData = JSON.stringify(storageData);
+                  console.log('🔍 Saved imported ontology data to local storage');
+                } else {
+                  console.log('🔍 Failed to load imported ontology from API:', response.status);
+                  return 0;
+                }
+              } catch (err) {
+                console.error('🔍 Error loading imported ontology:', err);
+                return 0;
+              }
+            } else {
+              // Check if cached data is empty and force reload
+              const cachedData = JSON.parse(importData);
+              if (cachedData.nodes && cachedData.nodes.length === 0 && cachedData.edges && cachedData.edges.length === 0) {
+                console.log('🔍 Cached data is empty, forcing reload from API:', importIri);
+                try {
+                  const token = localStorage.getItem(tokenKey);
+                  const apiUrl = `/api/ontology/?graph=${encodeURIComponent(importIri)}`;
+                  const response = await fetch(apiUrl, {
+                    headers: token ? { 'Authorization': `Bearer ${token}` } : {}
+                  });
+                  
+                  if (response.ok) {
+                    const ontologyData = await response.json();
+                    console.log('🔍 Reloaded imported ontology from API:', ontologyData);
+                    console.log('🔍 Reload API response structure - classes:', ontologyData.classes);
+                    console.log('🔍 Reload API response structure - object_properties:', ontologyData.object_properties);
+                    
+                    // Convert to Cytoscape format and save to local storage
+                    // The API response has the data nested in a 'data' property
+                    const actualOntologyData = ontologyData.data || ontologyData;
+                    console.log('🔍 Reload actual ontology data being passed to convertOntologyToCytoscape:', actualOntologyData);
+                    console.log('🔍 Reload actualOntologyData.classes:', actualOntologyData.classes);
+                    const cytoscapeData = convertOntologyToCytoscape(actualOntologyData);
+                    console.log('🔍 Reload converted cytoscape data:', cytoscapeData);
+                    const storageData = {
+                      nodes: cytoscapeData.nodes || [],
+                      edges: cytoscapeData.edges || [],
+                      timestamp: Date.now(),
+                      source: 'api'
+                    };
+                    
+                    localStorage.setItem(importKey, JSON.stringify(storageData));
+                    importData = JSON.stringify(storageData);
+                    console.log('🔍 Reloaded and saved imported ontology data to local storage');
+                  } else {
+                    console.log('🔍 Failed to reload imported ontology from API:', response.status);
+                  }
+                } catch (err) {
+                  console.error('🔍 Error reloading imported ontology:', err);
+                }
+              }
             }
             
             const importOntology = JSON.parse(importData);
@@ -3816,11 +4003,11 @@
           cb.addEventListener('change', async () => {
             try {
               console.log('🔍 Checkbox changed for import:', g, 'checked:', cb.checked);
-              const vis = loadVisibleImports(activeOntologyIri);
-              if (cb.checked) vis.add(g); else vis.delete(g);
-              saveVisibleImports(activeOntologyIri, vis);
+            const vis = loadVisibleImports(activeOntologyIri);
+            if (cb.checked) vis.add(g); else vis.delete(g);
+            saveVisibleImports(activeOntologyIri, vis);
               console.log('🔍 Visible imports updated:', Array.from(vis));
-              await overlayImportsRefresh();
+            await overlayImportsRefresh();
             } catch (err) {
               console.error('🔍 Error handling import checkbox change:', err);
               // Revert the checkbox state if there was an error
