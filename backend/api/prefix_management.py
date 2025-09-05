@@ -38,21 +38,6 @@ class PrefixUpdate(BaseModel):
     owner: Optional[str] = Field(None, description="Updated owner email")
     status: Optional[str] = Field(None, description="Status: active, deprecated, archived")
 
-class CompoundPrefixCreate(BaseModel):
-    base_prefixes: List[str] = Field(..., description="List of base prefixes to combine (e.g., ['industry', 'lockheed'])")
-    description: str = Field(..., description="Description of the compound prefix")
-    owner: str = Field(..., description="Owner email address")
-    
-    @validator('base_prefixes')
-    def validate_base_prefixes(cls, v):
-        if len(v) < 2:
-            raise ValueError('Compound prefix must have at least 2 base prefixes')
-        if len(v) > 3:
-            raise ValueError('Compound prefix cannot have more than 3 base prefixes')
-        for prefix in v:
-            if not re.match(r'^[a-z][a-z0-9]{1,19}$', prefix):
-                raise ValueError(f'Invalid base prefix format: {prefix}')
-        return v
 
 class PrefixResponse(BaseModel):
     id: str
@@ -115,67 +100,6 @@ def create_prefix(
         logger.error(f"Error creating prefix: {e}")
         raise HTTPException(status_code=500, detail=str(e))
 
-@router.post("/compound", response_model=PrefixResponse)
-def create_compound_prefix(
-    compound_prefix: CompoundPrefixCreate,
-    db: DatabaseService = Depends(get_db),
-    admin_user = Depends(get_admin_user)
-):
-    """Create a compound prefix from existing active prefixes (admin only)"""
-    try:
-        conn = db._conn()
-        try:
-            with conn.cursor() as cur:
-                # Check that all base prefixes exist and are active
-                placeholders = ','.join(['%s'] * len(compound_prefix.base_prefixes))
-                cur.execute(
-                    f"SELECT prefix FROM prefix_registry WHERE prefix IN ({placeholders}) AND status = 'active'",
-                    compound_prefix.base_prefixes
-                )
-                existing_prefixes = {row[0] for row in cur.fetchall()}
-                
-                missing_prefixes = set(compound_prefix.base_prefixes) - existing_prefixes
-                if missing_prefixes:
-                    raise HTTPException(
-                        status_code=400, 
-                        detail=f"Base prefixes not found or not active: {', '.join(missing_prefixes)}"
-                    )
-                
-                # Create compound prefix by joining with '/'
-                compound_prefix_str = '/'.join(compound_prefix.base_prefixes)
-                
-                # Check if compound prefix already exists
-                cur.execute("SELECT id FROM prefix_registry WHERE prefix = %s", (compound_prefix_str,))
-                if cur.fetchone():
-                    raise HTTPException(status_code=400, detail="Compound prefix already exists")
-                
-                # Insert new compound prefix
-                prefix_id = str(uuid.uuid4())
-                cur.execute(
-                    """
-                    INSERT INTO prefix_registry (id, prefix, description, owner, created_by)
-                    VALUES (%s, %s, %s, %s, %s)
-                    """,
-                    (prefix_id, compound_prefix_str, compound_prefix.description, compound_prefix.owner, admin_user["username"])
-                )
-                conn.commit()
-                
-                # Return the created prefix
-                cur.execute("SELECT * FROM prefix_registry WHERE id = %s", (prefix_id,))
-                result = cur.fetchone()
-                
-                return PrefixResponse(
-                    id=result[0], prefix=result[1], description=result[2], owner=result[3],
-                    status=result[4], created_at=result[5].isoformat(), updated_at=result[6].isoformat(),
-                    created_by=result[7]
-                )
-        finally:
-            db._return(conn)
-    except HTTPException:
-        raise
-    except Exception as e:
-        logger.error(f"Error creating compound prefix: {e}")
-        raise HTTPException(status_code=500, detail=str(e))
 
 @router.get("/", response_model=List[PrefixResponse])
 def list_prefixes(

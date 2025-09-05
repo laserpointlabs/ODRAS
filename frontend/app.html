@@ -985,6 +985,7 @@
               </div>
             </div>
           </div>
+
         </section>
       </main>
     </div>
@@ -993,6 +994,8 @@
       <span><span class="status-dot ok"></span>Camunda</span>
       <span><span class="status-dot ok"></span>Fuseki</span>
       <span><span class="status-dot ok"></span>Vector</span>
+      <span class="spacer"></span>
+      <span id="currentNamespace" class="muted" style="font-family: monospace; font-size: 12px;">No project selected</span>
       <span class="spacer"></span>
       <span class="muted">UI Restart Prototype</span>
     </div>
@@ -1190,58 +1193,62 @@
 
     // Auto-generate namespace name and path based on prefix and type
     function updateNamespaceFields() {
-      const prefixSelect = document.getElementById('nsPrefix');
       const typeSelect = document.getElementById('nsType');
       const nameInput = document.getElementById('nsName');
       const pathInput = document.getElementById('nsPath');
       
-      if (!prefixSelect || !typeSelect || !nameInput || !pathInput) return;
+      if (!typeSelect || !nameInput || !pathInput) return;
       
-      const prefix = prefixSelect.value.trim();
+      // Use the ordered prefixes
+      const selectedPrefixes = selectedPrefixOrder;
       const type = typeSelect.value;
       
-      if (!prefix) {
+      if (selectedPrefixes.length === 0) {
         nameInput.value = '';
         pathInput.value = '';
         return;
       }
       
-      // Generate name as prefix-type
-      const name = `${prefix}-${type}`;
+      // Generate name as prefix1-prefix2-type (or just prefix-type if single)
+      const prefixString = selectedPrefixes.join('-');
+      const name = `${prefixString}-${type}`;
       nameInput.value = name;
       
-      // Generate path based on type and prefix
+      // Generate path based on type and selected prefixes
       let path = '';
+      const prefixPath = selectedPrefixes.join('/');
+      
+      // Simplified, consistent logic: type always comes after the prefix path
       switch (type) {
         case 'core':
-          path = `${prefix}/core`;
+          path = `${prefixPath}/core`;
           break;
         case 'service':
-          path = `${prefix}/core`;
+          path = `${prefixPath}/service`;
           break;
         case 'domain':
-          path = `${prefix}/domain`;
+          path = `${prefixPath}/domain`;
           break;
         case 'program':
-          path = `program/${prefix}/core`;
+          path = `${prefixPath}/program`;
           break;
         case 'project':
-          path = `project/${prefix}/core`;
+          path = `${prefixPath}/project`;
           break;
         case 'industry':
-          path = `industry/prime/${prefix}`;
+          path = `${prefixPath}/industry`;
           break;
         case 'vocab':
-          path = `vocab/${prefix}`;
+          path = `${prefixPath}/vocab`;
           break;
         case 'shapes':
-          path = `shapes/${prefix}`;
+          path = `${prefixPath}/shapes`;
           break;
         case 'align':
-          path = `align/${prefix}`;
+          path = `${prefixPath}/align`;
           break;
         default:
-          path = `${prefix}/${type}`;
+          path = `${prefixPath}/${type}`;
       }
       
       pathInput.value = path;
@@ -3310,6 +3317,11 @@
           const found = list.find(p => p.id === savedPid);
           if (found) selected = found;
         }
+        
+        // Update namespace display for initial project
+        if (selected) {
+          updateNamespaceDisplay(selected.id);
+        }
         selects.forEach(sel => { if (sel) { sel.innerHTML = list.map(p => `<option value="${p.id}">${p.name}</option>`).join(''); sel.disabled = false; sel.value = selected.id; } });
         await renderTree(selected);
       } else {
@@ -3361,7 +3373,12 @@
         const raw = json.projects || [];
         const list = raw.map(p => ({ id: p.id || p.project_id || p.projectId, name: p.name || p.project_name || 'Project' }));
         const proj = list.find(p => p.id === pid);
-        if (proj) { activeOntologyIri = null; updateOntoGraphLabel(); await renderTree(proj); }
+        if (proj) { 
+          activeOntologyIri = null; 
+          updateOntoGraphLabel(); 
+          await renderTree(proj); 
+          updateNamespaceDisplay(pid);
+        }
       });
     });
 
@@ -3369,30 +3386,8 @@
     (function(){
       const btn = qs('#addNodeBtn');
       if (!btn) return;
-      btn.addEventListener('click', async () => {
-        const name = prompt('Project name'); if (!name) return;
-        const token = localStorage.getItem(tokenKey);
-        const res = await fetch('/api/projects', { method:'POST', headers:{'Content-Type':'application/json', Authorization: 'Bearer ' + token}, body: JSON.stringify({ name }) });
-        if (res.ok) {
-          // Reload and select the newly created project
-          const pr = await fetch('/api/projects', { headers: { Authorization: 'Bearer ' + token }}).then(r=>r.json()).catch(()=>({projects:[]}));
-          const raw = pr.projects || [];
-          const list = raw.map(p => ({ id: p.id || p.project_id || p.projectId, name: p.name || p.project_name || 'Project' })).filter(p => !!p.id);
-          const sel = qs('#projectSelect2');
-          if (sel && list.length) {
-            sel.innerHTML = list.map(p => `<option value="${p.id}">${p.name}</option>`).join('');
-            const js = await res.json().catch(()=>({}));
-            const proj = js.project || js;
-            const pid = (proj && (proj.id || proj.project_id || proj.projectId)) || list[list.length - 1].id;
-            sel.value = pid;
-            try { localStorage.setItem('active_project_id', pid); } catch(_) {}
-            sel.disabled = false;
-            // Save current ontology canvas before switching projects
-            try { if (ontoState && ontoState.cy && activeOntologyIri) saveGraphToLocal(activeOntologyIri); } catch(_) {}
-            const selected = list.find(p => p.id === pid) || list[list.length - 1];
-            await renderTree(selected);
-          }
-        }
+      btn.addEventListener('click', () => {
+        showCreateProjectModal();
       });
     })();
 
@@ -8597,12 +8592,15 @@
           <h3>Create New Namespace</h3>
           
           <div style="margin-bottom: 16px;">
-            <label>Prefix:</label>
-            <select id="nsPrefix" onchange="updateNamespaceFields()">
-              <option value="">Loading prefixes...</option>
-            </select>
+            <label>Prefixes (select in order):</label>
+            <div id="nsPrefixSelector" style="border: 1px solid var(--border); border-radius: 4px; padding: 8px; height: 150px; background: var(--panel-2); overflow-y: auto; overflow-x: hidden;">
+              <div style="text-align: center; color: var(--muted);">Loading prefixes...</div>
+            </div>
+            <div id="selectedNsPrefixes" style="margin-top: 8px; font-size: 0.9em; color: var(--text);">
+              Selected (in order): <span id="selectedNsPrefixList">None</span>
+            </div>
             <div style="font-size: 0.8em; color: var(--muted); margin-top: 4px;">
-              Select from managed prefixes or <a href="#" onclick="showCreatePrefixModal(); this.closest('.modal').remove();">create a new one</a>
+              Select prefixes in the order you want them to appear in the namespace path, or <a href="#" onclick="showCreatePrefixModal(); this.closest('.modal').remove();">create a new one</a>
             </div>
           </div>
           
@@ -8657,8 +8655,9 @@
       modal.className = 'modal';
       document.body.appendChild(modal);
       
-      // Load prefixes and initialize the name and path based on default values
-      loadPrefixesForNamespace(document.getElementById('nsPrefix'));
+      // Reset selection order and load prefixes
+      selectedPrefixOrder = [];
+      loadPrefixesForNamespaceSelector();
       updateNamespaceFields();
     }
 
@@ -8667,12 +8666,14 @@
         const name = document.getElementById('nsName').value.trim();
         const type = document.getElementById('nsType').value;
         const path = document.getElementById('nsPath').value.trim();
-        const prefix = document.getElementById('nsPrefix').value.trim();
         const description = document.getElementById('nsDescription').value.trim();
         const owners = document.getElementById('nsOwners').value.trim().split(',').map(o => o.trim()).filter(o => o);
 
-        if (!name || !path || !prefix) {
-          alert('Please fill in all required fields');
+        // Use the ordered prefixes
+        const selectedPrefixes = selectedPrefixOrder;
+
+        if (!name || !path || selectedPrefixes.length === 0) {
+          alert('Please fill in all required fields and select at least one prefix');
           return;
         }
 
@@ -8681,6 +8682,10 @@
           alert('No auth token found');
           return;
         }
+
+        // For now, use the first selected prefix as the primary prefix
+        // TODO: Update backend to handle multiple prefixes
+        const prefix = selectedPrefixes[0];
 
         const response = await fetch('/api/admin/namespaces/', {
           method: 'POST',
@@ -9160,32 +9165,10 @@
           <h3>Create New Prefix</h3>
           
           <div style="margin-bottom: 16px;">
-            <label>Prefix Type:</label>
-            <select id="prefixType" onchange="togglePrefixType()" style="width: 100%; padding: 8px; border: 1px solid var(--border); border-radius: 4px; background: var(--panel); color: var(--text);">
-              <option value="simple">Simple Prefix (e.g., dod, industry)</option>
-              <option value="compound">Compound Prefix (e.g., industry/lockheed)</option>
-            </select>
-          </div>
-          
-          <div id="simplePrefixFields">
-            <div style="margin-bottom: 16px;">
-              <label>Prefix:</label>
-              <input type="text" id="pfxPrefix" placeholder="e.g., dod" oninput="validatePrefix(this)" />
-              <div id="prefixValidation" style="font-size: 0.8em; color: var(--muted); margin-top: 4px;">
-                Lowercase letters and numbers only, start with letter, 2-20 characters
-              </div>
-            </div>
-          </div>
-          
-          <div id="compoundPrefixFields" style="display: none;">
-            <div style="margin-bottom: 16px;">
-              <label>Base Prefixes (select 2-3 active prefixes):</label>
-              <div id="basePrefixSelector" style="border: 1px solid var(--border); border-radius: 4px; padding: 8px; height: 200px; background: var(--panel-2); overflow-y: auto; overflow-x: hidden;">
-                <div style="text-align: center; color: var(--muted);">Loading active prefixes...</div>
-              </div>
-              <div id="selectedPrefixes" style="margin-top: 8px; font-size: 0.9em; color: var(--text);">
-                Selected: <span id="selectedPrefixList">None</span>
-              </div>
+            <label>Prefix:</label>
+            <input type="text" id="pfxPrefix" placeholder="e.g., dod" oninput="validatePrefix(this)" />
+            <div id="prefixValidation" style="font-size: 0.8em; color: var(--muted); margin-top: 4px;">
+              Lowercase letters and numbers only, start with letter, 2-20 characters
             </div>
           </div>
           
@@ -9207,74 +9190,8 @@
       `;
       
       document.body.appendChild(modal);
-      loadActivePrefixesForCompound();
     }
 
-    function togglePrefixType() {
-      const prefixType = document.getElementById('prefixType').value;
-      const simpleFields = document.getElementById('simplePrefixFields');
-      const compoundFields = document.getElementById('compoundPrefixFields');
-      
-      if (prefixType === 'simple') {
-        simpleFields.style.display = 'block';
-        compoundFields.style.display = 'none';
-      } else {
-        simpleFields.style.display = 'none';
-        compoundFields.style.display = 'block';
-      }
-    }
-
-    async function loadActivePrefixesForCompound() {
-      try {
-        const response = await fetch('/api/admin/prefixes/?status_filter=active');
-        if (response.ok) {
-          const prefixes = await response.json();
-          const selector = document.getElementById('basePrefixSelector');
-          
-          if (prefixes.length === 0) {
-            selector.innerHTML = '<div style="text-align: center; color: var(--muted);">No active prefixes found. Create some simple prefixes first.</div>';
-            return;
-          }
-          
-          const html = prefixes.map(prefix => `
-            <div style="display: flex; align-items: flex-start; margin: 6px 0; padding: 8px; border-radius: 4px; background: var(--panel); border: 1px solid var(--border);">
-              <input type="checkbox" value="${prefix.prefix}" onchange="updateSelectedPrefixes()" style="margin-right: 12px; margin-top: 2px; flex-shrink: 0; width: 16px; height: 16px;">
-              <div style="flex: 1; min-width: 0;">
-                <div style="font-weight: 600; color: var(--text); margin-bottom: 2px; font-size: 14px;">${prefix.prefix}</div>
-                <div style="color: var(--muted); font-size: 12px; line-height: 1.3;">${prefix.description}</div>
-              </div>
-            </div>
-          `).join('');
-          
-          selector.innerHTML = html;
-        } else {
-          document.getElementById('basePrefixSelector').innerHTML = '<div style="text-align: center; color: var(--err);">Error loading prefixes</div>';
-        }
-      } catch (error) {
-        console.error('Error loading active prefixes:', error);
-        document.getElementById('basePrefixSelector').innerHTML = '<div style="text-align: center; color: var(--err);">Error loading prefixes</div>';
-      }
-    }
-
-    function updateSelectedPrefixes() {
-      const checkboxes = document.querySelectorAll('#basePrefixSelector input[type="checkbox"]:checked');
-      const selectedPrefixes = Array.from(checkboxes).map(cb => cb.value);
-      const selectedList = document.getElementById('selectedPrefixList');
-      
-      if (selectedPrefixes.length === 0) {
-        selectedList.textContent = 'None';
-        selectedList.style.color = 'var(--muted)';
-      } else if (selectedPrefixes.length > 3) {
-        selectedList.textContent = selectedPrefixes.join(' / ') + ' (Too many - max 3)';
-        selectedList.style.color = 'var(--err)';
-      } else if (selectedPrefixes.length < 2) {
-        selectedList.textContent = selectedPrefixes.join(' / ') + ' (Need at least 2)';
-        selectedList.style.color = 'var(--warning)';
-      } else {
-        selectedList.textContent = selectedPrefixes.join(' / ');
-        selectedList.style.color = 'var(--success)';
-      }
-    }
 
     function validatePrefix(input) {
       const prefix = input.value.trim();
@@ -9298,12 +9215,18 @@
 
     async function createPrefix() {
       try {
-        const prefixType = document.getElementById('prefixType').value;
+        const prefix = document.getElementById('pfxPrefix').value.trim();
         const description = document.getElementById('pfxDescription').value.trim();
         const owner = document.getElementById('pfxOwner').value.trim();
 
-        if (!description || !owner) {
+        if (!prefix || !description || !owner) {
           alert('Please fill in all fields');
+          return;
+        }
+
+        // Validate prefix format
+        if (!/^[a-z][a-z0-9]{1,19}$/.test(prefix)) {
+          alert('Invalid prefix format - lowercase letters and numbers only, start with letter, 2-20 characters');
           return;
         }
 
@@ -9313,61 +9236,18 @@
           return;
         }
 
-        let response;
-        
-        if (prefixType === 'simple') {
-          const prefix = document.getElementById('pfxPrefix').value.trim();
-          if (!prefix) {
-            alert('Please enter a prefix');
-            return;
-          }
-          
-          // Validate prefix format
-          if (!/^[a-z][a-z0-9]{1,19}$/.test(prefix)) {
-            alert('Invalid prefix format - lowercase letters and numbers only, start with letter, 2-20 characters');
-            return;
-          }
-
-          response = await fetch('/api/admin/prefixes/', {
-            method: 'POST',
-            headers: {
-              'Authorization': `Bearer ${token}`,
-              'Content-Type': 'application/json'
-            },
-            body: JSON.stringify({
-              prefix,
-              description,
-              owner
-            })
-          });
-        } else {
-          // Compound prefix
-          const checkboxes = document.querySelectorAll('#basePrefixSelector input[type="checkbox"]:checked');
-          const selectedPrefixes = Array.from(checkboxes).map(cb => cb.value);
-          
-          if (selectedPrefixes.length < 2) {
-            alert('Please select at least 2 base prefixes');
-            return;
-          }
-          
-          if (selectedPrefixes.length > 3) {
-            alert('Please select no more than 3 base prefixes');
-            return;
-          }
-
-          response = await fetch('/api/admin/prefixes/compound', {
-            method: 'POST',
-            headers: {
-              'Authorization': `Bearer ${token}`,
-              'Content-Type': 'application/json'
-            },
-            body: JSON.stringify({
-              base_prefixes: selectedPrefixes,
-              description,
-              owner
-            })
-          });
-        }
+        const response = await fetch('/api/admin/prefixes/', {
+          method: 'POST',
+          headers: {
+            'Authorization': `Bearer ${token}`,
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify({
+            prefix,
+            description,
+            owner
+          })
+        });
 
         if (response.ok) {
           alert('Prefix created successfully');
@@ -9548,15 +9428,290 @@
       }
     }
 
+    async function loadPrefixesForNamespaceSelector() {
+      try {
+        const response = await fetch('/api/admin/prefixes/?status_filter=active');
+        if (response.ok) {
+          const prefixes = await response.json();
+          const selector = document.getElementById('nsPrefixSelector');
+          
+          if (prefixes.length === 0) {
+            selector.innerHTML = '<div style="text-align: center; color: var(--muted);">No active prefixes found. Create some prefixes first.</div>';
+            return;
+          }
+          
+          const html = prefixes.map(prefix => `
+            <div id="prefix-${prefix.prefix}" style="display: flex; align-items: flex-start; margin: 6px 0; padding: 8px; border-radius: 4px; background: var(--panel); border: 1px solid var(--border);">
+              <input type="checkbox" value="${prefix.prefix}" onchange="updateSelectedNsPrefixes()" style="margin-right: 12px; margin-top: 2px; flex-shrink: 0; width: 16px; height: 16px;">
+              <div style="flex: 1; min-width: 0;">
+                <div style="font-weight: 600; color: var(--text); margin-bottom: 2px; font-size: 14px;">
+                  ${prefix.prefix}
+                  <span id="order-${prefix.prefix}" style="margin-left: 8px; font-size: 12px; color: var(--accent); font-weight: bold;"></span>
+                </div>
+                <div style="color: var(--muted); font-size: 12px; line-height: 1.3;">${prefix.description}</div>
+              </div>
+            </div>
+          `).join('');
+          
+          selector.innerHTML = html;
+        } else {
+          document.getElementById('nsPrefixSelector').innerHTML = '<div style="text-align: center; color: var(--err);">Error loading prefixes</div>';
+        }
+      } catch (error) {
+        console.error('Error loading active prefixes:', error);
+        document.getElementById('nsPrefixSelector').innerHTML = '<div style="text-align: center; color: var(--err);">Error loading prefixes</div>';
+      }
+    }
+
+    // Track selection order
+    let selectedPrefixOrder = [];
+
+    function updateSelectedNsPrefixes() {
+      const checkboxes = document.querySelectorAll('#nsPrefixSelector input[type="checkbox"]');
+      const selectedPrefixes = [];
+      
+      // Maintain selection order by checking which were just checked/unchecked
+      checkboxes.forEach(checkbox => {
+        if (checkbox.checked && !selectedPrefixOrder.includes(checkbox.value)) {
+          // Newly selected - add to end
+          selectedPrefixOrder.push(checkbox.value);
+        } else if (!checkbox.checked && selectedPrefixOrder.includes(checkbox.value)) {
+          // Newly unchecked - remove from order
+          selectedPrefixOrder = selectedPrefixOrder.filter(p => p !== checkbox.value);
+        }
+      });
+      
+      // Update order indicators
+      checkboxes.forEach(checkbox => {
+        const orderSpan = document.getElementById(`order-${checkbox.value}`);
+        if (orderSpan) {
+          if (checkbox.checked) {
+            const orderIndex = selectedPrefixOrder.indexOf(checkbox.value) + 1;
+            orderSpan.textContent = `#${orderIndex}`;
+            orderSpan.style.color = 'var(--accent)';
+          } else {
+            orderSpan.textContent = '';
+          }
+        }
+      });
+      
+      // Update display
+      const selectedList = document.getElementById('selectedNsPrefixList');
+      
+      if (selectedPrefixOrder.length === 0) {
+        selectedList.textContent = 'None';
+        selectedList.style.color = 'var(--muted)';
+      } else {
+        selectedList.textContent = selectedPrefixOrder.join(' / ');
+        selectedList.style.color = 'var(--success)';
+      }
+      
+      // Update namespace fields when selection changes
+      updateNamespaceFields();
+    }
+
     // Make namespace functions globally available
     window.loadNamespaces = loadNamespaces;
     window.showCreateNamespaceModal = showCreateNamespaceModal;
     window.createNamespace = createNamespace;
+    window.loadPrefixesForNamespaceSelector = loadPrefixesForNamespaceSelector;
+    window.updateSelectedNsPrefixes = updateSelectedNsPrefixes;
     window.viewNamespaceDetails = viewNamespaceDetails;
     window.editNamespace = editNamespace;
     window.updateNamespace = updateNamespace;
     window.updateNamespaceFields = updateNamespaceFields;
     window.deleteNamespace = deleteNamespace;
+
+
+    function showCreateProjectModal() {
+      const modal = document.createElement('div');
+      modal.style.cssText = `
+        position: fixed; top: 0; left: 0; width: 100%; height: 100%; 
+        background: rgba(0,0,0,0.8); display: flex; align-items: center; 
+        justify-content: center; z-index: 1000;
+      `;
+      
+      modal.innerHTML = `
+        <div>
+          <h3>Create New Project</h3>
+          
+          <div style="margin-bottom: 16px;">
+            <label>Project Name:</label>
+            <input type="text" id="projectName" placeholder="e.g., f35-avionics" style="width: 100%; padding: 8px; border: 1px solid var(--border); border-radius: 4px; background: var(--panel); color: var(--text);" />
+            <div style="font-size: 0.8em; color: var(--muted); margin-top: 4px;">
+              Alphanumeric characters, hyphens, and underscores only
+            </div>
+          </div>
+          
+          <div style="margin-bottom: 16px;">
+            <label>Namespace:</label>
+            <select id="projectNamespace" style="width: 100%; padding: 8px; border: 1px solid var(--border); border-radius: 4px; background: var(--panel); color: var(--text);">
+              <option value="">Loading namespaces...</option>
+            </select>
+            <div style="font-size: 0.8em; color: var(--muted); margin-top: 4px;">
+              Select from available released namespaces
+            </div>
+          </div>
+          
+          <div style="margin-bottom: 16px;">
+            <label>Description (optional):</label>
+            <textarea id="projectDescription" placeholder="Brief description of the project..." style="width: 100%; padding: 8px; border: 1px solid var(--border); border-radius: 4px; background: var(--panel); color: var(--text); height: 80px; resize: vertical;"></textarea>
+          </div>
+          
+          <div style="display: flex; gap: 10px; justify-content: flex-end;">
+            <button class="btn" onclick="this.closest('.modal').remove()" style="background: var(--panel-2); color: var(--text); border-color: var(--border);">Cancel</button>
+            <button class="btn" onclick="createProject()" style="background: var(--accent); color: white; border-color: var(--accent);">Create Project</button>
+          </div>
+        </div>
+      `;
+      
+      modal.className = 'modal';
+      document.body.appendChild(modal);
+      
+      // Load released namespaces
+      loadReleasedNamespaces();
+    }
+
+    async function loadReleasedNamespaces() {
+      try {
+        console.log('🔧 Loading released namespaces...');
+        const response = await fetch('/api/namespaces/released');
+        
+        if (response.ok) {
+          const namespaces = await response.json();
+          console.log('🔧 Loaded namespaces:', namespaces);
+          const select = document.getElementById('projectNamespace');
+          
+          if (namespaces.length === 0) {
+            select.innerHTML = '<option value="">No released namespaces available</option>';
+            return;
+          }
+          
+          select.innerHTML = '<option value="">Select a namespace...</option>' +
+            namespaces.map(ns => `<option value="${ns.id}">${ns.path} - ${ns.name}</option>`).join('');
+        } else {
+          document.getElementById('projectNamespace').innerHTML = '<option value="">Error loading namespaces</option>';
+        }
+      } catch (error) {
+        console.error('Error loading released namespaces:', error);
+        document.getElementById('projectNamespace').innerHTML = '<option value="">Error loading namespaces</option>';
+      }
+    }
+
+    async function createProject() {
+      try {
+        const name = document.getElementById('projectName').value.trim();
+        const namespaceId = document.getElementById('projectNamespace').value;
+        const description = document.getElementById('projectDescription').value.trim();
+
+        if (!name || !namespaceId) {
+          alert('Please fill in project name and select a namespace');
+          return;
+        }
+
+        const token = localStorage.getItem('odras_token');
+        if (!token) {
+          alert('No auth token found');
+          return;
+        }
+
+        const requestData = {
+          name,
+          namespace_id: namespaceId,
+          description: description || null
+        };
+        
+        console.log('🔧 Creating project with data:', requestData);
+        console.log('🔧 Token:', token ? 'Present' : 'Missing');
+
+        const response = await fetch('/api/projects', {
+          method: 'POST',
+          headers: {
+            'Authorization': `Bearer ${token}`,
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify(requestData)
+        });
+
+        if (response.ok) {
+          const newProject = await response.json();
+          document.querySelector('.modal').remove();
+          
+          // Reload and select the newly created project using the old API format
+          const pr = await fetch('/api/projects', { headers: { Authorization: 'Bearer ' + token }}).then(r=>r.json()).catch(()=>({projects:[]}));
+          const raw = pr.projects || [];
+          const list = raw.map(p => ({ id: p.id || p.project_id || p.projectId, name: p.name || p.project_name || 'Project' })).filter(p => !!p.id);
+          const sel = qs('#projectSelect2');
+          if (sel && list.length) {
+            sel.innerHTML = list.map(p => `<option value="${p.id}">${p.name}</option>`).join('');
+            const pid = newProject.id || newProject.project_id || list[list.length - 1].id;
+            sel.value = pid;
+            try { localStorage.setItem('active_project_id', pid); } catch(_) {}
+            sel.disabled = false;
+            // Save current ontology canvas before switching projects
+            try { if (ontoState && ontoState.cy && activeOntologyIri) saveGraphToLocal(activeOntologyIri); } catch(_) {}
+            const selected = list.find(p => p.id === pid) || list[list.length - 1];
+            await renderTree(selected);
+            updateNamespaceDisplay(pid);
+          }
+          
+          alert('Project created successfully!');
+        } else {
+          const error = await response.json();
+          console.error('🔧 Backend error response:', error);
+          console.error('🔧 Response status:', response.status);
+          alert(`Error creating project: ${error.detail || 'Unknown error'}`);
+        }
+      } catch (error) {
+        console.error('Error creating project:', error);
+        alert('Error creating project: ' + error.message);
+      }
+    }
+
+    // Update namespace display in bottom toolbar
+    async function updateNamespaceDisplay(projectId) {
+      const namespaceElement = document.getElementById('currentNamespace');
+      if (!namespaceElement) return;
+      
+      console.log('🔧 Updating namespace display for project:', projectId);
+      
+      if (!projectId) {
+        namespaceElement.textContent = 'No project selected';
+        return;
+      }
+      
+      try {
+        const token = localStorage.getItem('odras_token');
+        if (!token) {
+          namespaceElement.textContent = 'Project selected (no auth)';
+          return;
+        }
+        
+        // Get project with namespace in one query
+        const response = await fetch(`/api/projects/${projectId}/namespace`, {
+          headers: { 'Authorization': `Bearer ${token}` }
+        });
+        
+        if (response.ok) {
+          const data = await response.json();
+          console.log('🔧 Project namespace data:', data);
+          namespaceElement.textContent = `${data.project_name} → ${data.namespace_path}`;
+          namespaceElement.title = `Project: ${data.project_name} in namespace: ${data.namespace_path}`;
+        } else {
+          // Fallback: just show project name
+          namespaceElement.textContent = `Project → unknown namespace`;
+        }
+      } catch (error) {
+        console.error('🔧 Error updating namespace display:', error);
+        namespaceElement.textContent = 'Error loading namespace';
+      }
+    }
+
+    // Make project functions globally available
+    window.showCreateProjectModal = showCreateProjectModal;
+    window.createProject = createProject;
+    window.loadReleasedNamespaces = loadReleasedNamespaces;
+    window.updateNamespaceDisplay = updateNamespaceDisplay;
 
     // Make prefix functions globally available
     window.loadPrefixes = loadPrefixes;
@@ -9568,9 +9723,6 @@
     window.toggleSection = toggleSection;
     window.showEditPrefixModal = showEditPrefixModal;
     window.updatePrefix = updatePrefix;
-    window.togglePrefixType = togglePrefixType;
-    window.loadActivePrefixesForCompound = loadActivePrefixesForCompound;
-    window.updateSelectedPrefixes = updateSelectedPrefixes;
     
           // Test function for debugging
       function testToggle() {

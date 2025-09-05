@@ -55,13 +55,13 @@ class DatabaseService:
             self._return(conn)
 
     # Projects
-    def create_project(self, name: str, owner_user_id: str, description: Optional[str] = None) -> Dict[str, Any]:
+    def create_project(self, name: str, owner_user_id: str, description: Optional[str] = None, namespace_id: Optional[str] = None) -> Dict[str, Any]:
         conn = self._conn()
         try:
             with conn.cursor(cursor_factory=RealDictCursor) as cur:
                 cur.execute(
-                    "INSERT INTO public.projects (name, description, created_by) VALUES (%s, %s, %s) RETURNING project_id, name, description, created_at, updated_at, created_by, is_active",
-                    (name, description or None, owner_user_id),
+                    "INSERT INTO public.projects (name, description, created_by, namespace_id) VALUES (%s, %s, %s, %s) RETURNING project_id, name, description, created_at, updated_at, created_by, is_active, namespace_id",
+                    (name, description or None, owner_user_id, namespace_id),
                 )
                 proj = dict(cur.fetchone())
                 # add membership as owner

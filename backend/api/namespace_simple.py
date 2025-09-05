@@ -18,6 +18,9 @@ from backend.services.config import Settings
 logger = logging.getLogger(__name__)
 router = APIRouter(prefix="/api/admin/namespaces", tags=["namespace-management"])
 
+# Public router for non-admin endpoints
+public_router = APIRouter(prefix="/api/namespaces", tags=["public-namespaces"])
+
 # Pydantic models for request/response
 class NamespaceCreate(BaseModel):
     name: str = Field(..., description="Namespace name (e.g., 'dod-core')")
@@ -413,4 +416,40 @@ def delete_namespace(
         raise
     except Exception as e:
         logger.error(f"Error deleting namespace: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+# Public endpoint for released namespaces (no authentication required)
+@public_router.get("/released", response_model=List[NamespaceResponse])
+def list_released_namespaces(db: DatabaseService = Depends(get_db)):
+    """List all released namespaces (public endpoint for project creation)"""
+    try:
+        conn = db._conn()
+        try:
+            with conn.cursor() as cur:
+                cur.execute("""
+                    SELECT * FROM namespace_registry 
+                    WHERE status = 'released' 
+                    ORDER BY path ASC
+                """)
+                results = cur.fetchall()
+                
+                return [
+                    NamespaceResponse(
+                        id=row[0],
+                        name=row[1],
+                        type=row[2],
+                        path=row[3],
+                        prefix=row[4],
+                        status=row[5],
+                        owners=row[6] or [],
+                        description=row[7],
+                        created_at=row[8],
+                        updated_at=row[9]
+                    )
+                    for row in results
+                ]
+        finally:
+            db._return(conn)
+    except Exception as e:
+        logger.error(f"Error listing released namespaces: {e}")
         raise HTTPException(status_code=500, detail=str(e))

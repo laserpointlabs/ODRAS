@@ -25,7 +25,7 @@ from backend.api.ontology import router as ontology_router
 from backend.api.workflows import router as workflows_router
 from backend.api.embedding_models import router as embedding_models_router
 from backend.api.knowledge import router as knowledge_router
-from backend.api.namespace_simple import router as namespace_router
+from backend.api.namespace_simple import router as namespace_router, public_router as namespace_public_router
 from backend.api.prefix_management import router as prefix_router
 from backend.run_registry import RUNS as SHARED_RUNS
 from backend.test_review_endpoint import router as test_router
@@ -40,6 +40,7 @@ app.include_router(workflows_router)
 app.include_router(embedding_models_router)
 app.include_router(knowledge_router)
 app.include_router(namespace_router)
+app.include_router(namespace_public_router)
 app.include_router(prefix_router)
 
 # Configuration instance
@@ -184,14 +185,70 @@ def list_projects(state: Optional[str] = None, user=Depends(get_user)):
 @app.post("/api/projects")
 def create_project(body: Dict, user=Depends(get_user)):
     name = (body.get("name") or "").strip()
+    namespace_id = body.get("namespace_id")
     if not name:
         raise HTTPException(status_code=400, detail="Name required")
+    
+    # Validate namespace if provided
+    if namespace_id:
+        try:
+            conn = db._conn()
+            try:
+                with conn.cursor() as cur:
+                    cur.execute("SELECT id FROM namespace_registry WHERE id = %s AND status = 'released'", (namespace_id,))
+                    if not cur.fetchone():
+                        raise HTTPException(status_code=400, detail="Namespace not found or not released")
+            finally:
+                db._return(conn)
+        except HTTPException:
+            raise
+        except Exception as e:
+            raise HTTPException(status_code=500, detail=f"Error validating namespace: {e}")
+    
     try:
-        proj = db.create_project(name=name, owner_user_id=user["user_id"], description=(body.get("description") or None))
+        proj = db.create_project(
+            name=name, 
+            owner_user_id=user["user_id"], 
+            description=(body.get("description") or None),
+            namespace_id=namespace_id
+        )
         return {"project": proj}
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
+@app.get("/api/projects/{project_id}/namespace")
+def get_project_namespace(project_id: str, user=Depends(get_user)):
+    """Get project with its namespace information"""
+    try:
+        conn = db._conn()
+        try:
+            with conn.cursor() as cur:
+                cur.execute("""
+                    SELECT p.project_id, p.name, p.namespace_id, nr.path, nr.name as namespace_name
+                    FROM projects p
+                    LEFT JOIN namespace_registry nr ON p.namespace_id = nr.id
+                    WHERE p.project_id = %s
+                """, (project_id,))
+                result = cur.fetchone()
+                
+                if not result:
+                    raise HTTPException(status_code=404, detail="Project not found")
+                
+                project_id, project_name, namespace_id, namespace_path, namespace_name = result
+                
+                return {
+                    "project_id": project_id,
+                    "project_name": project_name,
+                    "namespace_id": namespace_id,
+                    "namespace_path": namespace_path or "no namespace",
+                    "namespace_name": namespace_name or "no namespace"
+                }
+        finally:
+            db._return(conn)
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
 
 @app.delete("/api/projects/{project_id}")
 def delete_project(project_id: str, user=Depends(get_user)):
