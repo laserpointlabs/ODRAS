@@ -189,9 +189,9 @@ async def upload_file(
         if not authorization or not authorization.startswith("Bearer "):
             raise HTTPException(status_code=401, detail="Unauthorized")
         token = authorization.split(" ", 1)[1]
-        from ..services.auth import TOKENS as AUTH_TOKENS
+        from ..services.auth import get_user
 
-        user = AUTH_TOKENS.get(token)
+        user = get_user(authorization)
         if not user:
             raise HTTPException(status_code=401, detail="Invalid token")
         if not db.is_user_member(project_id=project_id, user_id=user["user_id"]):

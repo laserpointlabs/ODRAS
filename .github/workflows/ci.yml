@@ -23,6 +23,78 @@ jobs:
         #python-version: ['3.9', '3.10', '3.11']
         python-version: ['3.10']
     
+    services:
+      postgres:
+        image: postgres:15
+        env:
+          POSTGRES_DB: odras
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: password
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+      
+      qdrant:
+        image: qdrant/qdrant:latest
+        ports:
+          - 6333:6333
+        options: >-
+          --health-cmd "curl -f http://localhost:6333/health"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+      
+      neo4j:
+        image: neo4j:5
+        env:
+          NEO4J_AUTH: neo4j/testpassword
+          NEO4J_dbms_security_procedures_unrestricted: apoc.*
+        ports:
+          - 7474:7474
+          - 7687:7687
+        options: >-
+          --health-cmd "curl -f http://localhost:7474"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+      
+      fuseki:
+        image: stain/jena-fuseki
+        ports:
+          - 3030:3030
+        options: >-
+          --health-cmd "curl -f http://localhost:3030"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+      
+      minio:
+        image: minio/minio:latest
+        env:
+          MINIO_ROOT_USER: minioadmin
+          MINIO_ROOT_PASSWORD: minioadmin
+        ports:
+          - 9000:9000
+        options: >-
+          --health-cmd "curl -f http://localhost:9000/minio/health/live"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+      
+      camunda:
+        image: camunda/camunda-bpm-platform:run-latest
+        ports:
+          - 8080:8080
+        options: >-
+          --health-cmd "curl -f http://localhost:8080/engine-rest/version"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+    
     steps:
     - uses: actions/checkout@v3
     
@@ -79,6 +151,24 @@ jobs:
     - name: Install additional test dependencies
       run: |
         pip install pytest-mock rich bandit
+
+    - name: Set up environment variables
+      run: |
+        echo "DATABASE_URL=postgresql://postgres:password@localhost:5432/odras" >> $GITHUB_ENV
+        echo "QDRANT_URL=http://localhost:6333" >> $GITHUB_ENV
+        echo "NEO4J_URL=bolt://localhost:7687" >> $GITHUB_ENV
+        echo "NEO4J_USER=neo4j" >> $GITHUB_ENV
+        echo "NEO4J_PASSWORD=testpassword" >> $GITHUB_ENV
+        echo "FUSEKI_URL=http://localhost:3030" >> $GITHUB_ENV
+        echo "MINIO_ENDPOINT=localhost:9000" >> $GITHUB_ENV
+        echo "MINIO_ACCESS_KEY=minioadmin" >> $GITHUB_ENV
+        echo "MINIO_SECRET_KEY=minioadmin" >> $GITHUB_ENV
+        echo "CAMUNDA_BASE_URL=http://localhost:8080" >> $GITHUB_ENV
+
+    - name: Initialize database schema
+      run: |
+        # Initialize database schema using the service containers
+        python scripts/validate_database_schema.py --fix
 
     - name: Run comprehensive test suite
       run: |
