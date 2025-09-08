@@ -155,7 +155,7 @@ jobs:
       run: |
         # Initialize database schema using the service containers
         # First run the migrations to create the schema
-        python scripts/database_schema_manager.py apply
+        ./odras.sh init-db
         # Then validate the schema
         python scripts/validate_database_schema.py --fix
 
