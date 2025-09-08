@@ -112,7 +112,9 @@ def process_requirements_with_llm(
     llm_team = LLMTeam(settings)
     processed_requirements = []
 
-    print(f"Processing {len(requirements_list)} requirements with {iterations} iterations each")
+    print(
+        f"Processing {len(requirements_list)} requirements with {iterations} iterations each"
+    )
 
     for req_idx, req in enumerate(requirements_list):
         req_results = []
@@ -248,7 +250,9 @@ def store_results_in_vector_db(processed_requirements: List[Dict]) -> Dict[str, 
             persistence.upsert_vector_records(vectors, payloads)
             vector_store_status["vectors_stored"] = len(vectors)
 
-        print(f"Successfully stored {vector_store_status['vectors_stored']} vectors in Qdrant")
+        print(
+            f"Successfully stored {vector_store_status['vectors_stored']} vectors in Qdrant"
+        )
 
     except Exception as e:
         vector_store_status["status"] = "error"
@@ -289,7 +293,9 @@ def store_results_in_graph_db(processed_requirements: List[Dict]) -> Dict[str, A
 
             # Create requirement node
             triples.append((f"req:{req_id}", "TYPE", "Requirement"))
-            triples.append((f"req:{req_id}", "HAS_TEXT", req["original_requirement"]["text"]))
+            triples.append(
+                (f"req:{req_id}", "HAS_TEXT", req["original_requirement"]["text"])
+            )
 
             for iteration in req["iterations"]:
                 if iteration["status"] == "success":
@@ -304,7 +310,9 @@ def store_results_in_graph_db(processed_requirements: List[Dict]) -> Dict[str, A
                             str(iteration["iteration"]),
                         )
                     )
-                    triples.append((f"iter:{iter_id}", "USES_MODEL", iteration["model"]))
+                    triples.append(
+                        (f"iter:{iter_id}", "USES_MODEL", iteration["model"])
+                    )
                     triples.append(
                         (
                             f"iter:{iter_id}",
@@ -314,7 +322,9 @@ def store_results_in_graph_db(processed_requirements: List[Dict]) -> Dict[str, A
                     )
 
                     # Link requirement to iteration
-                    triples.append((f"req:{req_id}", "HAS_ITERATION", f"iter:{iter_id}"))
+                    triples.append(
+                        (f"req:{req_id}", "HAS_ITERATION", f"iter:{iter_id}")
+                    )
 
                     # Extract entities from LLM response (if available)
                     if "extracted_entities" in iteration["llm_response"]:
@@ -322,12 +332,16 @@ def store_results_in_graph_db(processed_requirements: List[Dict]) -> Dict[str, A
                             entity_id = f"ent:{entity}_{iter_id}"
                             triples.append((entity_id, "TYPE", "Entity"))
                             triples.append((entity_id, "NAME", entity))
-                            triples.append((f"iter:{iter_id}", "EXTRACTS_ENTITY", entity_id))
+                            triples.append(
+                                (f"iter:{iter_id}", "EXTRACTS_ENTITY", entity_id)
+                            )
 
         # Store in graph database
         if triples:
             persistence.write_graph(triples)
-            graph_store_status["nodes_created"] = len(set(triple[0] for triple in triples))
+            graph_store_status["nodes_created"] = len(
+                set(triple[0] for triple in triples)
+            )
             graph_store_status["relationships_created"] = len(triples)
 
         print(
@@ -414,9 +428,13 @@ def store_results_in_rdf_db(processed_requirements: List[Dict]) -> Dict[str, Any
         if len(ttl_lines) > 5:  # More than just namespace declarations
             ttl_content = "\n".join(ttl_lines)
             persistence.write_rdf(ttl_content)
-            rdf_store_status["triples_created"] = len([line for line in ttl_lines if " ." in line])
+            rdf_store_status["triples_created"] = len(
+                [line for line in ttl_lines if " ." in line]
+            )
 
-        print(f"Successfully created {rdf_store_status['triples_created']} RDF triples in Fuseki")
+        print(
+            f"Successfully created {rdf_store_status['triples_created']} RDF triples in Fuseki"
+        )
 
     except Exception as e:
         rdf_store_status["status"] = "error"

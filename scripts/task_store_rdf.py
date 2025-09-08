@@ -182,7 +182,9 @@ def store_results_in_rdf_db(processed_requirements: List[Dict]) -> Dict[str, Any
 
                     # Extract performance requirements
                     if "performance_requirements" in iteration["llm_response"]:
-                        for perf_req in iteration["llm_response"]["performance_requirements"]:
+                        for perf_req in iteration["llm_response"][
+                            "performance_requirements"
+                        ]:
                             perf_uri = f"odras:perf_{_sanitize_uri(perf_req)}_{req_id}_{iteration['iteration']}"
                             ttl_lines.extend(
                                 [
@@ -197,7 +199,9 @@ def store_results_in_rdf_db(processed_requirements: List[Dict]) -> Dict[str, Any
 
                     # Extract quality attributes
                     if "quality_attributes" in iteration["llm_response"]:
-                        for quality_attr in iteration["llm_response"]["quality_attributes"]:
+                        for quality_attr in iteration["llm_response"][
+                            "quality_attributes"
+                        ]:
                             quality_uri = f"odras:quality_{_sanitize_uri(quality_attr)}_{req_id}_{iteration['iteration']}"
                             ttl_lines.extend(
                                 [
@@ -210,7 +214,9 @@ def store_results_in_rdf_db(processed_requirements: List[Dict]) -> Dict[str, Any
                                 ]
                             )
 
-                    print(f"  Created RDF triples for iteration {iteration['iteration']}")
+                    print(
+                        f"  Created RDF triples for iteration {iteration['iteration']}"
+                    )
 
         # Store in RDF database
         if len(ttl_lines) > 20:  # More than just namespace declarations and ontology
@@ -224,7 +230,9 @@ def store_results_in_rdf_db(processed_requirements: List[Dict]) -> Dict[str, Any
                     [line for line in ttl_lines if line.strip().endswith(".")]
                 )
 
-                print(f"Successfully created {rdf_store_status['triples_created']} RDF triples")
+                print(
+                    f"Successfully created {rdf_store_status['triples_created']} RDF triples"
+                )
 
             except Exception as e:
                 print(f"Error storing in RDF database: {e}")
@@ -239,18 +247,28 @@ def store_results_in_rdf_db(processed_requirements: List[Dict]) -> Dict[str, Any
             {
                 "storage_duration": storage_time,
                 "triples_per_second": (
-                    rdf_store_status["triples_created"] / storage_time if storage_time > 0 else 0
+                    rdf_store_status["triples_created"] / storage_time
+                    if storage_time > 0
+                    else 0
                 ),
                 "total_requirements_processed": len(processed_requirements),
                 "total_iterations_processed": sum(
                     len(req["iterations"]) for req in processed_requirements
                 ),
                 "successful_iterations": sum(
-                    len([iter for iter in req["iterations"] if iter["status"] == "success"])
+                    len(
+                        [
+                            iter
+                            for iter in req["iterations"]
+                            if iter["status"] == "success"
+                        ]
+                    )
                     for req in processed_requirements
                 ),
                 "storage_timestamp": time.time(),
-                "ttl_content_length": (len(ttl_content) if "ttl_content" in locals() else 0),
+                "ttl_content_length": (
+                    len(ttl_content) if "ttl_content" in locals() else 0
+                ),
             }
         )
 
@@ -332,7 +350,9 @@ def _categorize_entity(entity_name: str) -> str:
     """Categorize entity based on name patterns."""
     entity_lower = entity_name.lower()
 
-    if any(word in entity_lower for word in ["system", "component", "module", "subsystem"]):
+    if any(
+        word in entity_lower for word in ["system", "component", "module", "subsystem"]
+    ):
         return "SystemComponent"
     elif any(word in entity_lower for word in ["interface", "api", "protocol"]):
         return "Interface"

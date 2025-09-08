@@ -43,7 +43,9 @@ async def create_knowledge_asset_record(
         print(f"📋 Step 4: Creating knowledge asset for file {file_id}")
 
         # Use filename parameter passed from BPMN workflow
-        title = filename.rsplit(".", 1)[0] if "." in filename else filename  # Remove extension
+        title = (
+            filename.rsplit(".", 1)[0] if "." in filename else filename
+        )  # Remove extension
         print(f"📄 Using filename from BPMN: {filename} → title: {title}")
 
         # Read chunks info from previous step
@@ -55,10 +57,14 @@ async def create_knowledge_asset_record(
             with open(embeddings_file, "r", encoding="utf-8") as f:
                 embeddings_data = json.load(f)
             chunk_count = len(embeddings_data)
-            total_content_length = sum(len(chunk.get("content", "")) for chunk in embeddings_data)
+            total_content_length = sum(
+                len(chunk.get("content", "")) for chunk in embeddings_data
+            )
 
         # Create knowledge asset using service
-        print(f"📊 Creating asset with: chunks={chunk_count}, length={total_content_length}")
+        print(
+            f"📊 Creating asset with: chunks={chunk_count}, length={total_content_length}"
+        )
 
         asset_id = await knowledge_service.create_knowledge_asset(
             source_file_id=file_id,
@@ -142,7 +148,9 @@ def main():
     filename = sys.argv[4] if len(sys.argv) > 4 else "unknown_file"
 
     # Run async asset creation
-    asyncio.run(create_knowledge_asset_record(file_id, project_id, document_type, filename))
+    asyncio.run(
+        create_knowledge_asset_record(file_id, project_id, document_type, filename)
+    )
 
 
 if __name__ == "__main__":

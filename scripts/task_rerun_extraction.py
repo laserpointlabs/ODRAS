@@ -63,7 +63,9 @@ def rerun_requirements_extraction(
     categories_filter = extraction_parameters.get("categories_filter", [])
 
     # Extract requirements with custom parameters
-    extraction_result = extract_requirements_from_document(document_content, document_filename)
+    extraction_result = extract_requirements_from_document(
+        document_content, document_filename
+    )
 
     # Apply custom filtering
     filtered_requirements = _apply_custom_filters(
@@ -75,7 +77,9 @@ def rerun_requirements_extraction(
     )
 
     # Compare with previous extraction
-    comparison_result = _compare_extractions(previous_requirements, filtered_requirements)
+    comparison_result = _compare_extractions(
+        previous_requirements, filtered_requirements
+    )
 
     # Add rerun metadata
     for req in filtered_requirements:
@@ -198,7 +202,9 @@ def _compare_extractions(previous: List[Dict], current: List[Dict]) -> Dict[str,
             removed_requirements.append(req)
 
     # Generate summary
-    total_changes = len(new_requirements) + len(modified_requirements) + len(removed_requirements)
+    total_changes = (
+        len(new_requirements) + len(modified_requirements) + len(removed_requirements)
+    )
     change_percentage = (total_changes / len(previous)) * 100 if previous else 0
 
     return {
@@ -297,7 +303,9 @@ def _identify_changes(prev_req: Dict, curr_req: Dict) -> List[Dict]:
     return changes
 
 
-def _extract_requirements_fallback(document_content: str, document_filename: str) -> Dict[str, Any]:
+def _extract_requirements_fallback(
+    document_content: str, document_filename: str
+) -> Dict[str, Any]:
     """
     Fallback requirements extraction if import fails.
 

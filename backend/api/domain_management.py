@@ -29,7 +29,9 @@ class DomainCreate(BaseModel):
         ...,
         description="Domain name (lowercase letters, numbers, hyphens only, 2-50 chars)",
     )
-    description: str = Field(..., description="Description of what the domain represents")
+    description: str = Field(
+        ..., description="Description of what the domain represents"
+    )
     owner: str = Field(..., description="Owner email address")
 
     @validator("domain")
@@ -45,7 +47,9 @@ class DomainCreate(BaseModel):
 class DomainUpdate(BaseModel):
     description: Optional[str] = Field(None, description="Updated description")
     owner: Optional[str] = Field(None, description="Updated owner email")
-    status: Optional[str] = Field(None, description="Status: active, deprecated, archived")
+    status: Optional[str] = Field(
+        None, description="Status: active, deprecated, archived"
+    )
 
 
 class DomainResponse(BaseModel):
@@ -80,7 +84,9 @@ def create_domain(
         try:
             with conn.cursor() as cur:
                 # Check if domain already exists
-                cur.execute("SELECT id FROM domain_registry WHERE domain = %s", (domain.domain,))
+                cur.execute(
+                    "SELECT id FROM domain_registry WHERE domain = %s", (domain.domain,)
+                )
                 if cur.fetchone():
                     raise HTTPException(status_code=400, detail="Domain already exists")
 
@@ -218,7 +224,9 @@ def update_domain(
         try:
             with conn.cursor() as cur:
                 # Check if domain exists
-                cur.execute("SELECT domain FROM domain_registry WHERE id = %s", (domain_id,))
+                cur.execute(
+                    "SELECT domain FROM domain_registry WHERE id = %s", (domain_id,)
+                )
                 result = cur.fetchone()
                 if not result:
                     raise HTTPException(status_code=404, detail="Domain not found")
@@ -284,7 +292,9 @@ def delete_domain(
         try:
             with conn.cursor() as cur:
                 # Check if domain exists
-                cur.execute("SELECT domain FROM domain_registry WHERE id = %s", (domain_id,))
+                cur.execute(
+                    "SELECT domain FROM domain_registry WHERE id = %s", (domain_id,)
+                )
                 result = cur.fetchone()
                 if not result:
                     raise HTTPException(status_code=404, detail="Domain not found")
