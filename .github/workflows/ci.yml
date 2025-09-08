@@ -159,19 +159,64 @@ jobs:
         # Then validate the schema
         python scripts/validate_database_schema.py --fix
 
-    - name: Run health endpoint test
+    - name: Run basic API tests (no auth required)
       run: |
-        pytest tests/api/test_health_endpoint.py::test_health_endpoint -v
+        # Health endpoint tests (3 tests)
+        pytest tests/api/test_health_endpoint.py -v
+        
+    - name: Run database schema validation tests
+      run: |
+        # Database schema tests (20 tests)  
+        pytest tests/database/test_database_schema.py -v
+        
+    - name: Run database schema validation script
+      run: |
+        # Validate database schema programmatically
+        python scripts/validate_database_schema.py --verbose
+        
+    - name: Run BPMN validation tests
+      run: |
+        # Validate all BPMN files are valid XML
+        python scripts/validate_bpmn_diagrams.py
+        
+    - name: Run import validation tests
+      run: |
+        # Test that critical modules can be imported
+        python -c "
+        import sys
+        try:
+            from backend.main import app
+            print('✅ Main FastAPI app imports successfully')
+            from backend.services.db import DatabaseService  
+            print('✅ Database service imports successfully')
+            from backend.services.config import Settings
+            print('✅ Settings imports successfully')
+            from backend.api.files import router as files_router
+            print('✅ Files API imports successfully')
+            from backend.api.knowledge import router as knowledge_router
+            print('✅ Knowledge API imports successfully')
+            print('✅ All critical imports successful')
+        except Exception as e:
+            print(f'❌ Import failed: {e}')
+            sys.exit(1)
+        "
 
-    # TODO: Add more tests gradually
+    # TODO: Add authentication tests once UUID issue is fixed
+    # - name: Run authentication tests
+    #   run: |
+    #     pytest tests/api/test_auth_endpoints.py -v
+    
+    # TODO: Add comprehensive test suite once auth is working
     # - name: Run comprehensive test suite
     #   run: |
     #     python scripts/run_comprehensive_tests.py --verbose
     
+    # TODO: Add API endpoint validation once auth is working  
     # - name: Run API endpoint validation
     #   run: |
     #     python scripts/validate_all_endpoints.py --verbose
 
+    # TODO: Add unit tests with coverage once auth tests pass
     # - name: Run unit tests with coverage
     #   run: |
     #     pytest tests/ -v --cov=backend --cov-report=xml --cov-report=html
