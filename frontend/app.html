@@ -116,6 +116,10 @@
     }
     .workbench { display: none; }
     .workbench.active { display: flex; flex-direction: column; height: 100%; }
+    /* Hide admin workbench by default - will be shown by JavaScript for admin users */
+    #wb-admin { display: none !important; }
+    #wb-admin.admin-visible { display: flex !important; }
+    #wb-admin.admin-hidden { display: none !important; }
     .status-dot { display: inline-block; width: 8px; height: 8px; border-radius: 50%; margin-right: 6px; }
     .ok { background: var(--ok); } .warn { background: var(--warn); } .err { background: var(--err); }
     .muted { color: var(--muted); }
@@ -3094,6 +3098,9 @@
       activeOntologyIri = null;
       updateOntoGraphLabel();
       
+      // Hide admin UI elements since user is no longer authenticated
+      updateAdminUIVisibility(false);
+      
       // Show login screen
       showAuth(true);
       
@@ -3169,6 +3176,9 @@
         qs('#userMenu').textContent = me.username + (me.is_admin ? ' (admin)' : '');
         showAuth(false);
         
+        // Update admin UI elements visibility
+        updateAdminUIVisibility(me.is_admin);
+        
         // Start monitoring authentication status
         startAuthMonitoring();
       } catch (error) {
@@ -3192,6 +3202,15 @@
         if (!document.querySelector('.workbench.active')) {
           const fallback = qs('.icon[data-wb="ontology"]');
           if (fallback) fallback.click();
+        }
+        
+        // Update admin UI visibility based on current user
+        try {
+          const userData = JSON.parse(localStorage.getItem('user') || '{}');
+          updateAdminUIVisibility(userData.is_admin || false);
+        } catch (e) {
+          console.error('Failed to parse user data for admin UI visibility:', e);
+          updateAdminUIVisibility(false);
         }
         
         // Load admin data if admin workbench is active
@@ -7639,6 +7658,53 @@
          
          console.log('👑 Checking admin status - username:', username, 'isAdmin:', isAdminUser);
          return isAdminUser;
+    }
+    
+    // Function to update admin UI elements visibility based on user admin status
+    function updateAdminUIVisibility(isAdmin) {
+      console.log('🔧 Updating admin UI visibility, isAdmin:', isAdmin);
+      
+      // Hide/show admin icon in left toolbar
+      const adminIcon = document.querySelector('.icon[data-wb="admin"]');
+      if (adminIcon) {
+        adminIcon.style.display = isAdmin ? 'grid' : 'none';
+      }
+      
+      // Hide/show admin workbench section using class-based approach
+      const adminWorkbench = document.querySelector('#wb-admin');
+      if (adminWorkbench) {
+        if (isAdmin) {
+          adminWorkbench.classList.add('admin-visible');
+          adminWorkbench.classList.remove('admin-hidden');
+        } else {
+          adminWorkbench.classList.add('admin-hidden');
+          adminWorkbench.classList.remove('admin-visible');
+        }
+      }
+      
+      // If admin workbench is currently active but user is not admin, switch to ontology workbench
+      if (!isAdmin && adminWorkbench && adminWorkbench.classList.contains('active')) {
+        console.log('🔄 Switching from admin workbench to ontology workbench');
+        // Remove active class from admin workbench
+        adminWorkbench.classList.remove('active');
+        // Remove active class from admin icon
+        if (adminIcon) {
+          adminIcon.classList.remove('active');
+        }
+        // Activate ontology workbench
+        const ontologyIcon = document.querySelector('.icon[data-wb="ontology"]');
+        const ontologyWorkbench = document.querySelector('#wb-ontology');
+        if (ontologyIcon && ontologyWorkbench) {
+          ontologyIcon.classList.add('active');
+          ontologyWorkbench.classList.add('active');
+          // Update URL hash
+          const url = new URL(window.location);
+          url.hash = 'wb=ontology';
+          window.history.replaceState({}, '', url);
+          // Update localStorage
+          localStorage.setItem('active_workbench', 'ontology');
+        }
+      }
     }
     function renderBasicMarkdown(src) {
       const esc = (s)=>String(s||'').replace(/[&<>]/g, c=>({ '&':'&amp;','<':'&lt;','>':'&gt;' }[c]));
