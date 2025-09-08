@@ -81,7 +81,7 @@ class ODRASTestRunner:
                     "python",
                     "-m",
                     "pytest",
-                    "tests/test_file_management.py",
+                    "tests/unit/test_file_management.py",
                     "-v",
                 ],
                 description="File management specific tests",
