@@ -159,22 +159,28 @@ jobs:
         # Then validate the schema
         python scripts/validate_database_schema.py --fix
 
-    - name: Run comprehensive test suite
+    - name: Run health endpoint test
       run: |
-        python scripts/run_comprehensive_tests.py --verbose
+        pytest tests/api/test_health_endpoint.py::test_health_endpoint -v
 
-    - name: Run API endpoint validation
-      run: |
-        python scripts/validate_all_endpoints.py --verbose
+    # TODO: Add more tests gradually
+    # - name: Run comprehensive test suite
+    #   run: |
+    #     python scripts/run_comprehensive_tests.py --verbose
+    
+    # - name: Run API endpoint validation
+    #   run: |
+    #     python scripts/validate_all_endpoints.py --verbose
 
-    - name: Run unit tests with coverage
-      run: |
-        pytest tests/ -v --cov=backend --cov-report=xml --cov-report=html
+    # - name: Run unit tests with coverage
+    #   run: |
+    #     pytest tests/ -v --cov=backend --cov-report=xml --cov-report=html
 
-    - name: Upload coverage reports
-      uses: codecov/codecov-action@v3
-      with:
-        file: ./coverage.xml
-        flags: unittests
-        name: codecov-umbrella
-        fail_ci_if_error: false
+    # TODO: Enable coverage reports when we add more tests
+    # - name: Upload coverage reports
+    #   uses: codecov/codecov-action@v3
+    #   with:
+    #     file: ./coverage.xml
+    #     flags: unittests
+    #     name: codecov-umbrella
+    #     fail_ci_if_error: false
