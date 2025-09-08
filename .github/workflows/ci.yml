@@ -140,6 +140,7 @@ jobs:
     - name: Set up environment variables
       run: |
         echo "DATABASE_URL=postgresql://postgres:password@localhost:5432/odras" >> $GITHUB_ENV
+        echo "POSTGRES_DATABASE=odras" >> $GITHUB_ENV
         echo "QDRANT_URL=http://localhost:6333" >> $GITHUB_ENV
         echo "NEO4J_URL=bolt://localhost:7687" >> $GITHUB_ENV
         echo "NEO4J_USER=neo4j" >> $GITHUB_ENV

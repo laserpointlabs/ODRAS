@@ -232,8 +232,9 @@ from backend.services.db import DatabaseService
 from backend.services.config import Settings
 import os
 
-# Set environment to use test database
-os.environ['POSTGRES_DATABASE'] = 'odras_test'
+# Set environment to use test database (or main database in CI)
+test_db = os.environ.get('POSTGRES_DATABASE', 'odras_test')
+os.environ['POSTGRES_DATABASE'] = test_db
 
 try:
     db = DatabaseService(Settings())
