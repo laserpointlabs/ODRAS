@@ -18,6 +18,9 @@ from urllib3.util.retry import Retry
 
 from .config import Settings
 
+# Set up logging
+logger = logging.getLogger(__name__)
+
 # Import task handlers with optional imports
 sys.path.append(os.path.join(os.path.dirname(__file__), '..', '..', 'scripts'))
 

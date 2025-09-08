@@ -969,10 +969,17 @@ init_databases() {
         # Run migrations in specific order to ensure dependencies
         local migrations=(
             "000_files_table.sql"
-            "001_knowledge_management.sql" 
+            "001_knowledge_management.sql"
             "002_knowledge_public_assets.sql"
             "003_auth_tokens.sql"
             "004_users_table.sql"
+            "005_prefix_management.sql"
+            "006_update_prefix_constraint.sql"
+            "007_revert_prefix_constraint.sql"
+            "008_create_projects_table.sql"
+            "009_create_domains_table.sql"
+            "010_namespace_management.sql"
+            "011_add_service_namespace_type.sql"
         )
         
         for migration in "${migrations[@]}"; do

@@ -33,3 +33,54 @@ rule "docker-environment" {
   when = "making significant changes"
   then = "Always test changes in the Docker environment before committing to ensure compatibility with the containerized deployment"
 }
+
+rule "testing-mandatory" {
+  description = "MANDATORY: Comprehensive testing before any code changes"
+  when = "making any code changes, adding features, or modifying existing functionality"
+  then = "REQUIRED: Follow testing enforcement rules:
+    - Update tests when modifying code
+    - Maintain 90%+ test coverage for new/modified code
+    - Run complete test suite before committing
+    - Execute pre-merge validation before merging
+    - Validate all API endpoints
+    - Test integration and workflows
+    - NO EXCEPTIONS - testing is mandatory for all changes"
+}
+
+rule "pre-merge-validation" {
+  description = "MANDATORY: Pre-merge validation process"
+  when = "preparing to merge branches or create pull requests"
+  then = "REQUIRED: Execute complete pre-merge validation:
+    1. Run: ./scripts/pre_merge_validation.sh --verbose
+    2. Run: python scripts/run_comprehensive_tests.py --verbose
+    3. Run: python scripts/validate_all_endpoints.py --base-url http://localhost:8000
+    4. Verify ALL tests pass with 0 critical failures
+    5. Verify test coverage is 90%+ for new/modified code
+    6. BLOCK MERGE if any critical test fails"
+}
+
+rule "api-testing-required" {
+  description = "API testing mandatory for all endpoints"
+  when = "creating, modifying, or deleting API endpoints"
+  then = "REQUIRED: Comprehensive API testing:
+    - Create tests in tests/api/ for all endpoints
+    - Test success and error scenarios
+    - Validate authentication and authorization
+    - Test input validation and sanitization
+    - Verify response schemas and formats
+    - Test performance requirements (response time < 2s)
+    - Update validate_all_endpoints.py for new endpoints
+    - BLOCK COMMIT if API tests are missing or failing"
+}
+
+rule "test-coverage-enforcement" {
+  description = "Enforce minimum test coverage requirements"
+  when = "adding, modifying, or removing code"
+  then = "MANDATORY: Maintain test coverage standards:
+    - Minimum 90% code coverage for new/modified code
+    - Critical functions must have 100% coverage
+    - API endpoints must have comprehensive test coverage
+    - Integration tests required for all workflows
+    - Run: pytest tests/ -v --cov=backend --cov-report=html
+    - BLOCK COMMIT if coverage drops below 90% for new code"
+}

@@ -1,21 +1,45 @@
 rule "unit-testing" {
   description = "Write comprehensive unit tests"
-  when = "implementing new features"
+  when = "implementing new features or modifying existing code"
   then = "Create unit tests that:
     - Use pytest for Python code
-    - Cover all code paths
-    - Include edge cases
-    - Use meaningful test names (test_feature_scenario_expected)"
+    - Cover all code paths and branches
+    - Include edge cases and error scenarios
+    - Use meaningful test names (test_feature_scenario_expected)
+    - Achieve 90%+ code coverage for new/modified code
+    - Test both success and failure paths
+    - Use proper fixtures and mocking
+    - Follow AAA pattern (Arrange, Act, Assert)"
 }
 
 rule "integration-testing" {
-  description = "Test complete workflows"
-  when = "implementing workflow features"
+  description = "Test complete workflows and system integration"
+  when = "implementing workflow features or system integration"
   then = "Create integration tests that:
-    - Test end-to-end workflows
-    - Verify database interactions
-    - Check API responses
-    - Validate BPMN process execution"
+    - Test end-to-end workflows and user journeys
+    - Verify database interactions and data consistency
+    - Check API responses and schema validation
+    - Validate BPMN process execution
+    - Test cross-module interactions
+    - Verify external service integrations
+    - Test error handling and recovery scenarios
+    - Validate performance requirements"
+}
+
+rule "api-testing" {
+  description = "Comprehensive API endpoint testing"
+  when = "creating, modifying, or deleting API endpoints"
+  then = "Create API tests that cover:
+    - All HTTP methods (GET, POST, PUT, DELETE, PATCH)
+    - Success scenarios (200, 201, 204 responses)
+    - Error scenarios (400, 401, 403, 404, 422, 500 responses)
+    - Authentication and authorization validation
+    - Input validation and sanitization
+    - Response schema and format validation
+    - Edge cases and boundary conditions
+    - Performance requirements (response time < 2s)
+    - Concurrent request handling
+    - Rate limiting and throttling"
 }
 
 rule "test-file-naming" {
@@ -24,5 +48,35 @@ rule "test-file-naming" {
   then = "Name test files with:
     - Prefix 'test_' for Python test files
     - Descriptive names indicating what's being tested
-    - Match source file structure in tests directory"
+    - Match source file structure in tests directory
+    - Use snake_case for file names
+    - Group related tests in classes (TestClassName)
+    - Use descriptive method names (test_feature_scenario_expected)"
+}
+
+rule "test-organization" {
+  description = "Organize tests in proper directory structure"
+  when = "creating or organizing test files"
+  then = "Organize tests in this structure:
+    - tests/unit/ - Unit tests for individual components
+    - tests/api/ - API endpoint tests
+    - tests/integration/ - Integration and workflow tests
+    - tests/performance/ - Performance and load tests
+    - tests/security/ - Security and vulnerability tests
+    - tests/fixtures/ - Test data and fixtures
+    - conftest.py - Shared test configuration and fixtures"
+}
+
+rule "test-data-management" {
+  description = "Proper test data and fixture management"
+  when = "creating tests or test data"
+  then = "Follow test data best practices:
+    - Use isolated test data that doesn't affect production
+    - Clean up test data after test execution
+    - Use fixtures for reusable test data
+    - Mock external services and dependencies
+    - Use in-memory databases for unit tests
+    - Test with realistic data scenarios
+    - Avoid hardcoded test data in test files
+    - Use environment variables for test configuration"
 }
