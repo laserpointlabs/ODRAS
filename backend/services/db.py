@@ -55,13 +55,13 @@ class DatabaseService:
             self._return(conn)
 
     # Projects
-    def create_project(self, name: str, owner_user_id: str, description: Optional[str] = None, namespace_id: Optional[str] = None) -> Dict[str, Any]:
+    def create_project(self, name: str, owner_user_id: str, description: Optional[str] = None, namespace_id: Optional[str] = None, domain: Optional[str] = None) -> Dict[str, Any]:
         conn = self._conn()
         try:
             with conn.cursor(cursor_factory=RealDictCursor) as cur:
                 cur.execute(
-                    "INSERT INTO public.projects (name, description, created_by, namespace_id) VALUES (%s, %s, %s, %s) RETURNING project_id, name, description, created_at, updated_at, created_by, is_active, namespace_id",
-                    (name, description or None, owner_user_id, namespace_id),
+                    "INSERT INTO public.projects (name, description, created_by, namespace_id, domain) VALUES (%s, %s, %s, %s, %s) RETURNING project_id, name, description, created_at, updated_at, created_by, is_active, namespace_id, domain",
+                    (name, description or None, owner_user_id, namespace_id, domain),
                 )
                 proj = dict(cur.fetchone())
                 # add membership as owner
@@ -81,7 +81,7 @@ class DatabaseService:
                 if active is None:
                     cur.execute(
                         """
-                        SELECT p.project_id, p.name, p.description, p.created_at, p.updated_at, p.is_active, pm.role
+                        SELECT p.project_id, p.name, p.description, p.created_at, p.updated_at, p.is_active, p.namespace_id, p.domain, pm.role
                         FROM public.projects p
                         JOIN public.project_members pm ON pm.project_id = p.project_id
                         WHERE pm.user_id = %s
@@ -92,7 +92,7 @@ class DatabaseService:
                 else:
                     cur.execute(
                         """
-                        SELECT p.project_id, p.name, p.description, p.created_at, p.updated_at, p.is_active, pm.role
+                        SELECT p.project_id, p.name, p.description, p.created_at, p.updated_at, p.is_active, p.namespace_id, p.domain, pm.role
                         FROM public.projects p
                         JOIN public.project_members pm ON pm.project_id = p.project_id
                         WHERE pm.user_id = %s AND p.is_active = %s

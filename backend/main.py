@@ -10,6 +10,7 @@ from fastapi.responses import HTMLResponse
 from fastapi import Request
 import secrets
 import logging
+from psycopg2.extras import RealDictCursor
 
 # Import services using relative imports
 from .services.config import Settings
@@ -27,6 +28,7 @@ from backend.api.embedding_models import router as embedding_models_router
 from backend.api.knowledge import router as knowledge_router
 from backend.api.namespace_simple import router as namespace_router, public_router as namespace_public_router
 from backend.api.prefix_management import router as prefix_router
+from backend.api.domain_management import router as domain_router, public_router as domain_public_router
 from backend.run_registry import RUNS as SHARED_RUNS
 from backend.test_review_endpoint import router as test_router
 
@@ -42,6 +44,8 @@ app.include_router(knowledge_router)
 app.include_router(namespace_router)
 app.include_router(namespace_public_router)
 app.include_router(prefix_router)
+app.include_router(domain_router)
+app.include_router(domain_public_router)
 
 # Configuration instance
 settings = Settings()
@@ -186,6 +190,7 @@ def list_projects(state: Optional[str] = None, user=Depends(get_user)):
 def create_project(body: Dict, user=Depends(get_user)):
     name = (body.get("name") or "").strip()
     namespace_id = body.get("namespace_id")
+    domain = body.get("domain")
     if not name:
         raise HTTPException(status_code=400, detail="Name required")
     
@@ -210,9 +215,49 @@ def create_project(body: Dict, user=Depends(get_user)):
             name=name, 
             owner_user_id=user["user_id"], 
             description=(body.get("description") or None),
-            namespace_id=namespace_id
+            namespace_id=namespace_id,
+            domain=domain
         )
         return {"project": proj}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+@app.get("/api/projects/{project_id}")
+def get_project(project_id: str, user=Depends(get_user)):
+    """Get individual project details"""
+    try:
+        conn = db._conn()
+        try:
+            with conn.cursor(cursor_factory=RealDictCursor) as cur:
+                # Get project with namespace details and creator username
+                cur.execute("""
+                    SELECT p.project_id, p.name, p.description, p.created_at, p.updated_at, 
+                           p.is_active, p.namespace_id, p.domain, p.created_by,
+                           n.path as namespace_path, n.status as namespace_status,
+                           u.username as created_by_username
+                    FROM public.projects p
+                    LEFT JOIN public.namespace_registry n ON n.id = p.namespace_id
+                    LEFT JOIN public.users u ON u.user_id = p.created_by
+                    WHERE p.project_id = %s
+                """, (project_id,))
+                project = cur.fetchone()
+                if not project:
+                    raise HTTPException(status_code=404, detail="Project not found")
+                
+                # Check if user has access to this project
+                cur.execute("""
+                    SELECT role FROM public.project_members 
+                    WHERE project_id = %s AND user_id = %s
+                """, (project_id, user["user_id"]))
+                membership = cur.fetchone()
+                if not membership:
+                    raise HTTPException(status_code=403, detail="Access denied")
+                
+                return {"project": dict(project)}
+        finally:
+            db._return(conn)
+    except HTTPException:
+        raise
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
@@ -222,27 +267,98 @@ def get_project_namespace(project_id: str, user=Depends(get_user)):
     try:
         conn = db._conn()
         try:
-            with conn.cursor() as cur:
+            with conn.cursor(cursor_factory=RealDictCursor) as cur:
+                # Get project with namespace details and creator username
                 cur.execute("""
-                    SELECT p.project_id, p.name, p.namespace_id, nr.path, nr.name as namespace_name
-                    FROM projects p
-                    LEFT JOIN namespace_registry nr ON p.namespace_id = nr.id
+                    SELECT p.project_id, p.name, p.description, p.created_at, p.updated_at, 
+                           p.is_active, p.namespace_id, p.domain, p.created_by,
+                           n.path as namespace_path, n.status as namespace_status,
+                           u.username as created_by_username
+                    FROM public.projects p
+                    LEFT JOIN public.namespace_registry n ON n.id = p.namespace_id
+                    LEFT JOIN public.users u ON u.user_id = p.created_by
                     WHERE p.project_id = %s
                 """, (project_id,))
-                result = cur.fetchone()
+                project = cur.fetchone()
+                if not project:
+                    raise HTTPException(status_code=404, detail="Project not found")
                 
+                # Check if user has access to this project
+                cur.execute("""
+                    SELECT role FROM public.project_members 
+                    WHERE project_id = %s AND user_id = %s
+                """, (project_id, user["user_id"]))
+                membership = cur.fetchone()
+                if not membership:
+                    raise HTTPException(status_code=403, detail="Access denied")
+                
+                return dict(project)
+        finally:
+            db._return(conn)
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+@app.put("/api/projects/{project_id}")
+def update_project(project_id: str, body: Dict, user=Depends(get_user)):
+    """Update project details"""
+    try:
+        # Check if user has access to this project
+        conn = db._conn()
+        try:
+            with conn.cursor() as cur:
+                cur.execute("""
+                    SELECT role FROM public.project_members 
+                    WHERE project_id = %s AND user_id = %s
+                """, (project_id, user["user_id"]))
+                membership = cur.fetchone()
+                if not membership:
+                    raise HTTPException(status_code=403, detail="Access denied")
+                
+                # Only owners can update projects
+                if membership[0] != 'owner':
+                    raise HTTPException(status_code=403, detail="Only project owners can update projects")
+                
+                # Build update query dynamically based on provided fields
+                update_fields = []
+                update_values = []
+                
+                if 'name' in body and body['name']:
+                    update_fields.append("name = %s")
+                    update_values.append(body['name'].strip())
+                
+                if 'description' in body:
+                    update_fields.append("description = %s")
+                    update_values.append(body['description'] if body['description'] else None)
+                
+                if 'domain' in body:
+                    update_fields.append("domain = %s")
+                    update_values.append(body['domain'] if body['domain'] else None)
+                
+                if 'namespace_id' in body:
+                    update_fields.append("namespace_id = %s")
+                    update_values.append(body['namespace_id'] if body['namespace_id'] else None)
+                
+                if not update_fields:
+                    raise HTTPException(status_code=400, detail="No valid fields to update")
+                
+                update_fields.append("updated_at = NOW()")
+                update_values.append(project_id)
+                
+                cur.execute(f"""
+                    UPDATE public.projects 
+                    SET {', '.join(update_fields)}
+                    WHERE project_id = %s
+                    RETURNING project_id, name, description, created_at, updated_at, 
+                              is_active, namespace_id, domain, created_by
+                """, update_values)
+                
+                result = cur.fetchone()
                 if not result:
                     raise HTTPException(status_code=404, detail="Project not found")
                 
-                project_id, project_name, namespace_id, namespace_path, namespace_name = result
-                
-                return {
-                    "project_id": project_id,
-                    "project_name": project_name,
-                    "namespace_id": namespace_id,
-                    "namespace_path": namespace_path or "no namespace",
-                    "namespace_name": namespace_name or "no namespace"
-                }
+                return {"project": dict(zip([desc[0] for desc in cur.description], result))}
         finally:
             db._return(conn)
     except HTTPException:
@@ -657,8 +773,10 @@ async def import_ontology_from_url(body: Dict, user=Depends(get_user)):
             # If no owl:Ontology found, use the URL as the IRI
             ontology_iri = url
         
-        # Create the graph IRI for our system
-        graph_iri = f"http://odras.local/{project_id}/{name}"
+        # Create the graph IRI for our system using installation configuration
+        settings = Settings()
+        base_uri = settings.installation_base_uri.rstrip('/')
+        graph_iri = f"{base_uri}/{project_id}/{name}"
         
         # Store the ontology in Fuseki using the REST API
         fuseki_url = "http://localhost:3030/odras"

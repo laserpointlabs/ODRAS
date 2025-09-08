@@ -28,8 +28,13 @@ import requests
 
 
 def build_graph_iri(project_id: str, name: str) -> str:
+    """Build graph IRI using installation configuration."""
+    from backend.services.config import Settings
+    
+    settings = Settings()
+    base_uri = settings.installation_base_uri.rstrip('/')
     name = name.strip().strip('/')
-    return f"http://odras.local/onto/{project_id}/{name}"
+    return f"{base_uri}/onto/{project_id}/{name}"
 
 
 def ttl_for_ontology(graph_iri: str, label: str) -> str:

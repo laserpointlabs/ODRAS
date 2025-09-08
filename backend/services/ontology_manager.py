@@ -66,15 +66,15 @@ class OntologyManager:
         """
         try:
             # Query all classes, properties, and individuals from Fuseki
-            query = """
+            query = f"""
             PREFIX owl: <http://www.w3.org/2002/07/owl#>
             PREFIX rdfs: <http://www.w3.org/2000/01/rdf-schema#>
-            PREFIX odras: <http://odras.system/ontology#>
+            PREFIX odras: <{self.base_uri}/ontology#>
             
-            SELECT ?s ?p ?o WHERE {
+            SELECT ?s ?p ?o WHERE {{
                 ?s ?p ?o .
-                FILTER(STRSTARTS(STR(?s), "http://odras.system/ontology"))
-            }
+                FILTER(STRSTARTS(STR(?s), "{self.base_uri}/ontology"))
+            }}
             """
 
             sparql = SPARQLWrapper(self.fuseki_query_url)
@@ -106,7 +106,7 @@ class OntologyManager:
             query = f"""
             PREFIX owl: <http://www.w3.org/2002/07/owl#>
             PREFIX rdfs: <http://www.w3.org/2000/01/rdf-schema#>
-            PREFIX odras: <http://odras.system/ontology#>
+            PREFIX odras: <{self.base_uri}/ontology#>
             
             SELECT ?s ?p ?o WHERE {{
                 GRAPH <{graph_iri}> {{
@@ -867,7 +867,7 @@ class OntologyManager:
             # Query for layout data in a separate layout graph
             layout_graph_iri = f"{graph_iri}#layout"
             query = f"""
-            PREFIX layout: <http://odras.system/layout#>
+            PREFIX layout: <{self.base_uri}/layout#>
             
             SELECT ?nodes ?edges ?zoom ?pan WHERE {{
                 GRAPH <{layout_graph_iri}> {{
@@ -947,10 +947,10 @@ class OntologyManager:
             insert_query = f"""
             INSERT DATA {{
                 GRAPH <{layout_graph_iri}> {{
-                    <{layout_graph_iri}#{layout_id}> <http://odras.system/layout#nodes> "{nodes_json}" ;
-                                                    <http://odras.system/layout#edges> "{edges_json}" ;
-                                                    <http://odras.system/layout#zoom> "{zoom_value}"^^<http://www.w3.org/2001/XMLSchema#float> ;
-                                                    <http://odras.system/layout#pan> "{pan_json}" .
+                    <{layout_graph_iri}#{layout_id}> <{self.base_uri}/layout#nodes> "{nodes_json}" ;
+                                                    <{self.base_uri}/layout#edges> "{edges_json}" ;
+                                                    <{self.base_uri}/layout#zoom> "{zoom_value}"^^<http://www.w3.org/2001/XMLSchema#float> ;
+                                                    <{self.base_uri}/layout#pan> "{pan_json}" .
                 }}
             }}
             """

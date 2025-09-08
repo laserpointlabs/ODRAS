@@ -50,6 +50,32 @@
     .bottombar { border-top: 1px solid var(--border); border-bottom: none; color: var(--muted); gap: 16px; }
     .brand { font-weight: 600; letter-spacing: .5px; }
     .spacer { flex: 1; }
+    
+    /* Installation Info Styling */
+    .installation-info {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      color: var(--muted);
+      font-size: 12px;
+    }
+    .install-org {
+      font-weight: 500;
+      color: var(--text);
+    }
+    .install-type {
+      background: var(--panel-2);
+      padding: 2px 6px;
+      border-radius: 4px;
+      border: 1px solid var(--border);
+      text-transform: uppercase;
+      font-size: 10px;
+      font-weight: 500;
+    }
+    .install-office {
+      color: var(--muted);
+      font-style: italic;
+    }
     .btn, select {
       background: #0b1220; color: var(--text); border: 1px solid var(--border);
       padding: 6px 10px; border-radius: 6px; cursor: pointer;
@@ -116,10 +142,6 @@
     }
     .workbench { display: none; }
     .workbench.active { display: flex; flex-direction: column; height: 100%; }
-    /* Hide admin workbench by default - will be shown by JavaScript for admin users */
-    #wb-admin { display: none !important; }
-    #wb-admin.admin-visible { display: flex !important; }
-    #wb-admin.admin-hidden { display: none !important; }
     .status-dot { display: inline-block; width: 8px; height: 8px; border-radius: 50%; margin-right: 6px; }
     .ok { background: var(--ok); } .warn { background: var(--warn); } .err { background: var(--err); }
     .muted { color: var(--muted); }
@@ -364,6 +386,69 @@
       transform: translateY(-1px);
       box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
     }
+    
+    /* Modal content structure */
+    .modal-content {
+      background: var(--panel);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      max-width: 600px;
+      width: 90%;
+      max-height: 90vh;
+      overflow-y: auto;
+      position: relative;
+    }
+    
+    .modal-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 20px 24px 16px 24px;
+      border-bottom: 1px solid var(--border);
+    }
+    
+    .modal-header h3 {
+      margin: 0;
+      color: var(--text);
+      font-size: 1.25rem;
+      font-weight: 600;
+    }
+    
+    .modal-close {
+      background: none;
+      border: none;
+      font-size: 24px;
+      cursor: pointer;
+      color: var(--muted);
+      padding: 4px;
+      border-radius: 4px;
+      transition: all 0.2s ease;
+    }
+    
+    .modal-close:hover {
+      color: var(--text);
+      background: var(--panel-2);
+    }
+    
+    .modal-body {
+      padding: 20px 24px;
+    }
+    
+    .modal-footer {
+      padding: 16px 24px 20px 24px;
+      border-top: 1px solid var(--border);
+      display: flex;
+      gap: 12px;
+      justify-content: flex-end;
+    }
+    
+    .modal-footer .btn {
+      padding: 10px 20px;
+      font-size: 14px;
+      font-weight: 500;
+      min-width: 100px;
+      border-radius: 6px;
+    }
   </style>
   <script src="https://unpkg.com/cytoscape@3.28.1/dist/cytoscape.min.js"></script>
   <script src="https://unpkg.com/cytoscape-edgehandles@4.0.1/cytoscape-edgehandles.min.js"></script>
@@ -373,6 +458,13 @@
     <div class="topbar">
       <div class="brand">AVIAN-ODRAS</div>
       <div class="spacer"></div>
+      
+      <!-- Installation Configuration Display -->
+      <div id="installationInfo" class="installation-info">
+        <div id="installOrg" class="install-org"></div>
+        <div id="installType" class="install-type"></div>
+        <div id="installOffice" class="install-office"></div>
+      </div>
       
       <div class="spacer"></div>
       <div id="userMenu" class="muted"></div>
@@ -391,6 +483,15 @@
 
     <div id="mainView" class="content" style="display:none;">
       <nav class="iconbar" aria-label="Workbench">
+        <div class="icon" data-wb="project" title="Project Info" aria-label="Project Information">
+          <svg viewBox="0 0 24 24" fill="none" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
+            <polyline points="14,2 14,8 20,8"/>
+            <line x1="16" y1="13" x2="8" y2="13"/>
+            <line x1="16" y1="17" x2="8" y2="17"/>
+            <polyline points="10,9 9,9 8,9"/>
+          </svg>
+        </div>
         <div class="icon active" data-wb="ontology" title="Ontology" aria-label="Ontology">
           <svg viewBox="0 0 24 24" fill="none" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round">
             <circle cx="6" cy="6" r="2"/>
@@ -915,6 +1016,18 @@
           <h2>LLM Playground</h2>
           <div class="muted">Ask questions, generate white papers, save to project.</div>
         </section>
+        <section id="wb-project" class="workbench">
+          <h2>Project Information</h2>
+          <div class="muted">Current project details and metadata.</div>
+          
+          <!-- Project Details Card -->
+          <div style="margin-top: 20px;">
+            <div id="projectInfoCard" style="background: var(--panel); border: 1px solid var(--border); border-radius: 8px; padding: 20px;">
+              <div style="text-align: center; color: var(--muted);">No project selected</div>
+            </div>
+          </div>
+        </section>
+
         <section id="wb-admin" class="workbench">
           <h2>Admin</h2>
           <div class="muted">Namespace management and system administration.</div>
@@ -967,6 +1080,25 @@
               <!-- Prefix List -->
               <div id="prefixList" style="background: var(--panel); border: 1px solid var(--border); border-radius: 8px; padding: 16px;">
                 <div style="text-align: center; color: var(--muted);">Loading prefixes...</div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Domain Management Section -->
+          <div class="section collapsed">
+            <div class="section-header" onclick="toggleSection(this)" style="cursor: pointer; padding: 10px; background: var(--panel); border: 1px solid var(--border); border-radius: 8px; margin-bottom: 10px; display: flex; justify-content: space-between; align-items: center;">
+              <span style="font-weight: bold; color: var(--text);">Domain Management</span>
+              <span class="section-toggle" style="font-size: 14px;">▶</span>
+            </div>
+            <div class="section-content" style="display: none;">
+              <div style="display: flex; gap: 10px; margin-bottom: 20px;">
+                <button class="btn" onclick="loadDomains()">Refresh Domains</button>
+                <button class="btn" onclick="showCreateDomainModal()">Create Domain</button>
+              </div>
+              
+              <!-- Domain List -->
+              <div id="domainList" style="background: var(--panel); border: 1px solid var(--border); border-radius: 8px; padding: 16px;">
+                <div style="text-align: center; color: var(--muted);">Loading domains...</div>
               </div>
             </div>
           </div>
@@ -1041,6 +1173,39 @@
     let activeProject = null;
     let suppressWorkbenchSwitch = false;
     let activeOntologyIri = null;
+    
+    // URL state management
+    function updateURL(projectId = null, workbench = null) {
+      try {
+        const url = new URL(window.location);
+        if (projectId) {
+          url.searchParams.set('project', projectId);
+        } else {
+          url.searchParams.delete('project');
+        }
+        if (workbench) {
+          url.searchParams.set('wb', workbench);
+        } else {
+          url.searchParams.delete('wb');
+        }
+        window.history.replaceState({}, '', url);
+      } catch (error) {
+        console.warn('Failed to update URL:', error);
+      }
+    }
+    
+    function getURLState() {
+      try {
+        const url = new URL(window.location);
+        return {
+          projectId: url.searchParams.get('project'),
+          workbench: url.searchParams.get('wb')
+        };
+      } catch (error) {
+        console.warn('Failed to read URL state:', error);
+        return { projectId: null, workbench: null };
+      }
+    }
 
     function updateOntoGraphLabel() {
       const el = qs('#ontoGraphLabel');
@@ -1104,9 +1269,19 @@
 
     // Update installation config display
     function updateInstallationConfigDisplay() {
+      // Update admin panel display
       document.getElementById('configOrganization').textContent = INSTALLATION_CONFIG.organization;
       document.getElementById('configBaseUri').textContent = INSTALLATION_CONFIG.baseUri;
       document.getElementById('configType').textContent = INSTALLATION_CONFIG.type;
+      
+      // Update topbar display
+      const installOrg = document.getElementById('installOrg');
+      const installType = document.getElementById('installType');
+      const installOffice = document.getElementById('installOffice');
+      
+      if (installOrg) installOrg.textContent = INSTALLATION_CONFIG.organization || 'ODRAS';
+      if (installType) installType.textContent = INSTALLATION_CONFIG.type || 'development';
+      if (installOffice) installOffice.textContent = INSTALLATION_CONFIG.programOffice || '';
       document.getElementById('configProgramOffice').textContent = INSTALLATION_CONFIG.programOffice || 'N/A';
     }
 
@@ -1258,7 +1433,7 @@
       pathInput.value = path;
     }
 
-    // Enhanced namespace management functions
+    // Simplified ontology creation - inherits project namespace
     async function showCreateOntologyModal() {
       const modal = document.createElement('div');
       modal.className = 'modal';
@@ -1266,92 +1441,105 @@
         <div>
           <h3>Create New Ontology</h3>
           
-          <form id="createOntologyForm" style="display: grid; gap: 16px; margin-top: 20px;">
-            <div>
-              <label><strong>Namespace Type:</strong></label>
-              <select id="ontologyNamespaceType" onchange="updateOntologyUriPreview()">
-                <option value="core">Core</option>
-                <option value="domain">Domain</option>
-                <option value="program">Program</option>
-                <option value="project">Project</option>
-                <option value="se">Systems Engineering</option>
-                <option value="mission">Mission</option>
-                <option value="platform">Platform</option>
-              </select>
+          <div style="margin-bottom: 16px;">
+            <label>Current Project Namespace:</label>
+            <div id="modalNamespaceDisplay" style="padding: 8px; background: var(--panel-2); border: 1px solid var(--border); border-radius: 4px; font-family: monospace; color: var(--muted);">
+              Loading project namespace...
             </div>
-            
-            <div id="domainField" style="display: none;">
-              <label><strong>Domain:</strong></label>
-              <input type="text" id="ontologyDomain" placeholder="e.g., aviation, logistics" onchange="updateOntologyUriPreview()">
+            <div style="font-size: 0.8em; color: var(--muted); margin-top: 4px;">
+              Ontologies inherit their project's namespace automatically
             </div>
-            
-            <div id="programField" style="display: none;">
-              <label><strong>Program:</strong></label>
-              <input type="text" id="ontologyProgram" placeholder="e.g., avp, f35" onchange="updateOntologyUriPreview()">
-            </div>
-            
-            <div id="projectField" style="display: none;">
-              <label><strong>Project:</strong></label>
-              <input type="text" id="ontologyProject" placeholder="e.g., x1, block-4" onchange="updateOntologyUriPreview()">
-            </div>
-            
-            <div id="seDomainField" style="display: none;">
-              <label><strong>SE Domain:</strong></label>
-              <input type="text" id="ontologySeDomain" placeholder="e.g., reliability, sustainment" onchange="updateOntologyUriPreview()">
-            </div>
-            
-            <div id="missionTypeField" style="display: none;">
-              <label><strong>Mission Type:</strong></label>
-              <input type="text" id="ontologyMissionType" placeholder="e.g., asw, cas" onchange="updateOntologyUriPreview()">
-            </div>
-            
-            <div id="platformTypeField" style="display: none;">
-              <label><strong>Platform Type:</strong></label>
-              <input type="text" id="ontologyPlatformType" placeholder="e.g., ddg, frigate" onchange="updateOntologyUriPreview()">
-            </div>
-            
-            <div>
-              <label><strong>Ontology Name:</strong></label>
-              <input type="text" id="ontologyName" placeholder="e.g., bseo, reliability" onchange="updateOntologyUriPreview()">
-            </div>
-            
-            <div>
-              <label><strong>Title:</strong></label>
-              <input type="text" id="ontologyTitle" placeholder="e.g., Base Systems Engineering Ontology">
-            </div>
-            
-            <div>
-              <label><strong>Description:</strong></label>
-              <textarea id="ontologyDescription" placeholder="Brief description of the ontology"></textarea>
-            </div>
-            
-            <div>
-              <label><strong>Generated URI:</strong></label>
-              <div id="ontologyUriPreview" style="background: var(--panel-2); padding: 8px; border-radius: 4px; font-family: monospace; word-break: break-all; border: 1px solid var(--border); color: var(--text);">
-                ${INSTALLATION_CONFIG.baseUri}/...
-              </div>
-            </div>
-          </form>
+          </div>
+          
+          <div style="margin-bottom: 16px;">
+            <label>Ontology Name:</label>
+            <input type="text" id="simpleOntologyName" placeholder="e.g., flight-control" style="width: 100%; padding: 8px; border: 1px solid var(--border); border-radius: 4px; background: var(--panel); color: var(--text);" />
+          </div>
+          
+          <div style="margin-bottom: 16px;">
+            <label>Title:</label>
+            <input type="text" id="simpleOntologyTitle" placeholder="e.g., Flight Control System Ontology" style="width: 100%; padding: 8px; border: 1px solid var(--border); border-radius: 4px; background: var(--panel); color: var(--text);" />
+          </div>
+          
+          <div style="margin-bottom: 16px;">
+            <label>Description:</label>
+            <textarea id="simpleOntologyDescription" placeholder="Brief description of the ontology" style="width: 100%; padding: 8px; border: 1px solid var(--border); border-radius: 4px; background: var(--panel); color: var(--text); height: 80px; resize: vertical;"></textarea>
+          </div>
           
           <div class="button-group">
             <button onclick="this.closest('.modal').remove()" class="btn" style="background: var(--muted);">Cancel</button>
-            <button onclick="createOntology()" class="btn" style="background: var(--accent); color: white; border-color: var(--accent);">Create Ontology</button>
+            <button onclick="createSimpleOntology()" class="btn" style="background: var(--accent); color: white; border-color: var(--accent);">Create Ontology</button>
           </div>
         </div>
       `;
       document.body.appendChild(modal);
       
-      // Show/hide fields based on namespace type
-      document.getElementById('ontologyNamespaceType').addEventListener('change', function() {
-        const type = this.value;
-        document.getElementById('domainField').style.display = type === 'domain' ? 'block' : 'none';
-        document.getElementById('programField').style.display = type === 'program' ? 'block' : 'none';
-        document.getElementById('projectField').style.display = type === 'project' ? 'block' : 'none';
-        document.getElementById('seDomainField').style.display = type === 'se' ? 'block' : 'none';
-        document.getElementById('missionTypeField').style.display = type === 'mission' ? 'block' : 'none';
-        document.getElementById('platformTypeField').style.display = type === 'platform' ? 'block' : 'none';
-        updateOntologyUriPreview();
-      });
+      // Load current project's namespace for display
+      loadCurrentProjectNamespace(document.getElementById('modalNamespaceDisplay'));
+    }
+
+    async function createSimpleOntology() {
+      try {
+        const name = document.getElementById('simpleOntologyName').value.trim();
+        const title = document.getElementById('simpleOntologyTitle').value.trim();
+        const description = document.getElementById('simpleOntologyDescription').value.trim();
+        
+        if (!name) {
+          alert('Please enter an ontology name');
+          return;
+        }
+        
+        const currentProjectId = localStorage.getItem('active_project_id');
+        if (!currentProjectId) {
+          alert('No project selected - select a project first');
+          return;
+        }
+        
+        const token = localStorage.getItem('odras_token');
+        if (!token) {
+          alert('No auth token found');
+          return;
+        }
+        
+        console.log('🔧 Creating ontology with inherited namespace:', {
+          name, title, description, project: currentProjectId
+        });
+        
+        const response = await fetch('/api/ontologies', {
+          method: 'POST',
+          headers: {
+            'Authorization': `Bearer ${token}`,
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify({
+            project: currentProjectId,
+            name: name,
+            label: title || name,
+            description: description || null
+            // No namespace_id - will be inherited from project
+          })
+        });
+        
+        if (response.ok) {
+          const newOntology = await response.json();
+          console.log('🔧 Created ontology:', newOntology);
+          document.querySelector('.modal').remove();
+          
+          // Refresh ontology list or switch to new ontology
+          // This will depend on your existing ontology management code
+          alert('Ontology created successfully!');
+          
+          // Reload the current project to show the new ontology
+          window.location.reload();
+        } else {
+          const error = await response.json();
+          console.error('🔧 Error creating ontology:', error);
+          alert(`Error creating ontology: ${error.detail || 'Unknown error'}`);
+        }
+      } catch (error) {
+        console.error('Error creating ontology:', error);
+        alert('Error creating ontology: ' + error.message);
+      }
     }
 
     function updateOntologyUriPreview() {
@@ -1495,11 +1683,13 @@
             // Set model name for properties panel based on discovered label or IRI tail
             const friendly = (li.dataset.label && li.dataset.label.trim()) || iri.split('/').pop() || iri;
             localStorage.setItem(`onto_model_name__${pid}`, friendly);
-            // Also store display label and graph in model attributes
+            // Also store display label, graph, and namespace in model attributes
             let attrs = {};
             try { attrs = JSON.parse(localStorage.getItem(`onto_model_attrs__${pid}`) || '{}'); } catch(_) { attrs = {}; }
             attrs.displayLabel = friendly;
             attrs.graphIri = iri;
+            // Set namespace based on installation configuration
+            attrs.namespace = INSTALLATION_CONFIG.baseUri + '/ontology';
             localStorage.setItem(`onto_model_attrs__${pid}`, JSON.stringify(attrs));
             // Keep project-scoped label map in sync so the top node reflects selection
             try { saveOntologyLabel(iri, friendly); } catch(_) {}
@@ -3189,8 +3379,9 @@
       }
       // Restore last active workbench before loading projects
       try {
+        const urlState = getURLState();
         const hashWB = (()=>{ try { const p = new URLSearchParams(location.hash.replace(/^#/, '')); return p.get('wb') || ''; } catch(_) { return ''; } })();
-        const wb = hashWB || localStorage.getItem('active_workbench') || 'ontology';
+        const wb = urlState.workbench || hashWB || localStorage.getItem('active_workbench') || 'ontology';
         // Activate matching icon and section
         const icon = qs(`.icon[data-wb="${wb}"]`);
         if (icon) {
@@ -3216,6 +3407,7 @@
         // Load admin data if admin workbench is active
         if (wb === 'admin') {
           loadPrefixes();
+          loadDomains();
           // Only load namespaces if user is authenticated
           const token = localStorage.getItem('odras_token');
           if (token) {
@@ -3228,6 +3420,9 @@
       // If Files workbench is already active from restore, initialize its handlers now
       try { if (document.querySelector('#wb-files.workbench.active')) { ensureFilesInitialized(); } } catch(_) {}
       await loadProjects();
+      // Load project info if project workbench is active (this is now handled in loadProjects)
+      // but we'll keep this as a fallback
+      try { if (document.querySelector('#wb-project.workbench.active')) { loadProjectInfo(); } } catch(_) {}
       refreshOntologyTree();
       // Bind Files workbench handlers proactively so Choose Files works immediately
       try { ensureFilesInitialized(); } catch(_) {}
@@ -3305,6 +3500,15 @@
         }
       }
       
+      // Clear user-specific data from localStorage but preserve URL state
+      try {
+        // Don't clear active_project_id - let URL state handle it
+        localStorage.removeItem('active_ontology_iri');
+        localStorage.removeItem('onto_state');
+      } catch (error) {
+        console.warn('Failed to clear localStorage:', error);
+      }
+      
       isAuthenticated = false;
       stopAuthMonitoring();
       localStorage.removeItem(tokenKey); 
@@ -3329,12 +3533,51 @@
       })).filter(p => !!p.id);
       const selects = [qs('#projectSelect2')];
       if (list.length) {
-        // restore previously selected project if available
+        // Check URL state first, then localStorage, then default to first project
+        const urlState = getURLState();
         const savedPid = (localStorage.getItem('active_project_id') || '').trim();
+        const urlProjectId = urlState.projectId;
+        
         let selected = list[0];
-        if (savedPid) {
+        let projectIdToUse = null;
+        
+        // Priority: URL state > localStorage > first available project
+        if (urlProjectId) {
+          const found = list.find(p => p.id === urlProjectId);
+          if (found) {
+            selected = found;
+            projectIdToUse = urlProjectId;
+            console.log('Using project from URL:', urlProjectId);
+          } else {
+            console.warn('URL project ID not accessible, falling back to localStorage');
+          }
+        }
+        
+        if (!projectIdToUse && savedPid) {
           const found = list.find(p => p.id === savedPid);
-          if (found) selected = found;
+          if (found) {
+            selected = found;
+            projectIdToUse = savedPid;
+            console.log('Using project from localStorage:', savedPid);
+          } else {
+            // Saved project ID not found in accessible projects - clear it
+            console.warn('Saved project ID not accessible, clearing selection');
+            try {
+              localStorage.removeItem('active_project_id');
+            } catch (error) {
+              console.warn('Failed to clear project selection:', error);
+            }
+          }
+        }
+        
+        // Update localStorage and URL to match selected project
+        if (projectIdToUse) {
+          try {
+            localStorage.setItem('active_project_id', projectIdToUse);
+            updateURL(projectIdToUse);
+          } catch (error) {
+            console.warn('Failed to update project state:', error);
+          }
         }
         
         // Update namespace display for initial project
@@ -3343,8 +3586,22 @@
         }
         selects.forEach(sel => { if (sel) { sel.innerHTML = list.map(p => `<option value="${p.id}">${p.name}</option>`).join(''); sel.disabled = false; sel.value = selected.id; } });
         await renderTree(selected);
+        
+        // Load project info if project workbench is active
+        if (document.querySelector('#wb-project.workbench.active')) {
+          // Small delay to ensure project selection is fully established
+          setTimeout(() => {
+            loadProjectInfo();
+          }, 100);
+        }
       } else {
         // No projects: clear tree and show empty state
+        console.warn('No accessible projects found, clearing project selection');
+        try {
+          localStorage.removeItem('active_project_id');
+        } catch (error) {
+          console.warn('Failed to clear project selection:', error);
+        }
         selects.forEach(sel => { if (sel) { sel.innerHTML = '<option value="" disabled selected>Create Project...</option>'; sel.disabled = true; } });
         await renderTree({ id: null, name: '' });
       }
@@ -3383,7 +3640,10 @@
       const sel = qs(id); if (!sel) return;
       sel.addEventListener('change', async (e) => {
         const pid = e.target.value;
-        try { localStorage.setItem('active_project_id', pid); } catch(_) {}
+        try { 
+          localStorage.setItem('active_project_id', pid);
+          updateURL(pid); // Update URL with new project
+        } catch(_) {}
         const token = localStorage.getItem(tokenKey);
         // Save current ontology canvas before switching projects
         try { if (ontoState && ontoState.cy && activeOntologyIri) saveGraphToLocal(activeOntologyIri); } catch(_) {}
@@ -3397,6 +3657,10 @@
           updateOntoGraphLabel(); 
           await renderTree(proj); 
           updateNamespaceDisplay(pid);
+          // Update project info page if it's active
+          if (document.querySelector('#wb-project.workbench.active')) {
+            loadProjectInfo();
+          }
         }
       });
     });
@@ -3420,15 +3684,26 @@
       // Load data when switching to specific workbenches
       if (wb === 'admin') {
         loadPrefixes();
+        loadDomains();
         // Only load namespaces if user is authenticated
         const token = localStorage.getItem('odras_token');
         if (token) {
           loadNamespaces();
         }
+      } else if (wb === 'project') {
+        // For project workbench, load project info if we have a project selected
+        const currentProjectId = localStorage.getItem('active_project_id');
+        if (currentProjectId) {
+          loadProjectInfo();
+        }
       }
       
-      // Persist selected workbench
-      try { localStorage.setItem('active_workbench', wb); } catch(_) {}
+      // Persist selected workbench and update URL
+      try { 
+        localStorage.setItem('active_workbench', wb);
+        const currentProjectId = localStorage.getItem('active_project_id');
+        updateURL(currentProjectId, wb); // Update URL with workbench
+      } catch(_) {}
       // Reflect in hash
       try {
         const params = new URLSearchParams(location.hash.replace(/^#/, ''));
@@ -3590,7 +3865,10 @@
             localStorage.setItem(`onto_model_name__${pid2}`, friendly);
             let attrs = {};
             try { attrs = JSON.parse(localStorage.getItem(`onto_model_attrs__${pid2}`) || '{}'); } catch(_) { attrs = {}; }
-            attrs.displayLabel = friendly; attrs.graphIri = savedIri;
+            attrs.displayLabel = friendly; 
+            attrs.graphIri = savedIri;
+            // Set namespace based on installation configuration
+            attrs.namespace = INSTALLATION_CONFIG.baseUri + '/ontology';
             localStorage.setItem(`onto_model_attrs__${pid2}`, JSON.stringify(attrs));
             updatePropertiesPanelFromSelection();
           } catch(_) {}
@@ -3640,6 +3918,10 @@
                       let attrs = {};
                       try { attrs = JSON.parse(localStorage.getItem(`onto_model_attrs__${pid}`) || '{}'); } catch(_) { attrs = {}; }
                       attrs.displayLabel = newLabel;
+                      // Ensure namespace is set based on installation configuration
+                      if (!attrs.namespace) {
+                        attrs.namespace = INSTALLATION_CONFIG.baseUri + '/ontology';
+                      }
                       localStorage.setItem(`onto_model_attrs__${pid}`, JSON.stringify(attrs));
                     } catch(_) {}
                     updateOntoGraphLabel();
@@ -3867,6 +4149,34 @@
       try {
         const row = projectInfo.querySelector('.node-row');
         if (row && project && (project.id || project.project_id)) {
+          // Click handler to open project information page
+          row.onclick = (ev) => {
+            ev.preventDefault();
+            ev.stopPropagation();
+            
+            // Switch to project workbench
+            const projectIcon = qs('#wb-project');
+            if (projectIcon) {
+              // Remove active class from all workbenches
+              qsa('.workbench').forEach(wb => wb.classList.remove('active'));
+              qsa('.icon').forEach(icon => icon.classList.remove('active'));
+              
+              // Add active class to project workbench
+              projectIcon.classList.add('active');
+              qs('#wb-project').classList.add('active');
+              
+              // Update localStorage and URL
+              try { 
+                localStorage.setItem('active_workbench', 'project');
+                const currentProjectId = localStorage.getItem('active_project_id');
+                updateURL(currentProjectId, 'project');
+              } catch(_) {}
+              
+              // Load project information
+              loadProjectInfo();
+            }
+          };
+          
           // Context menu binding
           row.oncontextmenu = (ev) => {
             ev.preventDefault();
@@ -4083,12 +4393,12 @@
                   </div>
                   
                   <div style="margin-bottom:12px;">
-                    <label style="display:block; margin-bottom:4px; font-weight:500;">Namespace:</label>
-                    <select id="ontoNamespace" style="width:100%; padding:8px; border:1px solid var(--border); border-radius:4px; background:var(--input-bg); color:var(--text);">
-                      <option value="">Loading namespaces...</option>
-                    </select>
+                    <label style="display:block; margin-bottom:4px; font-weight:500;">Namespace (inherited from project):</label>
+                    <div id="ontoNamespaceDisplay" style="width:100%; padding:8px; border:1px solid var(--border); border-radius:4px; background:var(--panel-2); color:var(--muted); font-family: monospace;">
+                      Loading project namespace...
+                    </div>
                     <div style="font-size:0.9em; color:var(--muted); margin-top:4px;">
-                      Select a namespace to determine the URI structure
+                      Ontologies automatically inherit their project's namespace
                     </div>
                   </div>
                   ${isAdmin ? `
@@ -4171,22 +4481,22 @@
               panel.querySelector('#importOnto').style.display = 'inline-block';
             };
             
-            // Load namespaces into dropdown
-            loadNamespacesForProject(panel.querySelector('#ontoNamespace'));
+            // Load current project's namespace
+            loadCurrentProjectNamespace(panel.querySelector('#ontoNamespaceDisplay'));
             
             panel.querySelector('#createOnto').onclick = async () => {
               const labelInput = panel.querySelector('#ontoLabel');
-              const namespaceSelect = panel.querySelector('#ontoNamespace');
               const disp = labelInput.value.trim();
-              const selectedNamespace = namespaceSelect.value;
               
               if (!disp) {
                 alert('Please enter a label for the ontology');
                 return;
               }
               
-              if (!selectedNamespace) {
-                alert('Please select a namespace');
+              // Check if project has a namespace
+              const currentProjectId = localStorage.getItem('active_project_id');
+              if (!currentProjectId) {
+                alert('No project selected - select a project first');
                 return;
               }
               
@@ -4199,12 +4509,13 @@
                 const body = { 
                   project: pid2, 
                   name: base, 
-                  label,
-                  namespace_id: selectedNamespace
+                  label
                 };
                 if (isReference) {
                   body.is_reference = true;
                 }
+                
+                console.log('🔧 Creating ontology with project namespace inheritance:', body);
                 
                 const res = await fetch('/api/ontologies', { 
                   method: 'POST', 
@@ -4999,14 +5310,17 @@
     }
 
     function getModelNamespace() {
-      // Get model namespace from attributes or use default
+      // Get model namespace from attributes or use installation configuration
       const pid = (activeProject && (activeProject.id || activeProject.project_id)) ? (activeProject.id || activeProject.project_id) : 'default';
       try {
         const modelAttrs = JSON.parse(localStorage.getItem(`onto_model_attrs__${pid}`) || '{}');
-        return modelAttrs.namespace || 'http://odras.system/ontology';
-      } catch(_) {
-        return 'http://odras.system/ontology';
+        if (modelAttrs.namespace) {
+          return modelAttrs.namespace;
       }
+      } catch(_) {}
+      
+      // Use installation configuration as fallback
+      return INSTALLATION_CONFIG.baseUri + '/ontology';
     }
 
     function updateElementIriDisplay() {
@@ -5053,15 +5367,18 @@
         // Add click handler to IRI text
         iriEl.onclick = () => copyIriToClipboard(iri);
       } else {
-        iriEl.textContent = 'No element selected';
-        iriEl.title = 'Select an element to see its IRI';
-        iriEl.style.color = '#9ca3af';
-        iriEl.style.opacity = '0.8';
-        iriEl.onclick = null;
+        // Show current namespace when no element is selected
+        const modelNamespace = getModelNamespace();
+        iriEl.textContent = modelNamespace;
+        iriEl.title = `Current Model Namespace: ${modelNamespace}\nClick to copy namespace`;
+        iriEl.style.color = '#60a5fa';
+        iriEl.style.opacity = '1';
+        iriEl.onclick = () => copyIriToClipboard(modelNamespace);
         
-        // Hide copy button
+        // Show copy button for namespace
         if (copyBtn) {
-          copyBtn.style.display = 'none';
+          copyBtn.style.display = 'inline-block';
+          copyBtn.onclick = () => copyIriToClipboard(modelNamespace);
         }
       }
     }
@@ -7670,19 +7987,8 @@
         adminIcon.style.display = isAdmin ? 'grid' : 'none';
       }
       
-      // Hide/show admin workbench section using class-based approach
-      const adminWorkbench = document.querySelector('#wb-admin');
-      if (adminWorkbench) {
-        if (isAdmin) {
-          adminWorkbench.classList.add('admin-visible');
-          adminWorkbench.classList.remove('admin-hidden');
-        } else {
-          adminWorkbench.classList.add('admin-hidden');
-          adminWorkbench.classList.remove('admin-visible');
-        }
-      }
-      
       // If admin workbench is currently active but user is not admin, switch to ontology workbench
+      const adminWorkbench = document.querySelector('#wb-admin');
       if (!isAdmin && adminWorkbench && adminWorkbench.classList.contains('active')) {
         console.log('🔄 Switching from admin workbench to ontology workbench');
         // Remove active class from admin workbench
@@ -8153,6 +8459,7 @@
       setTimeout(() => {
         if (document.querySelector('#wb-admin.workbench.active')) {
           loadPrefixes();
+          loadDomains();
           // Only load namespaces if user is authenticated
           const token = localStorage.getItem('odras_token');
           if (token) {
@@ -8708,7 +9015,7 @@
           
           <div style="margin-bottom: 20px;">
             <label>Owners (comma-separated emails):</label>
-            <input type="text" id="nsOwners" placeholder="admin@odras.local, user@example.com" />
+            <input type="text" id="nsOwners" placeholder="admin@organization.mil, user@example.com" />
           </div>
           
           <div class="button-group">
@@ -9069,7 +9376,7 @@
                   border-radius: 6px;
                   background: var(--panel-2);
                   color: var(--text);
-                " placeholder="admin@odras.local, user@domain.mil">
+                " placeholder="admin@organization.mil, user@domain.mil">
               </div>
               
               <div>
@@ -9245,7 +9552,7 @@
           
           <div style="margin-bottom: 20px;">
             <label>Owner:</label>
-            <input type="text" id="pfxOwner" placeholder="admin@odras.local" />
+            <input type="text" id="pfxOwner" placeholder="admin@organization.mil" />
           </div>
           
           <div class="button-group">
@@ -9351,7 +9658,7 @@
           
           <div style="margin-bottom: 16px;">
             <label>Owner:</label>
-            <input type="text" id="editPfxOwner" value="${prefix.owner}" placeholder="admin@odras.local" />
+            <input type="text" id="editPfxOwner" value="${prefix.owner}" placeholder="admin@organization.mil" />
           </div>
           
           <div style="margin-bottom: 20px;">
@@ -9620,6 +9927,16 @@
           </div>
           
           <div style="margin-bottom: 16px;">
+            <label>Domain:</label>
+            <select id="projectDomain" style="width: 100%; padding: 8px; border: 1px solid var(--border); border-radius: 4px; background: var(--panel); color: var(--text);">
+              <option value="">Loading domains...</option>
+            </select>
+            <div style="font-size: 0.8em; color: var(--muted); margin-top: 4px;">
+              Select the functional domain for this project
+            </div>
+          </div>
+          
+          <div style="margin-bottom: 16px;">
             <label>Description (optional):</label>
             <textarea id="projectDescription" placeholder="Brief description of the project..." style="width: 100%; padding: 8px; border: 1px solid var(--border); border-radius: 4px; background: var(--panel); color: var(--text); height: 80px; resize: vertical;"></textarea>
           </div>
@@ -9634,8 +9951,9 @@
       modal.className = 'modal';
       document.body.appendChild(modal);
       
-      // Load released namespaces
+      // Load released namespaces and active domains
       loadReleasedNamespaces();
+      loadActiveDomains();
     }
 
     async function loadReleasedNamespaces() {
@@ -9664,10 +9982,37 @@
       }
     }
 
+    async function loadActiveDomains() {
+      try {
+        console.log('🔧 Loading active domains...');
+        const response = await fetch('/api/domains/active');
+        
+        if (response.ok) {
+          const domains = await response.json();
+          console.log('🔧 Loaded domains:', domains);
+          const select = document.getElementById('projectDomain');
+          
+          if (domains.length === 0) {
+            select.innerHTML = '<option value="">No domains available</option>';
+            return;
+          }
+          
+          select.innerHTML = '<option value="">Select a domain...</option>' +
+            domains.map(domain => `<option value="${domain.domain}">${domain.domain} - ${domain.description}</option>`).join('');
+        } else {
+          document.getElementById('projectDomain').innerHTML = '<option value="">Error loading domains</option>';
+        }
+      } catch (error) {
+        console.error('Error loading active domains:', error);
+        document.getElementById('projectDomain').innerHTML = '<option value="">Error loading domains</option>';
+      }
+    }
+
     async function createProject() {
       try {
         const name = document.getElementById('projectName').value.trim();
         const namespaceId = document.getElementById('projectNamespace').value;
+        const domain = document.getElementById('projectDomain').value;
         const description = document.getElementById('projectDescription').value.trim();
 
         if (!name || !namespaceId) {
@@ -9684,6 +10029,7 @@
         const requestData = {
           name,
           namespace_id: namespaceId,
+          domain: domain || null,
           description: description || null
         };
         
@@ -9712,13 +10058,20 @@
             sel.innerHTML = list.map(p => `<option value="${p.id}">${p.name}</option>`).join('');
             const pid = newProject.id || newProject.project_id || list[list.length - 1].id;
             sel.value = pid;
-            try { localStorage.setItem('active_project_id', pid); } catch(_) {}
+            try { 
+              localStorage.setItem('active_project_id', pid);
+              updateURL(pid); // Update URL with new project
+            } catch(_) {}
             sel.disabled = false;
             // Save current ontology canvas before switching projects
             try { if (ontoState && ontoState.cy && activeOntologyIri) saveGraphToLocal(activeOntologyIri); } catch(_) {}
             const selected = list.find(p => p.id === pid) || list[list.length - 1];
             await renderTree(selected);
             updateNamespaceDisplay(pid);
+            // Update project info page if it's active
+            if (document.querySelector('#wb-project.workbench.active')) {
+              loadProjectInfo();
+            }
           }
           
           alert('Project created successfully!');
@@ -9773,11 +10126,1076 @@
       }
     }
 
+    // Load current project's namespace for ontology creation
+    async function loadCurrentProjectNamespace(displayElement) {
+      if (!displayElement) return;
+      
+      try {
+        const currentProjectId = localStorage.getItem('active_project_id');
+        if (!currentProjectId) {
+          displayElement.textContent = 'No project selected - select a project first';
+          displayElement.style.color = 'var(--warning)';
+          return;
+        }
+        
+        const token = localStorage.getItem('odras_token');
+        if (!token) {
+          displayElement.textContent = 'Authentication required';
+          displayElement.style.color = 'var(--err)';
+          return;
+        }
+        
+        // Get project namespace info
+        const response = await fetch(`/api/projects/${currentProjectId}/namespace`, {
+          headers: { 'Authorization': `Bearer ${token}` }
+        });
+        
+        if (response.ok) {
+          const data = await response.json();
+          if (data.namespace_path && data.namespace_path !== 'no namespace') {
+            displayElement.textContent = `${data.namespace_path}/${data.project_name}`;
+            displayElement.style.color = 'var(--text)';
+            displayElement.title = `Project: ${data.project_name} in namespace: ${data.namespace_path}`;
+          } else {
+            displayElement.textContent = 'Project has no namespace - assign one first';
+            displayElement.style.color = 'var(--warning)';
+          }
+        } else {
+          displayElement.textContent = 'Error loading project namespace';
+          displayElement.style.color = 'var(--err)';
+        }
+      } catch (error) {
+        console.error('Error loading project namespace:', error);
+        displayElement.textContent = 'Error loading namespace';
+        displayElement.style.color = 'var(--err)';
+      }
+    }
+
     // Make project functions globally available
     window.showCreateProjectModal = showCreateProjectModal;
     window.createProject = createProject;
     window.loadReleasedNamespaces = loadReleasedNamespaces;
+    window.loadActiveDomains = loadActiveDomains;
     window.updateNamespaceDisplay = updateNamespaceDisplay;
+    window.loadCurrentProjectNamespace = loadCurrentProjectNamespace;
+    window.createSimpleOntology = createSimpleOntology;
+
+    // Project Information Functions
+    async function loadProjectInfo() {
+      const projectInfoCard = document.getElementById('projectInfoCard');
+      if (!projectInfoCard) return;
+      
+      const currentProjectId = localStorage.getItem('active_project_id');
+      if (!currentProjectId) {
+        projectInfoCard.innerHTML = `
+          <div style="text-align: center; color: var(--muted);">
+            <h3>No Project Selected</h3>
+            <p>Select a project from the dropdown or create a new one to view project information.</p>
+          </div>
+        `;
+        return;
+      }
+      
+      try {
+        const token = localStorage.getItem('odras_token');
+        if (!token) {
+          projectInfoCard.innerHTML = `
+            <div style="text-align: center; color: var(--warning);">
+              <h3>Authentication Required</h3>
+              <p>Please log in to view project information.</p>
+            </div>
+          `;
+          return;
+        }
+        
+        projectInfoCard.innerHTML = `
+          <div style="text-align: center; color: var(--muted);">
+            <div>Loading project information...</div>
+          </div>
+        `;
+        
+        // Get project details with namespace info
+        const response = await fetch(`/api/projects/${currentProjectId}/namespace`, {
+          headers: { 'Authorization': `Bearer ${token}` }
+        });
+        
+        if (response.status === 403) {
+          // Project access denied - clear the project selection and show message
+          console.warn('Project access denied, clearing project selection');
+          try {
+            localStorage.removeItem('active_project_id');
+          } catch (error) {
+            console.warn('Failed to clear project selection:', error);
+          }
+          
+          projectInfoCard.innerHTML = `
+            <div style="text-align: center; color: var(--warning);">
+              <h3>Project Access Denied</h3>
+              <p>The selected project is not accessible with your current permissions.</p>
+              <p>Please select a different project from the dropdown.</p>
+            </div>
+          `;
+          return;
+        }
+        
+        if (response.ok) {
+          const projectData = await response.json();
+          
+          // Get additional project details from main API
+          const projectsResponse = await fetch('/api/projects', {
+            headers: { 'Authorization': `Bearer ${token}` }
+          });
+          
+          let fullProjectData = projectData;
+          if (projectsResponse.ok) {
+            const projectsList = await projectsResponse.json();
+            const projects = projectsList.projects || [];
+            const currentProject = projects.find(p => (p.id || p.project_id) === currentProjectId);
+            if (currentProject) {
+              fullProjectData = { ...projectData, ...currentProject };
+            }
+          }
+          
+          renderProjectInfo(fullProjectData);
+        } else {
+          projectInfoCard.innerHTML = `
+            <div style="text-align: center; color: var(--err);">
+              <h3>Error Loading Project</h3>
+              <p>Could not load project information. Please try again.</p>
+            </div>
+          `;
+        }
+      } catch (error) {
+        console.error('Error loading project info:', error);
+        projectInfoCard.innerHTML = `
+          <div style="text-align: center; color: var(--err);">
+            <h3>Error</h3>
+            <p>Failed to load project information: ${error.message}</p>
+          </div>
+        `;
+      }
+    }
+
+    function renderProjectInfo(projectData) {
+      const projectInfoCard = document.getElementById('projectInfoCard');
+      if (!projectInfoCard) return;
+      
+      const createdDate = projectData.created_at ? new Date(projectData.created_at).toLocaleDateString() : 'Unknown';
+      const updatedDate = projectData.updated_at ? new Date(projectData.updated_at).toLocaleDateString() : 'Unknown';
+      const createdBy = projectData.created_by_username || projectData.created_by || 'Unknown';
+      const projectId = projectData.project_id || projectData.id;
+      
+      projectInfoCard.innerHTML = `
+        <div style="margin-bottom: 32px;">
+          <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 16px;">
+            <h2 style="margin: 0; color: var(--text); font-size: 1.75rem; font-weight: 600;">
+              ${projectData.project_name || projectData.name || 'Project'}
+            </h2>
+            <span style="font-size: 14px; padding: 6px 12px; background: var(--accent); color: white; border-radius: 16px; font-weight: 500; text-transform: capitalize;">
+              ${projectData.status || 'active'}
+            </span>
+          </div>
+          ${projectData.description ? `
+            <div style="background: var(--panel-2); padding: 16px; border-radius: 8px; border-left: 4px solid var(--accent);">
+              <p style="color: var(--text); margin: 0; line-height: 1.5;">${projectData.description}</p>
+            </div>
+          ` : ''}
+        </div>
+        
+        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 32px; margin-bottom: 32px;">
+          <div style="background: var(--panel-2); padding: 20px; border-radius: 12px; border: 1px solid var(--border);">
+            <h3 style="margin: 0 0 16px 0; color: var(--text); font-size: 1.1rem; font-weight: 600; display: flex; align-items: center; gap: 8px;">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/>
+                <polyline points="9,22 9,12 15,12 15,22"/>
+              </svg>
+              Organization
+            </h3>
+            <div style="display: grid; gap: 12px;">
+              <div>
+                <label style="display: block; font-size: 12px; color: var(--muted); text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 4px;">Namespace</label>
+                <div style="font-family: 'SF Mono', 'Monaco', 'Inconsolata', 'Roboto Mono', monospace; color: var(--accent); font-weight: 500; background: var(--panel); padding: 8px 12px; border-radius: 6px; border: 1px solid var(--border);">
+                  ${projectData.namespace_path || 'No namespace assigned'}
+                </div>
+              </div>
+              ${projectData.domain ? `
+                <div>
+                  <label style="display: block; font-size: 12px; color: var(--muted); text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 4px;">Domain</label>
+                  <div style="color: var(--text); font-weight: 500; background: var(--panel); padding: 8px 12px; border-radius: 6px; border: 1px solid var(--border);">
+                    ${projectData.domain}
+                  </div>
+                </div>
+              ` : ''}
+              <div>
+                <label style="display: block; font-size: 12px; color: var(--muted); text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 4px;">Project ID</label>
+                <div style="font-family: 'SF Mono', 'Monaco', 'Inconsolata', 'Roboto Mono', monospace; color: var(--text); font-size: 14px; background: var(--panel); padding: 8px 12px; border-radius: 6px; border: 1px solid var(--border); word-break: break-all;">
+                  ${projectId}
+                </div>
+              </div>
+            </div>
+          </div>
+          
+          <div style="background: var(--panel-2); padding: 20px; border-radius: 12px; border: 1px solid var(--border);">
+            <h3 style="margin: 0 0 16px 0; color: var(--text); font-size: 1.1rem; font-weight: 600; display: flex; align-items: center; gap: 8px;">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
+                <polyline points="14,2 14,8 20,8"/>
+                <line x1="16" y1="13" x2="8" y2="13"/>
+                <line x1="16" y1="17" x2="8" y2="17"/>
+                <polyline points="10,9 9,9 8,9"/>
+              </svg>
+              Details
+            </h3>
+            <div style="display: grid; gap: 12px;">
+              <div>
+                <label style="display: block; font-size: 12px; color: var(--muted); text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 4px;">Created</label>
+                <div style="color: var(--text); font-weight: 500;">${createdDate}</div>
+              </div>
+              <div>
+                <label style="display: block; font-size: 12px; color: var(--muted); text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 4px;">Last Updated</label>
+                <div style="color: var(--text); font-weight: 500;">${updatedDate}</div>
+              </div>
+              <div>
+                <label style="display: block; font-size: 12px; color: var(--muted); text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 4px;">Created By</label>
+                <div style="color: var(--text); font-weight: 500; display: flex; align-items: center; gap: 8px;">
+                  <span style="width: 32px; height: 32px; background: var(--accent); color: white; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-weight: 600; font-size: 14px;">
+                    ${createdBy.charAt(0).toUpperCase()}
+                  </span>
+                  ${createdBy}
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+        
+        <div style="margin-bottom: 32px;">
+          <h3 style="margin: 0 0 16px 0; color: var(--text); font-size: 1.1rem; font-weight: 600; display: flex; align-items: center; gap: 8px;">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"/>
+              <path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"/>
+            </svg>
+            Project URI
+          </h3>
+          <div style="background: var(--panel-2); padding: 16px; border-radius: 12px; border: 1px solid var(--border);">
+            <code style="font-family: 'SF Mono', 'Monaco', 'Inconsolata', 'Roboto Mono', monospace; color: var(--accent); word-break: break-all; font-size: 14px; line-height: 1.4;">
+              ${projectData.namespace_path ? `http://${projectData.namespace_path}/${projectId}/` : 'No namespace assigned'}
+            </code>
+          </div>
+          <div style="font-size: 13px; color: var(--muted); margin-top: 8px; display: flex; align-items: center; gap: 6px;">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round">
+              <circle cx="12" cy="12" r="10"/>
+              <path d="M12 16v-4"/>
+              <path d="M12 8h.01"/>
+            </svg>
+            Base URI for all project resources (ontologies, files, knowledge assets)
+          </div>
+        </div>
+        
+        <div style="display: flex; gap: 12px; justify-content: flex-end; padding-top: 20px; border-top: 1px solid var(--border);">
+          <button class="btn" onclick="editProjectInfo('${projectId}')" style="background: var(--accent); color: white; border-color: var(--accent); padding: 12px 24px; font-weight: 500; display: flex; align-items: center; gap: 8px;">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/>
+              <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/>
+            </svg>
+            Edit Project
+          </button>
+          <button class="btn" onclick="showProjectActions('${projectId}')" style="background: var(--panel-2); color: var(--text); border-color: var(--border); padding: 12px 24px; font-weight: 500; display: flex; align-items: center; gap: 8px;">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round">
+              <circle cx="12" cy="12" r="3"/>
+              <path d="M12 1v6m0 6v6m11-7h-6m-6 0H1"/>
+            </svg>
+            Actions
+          </button>
+        </div>
+      `;
+    }
+
+    async function editProjectInfo(projectId) {
+      try {
+        const token = localStorage.getItem('odras_token');
+        if (!token) {
+          alert('Please log in to edit projects');
+          return;
+        }
+        
+        // Get current project data
+        const response = await fetch(`/api/projects/${projectId}`, {
+          headers: { 'Authorization': `Bearer ${token}` }
+        });
+        
+        if (!response.ok) {
+          alert('Error loading project data');
+          return;
+        }
+        
+        const data = await response.json();
+        const project = data.project;
+        
+        // Create edit modal
+        const modal = document.createElement('div');
+        modal.className = 'modal';
+        modal.innerHTML = `
+          <div class="modal-content" style="max-width: 600px;">
+            <div class="modal-header">
+              <h3>Edit Project</h3>
+              <button class="modal-close" onclick="this.closest('.modal').remove()">&times;</button>
+            </div>
+            <div class="modal-body">
+              <form id="editProjectForm">
+                <div class="form-group">
+                  <label for="editProjectName">Project Name *</label>
+                  <input type="text" id="editProjectName" value="${project.name || ''}" required>
+                </div>
+                
+                <div class="form-group">
+                  <label for="editProjectDescription">Description</label>
+                  <textarea id="editProjectDescription" rows="3">${project.description || ''}</textarea>
+                </div>
+                
+                <div class="form-group">
+                  <label for="editProjectDomain">Domain</label>
+                  <select id="editProjectDomain">
+                    <option value="">Select a domain...</option>
+                  </select>
+                </div>
+                
+                <div class="form-group">
+                  <label for="editProjectNamespace">Namespace</label>
+                  <select id="editProjectNamespace">
+                    <option value="">Select a namespace...</option>
+                  </select>
+                </div>
+              </form>
+            </div>
+            <div class="modal-footer">
+              <button class="btn" onclick="this.closest('.modal').remove()" style="background: var(--panel-2); color: var(--text); border-color: var(--border);">Cancel</button>
+              <button class="btn" onclick="saveProjectEdit('${projectId}')" style="background: var(--accent); color: white; border-color: var(--accent);">Save Changes</button>
+            </div>
+          </div>
+        `;
+        
+        document.body.appendChild(modal);
+        
+        // Load domains and namespaces
+        await loadDomainsForEdit(project.domain);
+        await loadNamespacesForEdit(project.namespace_id);
+        
+      } catch (error) {
+        console.error('Error opening edit modal:', error);
+        alert('Error opening edit modal');
+      }
+    }
+
+    async function loadDomainsForEdit(currentDomain) {
+      try {
+        console.log('🔧 Loading domains for edit...');
+        const response = await fetch('/api/domains/active');
+        
+        if (response.ok) {
+          const domains = await response.json();
+          console.log('🔧 Loaded domains for edit:', domains);
+          const select = document.getElementById('editProjectDomain');
+          
+          if (domains.length === 0) {
+            select.innerHTML = '<option value="">No domains available</option>';
+            return;
+          }
+          
+          select.innerHTML = '<option value="">Select a domain...</option>' +
+            domains.map(domain => {
+              const selected = domain.domain === currentDomain ? ' selected' : '';
+              return `<option value="${domain.domain}"${selected}>${domain.domain} - ${domain.description}</option>`;
+            }).join('');
+        } else {
+          document.getElementById('editProjectDomain').innerHTML = '<option value="">Error loading domains</option>';
+        }
+      } catch (error) {
+        console.error('Error loading domains for edit:', error);
+        document.getElementById('editProjectDomain').innerHTML = '<option value="">Error loading domains</option>';
+      }
+    }
+
+    async function loadNamespacesForEdit(currentNamespaceId) {
+      try {
+        const token = localStorage.getItem('odras_token');
+        const response = await fetch('/api/namespaces/released', {
+          headers: { 'Authorization': `Bearer ${token}` }
+        });
+        const namespaces = await response.json();
+        
+        const select = document.getElementById('editProjectNamespace');
+        select.innerHTML = '<option value="">Select a namespace...</option>';
+        
+        namespaces.forEach(ns => {
+          const option = document.createElement('option');
+          option.value = ns.id;
+          option.textContent = `${ns.path} (${ns.name})`;
+          if (ns.id === currentNamespaceId) {
+            option.selected = true;
+          }
+          select.appendChild(option);
+        });
+      } catch (error) {
+        console.error('Error loading namespaces:', error);
+      }
+    }
+
+    async function saveProjectEdit(projectId) {
+      try {
+        const token = localStorage.getItem('odras_token');
+        const form = document.getElementById('editProjectForm');
+        
+        const updateData = {
+          name: document.getElementById('editProjectName').value.trim(),
+          description: document.getElementById('editProjectDescription').value.trim() || null,
+          domain: document.getElementById('editProjectDomain').value || null,
+          namespace_id: document.getElementById('editProjectNamespace').value || null
+        };
+        
+        if (!updateData.name) {
+          alert('Project name is required');
+          return;
+        }
+        
+        const response = await fetch(`/api/projects/${projectId}`, {
+          method: 'PUT',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${token}`
+          },
+          body: JSON.stringify(updateData)
+        });
+        
+        if (response.ok) {
+          // Close modal
+          document.querySelector('.modal').remove();
+          
+          // Reload project info
+          loadProjectInfo();
+          
+          // Update namespace display
+          updateNamespaceDisplay(projectId);
+          
+          alert('Project updated successfully!');
+        } else {
+          const error = await response.json();
+          alert(`Error updating project: ${error.detail || 'Unknown error'}`);
+        }
+      } catch (error) {
+        console.error('Error saving project edit:', error);
+        alert('Error saving project changes');
+      }
+    }
+
+    async function showProjectActions(projectId) {
+      try {
+        const token = localStorage.getItem('odras_token');
+        if (!token) {
+          alert('Please log in to perform project actions');
+          return;
+        }
+        
+        // Create actions modal
+        const modal = document.createElement('div');
+        modal.className = 'modal';
+        modal.innerHTML = `
+          <div class="modal-content" style="max-width: 500px;">
+            <div class="modal-header">
+              <h3>Project Actions</h3>
+              <button class="modal-close" onclick="this.closest('.modal').remove()">&times;</button>
+            </div>
+            <div class="modal-body">
+              <div style="display: grid; gap: 12px;">
+                <button class="btn" onclick="archiveProject('${projectId}')" style="background: var(--warning); color: white; border-color: var(--warning); width: 100%; text-align: left; padding: 12px; display: flex; align-items: flex-start; gap: 12px;">
+                  <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" style="flex-shrink: 0; margin-top: 2px;">
+                    <polyline points="21,8 21,21 3,21 3,8"/>
+                    <rect x="1" y="3" width="22" height="5"/>
+                    <line x1="10" y1="12" x2="14" y2="12"/>
+                  </svg>
+                  <div>
+                    <strong>Archive Project</strong><br>
+                    <small>Hide project from active list (can be restored later)</small>
+                  </div>
+                </button>
+                
+                <button class="btn" onclick="exportProject('${projectId}')" style="background: var(--accent); color: white; border-color: var(--accent); width: 100%; text-align: left; padding: 12px; display: flex; align-items: flex-start; gap: 12px;">
+                  <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" style="flex-shrink: 0; margin-top: 2px;">
+                    <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
+                    <polyline points="7,10 12,15 17,10"/>
+                    <line x1="12" y1="15" x2="12" y2="3"/>
+                  </svg>
+                  <div>
+                    <strong>Export Project</strong><br>
+                    <small>Download project data and ontologies</small>
+                  </div>
+                </button>
+                
+                <button class="btn" onclick="duplicateProject('${projectId}')" style="background: var(--panel-2); color: var(--text); border-color: var(--border); width: 100%; text-align: left; padding: 12px; display: flex; align-items: flex-start; gap: 12px;">
+                  <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" style="flex-shrink: 0; margin-top: 2px;">
+                    <rect x="9" y="9" width="13" height="13" rx="2" ry="2"/>
+                    <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/>
+                  </svg>
+                  <div>
+                    <strong>Duplicate Project</strong><br>
+                    <small>Create a copy of this project</small>
+                  </div>
+                </button>
+                
+                <button class="btn" onclick="deleteProject('${projectId}')" style="background: var(--err); color: white; border-color: var(--err); width: 100%; text-align: left; padding: 12px; display: flex; align-items: flex-start; gap: 12px;">
+                  <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" style="flex-shrink: 0; margin-top: 2px;">
+                    <polyline points="3,6 5,6 21,6"/>
+                    <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/>
+                    <line x1="10" y1="11" x2="10" y2="17"/>
+                    <line x1="14" y1="11" x2="14" y2="17"/>
+                  </svg>
+                  <div>
+                    <strong>Delete Project</strong><br>
+                    <small>Permanently delete project (cannot be undone)</small>
+                  </div>
+                </button>
+              </div>
+            </div>
+            <div class="modal-footer">
+              <button class="btn" onclick="this.closest('.modal').remove()" style="background: var(--panel-2); color: var(--text); border-color: var(--border);">Close</button>
+            </div>
+          </div>
+        `;
+        
+        document.body.appendChild(modal);
+        
+      } catch (error) {
+        console.error('Error opening actions modal:', error);
+        alert('Error opening project actions');
+      }
+    }
+
+    async function archiveProject(projectId) {
+      if (!confirm('Are you sure you want to archive this project? It will be hidden from your active projects but can be restored later.')) {
+        return;
+      }
+      
+      try {
+        const token = localStorage.getItem('odras_token');
+        const response = await fetch(`/api/projects/${projectId}/archive`, {
+          method: 'POST',
+          headers: { 'Authorization': `Bearer ${token}` }
+        });
+        
+        if (response.ok) {
+          document.querySelector('.modal').remove();
+          alert('Project archived successfully!');
+          
+          // Reload projects and switch to a different one if needed
+          const currentProjectId = localStorage.getItem('active_project_id');
+          if (currentProjectId === projectId) {
+            // Switch to first available project
+            const projectsResponse = await fetch('/api/projects', {
+              headers: { 'Authorization': `Bearer ${token}` }
+            });
+            const projectsData = await projectsResponse.json();
+            const projects = projectsData.projects || [];
+            
+            if (projects.length > 0) {
+              const newProject = projects[0];
+              localStorage.setItem('active_project_id', newProject.id || newProject.project_id);
+              document.getElementById('projectSelect2').value = newProject.id || newProject.project_id;
+              await renderTree(newProject);
+              updateNamespaceDisplay(newProject.id || newProject.project_id);
+              if (document.querySelector('#wb-project.workbench.active')) {
+                loadProjectInfo();
+              }
+            } else {
+              // No projects left, clear selection
+              localStorage.removeItem('active_project_id');
+              document.getElementById('projectSelect2').value = '';
+              document.getElementById('projectSelect2').innerHTML = '<option value="">No projects</option>';
+            }
+          }
+        } else {
+          const error = await response.json();
+          alert(`Error archiving project: ${error.detail || 'Unknown error'}`);
+        }
+      } catch (error) {
+        console.error('Error archiving project:', error);
+        alert('Error archiving project');
+      }
+    }
+
+    async function exportProject(projectId) {
+      try {
+        const token = localStorage.getItem('odras_token');
+        const response = await fetch(`/api/projects/${projectId}/export`, {
+          headers: { 'Authorization': `Bearer ${token}` }
+        });
+        
+        if (response.ok) {
+          const blob = await response.blob();
+          const url = window.URL.createObjectURL(blob);
+          const a = document.createElement('a');
+          a.href = url;
+          a.download = `project-${projectId}-export.zip`;
+          document.body.appendChild(a);
+          a.click();
+          window.URL.revokeObjectURL(url);
+          document.body.removeChild(a);
+          
+          document.querySelector('.modal').remove();
+          alert('Project exported successfully!');
+        } else {
+          const error = await response.json();
+          alert(`Error exporting project: ${error.detail || 'Unknown error'}`);
+        }
+      } catch (error) {
+        console.error('Error exporting project:', error);
+        alert('Error exporting project');
+      }
+    }
+
+    async function duplicateProject(projectId) {
+      try {
+        const token = localStorage.getItem('odras_token');
+        
+        // Get current project data
+        const projectResponse = await fetch(`/api/projects/${projectId}`, {
+          headers: { 'Authorization': `Bearer ${token}` }
+        });
+        
+        if (!projectResponse.ok) {
+          alert('Error loading project data for duplication');
+          return;
+        }
+        
+        const projectData = await projectResponse.json();
+        const project = projectData.project;
+        
+        // Create duplicate with new name
+        const duplicateData = {
+          name: `${project.name} (Copy)`,
+          description: project.description,
+          namespace_id: project.namespace_id,
+          domain: project.domain
+        };
+        
+        const createResponse = await fetch('/api/projects', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${token}`
+          },
+          body: JSON.stringify(duplicateData)
+        });
+        
+        if (createResponse.ok) {
+          const newProjectData = await createResponse.json();
+          const newProject = newProjectData.project;
+          
+          document.querySelector('.modal').remove();
+          alert('Project duplicated successfully!');
+          
+          // Switch to the new project
+          localStorage.setItem('active_project_id', newProject.project_id);
+          document.getElementById('projectSelect2').value = newProject.project_id;
+          await renderTree(newProject);
+          updateNamespaceDisplay(newProject.project_id);
+          if (document.querySelector('#wb-project.workbench.active')) {
+            loadProjectInfo();
+          }
+        } else {
+          const error = await createResponse.json();
+          alert(`Error duplicating project: ${error.detail || 'Unknown error'}`);
+        }
+      } catch (error) {
+        console.error('Error duplicating project:', error);
+        alert('Error duplicating project');
+      }
+    }
+
+    async function deleteProject(projectId) {
+      if (!confirm('⚠️ WARNING: This will permanently delete the project and cannot be undone!\n\nAre you absolutely sure you want to delete this project?')) {
+        return;
+      }
+      
+      if (!confirm('This is your final warning. The project will be permanently deleted. Continue?')) {
+        return;
+      }
+      
+      try {
+        const token = localStorage.getItem('odras_token');
+        const response = await fetch(`/api/projects/${projectId}`, {
+          method: 'DELETE',
+          headers: { 'Authorization': `Bearer ${token}` }
+        });
+        
+        if (response.ok) {
+          document.querySelector('.modal').remove();
+          alert('Project deleted successfully!');
+          
+          // Switch to a different project if needed
+          const currentProjectId = localStorage.getItem('active_project_id');
+          if (currentProjectId === projectId) {
+            // Switch to first available project
+            const projectsResponse = await fetch('/api/projects', {
+              headers: { 'Authorization': `Bearer ${token}` }
+            });
+            const projectsData = await projectsResponse.json();
+            const projects = projectsData.projects || [];
+            
+            if (projects.length > 0) {
+              const newProject = projects[0];
+              localStorage.setItem('active_project_id', newProject.id || newProject.project_id);
+              document.getElementById('projectSelect2').value = newProject.id || newProject.project_id;
+              await renderTree(newProject);
+              updateNamespaceDisplay(newProject.id || newProject.project_id);
+              if (document.querySelector('#wb-project.workbench.active')) {
+                loadProjectInfo();
+              }
+            } else {
+              // No projects left, clear selection
+              localStorage.removeItem('active_project_id');
+              document.getElementById('projectSelect2').value = '';
+              document.getElementById('projectSelect2').innerHTML = '<option value="">No projects</option>';
+            }
+          }
+        } else {
+          const error = await response.json();
+          alert(`Error deleting project: ${error.detail || 'Unknown error'}`);
+        }
+      } catch (error) {
+        console.error('Error deleting project:', error);
+        alert('Error deleting project');
+      }
+    }
+
+    // Make project info functions globally available
+    window.loadProjectInfo = loadProjectInfo;
+    window.renderProjectInfo = renderProjectInfo;
+    window.editProjectInfo = editProjectInfo;
+    window.showProjectActions = showProjectActions;
+    window.saveProjectEdit = saveProjectEdit;
+    window.archiveProject = archiveProject;
+    window.exportProject = exportProject;
+    window.duplicateProject = duplicateProject;
+    window.deleteProject = deleteProject;
+
+    // Domain Management Functions
+    async function loadDomains() {
+      console.log('🔄 Loading domains...');
+      try {
+        const response = await fetch('/api/admin/domains/?status_filter=all', {
+          headers: {
+            'Authorization': `Bearer ${localStorage.getItem('odras_token')}`
+          }
+        });
+        if (response.ok) {
+          const domains = await response.json();
+          console.log('✅ Loaded domains:', domains.length);
+          renderDomainList(domains);
+        } else {
+          console.error('Failed to load domains:', response.status, response.statusText);
+          document.getElementById('domainList').innerHTML = 
+            `<div style="color: var(--err); text-align: center;">Error loading domains: ${response.statusText}</div>`;
+        }
+      } catch (error) {
+        console.error('Error loading domains:', error);
+        document.getElementById('domainList').innerHTML = 
+          `<div style="color: var(--err); text-align: center;">Error loading domains: ${error.message}</div>`;
+      }
+    }
+
+    function renderDomainList(domains) {
+      const container = document.getElementById('domainList');
+      
+      if (domains.length === 0) {
+        container.innerHTML = '<div style="text-align: center; color: var(--muted);">No domains found</div>';
+        return;
+      }
+
+      const html = domains.map(domain => {
+        const statusColor = domain.status === 'active' ? 'var(--success)' : 
+                           domain.status === 'deprecated' ? 'var(--warning)' : 'var(--muted)';
+        const statusIcon = domain.status === 'active' ? '✓' : 
+                          domain.status === 'deprecated' ? '⚠' : '📁';
+        
+        return `
+        <div style="display: flex; justify-content: space-between; align-items: center; padding: 12px; border: 1px solid var(--border); border-radius: 6px; margin-bottom: 8px; background: var(--panel-2); ${domain.status !== 'active' ? 'opacity: 0.8;' : ''}">
+          <div>
+            <div style="font-weight: 600; color: var(--text); display: flex; align-items: center; gap: 8px;">
+              ${domain.domain}
+              <span style="font-size: 0.8em; color: ${statusColor}; font-weight: normal;">
+                ${statusIcon} ${domain.status.toUpperCase()}
+              </span>
+            </div>
+            <div style="font-size: 0.9em; color: var(--muted);">
+              ${domain.description} | Owner: ${domain.owner}
+            </div>
+          </div>
+          <div style="display: flex; gap: 8px;">
+            <button class="btn" onclick="editDomain('${domain.id}')" style="font-size: 0.8em;">Edit</button>
+            <button class="btn" onclick="deleteDomain('${domain.id}', '${domain.domain}')" style="font-size: 0.8em; background: var(--err); color: white; border-color: var(--err);">Delete</button>
+          </div>
+        </div>
+      `;
+      }).join('');
+
+      container.innerHTML = html;
+    }
+
+    function showCreateDomainModal() {
+      const modal = document.createElement('div');
+      modal.className = 'modal';
+      modal.innerHTML = `
+        <div>
+          <h3>Create New Domain</h3>
+          
+          <div style="margin-bottom: 16px;">
+            <label>Domain:</label>
+            <input type="text" id="dmDomain" placeholder="e.g., avionics" oninput="validateDomain(this)" />
+            <div id="domainValidation" style="font-size: 0.8em; color: var(--muted); margin-top: 4px;">
+              Lowercase letters, numbers, and hyphens only, start with letter, 2-50 characters
+            </div>
+          </div>
+          
+          <div style="margin-bottom: 16px;">
+            <label>Description:</label>
+            <input type="text" id="dmDescription" placeholder="e.g., Aircraft electronics and flight systems" />
+          </div>
+          
+          <div style="margin-bottom: 20px;">
+            <label>Owner:</label>
+            <input type="text" id="dmOwner" placeholder="admin@odras.local" />
+          </div>
+          
+          <div class="button-group">
+            <button class="btn" onclick="this.closest('.modal').remove()" style="background: var(--muted);">Cancel</button>
+            <button class="btn" onclick="createDomain()" style="background: var(--accent); color: white; border-color: var(--accent);">Create</button>
+          </div>
+        </div>
+      `;
+      
+      document.body.appendChild(modal);
+    }
+
+    function validateDomain(input) {
+      const domain = input.value.trim();
+      const validation = document.getElementById('domainValidation');
+      
+      if (!domain) {
+        validation.textContent = 'Lowercase letters, numbers, and hyphens only, start with letter, 2-50 characters';
+        validation.style.color = 'var(--muted)';
+        return;
+      }
+      
+      const isValid = /^[a-z][a-z0-9-]{1,49}$/.test(domain);
+      if (isValid) {
+        validation.textContent = '✓ Valid domain format';
+        validation.style.color = 'var(--success)';
+      } else {
+        validation.textContent = '✗ Invalid format - lowercase letters, numbers, and hyphens only, start with letter, 2-50 characters';
+        validation.style.color = 'var(--err)';
+      }
+    }
+
+    async function createDomain() {
+      try {
+        const domain = document.getElementById('dmDomain').value.trim();
+        const description = document.getElementById('dmDescription').value.trim();
+        const owner = document.getElementById('dmOwner').value.trim();
+
+        if (!domain || !description || !owner) {
+          alert('Please fill in all fields');
+          return;
+        }
+
+        // Validate domain format
+        if (!/^[a-z][a-z0-9-]{1,49}$/.test(domain)) {
+          alert('Invalid domain format - lowercase letters, numbers, and hyphens only, start with letter, 2-50 characters');
+          return;
+        }
+
+        const token = localStorage.getItem('odras_token');
+        if (!token) {
+          alert('No auth token found');
+          return;
+        }
+
+        const response = await fetch('/api/admin/domains/', {
+          method: 'POST',
+          headers: {
+            'Authorization': `Bearer ${token}`,
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify({
+            domain,
+            description,
+            owner
+          })
+        });
+
+        if (response.ok) {
+          alert('Domain created successfully');
+          document.querySelector('.modal').remove();
+          loadDomains();
+        } else {
+          const error = await response.json();
+          alert(`Error creating domain: ${error.detail || 'Unknown error'}`);
+        }
+      } catch (error) {
+        console.error('Error creating domain:', error);
+        alert('Error creating domain: ' + error.message);
+      }
+    }
+
+    async function editDomain(domainId) {
+      try {
+        const token = localStorage.getItem('odras_token');
+        if (!token) {
+          alert('Please log in to edit domains');
+          return;
+        }
+
+        // Get current domain data
+        const response = await fetch(`/api/admin/domains/${domainId}`, {
+          headers: { 'Authorization': `Bearer ${token}` }
+        });
+        
+        if (!response.ok) {
+          alert('Error loading domain data');
+          return;
+        }
+        
+        const domain = await response.json();
+        
+        // Create edit modal
+        const modal = document.createElement('div');
+        modal.className = 'modal';
+        modal.innerHTML = `
+          <div class="modal-content" style="max-width: 500px;">
+            <div class="modal-header">
+              <h3>Edit Domain</h3>
+              <button class="modal-close" onclick="this.closest('.modal').remove()">&times;</button>
+            </div>
+            <div class="modal-body">
+              <form id="editDomainForm">
+                <div class="form-group">
+                  <label for="editDomainName">Domain Name</label>
+                  <input type="text" id="editDomainName" value="${domain.domain}" readonly style="background: var(--panel-2); color: var(--muted);">
+                  <small style="color: var(--muted);">Domain name cannot be changed after creation</small>
+                </div>
+                
+                <div class="form-group">
+                  <label for="editDomainDescription">Description</label>
+                  <textarea id="editDomainDescription" rows="3">${domain.description || ''}</textarea>
+                </div>
+                
+                <div class="form-group">
+                  <label for="editDomainOwner">Owner</label>
+                  <input type="email" id="editDomainOwner" value="${domain.owner || ''}">
+                </div>
+                
+                <div class="form-group">
+                  <label for="editDomainStatus">Status</label>
+                  <select id="editDomainStatus">
+                    <option value="active" ${domain.status === 'active' ? 'selected' : ''}>Active</option>
+                    <option value="deprecated" ${domain.status === 'deprecated' ? 'selected' : ''}>Deprecated</option>
+                    <option value="archived" ${domain.status === 'archived' ? 'selected' : ''}>Archived</option>
+                  </select>
+                </div>
+              </form>
+            </div>
+            <div class="modal-footer">
+              <button class="btn" onclick="this.closest('.modal').remove()" style="background: var(--panel-2); color: var(--text); border-color: var(--border);">Cancel</button>
+              <button class="btn" onclick="saveDomainEdit('${domainId}')" style="background: var(--accent); color: white; border-color: var(--accent);">Save Changes</button>
+            </div>
+          </div>
+        `;
+        
+        document.body.appendChild(modal);
+        
+      } catch (error) {
+        console.error('Error opening edit modal:', error);
+        alert('Error opening edit modal');
+      }
+    }
+
+    async function saveDomainEdit(domainId) {
+      try {
+        const token = localStorage.getItem('odras_token');
+        if (!token) {
+          alert('Please log in to save domain changes');
+          return;
+        }
+        
+        const updateData = {
+          description: document.getElementById('editDomainDescription').value.trim() || null,
+          owner: document.getElementById('editDomainOwner').value.trim() || null,
+          status: document.getElementById('editDomainStatus').value
+        };
+        
+        if (!updateData.description) {
+          alert('Description is required');
+          return;
+        }
+        
+        const response = await fetch(`/api/admin/domains/${domainId}`, {
+          method: 'PUT',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${token}`
+          },
+          body: JSON.stringify(updateData)
+        });
+        
+        if (response.ok) {
+          // Close modal and refresh domain list
+          document.querySelector('.modal').remove();
+          loadDomains();
+          alert('Domain updated successfully');
+        } else {
+          const error = await response.json();
+          alert(`Error updating domain: ${error.detail || response.statusText}`);
+        }
+      } catch (error) {
+        console.error('Error saving domain edit:', error);
+        alert('Error saving domain changes');
+      }
+    }
+
+    async function deleteDomain(domainId, domainName) {
+      try {
+        if (!confirm(`Are you sure you want to delete the domain "${domainName}"?\n\nThis action cannot be undone.`)) {
+          return;
+        }
+
+        const token = localStorage.getItem('odras_token');
+        const response = await fetch(`/api/admin/domains/${domainId}`, {
+          method: 'DELETE',
+          headers: {
+            'Authorization': `Bearer ${token}`,
+            'Content-Type': 'application/json'
+          }
+        });
+
+        if (response.ok) {
+          alert(`Domain "${domainName}" deleted successfully.`);
+          loadDomains();
+        } else {
+          const error = await response.json();
+          alert(`Error deleting domain: ${error.detail || 'Unknown error'}`);
+        }
+      } catch (error) {
+        console.error('Error deleting domain:', error);
+        alert('Error deleting domain: ' + error.message);
+      }
+    }
+
+    // Make domain functions globally available
+    window.loadDomains = loadDomains;
+    window.showCreateDomainModal = showCreateDomainModal;
+    window.createDomain = createDomain;
+    window.editDomain = editDomain;
+    window.saveDomainEdit = saveDomainEdit;
+    window.deleteDomain = deleteDomain;
+    window.validateDomain = validateDomain;
 
     // Make prefix functions globally available
     window.loadPrefixes = loadPrefixes;

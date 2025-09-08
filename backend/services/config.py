@@ -1,4 +1,5 @@
 from typing import Optional
+from pydantic import Field
 
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
@@ -48,11 +49,12 @@ class Settings(BaseSettings):
     log_level: str = "INFO"
     
     # Installation Configuration for Organizational Namespaces
-    installation_organization: str = "ODRAS Development"
-    installation_base_uri: str = "http://odras.local"  # Override this for production!
-    installation_prefix: str = "odras"
-    installation_type: str = "development"  # navy, airforce, army, industry, research, etc.
-    installation_program_office: str = "Development"
+    # These values are loaded from environment variables with INSTALLATION_ prefix
+    installation_organization: str = Field(default="ODRAS Development", alias="INSTALLATION_ORGANIZATION")
+    installation_base_uri: str = Field(default="http://odras.local", alias="INSTALLATION_BASE_URI")  # Override this for production!
+    installation_prefix: str = Field(default="odras", alias="INSTALLATION_PREFIX")
+    installation_type: str = Field(default="development", alias="INSTALLATION_TYPE")  # navy, airforce, army, industry, research, etc.
+    installation_program_office: str = Field(default="Development", alias="INSTALLATION_PROGRAM_OFFICE")
     
     # Namespace URI Templates
     namespace_core_template: str = "{base_uri}/core#{entity}"

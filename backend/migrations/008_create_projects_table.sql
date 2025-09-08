@@ -1,17 +1,10 @@
 -- Create projects table for ODRAS project management
 -- Projects are created within namespaces and contain ontologies
 
-CREATE TABLE IF NOT EXISTS projects (
-    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-    name VARCHAR(255) NOT NULL,
-    description TEXT,
-    namespace_id UUID NOT NULL REFERENCES namespace_registry(id) ON DELETE CASCADE,
-    created_by VARCHAR(255) NOT NULL,
-    created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
-    updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
-    status VARCHAR(50) DEFAULT 'active' CHECK (status IN ('active', 'archived', 'deprecated')),
-    UNIQUE(namespace_id, name)
-);
+-- Add missing columns to existing projects table
+ALTER TABLE public.projects ADD COLUMN IF NOT EXISTS namespace_id UUID REFERENCES namespace_registry(id) ON DELETE CASCADE;
+ALTER TABLE public.projects ADD COLUMN IF NOT EXISTS domain VARCHAR(255);
+ALTER TABLE public.projects ADD COLUMN IF NOT EXISTS status VARCHAR(50) DEFAULT 'active' CHECK (status IN ('active', 'archived', 'deprecated'));
 
 -- Create index for efficient lookups
 CREATE INDEX IF NOT EXISTS idx_projects_namespace_id ON projects(namespace_id);
