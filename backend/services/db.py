@@ -36,11 +36,16 @@ class DatabaseService:
             pass
 
     # Users
-    def get_or_create_user(self, username: str, display_name: Optional[str] = None, is_admin: bool = False) -> Dict[str, Any]:
+    def get_or_create_user(
+        self, username: str, display_name: Optional[str] = None, is_admin: bool = False
+    ) -> Dict[str, Any]:
         conn = self._conn()
         try:
             with conn.cursor(cursor_factory=RealDictCursor) as cur:
-                cur.execute("SELECT user_id, username, display_name, COALESCE(is_admin,false) AS is_admin FROM public.users WHERE username=%s", (username,))
+                cur.execute(
+                    "SELECT user_id, username, display_name, COALESCE(is_admin,false) AS is_admin FROM public.users WHERE username=%s",
+                    (username,),
+                )
                 row = cur.fetchone()
                 if row:
                     return dict(row)
@@ -55,7 +60,14 @@ class DatabaseService:
             self._return(conn)
 
     # Projects
-    def create_project(self, name: str, owner_user_id: str, description: Optional[str] = None, namespace_id: Optional[str] = None, domain: Optional[str] = None) -> Dict[str, Any]:
+    def create_project(
+        self,
+        name: str,
+        owner_user_id: str,
+        description: Optional[str] = None,
+        namespace_id: Optional[str] = None,
+        domain: Optional[str] = None,
+    ) -> Dict[str, Any]:
         conn = self._conn()
         try:
             with conn.cursor(cursor_factory=RealDictCursor) as cur:
@@ -74,7 +86,9 @@ class DatabaseService:
         finally:
             self._return(conn)
 
-    def list_projects_for_user(self, user_id: str, active: Optional[bool] = True) -> List[Dict[str, Any]]:
+    def list_projects_for_user(
+        self, user_id: str, active: Optional[bool] = True
+    ) -> List[Dict[str, Any]]:
         conn = self._conn()
         try:
             with conn.cursor(cursor_factory=RealDictCursor) as cur:
@@ -132,7 +146,10 @@ class DatabaseService:
         conn = self._conn()
         try:
             with conn.cursor() as cur:
-                cur.execute("UPDATE public.projects SET is_active = FALSE WHERE project_id = %s", (project_id,))
+                cur.execute(
+                    "UPDATE public.projects SET is_active = FALSE WHERE project_id = %s",
+                    (project_id,),
+                )
                 conn.commit()
         finally:
             self._return(conn)
@@ -141,7 +158,10 @@ class DatabaseService:
         conn = self._conn()
         try:
             with conn.cursor() as cur:
-                cur.execute("UPDATE public.projects SET is_active = TRUE WHERE project_id = %s", (project_id,))
+                cur.execute(
+                    "UPDATE public.projects SET is_active = TRUE WHERE project_id = %s",
+                    (project_id,),
+                )
                 conn.commit()
         finally:
             self._return(conn)
@@ -164,7 +184,14 @@ class DatabaseService:
             self._return(conn)
 
     # Ontologies registry
-    def add_ontology(self, project_id: str, graph_iri: str, label: Optional[str], role: str = "base", is_reference: bool = False) -> Dict[str, Any]:
+    def add_ontology(
+        self,
+        project_id: str,
+        graph_iri: str,
+        label: Optional[str],
+        role: str = "base",
+        is_reference: bool = False,
+    ) -> Dict[str, Any]:
         conn = self._conn()
         try:
             with conn.cursor(cursor_factory=RealDictCursor) as cur:
@@ -182,7 +209,9 @@ class DatabaseService:
         conn = self._conn()
         try:
             with conn.cursor() as cur:
-                cur.execute("DELETE FROM public.ontologies_registry WHERE graph_iri=%s", (graph_iri,))
+                cur.execute(
+                    "DELETE FROM public.ontologies_registry WHERE graph_iri=%s", (graph_iri,)
+                )
                 conn.commit()
         finally:
             self._return(conn)
@@ -218,12 +247,10 @@ class DatabaseService:
             with conn.cursor() as cur:
                 cur.execute(
                     "UPDATE public.ontologies_registry SET is_reference = %s, updated_at = NOW() WHERE graph_iri = %s RETURNING id",
-                    (is_reference, graph_iri)
+                    (is_reference, graph_iri),
                 )
                 result = cur.fetchone()
                 conn.commit()
                 return result is not None
         finally:
             self._return(conn)
-
-

@@ -62,7 +62,10 @@ class DocumentProcessor:
             )
 
             if not storage_result["success"]:
-                return {"success": False, "error": f"Failed to store file: {storage_result['error']}"}
+                return {
+                    "success": False,
+                    "error": f"Failed to store file: {storage_result['error']}",
+                }
 
             file_id = storage_result["file_id"]
             logger.info(f"File stored successfully with ID: {file_id}")
@@ -116,7 +119,11 @@ class DocumentProcessor:
             return {"success": False, "error": f"Document processing failed: {str(e)}"}
 
     async def retry_processing(
-        self, file_id: str, iterations: int = 10, llm_provider: str = "openai", llm_model: str = "gpt-4o-mini"
+        self,
+        file_id: str,
+        iterations: int = 10,
+        llm_provider: str = "openai",
+        llm_model: str = "gpt-4o-mini",
     ) -> Dict[str, Any]:
         """
         Retry processing of a previously uploaded file.
@@ -158,7 +165,12 @@ class DocumentProcessor:
 
             await self._update_file_status(file_id, "retry_processing")
 
-            return {"success": True, "file_id": file_id, "process_id": process_id, "message": "File processing retry started"}
+            return {
+                "success": True,
+                "file_id": file_id,
+                "process_id": process_id,
+                "message": "File processing retry started",
+            }
 
         except Exception as e:
             logger.error(f"Failed to retry processing for file {file_id}: {e}")
@@ -218,9 +230,21 @@ class DocumentProcessor:
         """
         return {
             "supported_formats": [
-                {"extension": ".txt", "mime_type": "text/plain", "description": "Plain text documents"},
-                {"extension": ".md", "mime_type": "text/markdown", "description": "Markdown documents"},
-                {"extension": ".pdf", "mime_type": "application/pdf", "description": "PDF documents (text extraction)"},
+                {
+                    "extension": ".txt",
+                    "mime_type": "text/plain",
+                    "description": "Plain text documents",
+                },
+                {
+                    "extension": ".md",
+                    "mime_type": "text/markdown",
+                    "description": "Markdown documents",
+                },
+                {
+                    "extension": ".pdf",
+                    "mime_type": "application/pdf",
+                    "description": "PDF documents (text extraction)",
+                },
                 {
                     "extension": ".docx",
                     "mime_type": "application/vnd.openxmlformats-officedocument.wordprocessingml.document",

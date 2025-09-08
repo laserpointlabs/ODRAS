@@ -209,6 +209,8 @@ async def get_test_status():
     return {
         "test_processes": TEST_PROCESSES,
         "total_processes": len(TEST_PROCESSES),
-        "pending_review": sum(1 for p in TEST_PROCESSES.values() if p["status"] == "pending_review"),
+        "pending_review": sum(
+            1 for p in TEST_PROCESSES.values() if p["status"] == "pending_review"
+        ),
         "completed": sum(1 for p in TEST_PROCESSES.values() if p["status"].startswith("completed")),
     }

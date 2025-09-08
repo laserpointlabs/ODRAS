@@ -16,7 +16,13 @@ from psycopg2.extras import RealDictCursor
 from .services.config import Settings
 from .services.db import DatabaseService
 from .services.namespace_uri_generator import NamespaceURIGenerator
-from .services.auth import get_user as auth_get_user, get_admin_user, create_token, invalidate_token, cleanup_expired_tokens
+from .services.auth import (
+    get_user as auth_get_user,
+    get_admin_user,
+    create_token,
+    invalidate_token,
+    cleanup_expired_tokens,
+)
 import os
 
 logger = logging.getLogger(__name__)
@@ -26,9 +32,15 @@ from backend.api.ontology import router as ontology_router
 from backend.api.workflows import router as workflows_router
 from backend.api.embedding_models import router as embedding_models_router
 from backend.api.knowledge import router as knowledge_router
-from backend.api.namespace_simple import router as namespace_router, public_router as namespace_public_router
+from backend.api.namespace_simple import (
+    router as namespace_router,
+    public_router as namespace_public_router,
+)
 from backend.api.prefix_management import router as prefix_router
-from backend.api.domain_management import router as domain_router, public_router as domain_public_router
+from backend.api.domain_management import (
+    router as domain_router,
+    public_router as domain_public_router,
+)
 from backend.run_registry import RUNS as SHARED_RUNS
 from backend.test_review_endpoint import router as test_router
 
@@ -65,7 +77,7 @@ except Exception:
 
     db = _DBUnavailable()
 
-# Camunda configuration  
+# Camunda configuration
 CAMUNDA_BASE_URL = settings.camunda_base_url
 CAMUNDA_REST_API = f"{CAMUNDA_BASE_URL}/engine-rest"
 
@@ -105,6 +117,7 @@ PROJECTS: List[Dict] = []
 
 get_user = auth_get_user
 
+
 @app.get("/app", response_class=HTMLResponse)
 def ui_restart():
     try:
@@ -128,21 +141,26 @@ def login(body: Dict):
     token = secrets.token_hex(16)
     # get or create DB user
     try:
-        is_admin_flag = (username.lower() == "admin")
+        is_admin_flag = username.lower() == "admin"
         u = db.get_or_create_user(username=username, display_name=username, is_admin=is_admin_flag)
-        user = {"username": u["username"], "user_id": str(u["user_id"]), "is_admin": bool(u.get("is_admin", False))}
-        
+        user = {
+            "username": u["username"],
+            "user_id": str(u["user_id"]),
+            "is_admin": bool(u.get("is_admin", False)),
+        }
+
         # Store token in persistent database
         create_token(
             user_id=str(u["user_id"]),
             username=u["username"],
             is_admin=bool(u.get("is_admin", False)),
-            token=token
+            token=token,
         )
-        
+
         return {"token": token}
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Auth failed: {str(e)}")
+
 
 @app.get("/api/auth/me")
 def me(user=Depends(get_user)):
@@ -154,7 +172,7 @@ def logout(authorization: Optional[str] = Header(None)):
     """Logout and invalidate the current token."""
     if not authorization or not authorization.startswith("Bearer "):
         raise HTTPException(status_code=400, detail="No token provided")
-    
+
     token = authorization.split(" ", 1)[1]
     try:
         invalidate_token(token)
@@ -173,6 +191,7 @@ async def startup_event():
     except Exception as e:
         logger.error(f"Error cleaning up expired tokens on startup: {e}")
 
+
 @app.get("/api/projects")
 def list_projects(state: Optional[str] = None, user=Depends(get_user)):
     try:
@@ -186,6 +205,7 @@ def list_projects(state: Optional[str] = None, user=Depends(get_user)):
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
+
 @app.post("/api/projects")
 def create_project(body: Dict, user=Depends(get_user)):
     name = (body.get("name") or "").strip()
@@ -193,34 +213,40 @@ def create_project(body: Dict, user=Depends(get_user)):
     domain = body.get("domain")
     if not name:
         raise HTTPException(status_code=400, detail="Name required")
-    
+
     # Validate namespace if provided
     if namespace_id:
         try:
             conn = db._conn()
             try:
                 with conn.cursor() as cur:
-                    cur.execute("SELECT id FROM namespace_registry WHERE id = %s AND status = 'released'", (namespace_id,))
+                    cur.execute(
+                        "SELECT id FROM namespace_registry WHERE id = %s AND status = 'released'",
+                        (namespace_id,),
+                    )
                     if not cur.fetchone():
-                        raise HTTPException(status_code=400, detail="Namespace not found or not released")
+                        raise HTTPException(
+                            status_code=400, detail="Namespace not found or not released"
+                        )
             finally:
                 db._return(conn)
         except HTTPException:
             raise
         except Exception as e:
             raise HTTPException(status_code=500, detail=f"Error validating namespace: {e}")
-    
+
     try:
         proj = db.create_project(
-            name=name, 
-            owner_user_id=user["user_id"], 
+            name=name,
+            owner_user_id=user["user_id"],
             description=(body.get("description") or None),
             namespace_id=namespace_id,
-            domain=domain
+            domain=domain,
         )
         return {"project": proj}
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
+
 
 @app.get("/api/projects/{project_id}")
 def get_project(project_id: str, user=Depends(get_user)):
@@ -230,7 +256,8 @@ def get_project(project_id: str, user=Depends(get_user)):
         try:
             with conn.cursor(cursor_factory=RealDictCursor) as cur:
                 # Get project with namespace details and creator username
-                cur.execute("""
+                cur.execute(
+                    """
                     SELECT p.project_id, p.name, p.description, p.created_at, p.updated_at, 
                            p.is_active, p.namespace_id, p.domain, p.created_by,
                            n.path as namespace_path, n.status as namespace_status,
@@ -239,20 +266,25 @@ def get_project(project_id: str, user=Depends(get_user)):
                     LEFT JOIN public.namespace_registry n ON n.id = p.namespace_id
                     LEFT JOIN public.users u ON u.user_id = p.created_by
                     WHERE p.project_id = %s
-                """, (project_id,))
+                """,
+                    (project_id,),
+                )
                 project = cur.fetchone()
                 if not project:
                     raise HTTPException(status_code=404, detail="Project not found")
-                
+
                 # Check if user has access to this project
-                cur.execute("""
+                cur.execute(
+                    """
                     SELECT role FROM public.project_members 
                     WHERE project_id = %s AND user_id = %s
-                """, (project_id, user["user_id"]))
+                """,
+                    (project_id, user["user_id"]),
+                )
                 membership = cur.fetchone()
                 if not membership:
                     raise HTTPException(status_code=403, detail="Access denied")
-                
+
                 return {"project": dict(project)}
         finally:
             db._return(conn)
@@ -260,6 +292,7 @@ def get_project(project_id: str, user=Depends(get_user)):
         raise
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
+
 
 @app.get("/api/projects/{project_id}/namespace")
 def get_project_namespace(project_id: str, user=Depends(get_user)):
@@ -269,7 +302,8 @@ def get_project_namespace(project_id: str, user=Depends(get_user)):
         try:
             with conn.cursor(cursor_factory=RealDictCursor) as cur:
                 # Get project with namespace details and creator username
-                cur.execute("""
+                cur.execute(
+                    """
                     SELECT p.project_id, p.name, p.description, p.created_at, p.updated_at, 
                            p.is_active, p.namespace_id, p.domain, p.created_by,
                            n.path as namespace_path, n.status as namespace_status,
@@ -278,20 +312,25 @@ def get_project_namespace(project_id: str, user=Depends(get_user)):
                     LEFT JOIN public.namespace_registry n ON n.id = p.namespace_id
                     LEFT JOIN public.users u ON u.user_id = p.created_by
                     WHERE p.project_id = %s
-                """, (project_id,))
+                """,
+                    (project_id,),
+                )
                 project = cur.fetchone()
                 if not project:
                     raise HTTPException(status_code=404, detail="Project not found")
-                
+
                 # Check if user has access to this project
-                cur.execute("""
+                cur.execute(
+                    """
                     SELECT role FROM public.project_members 
                     WHERE project_id = %s AND user_id = %s
-                """, (project_id, user["user_id"]))
+                """,
+                    (project_id, user["user_id"]),
+                )
                 membership = cur.fetchone()
                 if not membership:
                     raise HTTPException(status_code=403, detail="Access denied")
-                
+
                 return dict(project)
         finally:
             db._return(conn)
@@ -299,6 +338,7 @@ def get_project_namespace(project_id: str, user=Depends(get_user)):
         raise
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
+
 
 @app.put("/api/projects/{project_id}")
 def update_project(project_id: str, body: Dict, user=Depends(get_user)):
@@ -308,56 +348,64 @@ def update_project(project_id: str, body: Dict, user=Depends(get_user)):
         conn = db._conn()
         try:
             with conn.cursor() as cur:
-                cur.execute("""
+                cur.execute(
+                    """
                     SELECT role FROM public.project_members 
                     WHERE project_id = %s AND user_id = %s
-                """, (project_id, user["user_id"]))
+                """,
+                    (project_id, user["user_id"]),
+                )
                 membership = cur.fetchone()
                 if not membership:
                     raise HTTPException(status_code=403, detail="Access denied")
-                
+
                 # Only owners can update projects
-                if membership[0] != 'owner':
-                    raise HTTPException(status_code=403, detail="Only project owners can update projects")
-                
+                if membership[0] != "owner":
+                    raise HTTPException(
+                        status_code=403, detail="Only project owners can update projects"
+                    )
+
                 # Build update query dynamically based on provided fields
                 update_fields = []
                 update_values = []
-                
-                if 'name' in body and body['name']:
+
+                if "name" in body and body["name"]:
                     update_fields.append("name = %s")
-                    update_values.append(body['name'].strip())
-                
-                if 'description' in body:
+                    update_values.append(body["name"].strip())
+
+                if "description" in body:
                     update_fields.append("description = %s")
-                    update_values.append(body['description'] if body['description'] else None)
-                
-                if 'domain' in body:
+                    update_values.append(body["description"] if body["description"] else None)
+
+                if "domain" in body:
                     update_fields.append("domain = %s")
-                    update_values.append(body['domain'] if body['domain'] else None)
-                
-                if 'namespace_id' in body:
+                    update_values.append(body["domain"] if body["domain"] else None)
+
+                if "namespace_id" in body:
                     update_fields.append("namespace_id = %s")
-                    update_values.append(body['namespace_id'] if body['namespace_id'] else None)
-                
+                    update_values.append(body["namespace_id"] if body["namespace_id"] else None)
+
                 if not update_fields:
                     raise HTTPException(status_code=400, detail="No valid fields to update")
-                
+
                 update_fields.append("updated_at = NOW()")
                 update_values.append(project_id)
-                
-                cur.execute(f"""
+
+                cur.execute(
+                    f"""
                     UPDATE public.projects 
                     SET {', '.join(update_fields)}
                     WHERE project_id = %s
                     RETURNING project_id, name, description, created_at, updated_at, 
                               is_active, namespace_id, domain, created_by
-                """, update_values)
-                
+                """,
+                    update_values,
+                )
+
                 result = cur.fetchone()
                 if not result:
                     raise HTTPException(status_code=404, detail="Project not found")
-                
+
                 return {"project": dict(zip([desc[0] for desc in cur.description], result))}
         finally:
             db._return(conn)
@@ -365,6 +413,7 @@ def update_project(project_id: str, body: Dict, user=Depends(get_user)):
         raise
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
+
 
 @app.delete("/api/projects/{project_id}")
 def delete_project(project_id: str, user=Depends(get_user)):
@@ -381,7 +430,9 @@ def delete_project(project_id: str, user=Depends(get_user)):
         conn = db._conn()
         try:
             with conn.cursor() as cur:
-                cur.execute("DELETE FROM public.project_members WHERE project_id = %s", (project_id,))
+                cur.execute(
+                    "DELETE FROM public.project_members WHERE project_id = %s", (project_id,)
+                )
                 cur.execute("DELETE FROM public.projects WHERE project_id = %s", (project_id,))
                 conn.commit()
         finally:
@@ -478,11 +529,19 @@ async def push_turtle_to_fuseki(turtle_content: str = Body(...)):
             base = s.fuseki_url.rstrip("/")
             url = f"{base}/data?default"
             headers = {"Content-Type": "text/turtle"}
-            resp = requests.put(url, data=turtle_content.encode("utf-8"), headers=headers, timeout=10)
+            resp = requests.put(
+                url, data=turtle_content.encode("utf-8"), headers=headers, timeout=10
+            )
             if 200 <= resp.status_code < 300:
-                return {"success": True, "message": "Ontology pushed to Fuseki successfully (fallback)"}
+                return {
+                    "success": True,
+                    "message": "Ontology pushed to Fuseki successfully (fallback)",
+                }
             else:
-                return {"success": False, "error": f"Fuseki returned {resp.status_code}: {resp.text}"}
+                return {
+                    "success": False,
+                    "error": f"Fuseki returned {resp.status_code}: {resp.text}",
+                }
         except Exception as e2:
             return {"success": False, "error": f"Failed to push to Fuseki: {str(e2)}"}
 
@@ -501,8 +560,14 @@ async def list_ontologies(project: Optional[str] = None):
                 if regs:
                     return {
                         "ontologies": [
-                            {"graphIri": r.get("graph_iri"), "label": r.get("label"), "role": r.get("role"), "is_reference": r.get("is_reference", False)}
-                            for r in regs if r.get("graph_iri")
+                            {
+                                "graphIri": r.get("graph_iri"),
+                                "label": r.get("label"),
+                                "role": r.get("role"),
+                                "is_reference": r.get("is_reference", False),
+                            }
+                            for r in regs
+                            if r.get("graph_iri")
                         ]
                     }
             except Exception:
@@ -516,7 +581,7 @@ async def list_ontologies(project: Optional[str] = None):
         if project:
             # naive substring filter; safe for MVP
             safe = project.replace('"', '\\"')
-            filter_clause = f"FILTER(CONTAINS(STR(?graph), \"{safe}\"))"
+            filter_clause = f'FILTER(CONTAINS(STR(?graph), "{safe}"))'
         sparql = (
             "PREFIX owl: <http://www.w3.org/2002/07/owl#>\n"
             "PREFIX rdfs: <http://www.w3.org/2000/01/rdf-schema#>\n"
@@ -528,7 +593,10 @@ async def list_ontologies(project: Optional[str] = None):
             "  }\n"
             "} ORDER BY LCASE(STR(?label))"
         )
-        headers = {"Accept": "application/sparql-results+json", "Content-Type": "application/sparql-query"}
+        headers = {
+            "Accept": "application/sparql-results+json",
+            "Content-Type": "application/sparql-query",
+        }
         async with httpx.AsyncClient(timeout=30) as client:
             r = await client.post(query_url, content=sparql.encode("utf-8"), headers=headers)
             r.raise_for_status()
@@ -581,42 +649,50 @@ async def create_ontology(body: Dict, user=Depends(get_user)):
     is_reference = body.get("is_reference", False)
     if not project or not name:
         raise HTTPException(status_code=400, detail="project and name are required")
-    
+
     # Only admins can create reference ontologies
     if is_reference and not user.get("is_admin", False):
         raise HTTPException(status_code=403, detail="Only admins can create reference ontologies")
-    
+
     # Generate proper organizational URI based on installation configuration
     settings = Settings()
     namespace_generator = NamespaceURIGenerator(settings)
-    
+
     # Determine namespace type and parameters based on project structure
     if is_reference:
         # For reference ontologies, use the namespace system
-        if project.startswith('core-'):
+        if project.startswith("core-"):
             graph_iri = namespace_generator.generate_ontology_uri("core", ontology_name=name)
-        elif project.startswith('domain-'):
-            domain = project.replace('domain-', '')
-            graph_iri = namespace_generator.generate_ontology_uri("domain", domain=domain, ontology_name=name)
-        elif project.startswith('program-'):
-            program = project.replace('program-', '')
-            graph_iri = namespace_generator.generate_ontology_uri("program", program=program, ontology_name=name)
-        elif project.startswith('project-'):
+        elif project.startswith("domain-"):
+            domain = project.replace("domain-", "")
+            graph_iri = namespace_generator.generate_ontology_uri(
+                "domain", domain=domain, ontology_name=name
+            )
+        elif project.startswith("program-"):
+            program = project.replace("program-", "")
+            graph_iri = namespace_generator.generate_ontology_uri(
+                "program", program=program, ontology_name=name
+            )
+        elif project.startswith("project-"):
             # Extract program and project from project string like "project-avp-x1"
-            parts = project.replace('project-', '').split('-')
+            parts = project.replace("project-", "").split("-")
             if len(parts) >= 2:
                 program = parts[0]
-                project_name = '-'.join(parts[1:])
-                graph_iri = namespace_generator.generate_ontology_uri("project", program=program, project=project_name, ontology_name=name)
+                project_name = "-".join(parts[1:])
+                graph_iri = namespace_generator.generate_ontology_uri(
+                    "project", program=program, project=project_name, ontology_name=name
+                )
             else:
-                graph_iri = namespace_generator.generate_ontology_uri("project", program=project, ontology_name=name)
+                graph_iri = namespace_generator.generate_ontology_uri(
+                    "project", program=project, ontology_name=name
+                )
         else:
             # Fallback to simple structure
             graph_iri = f"{settings.installation_base_uri}/{project}/{name}"
     else:
         # For working ontologies, use simple workspace structure
         graph_iri = f"{settings.installation_base_uri}/{project}/{name}"
-    
+
     # Generate proper ontology header
     external_imports = namespace_generator.get_external_namespace_mappings()
     turtle = namespace_generator.generate_ontology_header(
@@ -624,7 +700,7 @@ async def create_ontology(body: Dict, user=Depends(get_user)):
         title=label,
         description=f"Ontology created in ODRAS for {project}",
         version="1.0.0",
-        imports=external_imports
+        imports=external_imports,
     )
     try:
         # Membership check
@@ -637,15 +713,25 @@ async def create_ontology(body: Dict, user=Depends(get_user)):
         url = f"{base}/data?graph={graph_iri}"
         headers = {"Content-Type": "text/turtle"}
         auth = (s.fuseki_user, s.fuseki_password) if s.fuseki_user and s.fuseki_password else None
-        resp = requests.put(url, data=turtle.encode("utf-8"), headers=headers, auth=auth, timeout=20)
+        resp = requests.put(
+            url, data=turtle.encode("utf-8"), headers=headers, auth=auth, timeout=20
+        )
         if 200 <= resp.status_code < 300:
             # Register in ontologies_registry
             try:
-                db.add_ontology(project_id=project, graph_iri=graph_iri, label=label, role="base", is_reference=is_reference)
+                db.add_ontology(
+                    project_id=project,
+                    graph_iri=graph_iri,
+                    label=label,
+                    role="base",
+                    is_reference=is_reference,
+                )
             except Exception:
                 pass
             return {"graphIri": graph_iri, "label": label}
-        raise HTTPException(status_code=500, detail=f"Fuseki returned {resp.status_code}: {resp.text}")
+        raise HTTPException(
+            status_code=500, detail=f"Fuseki returned {resp.status_code}: {resp.text}"
+        )
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Failed to create ontology: {str(e)}")
 
@@ -657,7 +743,9 @@ async def list_reference_ontologies(user=Depends(get_user)):
         reference_ontologies = db.list_reference_ontologies()
         return {"reference_ontologies": reference_ontologies}
     except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Failed to list reference ontologies: {str(e)}")
+        raise HTTPException(
+            status_code=500, detail=f"Failed to list reference ontologies: {str(e)}"
+        )
 
 
 @app.get("/api/installation/config")
@@ -670,7 +758,7 @@ async def get_installation_config():
             "baseUri": settings.installation_base_uri,
             "prefix": settings.installation_prefix,
             "type": settings.installation_type,
-            "programOffice": settings.installation_program_office
+            "programOffice": settings.installation_program_office,
         }
     except Exception as e:
         logger.error(f"Error getting installation config: {e}")
@@ -682,10 +770,10 @@ async def toggle_reference_ontology(body: Dict, user=Depends(get_admin_user)):
     """Toggle reference status of an ontology. Admin only."""
     graph_iri = (body.get("graph") or "").strip()
     is_reference = body.get("is_reference", False)
-    
+
     if not graph_iri:
         raise HTTPException(status_code=400, detail="graph parameter is required")
-    
+
     try:
         # Update the reference status in the database
         result = db.update_ontology_reference_status(graph_iri=graph_iri, is_reference=is_reference)
@@ -703,63 +791,65 @@ async def import_ontology_from_url(body: Dict, user=Depends(get_user)):
     import httpx
     from rdflib import Graph, RDF
     from rdflib.namespace import OWL, RDFS
-    
+
     url = body.get("url", "").strip()
     project_id = body.get("project_id", "").strip()
     name = body.get("name", "").strip()
     label = body.get("label", "").strip()
-    
+
     # Only admins can set ontologies as reference
     is_admin = user.get("is_admin", False)
     if is_admin:
         is_reference = body.get("is_reference", True)  # Default to reference for URL imports
     else:
         is_reference = False  # Non-admins cannot set as reference
-    
+
     if not url:
         raise HTTPException(status_code=400, detail="URL parameter is required")
-    
+
     if not project_id:
         raise HTTPException(status_code=400, detail="project_id parameter is required")
-    
+
     if not name:
         raise HTTPException(status_code=400, detail="name parameter is required")
-    
+
     try:
         # Fetch the ontology from the URL
         async with httpx.AsyncClient(timeout=30.0) as client:
             response = await client.get(url)
             response.raise_for_status()
             content = response.text
-        
+
         # Parse the RDF content
         graph = Graph()
         try:
             # Try to detect format from content-type or content
-            content_type = response.headers.get('content-type', '').lower()
-            if 'xml' in content_type or 'rdf' in content_type:
-                format = 'xml'
-            elif 'turtle' in content_type or 'ttl' in content_type:
-                format = 'turtle'
-            elif 'n3' in content_type:
-                format = 'n3'
+            content_type = response.headers.get("content-type", "").lower()
+            if "xml" in content_type or "rdf" in content_type:
+                format = "xml"
+            elif "turtle" in content_type or "ttl" in content_type:
+                format = "turtle"
+            elif "n3" in content_type:
+                format = "n3"
             else:
                 # Try to auto-detect format
-                if content.strip().startswith('<?xml') or content.strip().startswith('<rdf'):
-                    format = 'xml'
-                elif content.strip().startswith('@prefix') or content.strip().startswith('PREFIX'):
-                    format = 'turtle'
+                if content.strip().startswith("<?xml") or content.strip().startswith("<rdf"):
+                    format = "xml"
+                elif content.strip().startswith("@prefix") or content.strip().startswith("PREFIX"):
+                    format = "turtle"
                 else:
-                    format = 'xml'  # Default fallback
-            
+                    format = "xml"  # Default fallback
+
             graph.parse(data=content, format=format)
         except Exception as parse_error:
-            raise HTTPException(status_code=400, detail=f"Failed to parse RDF content: {str(parse_error)}")
-        
+            raise HTTPException(
+                status_code=400, detail=f"Failed to parse RDF content: {str(parse_error)}"
+            )
+
         # Extract ontology IRI and label
         ontology_iri = None
         ontology_label = label or name
-        
+
         # Look for owl:Ontology declarations
         for s, p, o in graph.triples((None, RDF.type, OWL.Ontology)):
             ontology_iri = str(s)
@@ -768,50 +858,50 @@ async def import_ontology_from_url(body: Dict, user=Depends(get_user)):
                 ontology_label = str(label_triple[2])
                 break
             break
-        
+
         if not ontology_iri:
             # If no owl:Ontology found, use the URL as the IRI
             ontology_iri = url
-        
+
         # Create the graph IRI for our system using installation configuration
         settings = Settings()
-        base_uri = settings.installation_base_uri.rstrip('/')
+        base_uri = settings.installation_base_uri.rstrip("/")
         graph_iri = f"{base_uri}/{project_id}/{name}"
-        
+
         # Store the ontology in Fuseki using the REST API
         fuseki_url = "http://localhost:3030/odras"
         fuseki_data_url = f"{fuseki_url}/data"
-        
+
         # Convert graph to turtle format for storage
-        turtle_content = graph.serialize(format='turtle')
-        
+        turtle_content = graph.serialize(format="turtle")
+
         # Upload the ontology to Fuseki as a named graph
         async with httpx.AsyncClient(timeout=30.0) as client:
             response = await client.put(
                 f"{fuseki_data_url}?graph={graph_iri}",
                 content=turtle_content,
-                headers={'Content-Type': 'text/turtle'}
+                headers={"Content-Type": "text/turtle"},
             )
             response.raise_for_status()
-        
+
         # Register the ontology in our database
         db.add_ontology(
             project_id=project_id,
             graph_iri=graph_iri,
             label=ontology_label,
             role="imported",
-            is_reference=is_reference
+            is_reference=is_reference,
         )
-        
+
         return {
             "success": True,
             "graph_iri": graph_iri,
             "label": ontology_label,
             "original_iri": ontology_iri,
             "source_url": url,
-            "is_reference": is_reference
+            "is_reference": is_reference,
         }
-        
+
     except httpx.HTTPError as e:
         raise HTTPException(status_code=400, detail=f"Failed to fetch ontology from URL: {str(e)}")
     except Exception as e:
@@ -829,20 +919,22 @@ async def delete_ontology(graph: str, project: Optional[str] = None, user=Depend
             raise HTTPException(status_code=403, detail="Not a member of project")
         s = Settings()
         update_url = f"{s.fuseki_url.rstrip('/')}/update"
-        
+
         # Delete the main ontology graph
         query = f"DROP GRAPH <{graph}>"
         headers = {"Content-Type": "application/sparql-update"}
         r = requests.post(update_url, data=query.encode("utf-8"), headers=headers, timeout=20)
-        
+
         # Also delete the associated layout graph if it exists
         layout_graph = f"{graph}#layout"
         layout_query = f"DROP GRAPH <{layout_graph}>"
         try:
-            requests.post(update_url, data=layout_query.encode("utf-8"), headers=headers, timeout=20)
+            requests.post(
+                update_url, data=layout_query.encode("utf-8"), headers=headers, timeout=20
+            )
         except Exception:
             pass  # Layout graph might not exist, that's okay
-        
+
         if 200 <= r.status_code < 300:
             try:
                 db.delete_ontology(graph_iri=graph)
@@ -869,12 +961,14 @@ async def relabel_ontology(body: Dict):
             "PREFIX owl: <http://www.w3.org/2002/07/owl#>\n"
             "PREFIX rdfs: <http://www.w3.org/2000/01/rdf-schema#>\n"
             f"DELETE {{ GRAPH <{graph}> {{ ?o rdfs:label ?old }} }}\n"
-            f"INSERT {{ GRAPH <{graph}> {{ ?o rdfs:label \"{safe_label}\" }} }}\n"
+            f'INSERT {{ GRAPH <{graph}> {{ ?o rdfs:label "{safe_label}" }} }}\n'
             f"WHERE  {{ GRAPH <{graph}> {{ ?o a owl:Ontology . OPTIONAL {{ ?o rdfs:label ?old }} }} }}\n"
         )
         headers = {"Content-Type": "application/sparql-update"}
         auth = (s.fuseki_user, s.fuseki_password) if s.fuseki_user and s.fuseki_password else None
-        r = requests.post(update_url, data=sparql.encode("utf-8"), headers=headers, timeout=20, auth=auth)
+        r = requests.post(
+            update_url, data=sparql.encode("utf-8"), headers=headers, timeout=20, auth=auth
+        )
         if 200 <= r.status_code < 300:
             return {"graphIri": graph, "label": label}
         raise HTTPException(status_code=500, detail=f"Fuseki returned {r.status_code}: {r.text}")
@@ -905,7 +999,9 @@ async def save_ontology(graph: str, request: Request):
         url = f"{base}/data"
         headers = {"Content-Type": "text/turtle"}
         auth = (s.fuseki_user, s.fuseki_password) if s.fuseki_user and s.fuseki_password else None
-        r = requests.put(url, params={"graph": graph}, data=ttl_bytes, headers=headers, timeout=30, auth=auth)
+        r = requests.put(
+            url, params={"graph": graph}, data=ttl_bytes, headers=headers, timeout=30, auth=auth
+        )
         if 200 <= r.status_code < 300:
             return {"success": True, "graphIri": graph, "message": "Saved to Fuseki"}
         raise HTTPException(status_code=500, detail=f"Fuseki returned {r.status_code}: {r.text}")
@@ -922,9 +1018,7 @@ async def ontology_summary():
         s = Settings()
         base = s.fuseki_url.rstrip("/")
         query_url = f"{base}/query"
-        sparql = (
-            "SELECT ?type (COUNT(?s) AS ?count) WHERE { ?s a ?type } GROUP BY ?type ORDER BY DESC(?count) LIMIT 100"
-        )
+        sparql = "SELECT ?type (COUNT(?s) AS ?count) WHERE { ?s a ?type } GROUP BY ?type ORDER BY DESC(?count) LIMIT 100"
         headers = {"Accept": "application/sparql-results+json"}
         params = {"query": sparql}
         async with httpx.AsyncClient(timeout=20) as client:
@@ -937,7 +1031,12 @@ async def ontology_summary():
             for b in data.get("results", {}).get("bindings", []):
                 type_val = b.get("type", {}).get("value") if "type" in b else None
                 count_val = b.get("count", {}).get("value") if "count" in b else None
-                rows.append({"type": type_val, "count": int(count_val) if count_val and count_val.isdigit() else count_val})
+                rows.append(
+                    {
+                        "type": type_val,
+                        "count": int(count_val) if count_val and count_val.isdigit() else count_val,
+                    }
+                )
             return {"rows": rows, "vars": vars_}
     except Exception as e:
         return {"error": str(e)}
@@ -953,7 +1052,10 @@ async def ontology_sparql(body: Dict):
         s = Settings()
         base = s.fuseki_url.rstrip("/")
         query_url = f"{base}/query"
-        headers = {"Accept": "application/sparql-results+json", "Content-Type": "application/sparql-query"}
+        headers = {
+            "Accept": "application/sparql-results+json",
+            "Content-Type": "application/sparql-query",
+        }
         # Prefer POST for longer queries
         async with httpx.AsyncClient(timeout=60) as client:
             r = await client.post(query_url, content=query.encode("utf-8"), headers=headers)
@@ -965,8 +1067,11 @@ async def ontology_sparql(body: Dict):
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"SPARQL error: {str(e)}")
 
+
 @app.get("/user-review", response_class=HTMLResponse)
-async def user_review_interface(taskId: Optional[str] = None, process_instance_id: Optional[str] = None):
+async def user_review_interface(
+    taskId: Optional[str] = None, process_instance_id: Optional[str] = None
+):
     """Requirements review interface or main interface."""
 
     # If taskId or process_instance_id is provided and not empty, show the review interface
@@ -1414,10 +1519,7 @@ async def start_camunda_process(
         async with httpx.AsyncClient(timeout=30) as client:
             response = await client.post(
                 start_url,
-                json={
-                    "variables": variables,
-                    "businessKey": f"{project_id}:{document_filename}"
-                }
+                json={"variables": variables, "businessKey": f"{project_id}:{document_filename}"},
             )
             response.raise_for_status()
             data = response.json()
@@ -1432,7 +1534,9 @@ async def deploy_bpmn_if_needed() -> Optional[str]:
     try:
         # Check if already deployed
         async with httpx.AsyncClient(timeout=10) as client:
-            response = await client.get(f"{CAMUNDA_REST_API}/process-definition/key/odras_requirements_analysis")
+            response = await client.get(
+                f"{CAMUNDA_REST_API}/process-definition/key/odras_requirements_analysis"
+            )
             if response.status_code == 200:
                 data = response.json()
                 return data[0]["id"] if data else None
@@ -1447,7 +1551,9 @@ async def deploy_bpmn_if_needed() -> Optional[str]:
             data = {"deployment-name": "odras-requirements-analysis"}
 
             async with httpx.AsyncClient(timeout=30) as client:
-                response = await client.post(f"{CAMUNDA_REST_API}/deployment/create", files=files, data=data)
+                response = await client.post(
+                    f"{CAMUNDA_REST_API}/deployment/create", files=files, data=data
+                )
                 response.raise_for_status()
                 data = response.json()
                 return data.get("id")
@@ -1497,9 +1603,17 @@ async def get_camunda_status():
                 # Fallback: Try to check if deployments endpoint works
                 response = await client.get(f"{CAMUNDA_REST_API}/deployment")
                 if response.status_code == 200:
-                    return {"status": "running", "url": CAMUNDA_BASE_URL, "api_url": CAMUNDA_REST_API}
+                    return {
+                        "status": "running",
+                        "url": CAMUNDA_BASE_URL,
+                        "api_url": CAMUNDA_REST_API,
+                    }
                 else:
-                    return {"status": "error", "url": CAMUNDA_BASE_URL, "message": "REST API not responding"}
+                    return {
+                        "status": "error",
+                        "url": CAMUNDA_BASE_URL,
+                        "message": "REST API not responding",
+                    }
     except Exception as e:
         return {"status": "unreachable", "error": str(e), "url": CAMUNDA_BASE_URL}
 
@@ -1539,7 +1653,11 @@ async def get_openai_status():
             if response.status_code == 200:
                 data = response.json()
                 model_count = len(data.get("data", []))
-                return {"status": "running", "url": "https://api.openai.com", "model_count": model_count}
+                return {
+                    "status": "running",
+                    "url": "https://api.openai.com",
+                    "model_count": model_count,
+                }
             elif response.status_code == 401:
                 return {"status": "unauthorized", "message": "Invalid API key"}
             else:
@@ -2675,7 +2793,9 @@ async def get_all_user_tasks():
                     {
                         "id": task.get("id"),
                         "name": task.get("name", "Review Requirements"),
-                        "description": task.get("description", "Review and approve extracted requirements"),
+                        "description": task.get(
+                            "description", "Review and approve extracted requirements"
+                        ),
                         "taskDefinitionKey": task.get("taskDefinitionKey"),
                         "processInstanceId": task.get("processInstanceId"),
                         "created": task.get("created"),
@@ -2705,9 +2825,15 @@ async def get_user_tasks(process_instance_id: str):
             tasks = response.json()
 
             # Filter for user tasks
-            user_tasks = [task for task in tasks if task.get("taskDefinitionKey") == "Task_UserReview"]
+            user_tasks = [
+                task for task in tasks if task.get("taskDefinitionKey") == "Task_UserReview"
+            ]
 
-            return {"process_instance_id": process_instance_id, "user_tasks": user_tasks, "total_tasks": len(user_tasks)}
+            return {
+                "process_instance_id": process_instance_id,
+                "user_tasks": user_tasks,
+                "total_tasks": len(user_tasks),
+            }
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Error fetching user tasks: {str(e)}")
 
@@ -2761,7 +2887,9 @@ async def complete_user_task(process_instance_id: str, user_decision: Dict):
             tasks = response.json()
 
             # Find the user review task
-            user_task = next((task for task in tasks if task.get("taskDefinitionKey") == "Task_UserReview"), None)
+            user_task = next(
+                (task for task in tasks if task.get("taskDefinitionKey") == "Task_UserReview"), None
+            )
             if not user_task:
                 raise HTTPException(status_code=404, detail="User review task not found")
 
@@ -2777,7 +2905,10 @@ async def complete_user_task(process_instance_id: str, user_decision: Dict):
                 variables["user_edits"] = {"value": json.dumps(user_edits), "type": "String"}
             elif decision == "rerun":
                 extraction_parameters = user_decision.get("extraction_parameters", {})
-                variables["extraction_parameters"] = {"value": json.dumps(extraction_parameters), "type": "String"}
+                variables["extraction_parameters"] = {
+                    "value": json.dumps(extraction_parameters),
+                    "type": "String",
+                }
 
             # Complete the task
             complete_url = f"{CAMUNDA_REST_API}/task/{task_id}/complete"
@@ -2813,7 +2944,9 @@ async def get_user_task_status(process_instance_id: str):
             instance = response.json()
 
             # Get current activities
-            activities_url = f"{CAMUNDA_REST_API}/process-instance/{process_instance_id}/activity-instances"
+            activities_url = (
+                f"{CAMUNDA_REST_API}/process-instance/{process_instance_id}/activity-instances"
+            )
             activities_response = await client.get(activities_url)
             activities_response.raise_for_status()
             activities = activities_response.json()

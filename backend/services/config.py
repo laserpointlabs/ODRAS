@@ -42,20 +42,28 @@ class Settings(BaseSettings):
 
     # Camunda BPM Configuration
     camunda_base_url: str = "http://localhost:8080"
-    
+
     # Application Configuration
     api_base_url: str = "http://localhost:8000"
     environment: str = "development"
     log_level: str = "INFO"
-    
+
     # Installation Configuration for Organizational Namespaces
     # These values are loaded from environment variables with INSTALLATION_ prefix
-    installation_organization: str = Field(default="ODRAS Development", alias="INSTALLATION_ORGANIZATION")
-    installation_base_uri: str = Field(default="http://odras.local", alias="INSTALLATION_BASE_URI")  # Override this for production!
+    installation_organization: str = Field(
+        default="ODRAS Development", alias="INSTALLATION_ORGANIZATION"
+    )
+    installation_base_uri: str = Field(
+        default="http://odras.local", alias="INSTALLATION_BASE_URI"
+    )  # Override this for production!
     installation_prefix: str = Field(default="odras", alias="INSTALLATION_PREFIX")
-    installation_type: str = Field(default="development", alias="INSTALLATION_TYPE")  # navy, airforce, army, industry, research, etc.
-    installation_program_office: str = Field(default="Development", alias="INSTALLATION_PROGRAM_OFFICE")
-    
+    installation_type: str = Field(
+        default="development", alias="INSTALLATION_TYPE"
+    )  # navy, airforce, army, industry, research, etc.
+    installation_program_office: str = Field(
+        default="Development", alias="INSTALLATION_PROGRAM_OFFICE"
+    )
+
     # Namespace URI Templates
     namespace_core_template: str = "{base_uri}/core#{entity}"
     namespace_domain_template: str = "{base_uri}/{domain}#{entity}"
@@ -64,7 +72,7 @@ class Settings(BaseSettings):
     namespace_se_template: str = "{base_uri}/se/{se_domain}#{entity}"
     namespace_mission_template: str = "{base_uri}/mission/{mission_type}#{entity}"
     namespace_platform_template: str = "{base_uri}/platform/{platform_type}#{entity}"
-    
+
     # Pydantic v2 settings configuration
     model_config = SettingsConfigDict(
         env_file=".env",

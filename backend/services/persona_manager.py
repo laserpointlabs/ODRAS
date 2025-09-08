@@ -43,7 +43,9 @@ class PersonaManager:
         try:
             async with httpx.AsyncClient(timeout=10) as client:
                 response = await client.post(
-                    f"{self.base_url}/api/personas", json=persona, headers={"Content-Type": "application/json"}
+                    f"{self.base_url}/api/personas",
+                    json=persona,
+                    headers={"Content-Type": "application/json"},
                 )
                 if response.status_code == 200:
                     return response.json()
@@ -59,7 +61,9 @@ class PersonaManager:
         try:
             async with httpx.AsyncClient(timeout=10) as client:
                 response = await client.put(
-                    f"{self.base_url}/api/personas/{persona_id}", json=persona, headers={"Content-Type": "application/json"}
+                    f"{self.base_url}/api/personas/{persona_id}",
+                    json=persona,
+                    headers={"Content-Type": "application/json"},
                 )
                 if response.status_code == 200:
                     return response.json()

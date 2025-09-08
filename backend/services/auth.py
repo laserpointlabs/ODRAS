@@ -31,7 +31,10 @@ def _update_token_last_used(token_hash: str):
         conn = db._conn()
         try:
             with conn.cursor() as cur:
-                cur.execute("UPDATE public.auth_tokens SET last_used_at = NOW() WHERE token_hash = %s", (token_hash,))
+                cur.execute(
+                    "UPDATE public.auth_tokens SET last_used_at = NOW() WHERE token_hash = %s",
+                    (token_hash,),
+                )
                 conn.commit()
         finally:
             db._return(conn)
@@ -46,7 +49,8 @@ def create_token(user_id: str, username: str, is_admin: bool, token: str) -> Non
     conn = db._conn()
     try:
         with conn.cursor() as cur:
-            cur.execute("""
+            cur.execute(
+                """
                 INSERT INTO public.auth_tokens (token_hash, user_id, username, is_admin, expires_at)
                 VALUES (%s, %s, %s, %s, NOW() + INTERVAL '24 hours')
                 ON CONFLICT (token_hash) DO UPDATE SET
@@ -56,17 +60,15 @@ def create_token(user_id: str, username: str, is_admin: bool, token: str) -> Non
                     expires_at = EXCLUDED.expires_at,
                     is_active = TRUE,
                     last_used_at = NOW()
-            """, (token_hash, user_id, username, is_admin))
+            """,
+                (token_hash, user_id, username, is_admin),
+            )
             conn.commit()
-            
+
             # Cache the user info
-            user = {
-                "user_id": user_id,
-                "username": username,
-                "is_admin": is_admin
-            }
+            user = {"user_id": user_id, "username": username, "is_admin": is_admin}
             TOKENS_CACHE[token_hash] = user
-            
+
     finally:
         db._return(conn)
 
@@ -78,12 +80,15 @@ def invalidate_token(token: str) -> None:
     conn = db._conn()
     try:
         with conn.cursor() as cur:
-            cur.execute("UPDATE public.auth_tokens SET is_active = FALSE WHERE token_hash = %s", (token_hash,))
+            cur.execute(
+                "UPDATE public.auth_tokens SET is_active = FALSE WHERE token_hash = %s",
+                (token_hash,),
+            )
             conn.commit()
-            
+
             # Remove from cache
             TOKENS_CACHE.pop(token_hash, None)
-            
+
     finally:
         db._return(conn)
 
@@ -94,15 +99,17 @@ def cleanup_expired_tokens() -> None:
     conn = db._conn()
     try:
         with conn.cursor() as cur:
-            cur.execute("DELETE FROM public.auth_tokens WHERE expires_at < NOW() OR is_active = FALSE")
+            cur.execute(
+                "DELETE FROM public.auth_tokens WHERE expires_at < NOW() OR is_active = FALSE"
+            )
             deleted_count = cur.rowcount
             conn.commit()
             if deleted_count > 0:
                 logger.info(f"Cleaned up {deleted_count} expired/inactive tokens")
-                
+
             # Clear cache of any tokens that might have been deleted
             TOKENS_CACHE.clear()
-            
+
     finally:
         db._return(conn)
 
@@ -110,59 +117,64 @@ def cleanup_expired_tokens() -> None:
 def get_user(authorization: Optional[str] = Header(None)):
     if not authorization or not authorization.startswith("Bearer "):
         raise HTTPException(status_code=401, detail="Unauthorized")
-    
+
     token = authorization.split(" ", 1)[1]
     token_hash = _hash_token(token)
-    
+
     # Check cache first for performance
     if token_hash in TOKENS_CACHE:
         user = TOKENS_CACHE[token_hash]
         # Update last used time in background
         _update_token_last_used(token_hash)
         return user
-    
+
     # Check database
     db = _get_db_service()
     conn = db._conn()
     try:
         with conn.cursor() as cur:
-            cur.execute("""
+            cur.execute(
+                """
                 SELECT user_id, username, is_admin, expires_at, is_active
                 FROM public.auth_tokens 
                 WHERE token_hash = %s AND is_active = TRUE
-            """, (token_hash,))
+            """,
+                (token_hash,),
+            )
             row = cur.fetchone()
-            
+
             if not row:
                 raise HTTPException(status_code=401, detail="Invalid token")
-            
+
             user_id, username, is_admin, expires_at, is_active = row
-            
+
             # Check if token is expired
             if expires_at:
                 cur.execute("SELECT NOW()")
                 current_time = cur.fetchone()[0]
                 if expires_at < current_time:
                     # Clean up expired token
-                    cur.execute("UPDATE public.auth_tokens SET is_active = FALSE WHERE token_hash = %s", (token_hash,))
+                    cur.execute(
+                        "UPDATE public.auth_tokens SET is_active = FALSE WHERE token_hash = %s",
+                        (token_hash,),
+                    )
                     conn.commit()
                     raise HTTPException(status_code=401, detail="Token expired")
-            
+
             # Update last used time
-            cur.execute("UPDATE public.auth_tokens SET last_used_at = NOW() WHERE token_hash = %s", (token_hash,))
+            cur.execute(
+                "UPDATE public.auth_tokens SET last_used_at = NOW() WHERE token_hash = %s",
+                (token_hash,),
+            )
             conn.commit()
-            
-            user = {
-                "user_id": str(user_id),
-                "username": username,
-                "is_admin": bool(is_admin)
-            }
-            
+
+            user = {"user_id": str(user_id), "username": username, "is_admin": bool(is_admin)}
+
             # Cache the result
             TOKENS_CACHE[token_hash] = user
-            
+
             return user
-            
+
     except HTTPException:
         raise
     except Exception as e:
@@ -183,5 +195,3 @@ def get_admin_user(authorization: Optional[str] = Header(None)):
 def is_user_admin(user: Dict) -> bool:
     """Check if user has admin privileges."""
     return user.get("is_admin", False)
-
-

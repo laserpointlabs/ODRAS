@@ -33,7 +33,9 @@ class LLMTeam:
         """
         # Use custom personas if provided, otherwise use default ones
         if custom_personas:
-            personas = [(p["name"], p["system_prompt"]) for p in custom_personas if p.get("is_active", True)]
+            personas = [
+                (p["name"], p["system_prompt"]) for p in custom_personas if p.get("is_active", True)
+            ]
         else:
             # Default personas
             personas = [
@@ -51,15 +53,17 @@ class LLMTeam:
         merged = self._merge_json(outputs)
         return merged
 
-    async def _call_model(self, requirement_text: str, system_prompt: str, schema: Dict[str, Any]) -> Dict[str, Any]:
+    async def _call_model(
+        self, requirement_text: str, system_prompt: str, schema: Dict[str, Any]
+    ) -> Dict[str, Any]:
         """
         Call the configured LLM provider to analyze a requirement.
-        
+
         Args:
             requirement_text: The requirement text to analyze
             system_prompt: The system prompt to use for the LLM
             schema: The JSON schema for the expected response format
-            
+
         Returns:
             Dict containing the analyzed requirement in JSON format
         """
@@ -77,15 +81,17 @@ class LLMTeam:
                 "originates_from": "unknown",
             }
 
-    async def _call_openai(self, text: str, system_prompt: str, schema: Dict[str, Any]) -> Dict[str, Any]:
+    async def _call_openai(
+        self, text: str, system_prompt: str, schema: Dict[str, Any]
+    ) -> Dict[str, Any]:
         """
         Call OpenAI API to analyze a requirement text.
-        
+
         Args:
             text: The requirement text to analyze
             system_prompt: The system prompt for the OpenAI model
             schema: The JSON schema for the expected response format
-            
+
         Returns:
             Dict containing the analyzed requirement from OpenAI
         """
@@ -106,7 +112,10 @@ class LLMTeam:
             "model": model,
             "response_format": {"type": "json_object"},
             "messages": [
-                {"role": "system", "content": system_prompt + " Return ONLY JSON conforming to the schema."},
+                {
+                    "role": "system",
+                    "content": system_prompt + " Return ONLY JSON conforming to the schema.",
+                },
                 {
                     "role": "user",
                     "content": json.dumps(
@@ -144,15 +153,17 @@ class LLMTeam:
             logger.error(f"Unexpected error calling OpenAI API: {e}")
             return {"text": text, "state": "Draft", "originates_from": "error"}
 
-    async def _call_ollama(self, text: str, system_prompt: str, schema: Dict[str, Any]) -> Dict[str, Any]:
+    async def _call_ollama(
+        self, text: str, system_prompt: str, schema: Dict[str, Any]
+    ) -> Dict[str, Any]:
         """
         Call Ollama local LLM to analyze a requirement text.
-        
+
         Args:
             text: The requirement text to analyze
             system_prompt: The system prompt for the Ollama model
             schema: The JSON schema for the expected response format
-            
+
         Returns:
             Dict containing the analyzed requirement from Ollama
         """
@@ -161,7 +172,10 @@ class LLMTeam:
         payload = {
             "model": self.settings.llm_model or "llama3:8b-instruct",
             "messages": [
-                {"role": "system", "content": system_prompt + " Return ONLY JSON conforming to the schema."},
+                {
+                    "role": "system",
+                    "content": system_prompt + " Return ONLY JSON conforming to the schema.",
+                },
                 {
                     "role": "user",
                     "content": json.dumps(
@@ -203,13 +217,13 @@ class LLMTeam:
     def _merge_json(self, outputs: List[Dict[str, Any]]) -> Dict[str, Any]:
         """
         Merge multiple JSON outputs from different personas.
-        
-        Simple merge strategy: prefer fields present in majority; 
+
+        Simple merge strategy: prefer fields present in majority;
         otherwise take first non-null value.
-        
+
         Args:
             outputs: List of JSON dictionaries from different LLM personas
-            
+
         Returns:
             Merged dictionary containing the best fields from all outputs
         """

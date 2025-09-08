@@ -39,7 +39,7 @@ class OntologyManager:
 
         # Initialize namespace URI generator
         self.namespace_generator = NamespaceURIGenerator(settings)
-        
+
         # Define ODRAS namespace using installation configuration
         self.base_uri = settings.installation_base_uri
         self.odras_ns = Namespace(f"{self.base_uri}/#")
@@ -129,7 +129,9 @@ class OntologyManager:
             # Return base ontology structure if query fails
             return self._get_base_ontology_json()
 
-    def update_ontology_from_json(self, ontology_json: Dict[str, Any], user_id: str = "system") -> Dict[str, Any]:
+    def update_ontology_from_json(
+        self, ontology_json: Dict[str, Any], user_id: str = "system"
+    ) -> Dict[str, Any]:
         """
         Update the ontology from JSON format and push to Fuseki.
 
@@ -144,7 +146,11 @@ class OntologyManager:
             # Validate JSON structure
             validation_result = self._validate_ontology_json(ontology_json)
             if not validation_result["valid"]:
-                return {"success": False, "error": "Invalid ontology JSON", "validation_errors": validation_result["errors"]}
+                return {
+                    "success": False,
+                    "error": "Invalid ontology JSON",
+                    "validation_errors": validation_result["errors"],
+                }
 
             # Convert JSON to RDF
             rdf_graph = self._json_to_rdf(ontology_json)
@@ -244,7 +250,10 @@ class OntologyManager:
 
             # Check if property already exists
             if self._property_exists(prop_uri):
-                return {"success": False, "error": f"Property {property_data['name']} already exists"}
+                return {
+                    "success": False,
+                    "error": f"Property {property_data['name']} already exists",
+                }
 
             # Determine property type
             prop_type = OWL.ObjectProperty
@@ -316,7 +325,10 @@ class OntologyManager:
             result = self._execute_sparql_update(delete_query)
 
             if result["success"]:
-                return {"success": True, "message": f"{entity_type.capitalize()} {entity_name} deleted successfully"}
+                return {
+                    "success": True,
+                    "message": f"{entity_type.capitalize()} {entity_name} deleted successfully",
+                }
             else:
                 return result
 
@@ -359,14 +371,22 @@ class OntologyManager:
             return {
                 "classes": int(bindings.get("classCount", {}).get("value", 0)),
                 "object_properties": int(bindings.get("objectPropertyCount", {}).get("value", 0)),
-                "datatype_properties": int(bindings.get("datatypePropertyCount", {}).get("value", 0)),
+                "datatype_properties": int(
+                    bindings.get("datatypePropertyCount", {}).get("value", 0)
+                ),
                 "individuals": int(bindings.get("individualCount", {}).get("value", 0)),
                 "last_updated": datetime.now(timezone.utc).isoformat(),
             }
 
         except Exception as e:
             logger.error(f"Failed to get ontology statistics: {e}")
-            return {"classes": 0, "object_properties": 0, "datatype_properties": 0, "individuals": 0, "error": str(e)}
+            return {
+                "classes": 0,
+                "object_properties": 0,
+                "datatype_properties": 0,
+                "individuals": 0,
+                "error": str(e),
+            }
 
     # Private helper methods
 
@@ -396,7 +416,11 @@ class OntologyManager:
                     "label": "Component",
                     "comment": "A modular part of a system that encapsulates specific functionality",
                 },
-                {"name": "Interface", "label": "Interface", "comment": "A shared boundary between system components"},
+                {
+                    "name": "Interface",
+                    "label": "Interface",
+                    "comment": "A shared boundary between system components",
+                },
                 {
                     "name": "Function",
                     "label": "Function",
@@ -534,7 +558,7 @@ class OntologyManager:
 
             if subject not in entities:
                 entities[subject] = {}
-            
+
             # Store multiple values for properties like rdfs:domain, rdfs:range
             if predicate not in entities[subject]:
                 entities[subject][predicate] = []
@@ -542,21 +566,21 @@ class OntologyManager:
 
         # Extract name from URI (after # or last /)
         def extract_name(uri):
-            if '#' in uri:
-                return uri.split('#')[-1]
-            return uri.split('/')[-1]
+            if "#" in uri:
+                return uri.split("#")[-1]
+            return uri.split("/")[-1]
 
         # Convert entities to structured JSON
         for uri, props in entities.items():
             # Skip blank nodes and non-URI entities
-            if uri.startswith('b') and uri[1:].isdigit():
+            if uri.startswith("b") and uri[1:].isdigit():
                 continue
-            if uri.startswith('_:'):
+            if uri.startswith("_:"):
                 continue
             # Skip empty or invalid URIs
-            if not uri or uri.strip() == '':
+            if not uri or uri.strip() == "":
                 continue
-                
+
             entity_name = extract_name(uri)
             rdf_type = str(RDF.type)
             rdfs_label = str(RDFS.label)
@@ -564,18 +588,18 @@ class OntologyManager:
             rdfs_domain = str(RDFS.domain)
             rdfs_range = str(RDFS.range)
             rdfs_subclass = str(RDFS.subClassOf)
-            
+
             # Get entity type
             types = props.get(rdf_type, [])
-            
+
             # Build common fields
             common_fields = {
                 "name": entity_name,
                 "uri": uri,
                 "label": props.get(rdfs_label, [None])[0],
-                "comment": props.get(rdfs_comment, [None])[0]
+                "comment": props.get(rdfs_comment, [None])[0],
             }
-            
+
             if str(OWL.Class) in types:
                 # Class
                 class_obj = {**common_fields}
@@ -583,7 +607,7 @@ class OntologyManager:
                 if subclass_of_uris:
                     class_obj["subclass_of"] = extract_name(subclass_of_uris[0])
                 ontology_json["classes"].append(class_obj)
-                
+
             elif str(OWL.ObjectProperty) in types:
                 # Object Property
                 prop_obj = {**common_fields}
@@ -594,7 +618,7 @@ class OntologyManager:
                 if range_uris:
                     prop_obj["range"] = extract_name(range_uris[0])
                 ontology_json["object_properties"].append(prop_obj)
-                
+
             elif str(OWL.DatatypeProperty) in types:
                 # Datatype Property
                 prop_obj = {**common_fields}
@@ -605,8 +629,8 @@ class OntologyManager:
                 if range_uris:
                     # Keep full XSD datatype URIs
                     range_uri = range_uris[0]
-                    if 'XMLSchema#' in range_uri:
-                        prop_obj["range"] = 'xsd:' + extract_name(range_uri)
+                    if "XMLSchema#" in range_uri:
+                        prop_obj["range"] = "xsd:" + extract_name(range_uri)
                     else:
                         prop_obj["range"] = extract_name(range_uri)
                 ontology_json["datatype_properties"].append(prop_obj)
@@ -723,7 +747,7 @@ class OntologyManager:
             # Parse the turtle content into an RDF graph
             graph = Graph()
             graph.parse(data=turtle_content, format="turtle")
-            
+
             # Convert to SPARQL INSERT DATA format
             insert_data = []
             for s, p, o in graph:
@@ -745,10 +769,10 @@ class OntologyManager:
             prefixes = []
             for prefix, namespace in graph.namespaces():
                 prefixes.append(f"PREFIX {prefix}: <{namespace}>")
-            
+
             prefixes_block = "\n".join(prefixes)
             data_block = "\n                ".join(insert_data)
-            
+
             query = f"""
             {prefixes_block}
             INSERT DATA {{
@@ -891,7 +915,7 @@ class OntologyManager:
                     "nodes": json.loads(binding.get("nodes", {}).get("value", "[]")),
                     "edges": json.loads(binding.get("edges", {}).get("value", "[]")),
                     "zoom": float(binding.get("zoom", {}).get("value", 1.0)),
-                    "pan": json.loads(binding.get("pan", {}).get("value", '{"x": 0, "y": 0}'))
+                    "pan": json.loads(binding.get("pan", {}).get("value", '{"x": 0, "y": 0}')),
                 }
             else:
                 # Return default layout if none exists
@@ -900,7 +924,7 @@ class OntologyManager:
                     "nodes": [],
                     "edges": [],
                     "zoom": 1.0,
-                    "pan": {"x": 0, "y": 0}
+                    "pan": {"x": 0, "y": 0},
                 }
 
         except Exception as e:
@@ -911,7 +935,7 @@ class OntologyManager:
                 "nodes": [],
                 "edges": [],
                 "zoom": 1.0,
-                "pan": {"x": 0, "y": 0}
+                "pan": {"x": 0, "y": 0},
             }
 
     def save_layout_by_graph(self, graph_iri: str, layout_data: Dict[str, Any]) -> Dict[str, Any]:
@@ -928,7 +952,7 @@ class OntologyManager:
         try:
             layout_graph_iri = f"{graph_iri}#layout"
             layout_id = str(uuid.uuid4())
-            
+
             # Clear existing layout data
             clear_query = f"""
             DELETE WHERE {{
@@ -937,13 +961,13 @@ class OntologyManager:
                 }}
             }}
             """
-            
+
             # Insert new layout data
-            nodes_json = json.dumps(layout_data.get('nodes', [])).replace('"', '\\"')
-            edges_json = json.dumps(layout_data.get('edges', [])).replace('"', '\\"')
-            zoom_value = layout_data.get('zoom', 1.0)
-            pan_json = json.dumps(layout_data.get('pan', {'x': 0, 'y': 0})).replace('"', '\\"')
-            
+            nodes_json = json.dumps(layout_data.get("nodes", [])).replace('"', '\\"')
+            edges_json = json.dumps(layout_data.get("edges", [])).replace('"', '\\"')
+            zoom_value = layout_data.get("zoom", 1.0)
+            pan_json = json.dumps(layout_data.get("pan", {"x": 0, "y": 0})).replace('"', '\\"')
+
             insert_query = f"""
             INSERT DATA {{
                 GRAPH <{layout_graph_iri}> {{
@@ -959,14 +983,14 @@ class OntologyManager:
             clear_result = self._execute_sparql_update(clear_query)
             if not clear_result["success"]:
                 return {"success": False, "error": "Failed to clear existing layout"}
-            
+
             insert_result = self._execute_sparql_update(insert_query)
             if insert_result["success"]:
                 return {
                     "success": True,
                     "message": f"Layout saved successfully for {graph_iri}",
                     "layout_id": layout_id,
-                    "timestamp": datetime.now(timezone.utc).isoformat()
+                    "timestamp": datetime.now(timezone.utc).isoformat(),
                 }
             else:
                 return {"success": False, "error": "Failed to save layout data"}
@@ -989,18 +1013,18 @@ class OntologyManager:
         """
         # Clean the base name to be IRI-safe
         safe_name = self._sanitize_iri_name(base_name)
-        
+
         # Use the graph IRI as base if provided, otherwise use default
         if graph_iri:
             base_uri = graph_iri
         else:
             base_uri = self.base_uri
-        
+
         # Try the base name first
         candidate_iri = f"{base_uri}#{safe_name}"
         if not self._iri_exists(candidate_iri, entity_type, graph_iri):
             return candidate_iri
-        
+
         # If base name exists, try with numbers
         counter = 1
         while counter < 1000:  # Prevent infinite loop
@@ -1008,7 +1032,7 @@ class OntologyManager:
             if not self._iri_exists(candidate_iri, entity_type, graph_iri):
                 return candidate_iri
             counter += 1
-        
+
         # Fallback to UUID if all else fails
         unique_id = str(uuid.uuid4())[:8]
         return f"{base_uri}#{safe_name}_{unique_id}"
@@ -1025,14 +1049,15 @@ class OntologyManager:
         """
         # Remove or replace problematic characters
         import re
+
         # Replace spaces and special chars with underscores
-        sanitized = re.sub(r'[^\w\-]', '_', name)
+        sanitized = re.sub(r"[^\w\-]", "_", name)
         # Remove multiple consecutive underscores
-        sanitized = re.sub(r'_+', '_', sanitized)
+        sanitized = re.sub(r"_+", "_", sanitized)
         # Remove leading/trailing underscores
-        sanitized = sanitized.strip('_')
+        sanitized = sanitized.strip("_")
         # Ensure it starts with a letter or underscore
-        if sanitized and not re.match(r'^[a-zA-Z_]', sanitized):
+        if sanitized and not re.match(r"^[a-zA-Z_]", sanitized):
             sanitized = f"_{sanitized}"
         # Ensure it's not empty
         if not sanitized:
@@ -1054,14 +1079,14 @@ class OntologyManager:
         try:
             # Map entity types to RDF types
             type_mapping = {
-                'class': str(OWL.Class),
-                'objectProperty': str(OWL.ObjectProperty),
-                'datatypeProperty': str(OWL.DatatypeProperty),
-                'annotationProperty': str(OWL.AnnotationProperty)
+                "class": str(OWL.Class),
+                "objectProperty": str(OWL.ObjectProperty),
+                "datatypeProperty": str(OWL.DatatypeProperty),
+                "annotationProperty": str(OWL.AnnotationProperty),
             }
-            
+
             rdf_type = type_mapping.get(entity_type, str(OWL.Class))
-            
+
             # Build query
             if graph_iri:
                 query = f"""
@@ -1077,14 +1102,14 @@ class OntologyManager:
                     <{iri}> a <{rdf_type}> .
                 }}
                 """
-            
+
             sparql = SPARQLWrapper(self.fuseki_query_url)
             sparql.setQuery(query)
             sparql.setReturnFormat(SPARQL_JSON)
             result = sparql.query().convert()
-            
-            return result.get('boolean', False)
-            
+
+            return result.get("boolean", False)
+
         except Exception as e:
             logger.warn(f"Error checking if IRI exists: {e}")
             return False  # Assume it doesn't exist if we can't check
@@ -1110,15 +1135,15 @@ class OntologyManager:
                 }}
             }}
             """
-            
+
             sparql = SPARQLWrapper(self.fuseki_query_url)
             sparql.setQuery(query)
             sparql.setReturnFormat(SPARQL_JSON)
             results = sparql.query().convert()
-            
+
             warnings = []
             errors = []
-            
+
             # Check for duplicate labels
             labels = {}
             for binding in results["results"]["bindings"]:
@@ -1126,37 +1151,41 @@ class OntologyManager:
                     label = binding["o"]["value"]
                     subject = binding["s"]["value"]
                     if label in labels:
-                        warnings.append(f"Duplicate label '{label}' found for {subject} and {labels[label]}")
+                        warnings.append(
+                            f"Duplicate label '{label}' found for {subject} and {labels[label]}"
+                        )
                     else:
                         labels[label] = subject
-            
+
             # Check for missing labels
             entities_without_labels = set()
             for binding in results["results"]["bindings"]:
                 subject = binding["s"]["value"]
                 if binding["p"]["value"] == str(RDF.type):
                     entities_without_labels.add(subject)
-            
+
             for binding in results["results"]["bindings"]:
                 if binding["p"]["value"] == str(RDFS.label):
                     subject = binding["s"]["value"]
                     entities_without_labels.discard(subject)
-            
+
             for entity in entities_without_labels:
                 warnings.append(f"Entity {entity} has no rdfs:label")
-            
+
             return {
                 "valid": len(errors) == 0,
                 "warnings": warnings,
                 "errors": errors,
-                "entity_count": len(set(binding["s"]["value"] for binding in results["results"]["bindings"]))
+                "entity_count": len(
+                    set(binding["s"]["value"] for binding in results["results"]["bindings"])
+                ),
             }
-            
+
         except Exception as e:
             logger.error(f"Error validating IRI integrity: {e}")
             return {
                 "valid": False,
                 "warnings": [],
                 "errors": [f"Validation failed: {str(e)}"],
-                "entity_count": 0
+                "entity_count": 0,
             }
