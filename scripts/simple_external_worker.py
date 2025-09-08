@@ -114,9 +114,7 @@ class SimpleExternalWorker:
                 print(f"❌ Task {task_id} marked as failed")
                 return True
             else:
-                print(
-                    f"❌ Failed to report task failure {task_id}: {response.status_code}"
-                )
+                print(f"❌ Failed to report task failure {task_id}: {response.status_code}")
                 return False
 
         except Exception as e:
@@ -250,9 +248,7 @@ class SimpleExternalWorker:
                         print(f"🔄 Processing task {task_id} for topic '{topic}'")
 
                         # Execute the script
-                        success, result = self.execute_script(
-                            topic, task.get("variables", {})
-                        )
+                        success, result = self.execute_script(topic, task.get("variables", {}))
 
                         if success:
                             # Complete the task with results

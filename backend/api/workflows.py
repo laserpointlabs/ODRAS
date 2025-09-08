@@ -68,9 +68,7 @@ async def _ensure_bpmn_deployed(process_key: str, settings: Settings) -> None:
     # Deploy BPMN
     filename = _PROCESS_KEY_TO_BPMN.get(process_key)
     if not filename:
-        raise HTTPException(
-            status_code=400, detail=f"Unknown processKey: {process_key}"
-        )
+        raise HTTPException(status_code=400, detail=f"Unknown processKey: {process_key}")
 
     project_root = Path(__file__).resolve().parents[2]
     bpmn_path = project_root / "bpmn" / filename
@@ -85,9 +83,7 @@ async def _ensure_bpmn_deployed(process_key: str, settings: Settings) -> None:
                     "deployment-name": process_key,
                     "enable-duplicate-filtering": "true",
                 }
-                r = await client.post(
-                    f"{camunda_rest}/deployment/create", files=files, data=data
-                )
+                r = await client.post(f"{camunda_rest}/deployment/create", files=files, data=data)
                 r.raise_for_status()
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Failed to deploy BPMN: {str(e)}")
@@ -184,9 +180,7 @@ async def start_workflow(
         detail = he.response.json() if he.response is not None else {"error": str(he)}
         raise HTTPException(status_code=500, detail=f"Camunda start error: {detail}")
     except Exception as e:
-        raise HTTPException(
-            status_code=500, detail=f"Failed to start workflow: {str(e)}"
-        )
+        raise HTTPException(status_code=500, detail=f"Failed to start workflow: {str(e)}")
 
 
 class RAGQueryRequest(BaseModel):
@@ -281,9 +275,7 @@ async def start_rag_query(
         detail = he.response.json() if he.response is not None else {"error": str(he)}
         raise HTTPException(status_code=500, detail=f"Camunda start error: {detail}")
     except Exception as e:
-        raise HTTPException(
-            status_code=500, detail=f"Failed to start RAG query: {str(e)}"
-        )
+        raise HTTPException(status_code=500, detail=f"Failed to start RAG query: {str(e)}")
 
 
 @router.get("/rag-query/{process_instance_id}/status")
@@ -303,18 +295,12 @@ async def get_rag_query_status(
     try:
         async with httpx.AsyncClient(timeout=10) as client:
             # Get process instance status
-            r = await client.get(
-                f"{camunda_rest}/process-instance/{process_instance_id}"
-            )
+            r = await client.get(f"{camunda_rest}/process-instance/{process_instance_id}")
 
             if r.status_code == 404:
-                raise HTTPException(
-                    status_code=404, detail="Process instance not found"
-                )
+                raise HTTPException(status_code=404, detail="Process instance not found")
             elif r.status_code != 200:
-                raise HTTPException(
-                    status_code=500, detail="Failed to get process status"
-                )
+                raise HTTPException(status_code=500, detail="Failed to get process status")
 
             process_data = r.json()
             is_ended = process_data.get("ended", False)
@@ -356,6 +342,4 @@ async def get_rag_query_status(
     except HTTPException:
         raise
     except Exception as e:
-        raise HTTPException(
-            status_code=500, detail=f"Failed to get RAG query status: {str(e)}"
-        )
+        raise HTTPException(status_code=500, detail=f"Failed to get RAG query status: {str(e)}")

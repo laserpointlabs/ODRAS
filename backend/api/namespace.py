@@ -36,9 +36,7 @@ class NamespaceCreate(BaseModel):
 class NamespaceUpdate(BaseModel):
     description: Optional[str] = None
     owners: Optional[List[str]] = None
-    status: Optional[str] = Field(
-        None, description="Status: draft, released, deprecated"
-    )
+    status: Optional[str] = Field(None, description="Status: draft, released, deprecated")
 
 
 class NamespaceResponse(BaseModel):
@@ -182,9 +180,7 @@ async def create_namespace(
         )
 
         # Fetch and return created namespace
-        result = await db.fetch_one(
-            "SELECT * FROM namespace_registry WHERE id = $1", namespace_id
-        )
+        result = await db.fetch_one("SELECT * FROM namespace_registry WHERE id = $1", namespace_id)
 
         return NamespaceResponse(
             id=result["id"],
@@ -263,9 +259,7 @@ async def get_namespace(
 ):
     """Get namespace details (admin only)"""
     try:
-        result = await db.fetch_one(
-            "SELECT * FROM namespace_registry WHERE id = $1", namespace_id
-        )
+        result = await db.fetch_one("SELECT * FROM namespace_registry WHERE id = $1", namespace_id)
 
         if not result:
             raise HTTPException(status_code=404, detail="Namespace not found")
@@ -339,9 +333,7 @@ async def update_namespace(
         await db.execute(query, *params)
 
         # Fetch and return updated namespace
-        result = await db.fetch_one(
-            "SELECT * FROM namespace_registry WHERE id = $1", namespace_id
-        )
+        result = await db.fetch_one("SELECT * FROM namespace_registry WHERE id = $1", namespace_id)
 
         return NamespaceResponse(
             id=result["id"],
@@ -408,9 +400,7 @@ async def create_version(
         )
 
         # Fetch and return created version
-        result = await db.fetch_one(
-            "SELECT * FROM namespace_versions WHERE id = $1", version_id
-        )
+        result = await db.fetch_one("SELECT * FROM namespace_versions WHERE id = $1", version_id)
 
         return VersionResponse(
             id=result["id"],
@@ -534,9 +524,7 @@ async def create_class(
             )
 
         # Fetch and return created class
-        result = await db.fetch_one(
-            "SELECT * FROM namespace_classes WHERE id = $1", class_id
-        )
+        result = await db.fetch_one("SELECT * FROM namespace_classes WHERE id = $1", class_id)
 
         return ClassResponse(
             id=result["id"],
@@ -554,9 +542,7 @@ async def create_class(
         raise HTTPException(status_code=500, detail=str(e))
 
 
-@router.get(
-    "/{namespace_id}/versions/{version}/classes", response_model=List[ClassResponse]
-)
+@router.get("/{namespace_id}/versions/{version}/classes", response_model=List[ClassResponse])
 async def list_classes(
     namespace_id: str,
     version: str,
@@ -688,9 +674,7 @@ async def update_class(
                     )
 
         # Fetch and return updated class
-        result = await db.fetch_one(
-            "SELECT * FROM namespace_classes WHERE id = $1", class_id
-        )
+        result = await db.fetch_one("SELECT * FROM namespace_classes WHERE id = $1", class_id)
 
         return ClassResponse(
             id=result["id"],
@@ -815,9 +799,7 @@ async def list_public_classes(
         )
 
         if not version_info:
-            raise HTTPException(
-                status_code=404, detail="Version not found or not released"
-            )
+            raise HTTPException(status_code=404, detail="Version not found or not released")
 
         results = await db.fetch_all(
             "SELECT * FROM namespace_classes WHERE version_id = $1 ORDER BY local_name",

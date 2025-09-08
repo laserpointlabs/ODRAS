@@ -103,9 +103,7 @@ def get_db_service() -> DatabaseService:
     return DatabaseService(Settings())
 
 
-def _detect_file_type_and_strategy(
-    filename: str, content_type: str = None
-) -> Dict[str, str]:
+def _detect_file_type_and_strategy(filename: str, content_type: str = None) -> Dict[str, str]:
     """
     Intelligently detect document type and optimal processing strategy based on file.
 
@@ -121,14 +119,10 @@ def _detect_file_type_and_strategy(
     elif any(filename_lower.endswith(ext) for ext in [".txt", ".md", ".rst"]):
         document_type = "text"
         chunking_strategy = "hybrid"  # Balanced approach
-    elif any(
-        filename_lower.endswith(ext) for ext in [".json", ".xml", ".yml", ".yaml"]
-    ):
+    elif any(filename_lower.endswith(ext) for ext in [".json", ".xml", ".yml", ".yaml"]):
         document_type = "structured"
         chunking_strategy = "fixed"  # Preserve structure
-    elif any(
-        filename_lower.endswith(ext) for ext in [".py", ".js", ".java", ".cpp", ".c"]
-    ):
+    elif any(filename_lower.endswith(ext) for ext in [".py", ".js", ".java", ".cpp", ".c"]):
         document_type = "code"
         chunking_strategy = "fixed"  # Preserve code blocks
     elif any(filename_lower.endswith(ext) for ext in [".csv", ".xlsx", ".xls"]):
@@ -152,15 +146,11 @@ async def upload_file(
     file: UploadFile = File(...),
     project_id: Optional[str] = Form(None),
     tags: Optional[str] = Form(None),  # JSON string of tags
-    process_for_knowledge: Optional[bool] = Form(
-        True
-    ),  # Auto-process for knowledge (default True)
+    process_for_knowledge: Optional[bool] = Form(True),  # Auto-process for knowledge (default True)
     embedding_model: Optional[str] = Form(
         "all-MiniLM-L6-v2"
     ),  # Embedding model for knowledge processing
-    chunking_strategy: Optional[str] = Form(
-        "hybrid"
-    ),  # Chunking strategy for knowledge processing
+    chunking_strategy: Optional[str] = Form("hybrid"),  # Chunking strategy for knowledge processing
     storage_service: FileStorageService = Depends(get_file_storage_service),
     db: DatabaseService = Depends(get_db_service),
     authorization: Optional[str] = Header(None),
@@ -268,7 +258,9 @@ async def upload_file(
                     import httpx
 
                     camunda_url = "http://localhost:8080/engine-rest"
-                    start_url = f"{camunda_url}/process-definition/key/automatic_knowledge_processing/start"
+                    start_url = (
+                        f"{camunda_url}/process-definition/key/automatic_knowledge_processing/start"
+                    )
 
                     payload = {
                         "variables": {
@@ -291,9 +283,7 @@ async def upload_file(
                         }
                     }
 
-                    async with httpx.AsyncClient(
-                        timeout=10
-                    ) as client:  # Shorter timeout
+                    async with httpx.AsyncClient(timeout=10) as client:  # Shorter timeout
                         response = await client.post(start_url, json=payload)
                         response.raise_for_status()
                         result = response.json()
@@ -304,9 +294,7 @@ async def upload_file(
                     )
 
                 except Exception as e:
-                    logger.error(
-                        f"❌ Knowledge processing failed for file {file_id}: {str(e)}"
-                    )
+                    logger.error(f"❌ Knowledge processing failed for file {file_id}: {str(e)}")
                     # Don't fail the upload if processing fails
                     pass
 
@@ -400,9 +388,7 @@ async def get_file_url(
         url = await storage_service.get_file_url(file_id, expires_in)
 
         if url is None:
-            raise HTTPException(
-                status_code=404, detail="File not found or URL generation failed"
-            )
+            raise HTTPException(status_code=404, detail="File not found or URL generation failed")
 
         return {
             "success": True,
@@ -444,18 +430,14 @@ async def delete_file(
         is_owner = file_metadata.get("created_by") == user["user_id"]
 
         if not (is_admin or is_owner):
-            raise HTTPException(
-                status_code=403, detail="Not authorized to delete this file"
-            )
+            raise HTTPException(status_code=403, detail="Not authorized to delete this file")
 
         success = await storage_service.delete_file(file_id)
 
         if success:
             return {"success": True, "message": f"File {file_id} deleted successfully"}
         else:
-            raise HTTPException(
-                status_code=404, detail="File not found or deletion failed"
-            )
+            raise HTTPException(status_code=404, detail="File not found or deletion failed")
 
     except HTTPException:
         raise
@@ -467,9 +449,7 @@ async def delete_file(
 @router.get("/", response_model=FileListResponse)
 async def list_files(
     project_id: Optional[str] = Query(None, description="Filter by project ID"),
-    include_public: bool = Query(
-        False, description="Include public files from other projects"
-    ),
+    include_public: bool = Query(False, description="Include public files from other projects"),
     limit: int = Query(100, description="Maximum number of results"),
     offset: int = Query(0, description="Result offset for pagination"),
     storage_service: FileStorageService = Depends(get_file_storage_service),
@@ -540,9 +520,7 @@ async def get_storage_info(
 
     except Exception as e:
         logger.error(f"Failed to get storage info: {e}")
-        raise HTTPException(
-            status_code=500, detail=f"Failed to get storage info: {str(e)}"
-        )
+        raise HTTPException(status_code=500, detail=f"Failed to get storage info: {str(e)}")
 
 
 @router.put("/{file_id}/tags")
@@ -562,9 +540,7 @@ async def update_file_tags(
         is_owner = file_metadata.get("created_by") == user["user_id"]
 
         if not (is_admin or is_owner):
-            raise HTTPException(
-                status_code=403, detail="Not authorized to edit this file"
-            )
+            raise HTTPException(status_code=403, detail="Not authorized to edit this file")
 
         ok = await storage_service.update_file_tags(file_id, body.tags or {})
         if not ok:
@@ -619,9 +595,7 @@ async def import_file_by_url(
             created_by=user["user_id"],  # Track file ownership
         )
         if not result.get("success"):
-            raise HTTPException(
-                status_code=500, detail=result.get("error") or "Store failed"
-            )
+            raise HTTPException(status_code=500, detail=result.get("error") or "Store failed")
         md = result["metadata"]
         return {
             "success": True,
@@ -695,9 +669,7 @@ async def batch_upload_files(
                     )
 
             except Exception as e:
-                results.append(
-                    {"filename": file.filename, "success": False, "error": str(e)}
-                )
+                results.append({"filename": file.filename, "success": False, "error": str(e)})
 
         # Calculate summary statistics
         successful_uploads = sum(1 for r in results if r["success"])
@@ -817,9 +789,7 @@ async def extract_requirements_by_keywords(
     sentences using the configured keyword list, then save as RDF to Fuseki.
     """
     try:
-        files = await storage_service.list_files(
-            project_id=project_id, limit=1000, offset=0
-        )
+        files = await storage_service.list_files(project_id=project_id, limit=1000, offset=0)
         if not files:
             return {
                 "success": True,
@@ -940,9 +910,7 @@ async def update_file_visibility(
                 "message": f"File visibility updated to {visibility}",
             }
         else:
-            raise HTTPException(
-                status_code=500, detail="Failed to update file visibility"
-            )
+            raise HTTPException(status_code=500, detail="Failed to update file visibility")
 
     except HTTPException:
         raise

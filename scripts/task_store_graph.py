@@ -76,11 +76,7 @@ def store_results_in_graph_db(processed_requirements: List[Dict]) -> Dict[str, A
                     (
                         f"req:{req_id}",
                         "EXTRACTION_CONFIDENCE",
-                        str(
-                            req["original_requirement"].get(
-                                "extraction_confidence", 0.0
-                            )
-                        ),
+                        str(req["original_requirement"].get("extraction_confidence", 0.0)),
                     ),
                     (
                         f"req:{req_id}",
@@ -119,9 +115,7 @@ def store_results_in_graph_db(processed_requirements: List[Dict]) -> Dict[str, A
                     )
 
                     # Link requirement to iteration
-                    triples.append(
-                        (f"req:{req_id}", "HAS_ITERATION", f"iter:{iter_id}")
-                    )
+                    triples.append((f"req:{req_id}", "HAS_ITERATION", f"iter:{iter_id}"))
 
                     # Extract entities from LLM response (if available)
                     if "extracted_entities" in iteration["llm_response"]:
@@ -172,9 +166,7 @@ def store_results_in_graph_db(processed_requirements: List[Dict]) -> Dict[str, A
 
                     # Extract performance requirements
                     if "performance_requirements" in iteration["llm_response"]:
-                        for perf_req in iteration["llm_response"][
-                            "performance_requirements"
-                        ]:
+                        for perf_req in iteration["llm_response"]["performance_requirements"]:
                             perf_id = f"perf:{perf_req}_{iter_id}"
                             triples.extend(
                                 [
@@ -195,9 +187,7 @@ def store_results_in_graph_db(processed_requirements: List[Dict]) -> Dict[str, A
 
                     # Extract quality attributes
                     if "quality_attributes" in iteration["llm_response"]:
-                        for quality_attr in iteration["llm_response"][
-                            "quality_attributes"
-                        ]:
+                        for quality_attr in iteration["llm_response"]["quality_attributes"]:
                             quality_id = f"quality:{quality_attr}_{iter_id}"
                             triples.extend(
                                 [
@@ -216,9 +206,7 @@ def store_results_in_graph_db(processed_requirements: List[Dict]) -> Dict[str, A
                                 ]
                             )
 
-                    print(
-                        f"  Created graph nodes for iteration {iteration['iteration']}"
-                    )
+                    print(f"  Created graph nodes for iteration {iteration['iteration']}")
 
         # Store in graph database
         if triples:
@@ -231,9 +219,7 @@ def store_results_in_graph_db(processed_requirements: List[Dict]) -> Dict[str, A
                 unique_nodes = set()
                 for triple in triples:
                     unique_nodes.add(triple[0])  # Subject
-                    unique_nodes.add(
-                        triple[2]
-                    )  # Object (if it's a node, not a literal)
+                    unique_nodes.add(triple[2])  # Object (if it's a node, not a literal)
 
                 graph_store_status["nodes_created"] = len(unique_nodes)
                 graph_store_status["relationships_created"] = len(triples)
@@ -254,21 +240,13 @@ def store_results_in_graph_db(processed_requirements: List[Dict]) -> Dict[str, A
         graph_store_status["metadata"].update(
             {
                 "storage_duration": storage_time,
-                "triples_per_second": (
-                    len(triples) / storage_time if storage_time > 0 else 0
-                ),
+                "triples_per_second": (len(triples) / storage_time if storage_time > 0 else 0),
                 "total_requirements_processed": len(processed_requirements),
                 "total_iterations_processed": sum(
                     len(req["iterations"]) for req in processed_requirements
                 ),
                 "successful_iterations": sum(
-                    len(
-                        [
-                            iter
-                            for iter in req["iterations"]
-                            if iter["status"] == "success"
-                        ]
-                    )
+                    len([iter for iter in req["iterations"] if iter["status"] == "success"])
                     for req in processed_requirements
                 ),
                 "storage_timestamp": time.time(),
@@ -292,9 +270,7 @@ def _categorize_entity(entity_name: str) -> str:
     """Categorize entity based on name patterns."""
     entity_lower = entity_name.lower()
 
-    if any(
-        word in entity_lower for word in ["system", "component", "module", "subsystem"]
-    ):
+    if any(word in entity_lower for word in ["system", "component", "module", "subsystem"]):
         return "SystemComponent"
     elif any(word in entity_lower for word in ["interface", "api", "protocol"]):
         return "Interface"

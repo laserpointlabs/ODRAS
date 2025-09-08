@@ -22,9 +22,7 @@ sys.path.insert(0, str(project_root))
 from backend.services.config import Settings
 
 
-async def activate_knowledge_asset(
-    knowledge_asset_id: str, processing_data: dict = None
-):
+async def activate_knowledge_asset(knowledge_asset_id: str, processing_data: dict = None):
     """Activate knowledge asset by updating status to 'active'."""
     try:
         settings = Settings()
@@ -88,9 +86,7 @@ async def activate_knowledge_asset(
                     "embedding_dimensions": 384,  # Standard for all-MiniLM-L6-v2
                     "processing_method": "bpmn_workflow",
                     "workflow_completed": True,
-                    "source_filename": current_metadata.get(
-                        "source_filename", "unknown"
-                    ),
+                    "source_filename": current_metadata.get("source_filename", "unknown"),
                     "created_via": current_metadata.get("created_via", "bpmn_workflow"),
                 }
 
@@ -114,9 +110,7 @@ async def activate_knowledge_asset(
                 conn.commit()
 
                 if rows_updated > 0:
-                    print(
-                        f"✅ Knowledge asset {knowledge_asset_id} activated successfully"
-                    )
+                    print(f"✅ Knowledge asset {knowledge_asset_id} activated successfully")
 
                     # Get asset details for reporting
                     cur.execute(
@@ -133,9 +127,7 @@ async def activate_knowledge_asset(
                     asset_row = cur.fetchone()
                     if asset_row:
                         title, doc_type, chunk_count, source_filename = asset_row
-                        print(
-                            f"📋 Asset details: {title} ({doc_type}) - {chunk_count} chunks"
-                        )
+                        print(f"📋 Asset details: {title} ({doc_type}) - {chunk_count} chunks")
 
                     result = {
                         "success": True,
@@ -167,9 +159,7 @@ async def activate_knowledge_asset(
                     if existing_status:
                         current_status = existing_status[0]
                         if current_status == "active":
-                            print(
-                                f"ℹ️ Knowledge asset {knowledge_asset_id} already active"
-                            )
+                            print(f"ℹ️ Knowledge asset {knowledge_asset_id} already active")
                             result = {
                                 "success": True,
                                 "knowledge_asset_id": knowledge_asset_id,
@@ -189,9 +179,7 @@ async def activate_knowledge_asset(
                                 "step_status": "completed",
                             }
                     else:
-                        raise ValueError(
-                            f"Knowledge asset {knowledge_asset_id} not found"
-                        )
+                        raise ValueError(f"Knowledge asset {knowledge_asset_id} not found")
 
         finally:
             knowledge_service.db_service._return(conn)

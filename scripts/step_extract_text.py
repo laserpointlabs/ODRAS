@@ -36,9 +36,7 @@ async def extract_text_from_file(file_id: str, project_id: str):
         print(f"🔍 Step 1: Extracting text from file {file_id}")
 
         # Extract text content using existing service method
-        extracted_text, extraction_metadata = (
-            await knowledge_service.extract_text_content(file_id)
-        )
+        extracted_text, extraction_metadata = await knowledge_service.extract_text_content(file_id)
 
         if not extracted_text or not extracted_text.strip():
             raise ValueError("No text content could be extracted from file")

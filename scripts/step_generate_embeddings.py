@@ -22,9 +22,7 @@ from backend.services.embedding_service import get_embedding_service
 from backend.services.config import Settings
 
 
-async def generate_chunk_embeddings(
-    file_id: str, embedding_model: str = "all-MiniLM-L6-v2"
-):
+async def generate_chunk_embeddings(file_id: str, embedding_model: str = "all-MiniLM-L6-v2"):
     """Generate vector embeddings for document chunks."""
     try:
         settings = Settings()
@@ -32,9 +30,7 @@ async def generate_chunk_embeddings(
         # Get embedding service
         embedding_service = get_embedding_service(settings)
 
-        print(
-            f"🧮 Step 3: Generating embeddings for file {file_id} using {embedding_model}"
-        )
+        print(f"🧮 Step 3: Generating embeddings for file {file_id} using {embedding_model}")
 
         # Read chunks from previous step
         chunks_file = f"/tmp/odras_chunks_{file_id}.json"
@@ -85,9 +81,7 @@ async def generate_chunk_embeddings(
             "embedding_model": embedding_model,
             "chunks_processed": len(chunks_with_embeddings),
             "embedding_dimensions": (
-                len(chunks_with_embeddings[0]["embedding"])
-                if chunks_with_embeddings
-                else 0
+                len(chunks_with_embeddings[0]["embedding"]) if chunks_with_embeddings else 0
             ),
             "embeddings_file": embeddings_file,
             "step": "embedding_generation",

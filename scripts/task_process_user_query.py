@@ -166,20 +166,13 @@ def classify_query_type(query: str) -> str:
     """Classify the type of query."""
     query_lower = query.lower()
 
-    if any(
-        word in query_lower for word in ["define", "definition", "what is", "what are"]
-    ):
+    if any(word in query_lower for word in ["define", "definition", "what is", "what are"]):
         return "definition"
-    elif any(
-        word in query_lower
-        for word in ["how to", "how do", "how can", "steps", "process"]
-    ):
+    elif any(word in query_lower for word in ["how to", "how do", "how can", "steps", "process"]):
         return "procedural"
     elif any(word in query_lower for word in ["compare", "difference", "versus", "vs"]):
         return "comparison"
-    elif any(
-        word in query_lower for word in ["list", "enumerate", "show me", "give me"]
-    ):
+    elif any(word in query_lower for word in ["list", "enumerate", "show me", "give me"]):
         return "enumeration"
     elif "?" in query:
         return "question"
@@ -243,9 +236,7 @@ def calculate_complexity_score(query: str, key_terms: List[str]) -> float:
     length_score = min(len(query) / 200, 1.0)  # Normalize to max 200 chars
     term_score = min(len(key_terms) / 10, 1.0)  # Normalize to max 10 terms
     structure_score = (
-        0.5
-        if "?" in query or any(word in query.lower() for word in ["and", "or", "but"])
-        else 0.3
+        0.5 if "?" in query or any(word in query.lower() for word in ["and", "or", "but"]) else 0.3
     )
 
     return (length_score + term_score + structure_score) / 3
