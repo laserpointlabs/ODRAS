@@ -42,11 +42,6 @@ jobs:
         image: qdrant/qdrant:latest
         ports:
           - 6333:6333
-        options: >-
-          --health-cmd "curl -f http://localhost:6333/health"
-          --health-interval 10s
-          --health-timeout 5s
-          --health-retries 5
       
       neo4j:
         image: neo4j:5
@@ -56,11 +51,6 @@ jobs:
         ports:
           - 7474:7474
           - 7687:7687
-        options: >-
-          --health-cmd "curl -f http://localhost:7474"
-          --health-interval 10s
-          --health-timeout 5s
-          --health-retries 5
       
       fuseki:
         image: stain/jena-fuseki
