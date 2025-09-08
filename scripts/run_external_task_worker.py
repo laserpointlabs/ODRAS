@@ -34,7 +34,6 @@ worker = None
 
 def signal_handler(signum, frame):
     """Handle shutdown signals."""
-    global worker
     logger.info(f"Received signal {signum}, shutting down worker...")
     if worker:
         worker.stop()
