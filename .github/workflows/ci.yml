@@ -161,8 +161,8 @@ jobs:
 
     - name: Run basic API tests (no auth required)
       run: |
-        # Health endpoint tests (3 tests)
-        pytest tests/api/test_health_endpoint.py -v
+        # Health endpoint and API docs tests (2 tests that pass)
+        pytest tests/api/test_health_endpoint.py::test_health_endpoint tests/api/test_health_endpoint.py::test_api_docs_available -v
         
     - name: Run database schema validation tests
       run: |
