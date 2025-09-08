@@ -31,7 +31,9 @@ except ImportError:
     HAS_EMBEDDING_SERVICE = False
 
 
-def retrieve_context(processed_query: Dict, search_parameters: Dict = None) -> Dict[str, Any]:
+def retrieve_context(
+    processed_query: Dict, search_parameters: Dict = None
+) -> Dict[str, Any]:
     """
     Retrieve relevant context from vector database.
 
@@ -75,7 +77,9 @@ def retrieve_context(processed_query: Dict, search_parameters: Dict = None) -> D
             )  # Use mock for now
         else:
             # Fallback mock implementation for testing
-            result = perform_mock_search(query_text, primary_terms, max_results, min_similarity)
+            result = perform_mock_search(
+                query_text, primary_terms, max_results, min_similarity
+            )
 
         # Add search metadata
         result["search_metadata"] = {
@@ -92,7 +96,9 @@ def retrieve_context(processed_query: Dict, search_parameters: Dict = None) -> D
         print(f"Context retrieval completed")
         print(f"Retrieved {len(result['retrieved_chunks'])} chunks")
         if result["retrieval_stats"]:
-            print(f"Average similarity: {result['retrieval_stats'].get('avg_similarity', 'N/A')}")
+            print(
+                f"Average similarity: {result['retrieval_stats'].get('avg_similarity', 'N/A')}"
+            )
 
     except Exception as e:
         result["processing_status"] = "failure"
@@ -147,7 +153,9 @@ async def perform_async_vector_search(
         # Calculate statistics
         stats = {
             "total_results": len(retrieved_chunks),
-            "avg_similarity": (sum(similarities) / len(similarities) if similarities else 0.0),
+            "avg_similarity": (
+                sum(similarities) / len(similarities) if similarities else 0.0
+            ),
             "max_similarity": max(similarities) if similarities else 0.0,
             "min_similarity": min(similarities) if similarities else 0.0,
             "search_method": "knowledge_chunks_collection",
@@ -240,7 +248,9 @@ def perform_mock_search(
     similarities = [chunk["similarity_score"] for chunk in retrieved_chunks]
     stats = {
         "total_results": len(retrieved_chunks),
-        "avg_similarity": (sum(similarities) / len(similarities) if similarities else 0.0),
+        "avg_similarity": (
+            sum(similarities) / len(similarities) if similarities else 0.0
+        ),
         "max_similarity": max(similarities) if similarities else 0.0,
         "min_similarity": min(similarities) if similarities else 0.0,
         "search_method": "mock_search",

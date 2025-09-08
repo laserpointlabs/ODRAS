@@ -37,7 +37,9 @@ class PersistenceLayer:
                 logger.info(f"Creating Qdrant collection: {self.collection}")
                 self.qdrant.recreate_collection(
                     collection_name=self.collection,
-                    vectors_config=qmodels.VectorParams(size=384, distance=qmodels.Distance.COSINE),
+                    vectors_config=qmodels.VectorParams(
+                        size=384, distance=qmodels.Distance.COSINE
+                    ),
                 )
             else:
                 logger.debug(f"Qdrant collection {self.collection} already exists")
@@ -65,7 +67,8 @@ class PersistenceLayer:
             points = []
             for idx, (vec, pl) in enumerate(zip(embeddings, payloads)):
                 pid = (
-                    pl.get("id") or hashlib.md5(str(pl).encode(), usedforsecurity=False).hexdigest()
+                    pl.get("id")
+                    or hashlib.md5(str(pl).encode(), usedforsecurity=False).hexdigest()
                 )
                 points.append(qmodels.PointStruct(id=pid, vector=vec, payload=pl))
 
@@ -184,7 +187,9 @@ class PersistenceLayer:
                 self.settings, "fuseki_password", None
             ):
                 try:
-                    sparql.setCredentials(self.settings.fuseki_user, self.settings.fuseki_password)
+                    sparql.setCredentials(
+                        self.settings.fuseki_user, self.settings.fuseki_password
+                    )
                 except Exception:
                     pass
 

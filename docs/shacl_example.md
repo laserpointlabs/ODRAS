@@ -42,8 +42,8 @@ graph TD
 ```mermaid
 flowchart LR
   %% ====== NodeShapes ======
-  SComp[":ComponentShape\nsh:NodeShape\nsh:targetClass :Component"]
-  SMass[":MassQuantityShape\nsh:NodeShape\n(Reusable QUDT template)"]
+  SComp[":ComponentShape<br>sh:NodeShape<br>sh:targetClass :Component"]
+  SMass[":MassQuantityShape<br>sh:NodeShape<br>(Reusable QUDT template)"]
 
   %% ====== PropertyShapes attached to ComponentShape ======
   SComp_Name["sh:property\npath :hasName\nxsd:string\nmin/max = 1"]

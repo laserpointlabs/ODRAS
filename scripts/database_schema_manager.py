@@ -170,11 +170,15 @@ class DatabaseSchemaManager:
         # Check for duplicate versions
         version_counts = {}
         for migration in migrations:
-            version_counts[migration.version] = version_counts.get(migration.version, 0) + 1
+            version_counts[migration.version] = (
+                version_counts.get(migration.version, 0) + 1
+            )
 
         for version, count in version_counts.items():
             if count > 1:
-                errors.append(f"Duplicate migration version {version} found {count} times")
+                errors.append(
+                    f"Duplicate migration version {version} found {count} times"
+                )
 
         # Check migration dependencies
         for migration in migrations:
@@ -199,12 +203,16 @@ class DatabaseSchemaManager:
                         outdated_migrations.append(migration.filename)
 
                 if outdated_migrations:
-                    warnings.append(f"Outdated migrations detected: {outdated_migrations}")
+                    warnings.append(
+                        f"Outdated migrations detected: {outdated_migrations}"
+                    )
 
             except Exception as e:
                 warnings.append(f"Error reading schema info file: {e}")
         else:
-            warnings.append("Schema info file not found - run 'update_schema_info' first")
+            warnings.append(
+                "Schema info file not found - run 'update_schema_info' first"
+            )
 
         is_valid = len(errors) == 0
         return SchemaValidationResult(
@@ -310,7 +318,9 @@ class DatabaseSchemaManager:
                             missing_in_script.append(migration)
 
                     if missing_in_script:
-                        print(f"❌ Migrations missing from odras.sh: {missing_in_script}")
+                        print(
+                            f"❌ Migrations missing from odras.sh: {missing_in_script}"
+                        )
                         return False
                     else:
                         print("✅ odras.sh init-db is up to date")
@@ -533,8 +543,12 @@ def main():
         ],
         help="Command to execute",
     )
-    parser.add_argument("--description", help="Description for new migration (used with 'create')")
-    parser.add_argument("--output", help="Output file for documentation (used with 'docs')")
+    parser.add_argument(
+        "--description", help="Description for new migration (used with 'create')"
+    )
+    parser.add_argument(
+        "--output", help="Output file for documentation (used with 'docs')"
+    )
 
     args = parser.parse_args()
 

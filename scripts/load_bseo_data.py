@@ -11,7 +11,9 @@ from typing import Dict, Any, List
 import requests
 import httpx
 
-logging.basicConfig(level=logging.INFO, format="%(asctime)s - %(levelname)s - %(message)s")
+logging.basicConfig(
+    level=logging.INFO, format="%(asctime)s - %(levelname)s - %(message)s"
+)
 logger = logging.getLogger(__name__)
 
 # Configuration
@@ -131,7 +133,9 @@ async def main():
 
     success_count = 0
     for ontology in ontologies:
-        success = await load_ontology_data(ontology["name"], ontology["file"], ontology["label"])
+        success = await load_ontology_data(
+            ontology["name"], ontology["file"], ontology["label"]
+        )
         if success:
             success_count += 1
 

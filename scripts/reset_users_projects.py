@@ -48,7 +48,9 @@ def main():
             # Ontologies registry
             cur.execute("TRUNCATE TABLE public.ontologies_registry;")
             conn.commit()
-            print("Truncated users, projects, memberships, jobs, requirements, ontologies registry")
+            print(
+                "Truncated users, projects, memberships, jobs, requirements, ontologies registry"
+            )
 
             # Seed two users
             cur.execute(

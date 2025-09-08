@@ -36,7 +36,9 @@ def invalidate_session():
         print(f"✅ Invalidated {affected_rows} user session(s)")
         print("🔄 All users will need to log in again")
         print("\n📝 Test Instructions:")
-        print("1. Try to interact with the application (click buttons, save ontologies, etc.)")
+        print(
+            "1. Try to interact with the application (click buttons, save ontologies, etc.)"
+        )
         print("2. You should see a 'Session expired' toast notification")
         print("3. You should be automatically redirected to the login page")
         print("4. After logging in again, everything should work normally")
