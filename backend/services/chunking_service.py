@@ -164,9 +164,7 @@ class ChunkingService:
 
                 return sentences
             except:
-                logger.warning(
-                    "NLTK sentence tokenization failed, falling back to regex"
-                )
+                logger.warning("NLTK sentence tokenization failed, falling back to regex")
 
         # Fallback: regex-based sentence splitting
         sentence_pattern = r"(?<=[.!?])\s+"
@@ -271,11 +269,7 @@ class ChunkingService:
             return chunks
 
         # Get sentences if preserving boundaries
-        sentences = (
-            self.extract_sentences(text)
-            if preserve_sentences
-            else [(text, 0, len(text))]
-        )
+        sentences = self.extract_sentences(text) if preserve_sentences else [(text, 0, len(text))]
 
         current_chunk = ""
         current_start = 0
@@ -340,9 +334,7 @@ class ChunkingService:
         # Handle remaining content
         if current_chunk.strip():
             chunk_end = (
-                chunk_sentences[-1][2]
-                if chunk_sentences
-                else current_start + len(current_chunk)
+                chunk_sentences[-1][2] if chunk_sentences else current_start + len(current_chunk)
             )
 
             chunks.append(
@@ -361,9 +353,7 @@ class ChunkingService:
                 )
             )
 
-        logger.info(
-            f"Created {len(chunks)} fixed-size chunks from {len(text)} characters"
-        )
+        logger.info(f"Created {len(chunks)} fixed-size chunks from {len(text)} characters")
         return chunks
 
     def chunk_semantic(
@@ -415,19 +405,13 @@ class ChunkingService:
 
             # Check if this paragraph contains structure elements
             for header in structure["headers"]:
-                if (
-                    header["char_start"] >= para_start
-                    and header["char_end"] <= para_end
-                ):
+                if header["char_start"] >= para_start and header["char_end"] <= para_end:
                     chunk_type = "title"
                     confidence = 0.95
                     break
 
             for code_block in structure["code_blocks"]:
-                if (
-                    code_block["char_start"] >= para_start
-                    and code_block["char_end"] <= para_end
-                ):
+                if code_block["char_start"] >= para_start and code_block["char_end"] <= para_end:
                     chunk_type = "code"
                     confidence = 0.9
                     break
@@ -496,9 +480,7 @@ class ChunkingService:
 
             current_position = para_end
 
-        logger.info(
-            f"Created {len(chunks)} semantic chunks from {len(text)} characters"
-        )
+        logger.info(f"Created {len(chunks)} semantic chunks from {len(text)} characters")
         return chunks
 
     def chunk_hybrid(
@@ -532,8 +514,7 @@ class ChunkingService:
             # Check if semantic chunking produced reasonable results
             if semantic_chunks:
                 total_chars = sum(
-                    chunk.metadata.end_char - chunk.metadata.start_char
-                    for chunk in semantic_chunks
+                    chunk.metadata.end_char - chunk.metadata.start_char for chunk in semantic_chunks
                 )
                 coverage = total_chars / len(text) if text else 0
 
@@ -544,9 +525,7 @@ class ChunkingService:
                     return semantic_chunks
 
         except Exception as e:
-            logger.warning(
-                f"Semantic chunking failed, falling back to fixed-size: {str(e)}"
-            )
+            logger.warning(f"Semantic chunking failed, falling back to fixed-size: {str(e)}")
 
         # Fallback to fixed-size chunking
         logger.info("Falling back to fixed-size chunking strategy")
@@ -610,9 +589,7 @@ class ChunkingService:
                     if "page_number" in document_metadata:
                         chunk.metadata.page_number = document_metadata["page_number"]
 
-            logger.info(
-                f"Chunked document into {len(chunks)} chunks using {strategy} strategy"
-            )
+            logger.info(f"Chunked document into {len(chunks)} chunks using {strategy} strategy")
             return chunks
 
         except Exception as e:

@@ -48,14 +48,38 @@ class DatabaseService:
                 )
                 row = cur.fetchone()
                 if row:
-                    return dict(row)
+                    user_dict = dict(row)
+                    # Validate user_id is a proper UUID
+                    import uuid
+
+                    try:
+                        uuid.UUID(str(user_dict["user_id"]))
+                    except ValueError as e:
+                        logger.error(
+                            f"Invalid user_id in database for username {username}: {user_dict['user_id']!r}"
+                        )
+                        raise ValueError(
+                            f"Invalid user_id in database: {user_dict['user_id']!r}"
+                        ) from e
+                    return user_dict
                 cur.execute(
                     "INSERT INTO public.users (username, display_name, is_admin) VALUES (%s, %s, %s) RETURNING user_id, username, display_name, COALESCE(is_admin,false) AS is_admin",
                     (username, display_name or username, is_admin),
                 )
                 row = cur.fetchone()
                 conn.commit()
-                return dict(row)
+                user_dict = dict(row)
+                # Validate user_id is a proper UUID
+                import uuid
+
+                try:
+                    uuid.UUID(str(user_dict["user_id"]))
+                except ValueError as e:
+                    logger.error(
+                        f"Invalid user_id created for username {username}: {user_dict['user_id']!r}"
+                    )
+                    raise ValueError(f"Invalid user_id created: {user_dict['user_id']!r}") from e
+                return user_dict
         finally:
             self._return(conn)
 
@@ -241,9 +265,7 @@ class DatabaseService:
         finally:
             self._return(conn)
 
-    def update_ontology_reference_status(
-        self, graph_iri: str, is_reference: bool
-    ) -> bool:
+    def update_ontology_reference_status(self, graph_iri: str, is_reference: bool) -> bool:
         """Update the reference status of an ontology."""
         conn = self._conn()
         try:

@@ -44,6 +44,15 @@ def _update_token_last_used(token_hash: str):
 
 def create_token(user_id: str, username: str, is_admin: bool, token: str) -> None:
     """Create a new authentication token in the database."""
+    # Validate user_id is a valid UUID format
+    import uuid
+
+    try:
+        uuid.UUID(user_id)
+    except ValueError as e:
+        logger.error(f"Invalid user_id format: {user_id!r} for username: {username}")
+        raise ValueError(f"Invalid user_id format: {user_id!r}. Expected UUID format.") from e
+
     token_hash = _hash_token(token)
     db = _get_db_service()
     conn = db._conn()

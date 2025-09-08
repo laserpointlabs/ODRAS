@@ -35,9 +35,7 @@ sys.path.append(os.path.join(os.path.dirname(__file__), "..", "backend"))
 from services.config import Settings
 
 
-def validate_document(
-    document_path: str, filename: str, mime_type: str = None
-) -> Dict[str, Any]:
+def validate_document(document_path: str, filename: str, mime_type: str = None) -> Dict[str, Any]:
     """
     Validate document for RAG pipeline processing.
 
@@ -60,9 +58,7 @@ def validate_document(
         # Check if file exists
         if not os.path.exists(document_path):
             validation_result["validation_result"] = "failure"
-            validation_result["validation_errors"].append(
-                f"File not found: {document_path}"
-            )
+            validation_result["validation_errors"].append(f"File not found: {document_path}")
             return validation_result
 
         # Get file stats
@@ -111,9 +107,7 @@ def validate_document(
 
         if mime_type not in supported_types:
             validation_result["validation_result"] = "failure"
-            validation_result["validation_errors"].append(
-                f"Unsupported file type: {mime_type}"
-            )
+            validation_result["validation_errors"].append(f"Unsupported file type: {mime_type}")
             return validation_result
 
         # Calculate file hash for deduplication
