@@ -92,7 +92,9 @@ def cleanup_fuseki_data(dry_run=True):
         fuseki_url = os.environ.get("FUSEKI_URL", "http://localhost:3030")
         fuseki_user = os.environ.get("FUSEKI_USER", "")
         fuseki_password = os.environ.get("FUSEKI_PASSWORD", "")
-        auth = (fuseki_user, fuseki_password) if fuseki_user and fuseki_password else None
+        auth = (
+            (fuseki_user, fuseki_password) if fuseki_user and fuseki_password else None
+        )
 
         # List datasets
         datasets_url = f"{fuseki_url}/$/datasets"
@@ -132,7 +134,9 @@ def cleanup_fuseki_data(dry_run=True):
                         results = graph_response.json()
                         graphs = [
                             binding["g"]["value"]
-                            for binding in results.get("results", {}).get("bindings", [])
+                            for binding in results.get("results", {}).get(
+                                "bindings", []
+                            )
                         ]
 
                         print(f"    Found {len(graphs)} named graphs")
@@ -196,7 +200,9 @@ def cleanup_qdrant_data(dry_run=True):
 
                     if info_response.status_code == 200:
                         info_data = info_response.json()
-                        points_count = info_data.get("result", {}).get("points_count", 0)
+                        points_count = info_data.get("result", {}).get(
+                            "points_count", 0
+                        )
                         print(
                             f"  Would delete collection '{collection_name}' with {points_count} points"
                         )
@@ -225,7 +231,9 @@ def main():
     """Main function to clean up floating data."""
     import argparse
 
-    parser = argparse.ArgumentParser(description="Clean up floating data in ODRAS system")
+    parser = argparse.ArgumentParser(
+        description="Clean up floating data in ODRAS system"
+    )
     parser.add_argument(
         "--dry-run",
         action="store_true",
@@ -240,8 +248,12 @@ def main():
     parser.add_argument(
         "--postgres-only", action="store_true", help="Only clean up PostgreSQL data"
     )
-    parser.add_argument("--fuseki-only", action="store_true", help="Only clean up Fuseki data")
-    parser.add_argument("--qdrant-only", action="store_true", help="Only clean up Qdrant data")
+    parser.add_argument(
+        "--fuseki-only", action="store_true", help="Only clean up Fuseki data"
+    )
+    parser.add_argument(
+        "--qdrant-only", action="store_true", help="Only clean up Qdrant data"
+    )
 
     args = parser.parse_args()
 

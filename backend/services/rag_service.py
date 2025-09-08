@@ -89,7 +89,9 @@ class RAGService:
                 "success": True,
                 "response": response_data["answer"],
                 "confidence": response_data.get("confidence", "medium"),
-                "sources": (self._format_sources(relevant_chunks) if include_metadata else []),
+                "sources": (
+                    self._format_sources(relevant_chunks) if include_metadata else []
+                ),
                 "query": question,
                 "chunks_found": len(relevant_chunks),
                 "response_style": response_style,
@@ -98,7 +100,9 @@ class RAGService:
                 "provider": self.settings.llm_provider,
             }
 
-            logger.info(f"Successfully generated RAG response with {len(relevant_chunks)} chunks")
+            logger.info(
+                f"Successfully generated RAG response with {len(relevant_chunks)} chunks"
+            )
             return result
 
         except Exception as e:
@@ -157,8 +161,14 @@ class RAGService:
             asset_id = chunk_metadata.get("asset_id")
 
             # Skip chunks with invalid or missing metadata
-            if not chunk_project_id or not user_id or chunk_project_id in ["unknown", "null", ""]:
-                logger.debug(f"Skipping chunk with invalid project_id: {chunk_project_id}")
+            if (
+                not chunk_project_id
+                or not user_id
+                or chunk_project_id in ["unknown", "null", ""]
+            ):
+                logger.debug(
+                    f"Skipping chunk with invalid project_id: {chunk_project_id}"
+                )
                 return False
 
             # Validate that chunk_project_id is a valid UUID format
@@ -167,7 +177,9 @@ class RAGService:
 
                 UUID(chunk_project_id)  # This will raise ValueError if not valid UUID
             except (ValueError, TypeError):
-                logger.debug(f"Skipping chunk with non-UUID project_id: {chunk_project_id}")
+                logger.debug(
+                    f"Skipping chunk with non-UUID project_id: {chunk_project_id}"
+                )
                 return False
 
             # Check if asset is public
@@ -194,7 +206,9 @@ class RAGService:
                 return chunk_project_id == project_id
 
             # Otherwise, check if user has access to chunk's project
-            return self.db_service.is_user_member(project_id=chunk_project_id, user_id=user_id)
+            return self.db_service.is_user_member(
+                project_id=chunk_project_id, user_id=user_id
+            )
 
         except Exception as e:
             logger.warning(f"Access check failed for chunk: {str(e)}")
@@ -227,7 +241,9 @@ class RAGService:
                 Focus on accuracy and completeness of technical information.""",
             }
 
-            system_prompt = system_prompts.get(response_style, system_prompts["comprehensive"])
+            system_prompt = system_prompts.get(
+                response_style, system_prompts["comprehensive"]
+            )
 
             # Create user prompt with context and question
             user_prompt = f"""Context from knowledge base:
@@ -337,7 +353,9 @@ Please provide a helpful response based on the context provided. If the context 
                         source = {
                             "asset_id": asset_id,
                             "title": asset_title,  # ACTUAL ASSET TITLE FROM DATABASE!
-                            "document_type": chunk_data.get("document_type", "document"),
+                            "document_type": chunk_data.get(
+                                "document_type", "document"
+                            ),
                             "chunk_id": chunk_data.get("chunk_id"),
                             "relevance_score": chunk.get("score", 0.0),
                         }
@@ -409,7 +427,9 @@ Please provide a helpful response based on the context provided. If the context 
 
             # Create query templates
             if doc_types:
-                for doc_type in list(doc_types)[:2]:  # Limit to avoid too many suggestions
+                for doc_type in list(doc_types)[
+                    :2
+                ]:  # Limit to avoid too many suggestions
                     suggestions.append(f"What are the key {doc_type} in this project?")
 
             if topics:

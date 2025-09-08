@@ -241,7 +241,9 @@ class DatabaseService:
         finally:
             self._return(conn)
 
-    def update_ontology_reference_status(self, graph_iri: str, is_reference: bool) -> bool:
+    def update_ontology_reference_status(
+        self, graph_iri: str, is_reference: bool
+    ) -> bool:
         """Update the reference status of an ontology."""
         conn = self._conn()
         try:

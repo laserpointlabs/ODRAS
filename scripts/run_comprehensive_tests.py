@@ -271,7 +271,9 @@ class ODRASTestRunner:
         """.strip()
 
         border_style = "green" if summary["critical_failures"] == 0 else "red"
-        console.print(Panel(summary_text, title="Test Summary", border_style=border_style))
+        console.print(
+            Panel(summary_text, title="Test Summary", border_style=border_style)
+        )
 
         # Detailed results table
         results_table = Table(title="Detailed Results")
@@ -328,7 +330,9 @@ async def main():
     parser.add_argument(
         "--base-url", default="http://localhost:8000", help="Base URL for API testing"
     )
-    parser.add_argument("--verbose", "-v", action="store_true", help="Enable verbose output")
+    parser.add_argument(
+        "--verbose", "-v", action="store_true", help="Enable verbose output"
+    )
     parser.add_argument("--output", "-o", help="Save results to JSON file")
     parser.add_argument("--suite", "-s", help="Run only specific test suite")
 

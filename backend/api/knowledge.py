@@ -69,7 +69,9 @@ class KnowledgeAssetResponse(BaseModel):
     is_public: bool = False
     made_public_at: Optional[str] = None
     made_public_by: Optional[str] = None
-    chunks: Optional[List["KnowledgeChunkResponse"]] = None  # Include chunks when requested
+    chunks: Optional[List["KnowledgeChunkResponse"]] = (
+        None  # Include chunks when requested
+    )
 
 
 class KnowledgeChunkResponse(BaseModel):
@@ -137,14 +139,18 @@ class RAGQueryRequest(BaseModel):
         min_length=3,
         max_length=500,
     )
-    project_id: Optional[str] = Field(None, description="Optional project scope for the query")
+    project_id: Optional[str] = Field(
+        None, description="Optional project scope for the query"
+    )
     max_chunks: int = Field(
         5, description="Maximum number of relevant chunks to retrieve", ge=1, le=20
     )
     similarity_threshold: float = Field(
         0.5, description="Minimum similarity score for relevance", ge=0.1, le=1.0
     )
-    include_metadata: bool = Field(True, description="Include source metadata in response")
+    include_metadata: bool = Field(
+        True, description="Include source metadata in response"
+    )
     response_style: str = Field("comprehensive", description="Response style")
 
 
@@ -203,21 +209,29 @@ def format_asset_response(asset_row: Dict) -> KnowledgeAssetResponse:
     return KnowledgeAssetResponse(
         id=str(asset_row["id"]),
         source_file_id=(
-            str(asset_row["source_file_id"]) if asset_row.get("source_file_id") else None
+            str(asset_row["source_file_id"])
+            if asset_row.get("source_file_id")
+            else None
         ),
         project_id=str(asset_row["project_id"]),
         title=asset_row["title"],
         document_type=asset_row["document_type"],
         content_summary=asset_row.get("content_summary"),
         metadata=asset_row.get("metadata", {}),
-        created_at=(asset_row["created_at"].isoformat() if asset_row.get("created_at") else ""),
-        updated_at=(asset_row["updated_at"].isoformat() if asset_row.get("updated_at") else ""),
+        created_at=(
+            asset_row["created_at"].isoformat() if asset_row.get("created_at") else ""
+        ),
+        updated_at=(
+            asset_row["updated_at"].isoformat() if asset_row.get("updated_at") else ""
+        ),
         version=asset_row.get("version", "1.0.0"),
         status=asset_row.get("status", "active"),
         processing_stats=asset_row.get("processing_stats", {}),
         is_public=asset_row.get("is_public", False),
         made_public_at=(
-            asset_row["made_public_at"].isoformat() if asset_row.get("made_public_at") else None
+            asset_row["made_public_at"].isoformat()
+            if asset_row.get("made_public_at")
+            else None
         ),
         made_public_by=asset_row.get("made_public_by"),
         chunks=asset_row.get("chunks"),  # Include chunks if present
@@ -270,11 +284,15 @@ async def list_knowledge_assets(
             # If no project_id specified, admin sees all assets (no additional filter needed)
         else:
             # Regular users see their project assets + public assets
-            user_projects = db.list_projects_for_user(user_id=user["user_id"], active=True)
+            user_projects = db.list_projects_for_user(
+                user_id=user["user_id"], active=True
+            )
 
             if project_id:
                 # Specific project: user's project assets + public assets
-                if not db.is_user_member(project_id=project_id, user_id=user["user_id"]):
+                if not db.is_user_member(
+                    project_id=project_id, user_id=user["user_id"]
+                ):
                     # User not in project, can only see public assets from this project
                     where_clauses.append("ka.project_id = %s AND ka.is_public = TRUE")
                     params.append(project_id)
@@ -311,7 +329,9 @@ async def list_knowledge_assets(
         try:
             with conn.cursor() as cur:
                 # Get total count
-                count_sql = f"SELECT COUNT(*) FROM knowledge_assets ka WHERE {where_sql}"
+                count_sql = (
+                    f"SELECT COUNT(*) FROM knowledge_assets ka WHERE {where_sql}"
+                )
                 cur.execute(count_sql, params)
                 total_count = cur.fetchone()[0]
 
@@ -343,7 +363,9 @@ async def list_knowledge_assets(
 
     except Exception as e:
         logger.error(f"Failed to list knowledge assets: {str(e)}")
-        raise HTTPException(status_code=500, detail=f"Failed to list knowledge assets: {str(e)}")
+        raise HTTPException(
+            status_code=500, detail=f"Failed to list knowledge assets: {str(e)}"
+        )
 
 
 @router.post("/assets", response_model=KnowledgeAssetResponse)
@@ -431,7 +453,9 @@ async def create_knowledge_asset(
         raise
     except Exception as e:
         logger.error(f"Failed to create knowledge asset: {str(e)}")
-        raise HTTPException(status_code=500, detail=f"Failed to create knowledge asset: {str(e)}")
+        raise HTTPException(
+            status_code=500, detail=f"Failed to create knowledge asset: {str(e)}"
+        )
 
 
 @router.get("/assets/{asset_id}", response_model=KnowledgeAssetResponse)
@@ -452,7 +476,9 @@ async def get_knowledge_asset(
         Knowledge asset details
     """
     try:
-        logger.info(f"Getting knowledge asset {asset_id} for user {user.get('user_id')}")
+        logger.info(
+            f"Getting knowledge asset {asset_id} for user {user.get('user_id')}"
+        )
 
         conn = db._conn()
         try:
@@ -492,7 +518,9 @@ async def get_knowledge_asset(
                     chunk_rows = cur.fetchall()
                     chunks = []
                     for chunk_row in chunk_rows:
-                        chunk_dict = dict(zip([desc[0] for desc in cur.description], chunk_row))
+                        chunk_dict = dict(
+                            zip([desc[0] for desc in cur.description], chunk_row)
+                        )
                         chunks.append(
                             KnowledgeChunkResponse(
                                 id=str(chunk_dict["id"]),
@@ -528,7 +556,9 @@ async def get_knowledge_asset(
         raise
     except Exception as e:
         logger.error(f"Failed to get knowledge asset {asset_id}: {str(e)}")
-        raise HTTPException(status_code=500, detail=f"Failed to get knowledge asset: {str(e)}")
+        raise HTTPException(
+            status_code=500, detail=f"Failed to get knowledge asset: {str(e)}"
+        )
 
 
 @router.put("/assets/{asset_id}", response_model=KnowledgeAssetResponse)
@@ -549,7 +579,9 @@ async def update_knowledge_asset(
         Updated knowledge asset
     """
     try:
-        logger.info(f"Updating knowledge asset {asset_id} by user {user.get('user_id')}")
+        logger.info(
+            f"Updating knowledge asset {asset_id} by user {user.get('user_id')}"
+        )
 
         conn = db._conn()
         try:
@@ -601,9 +633,7 @@ async def update_knowledge_asset(
                 params.append(datetime.now(timezone.utc))
                 params.append(asset_id)
 
-                update_sql = (
-                    f"UPDATE knowledge_assets SET {', '.join(updates)} WHERE id = %s RETURNING *"
-                )
+                update_sql = f"UPDATE knowledge_assets SET {', '.join(updates)} WHERE id = %s RETURNING *"
                 cur.execute(update_sql, params)
 
                 row = cur.fetchone()
@@ -620,7 +650,9 @@ async def update_knowledge_asset(
         raise
     except Exception as e:
         logger.error(f"Failed to update knowledge asset {asset_id}: {str(e)}")
-        raise HTTPException(status_code=500, detail=f"Failed to update knowledge asset: {str(e)}")
+        raise HTTPException(
+            status_code=500, detail=f"Failed to update knowledge asset: {str(e)}"
+        )
 
 
 @router.delete("/assets/{asset_id}")
@@ -639,7 +671,9 @@ async def delete_knowledge_asset(
         Deletion confirmation
     """
     try:
-        logger.info(f"Deleting knowledge asset {asset_id} by user {user.get('user_id')}")
+        logger.info(
+            f"Deleting knowledge asset {asset_id} by user {user.get('user_id')}"
+        )
 
         conn = db._conn()
         try:
@@ -672,7 +706,9 @@ async def delete_knowledge_asset(
                 cur.execute("DELETE FROM knowledge_assets WHERE id = %s", (asset_id,))
 
                 if cur.rowcount == 0:
-                    raise HTTPException(status_code=404, detail="Knowledge asset not found")
+                    raise HTTPException(
+                        status_code=404, detail="Knowledge asset not found"
+                    )
 
                 conn.commit()
                 logger.info(f"Deleted knowledge asset {asset_id} successfully")
@@ -689,7 +725,9 @@ async def delete_knowledge_asset(
         raise
     except Exception as e:
         logger.error(f"Failed to delete knowledge asset {asset_id}: {str(e)}")
-        raise HTTPException(status_code=500, detail=f"Failed to delete knowledge asset: {str(e)}")
+        raise HTTPException(
+            status_code=500, detail=f"Failed to delete knowledge asset: {str(e)}"
+        )
 
 
 @router.get("/assets/{asset_id}/content", response_model=AssetContentResponse)
@@ -708,7 +746,9 @@ async def get_knowledge_asset_content(
         Asset content with all chunks
     """
     try:
-        logger.info(f"Getting content for knowledge asset {asset_id} by user {user.get('user_id')}")
+        logger.info(
+            f"Getting content for knowledge asset {asset_id} by user {user.get('user_id')}"
+        )
 
         conn = db._conn()
         try:
@@ -755,7 +795,9 @@ async def get_knowledge_asset_content(
                 total_tokens = 0
 
                 for chunk_row in chunk_rows:
-                    chunk_dict = dict(zip([desc[0] for desc in cur.description], chunk_row))
+                    chunk_dict = dict(
+                        zip([desc[0] for desc in cur.description], chunk_row)
+                    )
                     chunks.append(
                         KnowledgeChunkResponse(
                             id=str(chunk_dict["id"]),
@@ -800,7 +842,9 @@ async def get_knowledge_asset_content(
         raise
     except Exception as e:
         logger.error(f"Failed to get content for asset {asset_id}: {str(e)}")
-        raise HTTPException(status_code=500, detail=f"Failed to get asset content: {str(e)}")
+        raise HTTPException(
+            status_code=500, detail=f"Failed to get asset content: {str(e)}"
+        )
 
 
 @router.put("/assets/{asset_id}/public", response_model=KnowledgeAssetResponse)
@@ -829,9 +873,13 @@ async def set_asset_public_status(
         try:
             with conn.cursor() as cur:
                 # Verify asset exists
-                cur.execute("SELECT id FROM knowledge_assets WHERE id = %s", (asset_id,))
+                cur.execute(
+                    "SELECT id FROM knowledge_assets WHERE id = %s", (asset_id,)
+                )
                 if not cur.fetchone():
-                    raise HTTPException(status_code=404, detail="Knowledge asset not found")
+                    raise HTTPException(
+                        status_code=404, detail="Knowledge asset not found"
+                    )
 
                 # Update public status
                 now = datetime.now(timezone.utc)
@@ -894,16 +942,22 @@ async def force_delete_knowledge_asset(
         Deletion confirmation
     """
     try:
-        logger.info(f"Force deleting knowledge asset {asset_id} by admin {user.get('user_id')}")
+        logger.info(
+            f"Force deleting knowledge asset {asset_id} by admin {user.get('user_id')}"
+        )
 
         conn = db._conn()
         try:
             with conn.cursor() as cur:
                 # Verify asset exists
-                cur.execute("SELECT id, title FROM knowledge_assets WHERE id = %s", (asset_id,))
+                cur.execute(
+                    "SELECT id, title FROM knowledge_assets WHERE id = %s", (asset_id,)
+                )
                 result = cur.fetchone()
                 if not result:
-                    raise HTTPException(status_code=404, detail="Knowledge asset not found")
+                    raise HTTPException(
+                        status_code=404, detail="Knowledge asset not found"
+                    )
 
                 asset_title = result[1]
 
@@ -911,10 +965,14 @@ async def force_delete_knowledge_asset(
                 cur.execute("DELETE FROM knowledge_assets WHERE id = %s", (asset_id,))
 
                 if cur.rowcount == 0:
-                    raise HTTPException(status_code=404, detail="Knowledge asset not found")
+                    raise HTTPException(
+                        status_code=404, detail="Knowledge asset not found"
+                    )
 
                 conn.commit()
-                logger.info(f"Force deleted knowledge asset {asset_id} ({asset_title}) by admin")
+                logger.info(
+                    f"Force deleted knowledge asset {asset_id} ({asset_title}) by admin"
+                )
 
                 return {
                     "success": True,
@@ -960,7 +1018,9 @@ async def list_processing_jobs(
             params.append(project_id)
         else:
             # Get user's accessible projects
-            user_projects = db.list_projects_for_user(user_id=user["user_id"], active=True)
+            user_projects = db.list_projects_for_user(
+                user_id=user["user_id"], active=True
+            )
             if not user_projects:
                 return []
 
@@ -1027,7 +1087,9 @@ async def list_processing_jobs(
         raise
     except Exception as e:
         logger.error(f"Failed to list processing jobs: {str(e)}")
-        raise HTTPException(status_code=500, detail=f"Failed to list processing jobs: {str(e)}")
+        raise HTTPException(
+            status_code=500, detail=f"Failed to list processing jobs: {str(e)}"
+        )
 
 
 # ========================================
@@ -1038,12 +1100,20 @@ async def list_processing_jobs(
 class KnowledgeSearchRequest(BaseModel):
     """Request model for knowledge search."""
 
-    query: str = Field(..., min_length=1, max_length=1000, description="Search query text")
+    query: str = Field(
+        ..., min_length=1, max_length=1000, description="Search query text"
+    )
     project_id: Optional[str] = Field(None, description="Filter by project ID")
-    document_types: Optional[List[str]] = Field(None, description="Filter by document types")
+    document_types: Optional[List[str]] = Field(
+        None, description="Filter by document types"
+    )
     limit: int = Field(10, ge=1, le=100, description="Maximum number of results")
-    min_score: float = Field(0.0, ge=0.0, le=1.0, description="Minimum similarity score")
-    include_metadata: bool = Field(True, description="Include chunk metadata in results")
+    min_score: float = Field(
+        0.0, ge=0.0, le=1.0, description="Minimum similarity score"
+    )
+    include_metadata: bool = Field(
+        True, description="Include chunk metadata in results"
+    )
 
 
 class KnowledgeSearchResult(BaseModel):
@@ -1087,7 +1157,9 @@ async def search_knowledge(
     start_time = time.time()
 
     try:
-        logger.info(f"Searching knowledge for user {user.get('user_id')}: '{search_request.query}'")
+        logger.info(
+            f"Searching knowledge for user {user.get('user_id')}: '{search_request.query}'"
+        )
 
         # Get embedding service and generate query embedding
         from ..services.embedding_service import get_embedding_service
@@ -1099,7 +1171,9 @@ async def search_knowledge(
         # Generate query embedding
         query_embedding = embedding_service.generate_embeddings([search_request.query])
         if not query_embedding:
-            raise HTTPException(status_code=500, detail="Failed to generate query embedding")
+            raise HTTPException(
+                status_code=500, detail="Failed to generate query embedding"
+            )
 
         query_vector = query_embedding[0]
 
@@ -1113,7 +1187,9 @@ async def search_knowledge(
                 search_filters["project_id"] = search_request.project_id
         else:
             # Regular users can only search their projects + public assets
-            user_projects = db.list_projects_for_user(user_id=user["user_id"], active=True)
+            user_projects = db.list_projects_for_user(
+                user_id=user["user_id"], active=True
+            )
             accessible_project_ids = [str(p["project_id"]) for p in user_projects]
 
             if search_request.project_id:
@@ -1176,7 +1252,9 @@ async def search_knowledge(
 
                     chunk_details = {}
                     for row in cur.fetchall():
-                        chunk_dict = dict(zip([desc[0] for desc in cur.description], row))
+                        chunk_dict = dict(
+                            zip([desc[0] for desc in cur.description], row)
+                        )
                         chunk_details[str(chunk_dict["chunk_id"])] = chunk_dict
 
                     # Build results with scores
@@ -1233,7 +1311,9 @@ async def search_knowledge(
 
 
 @router.post("/query", response_model=RAGQueryResponse)
-async def query_knowledge_base(request: RAGQueryRequest, user: Dict = Depends(get_user)):
+async def query_knowledge_base(
+    request: RAGQueryRequest, user: Dict = Depends(get_user)
+):
     """
     Query the knowledge base using RAG (Retrieval Augmented Generation).
 
@@ -1247,7 +1327,9 @@ async def query_knowledge_base(request: RAGQueryRequest, user: Dict = Depends(ge
         Generated response with sources and metadata
     """
     try:
-        logger.info(f"Processing RAG query from user {user.get('user_id')}: '{request.question}'")
+        logger.info(
+            f"Processing RAG query from user {user.get('user_id')}: '{request.question}'"
+        )
 
         # Get RAG service
         rag_service = get_rag_service()
@@ -1284,12 +1366,16 @@ async def query_knowledge_base(request: RAGQueryRequest, user: Dict = Depends(ge
         raise
     except Exception as e:
         logger.error(f"RAG query failed: {str(e)}")
-        raise HTTPException(status_code=500, detail=f"Failed to process query: {str(e)}")
+        raise HTTPException(
+            status_code=500, detail=f"Failed to process query: {str(e)}"
+        )
 
 
 @router.get("/query/suggestions", response_model=QuerySuggestionsResponse)
 async def get_query_suggestions(
-    project_id: Optional[str] = Query(None, description="Optional project ID to scope suggestions"),
+    project_id: Optional[str] = Query(
+        None, description="Optional project ID to scope suggestions"
+    ),
     limit: int = Query(5, ge=1, le=10, description="Maximum number of suggestions"),
     user: Dict = Depends(get_user),
 ):
@@ -1320,7 +1406,9 @@ async def get_query_suggestions(
         raise
     except Exception as e:
         logger.error(f"Failed to get query suggestions: {str(e)}")
-        raise HTTPException(status_code=500, detail=f"Failed to get suggestions: {str(e)}")
+        raise HTTPException(
+            status_code=500, detail=f"Failed to get suggestions: {str(e)}"
+        )
 
 
 @router.post("/search/semantic")
@@ -1328,7 +1416,9 @@ async def semantic_search_chunks(
     query: str = Body(..., description="Search query text"),
     project_id: Optional[str] = Body(None, description="Optional project scope"),
     limit: int = Body(10, ge=1, le=50, description="Maximum results to return"),
-    score_threshold: float = Body(0.7, ge=0.0, le=1.0, description="Minimum similarity score"),
+    score_threshold: float = Body(
+        0.7, ge=0.0, le=1.0, description="Minimum similarity score"
+    ),
     user: Dict = Depends(get_user),
 ):
     """
@@ -1347,7 +1437,9 @@ async def semantic_search_chunks(
         List of matching knowledge chunks with scores
     """
     try:
-        logger.info(f"Processing semantic search for user {user.get('user_id')}: '{query}'")
+        logger.info(
+            f"Processing semantic search for user {user.get('user_id')}: '{query}'"
+        )
 
         # Get RAG service for reusing chunk retrieval logic
         rag_service = get_rag_service()

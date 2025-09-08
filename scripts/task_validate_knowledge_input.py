@@ -55,7 +55,9 @@ def validate_knowledge_input(
         # Basic content validation
         if not content or not content.strip():
             validation_result["input_validation_result"] = "invalid"
-            validation_result["validation_feedback"].append("Knowledge content cannot be empty")
+            validation_result["validation_feedback"].append(
+                "Knowledge content cannot be empty"
+            )
             return validation_result
 
         # Check minimum content length
@@ -83,10 +85,14 @@ def validate_knowledge_input(
             try:
                 json_data = json.loads(content)
                 processed_content = json_data
-                validation_result["validation_feedback"].append("Valid JSON format detected")
+                validation_result["validation_feedback"].append(
+                    "Valid JSON format detected"
+                )
             except json.JSONDecodeError as e:
                 validation_result["input_validation_result"] = "invalid"
-                validation_result["validation_feedback"].append(f"Invalid JSON format: {str(e)}")
+                validation_result["validation_feedback"].append(
+                    f"Invalid JSON format: {str(e)}"
+                )
                 return validation_result
 
         # Content quality checks
@@ -96,7 +102,9 @@ def validate_knowledge_input(
         meaningful_chars = re.sub(r"[\s\W]", "", content)
         if len(meaningful_chars) < 5:
             validation_result["input_validation_result"] = "invalid"
-            validation_result["validation_feedback"].append("Content lacks meaningful information")
+            validation_result["validation_feedback"].append(
+                "Content lacks meaningful information"
+            )
             return validation_result
 
         # Calculate readability score (simple version)
