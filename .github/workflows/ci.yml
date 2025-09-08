@@ -74,7 +74,7 @@ jobs:
     - name: Check for security issues
       run: |
         pip install bandit
-        bandit -r backend/ -ll --severity-level high
+        bandit -r backend/ --severity-level high
     
     - name: Install additional test dependencies
       run: |
