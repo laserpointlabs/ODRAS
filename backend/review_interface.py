@@ -3,9 +3,7 @@ Requirements Review Interface HTML Generator
 """
 
 
-def generate_review_interface_html(
-    task_id: str = None, process_instance_id: str = None
-) -> str:
+def generate_review_interface_html(task_id: str = None, process_instance_id: str = None) -> str:
     """Generate the HTML for requirements review interface"""
 
     return f"""
