@@ -16,7 +16,13 @@ from dataclasses import dataclass
 from rich.console import Console
 from rich.table import Table
 from rich.panel import Panel
-from rich.progress import Progress, SpinnerColumn, TextColumn, BarColumn, TimeElapsedColumn
+from rich.progress import (
+    Progress,
+    SpinnerColumn,
+    TextColumn,
+    BarColumn,
+    TimeElapsedColumn,
+)
 
 console = Console()
 
@@ -58,13 +64,26 @@ class ODRASTestRunner:
             ),
             TestSuite(
                 name="integration_tests",
-                command=["python", "-m", "pytest", "tests/integration/", "-v", "--tb=short"],
+                command=[
+                    "python",
+                    "-m",
+                    "pytest",
+                    "tests/integration/",
+                    "-v",
+                    "--tb=short",
+                ],
                 description="Integration tests for workflows",
                 critical=True,
             ),
             TestSuite(
                 name="file_management_tests",
-                command=["python", "-m", "pytest", "tests/test_file_management.py", "-v"],
+                command=[
+                    "python",
+                    "-m",
+                    "pytest",
+                    "tests/test_file_management.py",
+                    "-v",
+                ],
                 description="File management specific tests",
                 critical=True,
             ),
@@ -224,7 +243,9 @@ class ODRASTestRunner:
                 "successful_suites": successful_suites,
                 "failed_suites": failed_suites,
                 "critical_failures": critical_failures,
-                "success_rate": (successful_suites / total_suites * 100) if total_suites > 0 else 0,
+                "success_rate": (
+                    (successful_suites / total_suites * 100) if total_suites > 0 else 0
+                ),
                 "total_duration": total_duration,
             },
             "results": self.results,
@@ -250,7 +271,9 @@ class ODRASTestRunner:
         """.strip()
 
         border_style = "green" if summary["critical_failures"] == 0 else "red"
-        console.print(Panel(summary_text, title="Test Summary", border_style=border_style))
+        console.print(
+            Panel(summary_text, title="Test Summary", border_style=border_style)
+        )
 
         # Detailed results table
         results_table = Table(title="Detailed Results")
@@ -307,7 +330,9 @@ async def main():
     parser.add_argument(
         "--base-url", default="http://localhost:8000", help="Base URL for API testing"
     )
-    parser.add_argument("--verbose", "-v", action="store_true", help="Enable verbose output")
+    parser.add_argument(
+        "--verbose", "-v", action="store_true", help="Enable verbose output"
+    )
     parser.add_argument("--output", "-o", help="Save results to JSON file")
     parser.add_argument("--suite", "-s", help="Run only specific test suite")
 

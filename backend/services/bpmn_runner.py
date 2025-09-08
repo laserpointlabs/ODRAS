@@ -23,7 +23,9 @@ class BPMNWorkflowRunner:
             "results": [],
         }
 
-    async def start_run(self, document_bytes: bytes, filename: str, iterations: int = 10) -> str:
+    async def start_run(
+        self, document_bytes: bytes, filename: str, iterations: int = 10
+    ) -> str:
         run_id = str(uuid.uuid4())
         self.status.update(
             {
@@ -48,7 +50,9 @@ class BPMNWorkflowRunner:
         collected_json: List[Dict[str, Any]] = []
         for i in range(iterations):
             for r in requirements:
-                json_obj = await self.llm_team.analyze_requirement(r, REQUIREMENT_SCHEMA)
+                json_obj = await self.llm_team.analyze_requirement(
+                    r, REQUIREMENT_SCHEMA
+                )
                 json_obj.setdefault("id", f"{uuid.uuid4()}_{i}")
                 json_obj.setdefault("text", r)
                 collected_json.append(json_obj)
@@ -72,7 +76,11 @@ class BPMNWorkflowRunner:
                 triples.append((f"req:{rid}", "HAS_ENTITY", f"ent:{e.get('id')}"))
             for rel in obj.get("relationships", []):
                 triples.append(
-                    (f"ent:{rel.get('source')}", rel.get("type", "REL"), f"ent:{rel.get('target')}")
+                    (
+                        f"ent:{rel.get('source')}",
+                        rel.get("type", "REL"),
+                        f"ent:{rel.get('target')}",
+                    )
                 )
         self.persistence.write_graph(triples)
 

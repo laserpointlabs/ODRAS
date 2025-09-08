@@ -88,7 +88,8 @@ class ODRASAPITester:
         try:
             # Try to login with test user
             response = await self.client.post(
-                f"{self.base_url}/api/auth/login", json={"username": "jdehart", "password": ""}
+                f"{self.base_url}/api/auth/login",
+                json={"username": "jdehart", "password": ""},
             )
 
             if response.status_code == 200:
@@ -99,7 +100,9 @@ class ODRASAPITester:
                 return True
             else:
                 if self.verbose:
-                    console.print(f"❌ Authentication failed: {response.status_code}", style="red")
+                    console.print(
+                        f"❌ Authentication failed: {response.status_code}", style="red"
+                    )
                 return False
 
         except Exception as e:
@@ -126,7 +129,9 @@ class ODRASAPITester:
             # Make the request
             if endpoint.method.upper() == "GET":
                 response = await self.client.get(
-                    f"{self.base_url}{endpoint.path}", headers=headers, params=endpoint.params
+                    f"{self.base_url}{endpoint.path}",
+                    headers=headers,
+                    params=endpoint.params,
                 )
             elif endpoint.method.upper() == "POST":
                 if endpoint.files:
@@ -152,7 +157,9 @@ class ODRASAPITester:
                 )
             elif endpoint.method.upper() == "DELETE":
                 response = await self.client.delete(
-                    f"{self.base_url}{endpoint.path}", headers=headers, params=endpoint.params
+                    f"{self.base_url}{endpoint.path}",
+                    headers=headers,
+                    params=endpoint.params,
                 )
             else:
                 raise ValueError(f"Unsupported HTTP method: {endpoint.method}")
@@ -224,7 +231,9 @@ class ODRASAPITester:
         # File management endpoints
         endpoints.extend(
             [
-                EndpointTest("GET", "/api/files", "List Files", params={"project_id": "test"}),
+                EndpointTest(
+                    "GET", "/api/files", "List Files", params={"project_id": "test"}
+                ),
                 EndpointTest("GET", "/api/files/storage/info", "Get Storage Info"),
                 EndpointTest("GET", "/api/files/keywords", "Get Keyword Config"),
             ]
@@ -234,10 +243,14 @@ class ODRASAPITester:
         endpoints.extend(
             [
                 EndpointTest("GET", "/api/ontology", "Get Ontology"),
-                EndpointTest("GET", "/api/ontology/statistics", "Get Ontology Statistics"),
+                EndpointTest(
+                    "GET", "/api/ontology/statistics", "Get Ontology Statistics"
+                ),
                 EndpointTest("GET", "/api/ontology/layout", "Get Ontology Layout"),
                 EndpointTest(
-                    "GET", "/api/ontology/validate-integrity", "Validate Ontology Integrity"
+                    "GET",
+                    "/api/ontology/validate-integrity",
+                    "Validate Ontology Integrity",
                 ),
             ]
         )
@@ -248,7 +261,9 @@ class ODRASAPITester:
                 EndpointTest("GET", "/api/knowledge/assets", "List Knowledge Assets"),
                 EndpointTest("GET", "/api/knowledge/health", "Knowledge Health Check"),
                 EndpointTest("GET", "/api/knowledge/jobs", "List Processing Jobs"),
-                EndpointTest("GET", "/api/knowledge/query/suggestions", "Get Query Suggestions"),
+                EndpointTest(
+                    "GET", "/api/knowledge/query/suggestions", "Get Query Suggestions"
+                ),
             ]
         )
 
@@ -256,7 +271,9 @@ class ODRASAPITester:
         endpoints.extend(
             [
                 EndpointTest("GET", "/api/camunda/status", "Camunda Status"),
-                EndpointTest("GET", "/api/camunda/deployments", "List Camunda Deployments"),
+                EndpointTest(
+                    "GET", "/api/camunda/deployments", "List Camunda Deployments"
+                ),
             ]
         )
 
@@ -271,9 +288,13 @@ class ODRASAPITester:
         endpoints.extend(
             [
                 EndpointTest("GET", "/api/namespaces", "List Namespaces"),
-                EndpointTest("GET", "/api/namespaces/public/namespaces", "List Public Namespaces"),
                 EndpointTest(
-                    "GET", "/api/namespaces/available/namespaces", "List Available Namespaces"
+                    "GET", "/api/namespaces/public/namespaces", "List Public Namespaces"
+                ),
+                EndpointTest(
+                    "GET",
+                    "/api/namespaces/available/namespaces",
+                    "List Available Namespaces",
                 ),
             ]
         )
@@ -321,9 +342,15 @@ class ODRASAPITester:
         endpoints.extend(
             [
                 EndpointTest("GET", "/", "Main Application", requires_auth=False),
-                EndpointTest("GET", "/app", "Application Interface", requires_auth=False),
-                EndpointTest("GET", "/ontology-editor", "Ontology Editor", requires_auth=False),
-                EndpointTest("GET", "/user-review", "User Review Interface", requires_auth=False),
+                EndpointTest(
+                    "GET", "/app", "Application Interface", requires_auth=False
+                ),
+                EndpointTest(
+                    "GET", "/ontology-editor", "Ontology Editor", requires_auth=False
+                ),
+                EndpointTest(
+                    "GET", "/user-review", "User Review Interface", requires_auth=False
+                ),
             ]
         )
 
@@ -336,7 +363,9 @@ class ODRASAPITester:
         # Authenticate first
         auth_success = await self.authenticate()
         if not auth_success:
-            console.print("⚠️  Authentication failed, some tests may fail", style="yellow")
+            console.print(
+                "⚠️  Authentication failed, some tests may fail", style="yellow"
+            )
 
         endpoints = self.get_all_endpoints()
 
@@ -348,7 +377,9 @@ class ODRASAPITester:
             task = progress.add_task("Testing endpoints...", total=len(endpoints))
 
             for endpoint in endpoints:
-                progress.update(task, description=f"Testing {endpoint.method} {endpoint.path}")
+                progress.update(
+                    task, description=f"Testing {endpoint.method} {endpoint.path}"
+                )
 
                 result = await self.test_endpoint(endpoint)
                 self.test_results.append(result)
@@ -365,7 +396,9 @@ class ODRASAPITester:
 
         # Calculate average response time
         avg_response_time = (
-            sum(r.response_time for r in self.test_results) / total_tests if total_tests > 0 else 0
+            sum(r.response_time for r in self.test_results) / total_tests
+            if total_tests > 0
+            else 0
         )
 
         # Group results by status code
@@ -387,7 +420,9 @@ class ODRASAPITester:
                 "total_tests": total_tests,
                 "successful_tests": successful_tests,
                 "failed_tests": failed_tests,
-                "success_rate": (successful_tests / total_tests * 100) if total_tests > 0 else 0,
+                "success_rate": (
+                    (successful_tests / total_tests * 100) if total_tests > 0 else 0
+                ),
                 "average_response_time": avg_response_time,
             },
             "status_codes": status_codes,
@@ -433,7 +468,9 @@ Average Response Time: {summary['average_response_time']:.3f}s
 
             for result in report["slow_endpoints"]:
                 slow_table.add_row(
-                    result.endpoint.method, result.endpoint.path, f"{result.response_time:.3f}s"
+                    result.endpoint.method,
+                    result.endpoint.path,
+                    f"{result.response_time:.3f}s",
                 )
 
             console.print(slow_table)
@@ -475,7 +512,9 @@ async def main():
         default="http://localhost:8000",
         help="Base URL for the ODRAS API (default: http://localhost:8000)",
     )
-    parser.add_argument("--verbose", "-v", action="store_true", help="Enable verbose output")
+    parser.add_argument(
+        "--verbose", "-v", action="store_true", help="Enable verbose output"
+    )
     parser.add_argument("--output", "-o", help="Output results to JSON file")
 
     args = parser.parse_args()
@@ -494,7 +533,8 @@ async def main():
             # Exit with error code if tests failed
             if report["summary"]["failed_tests"] > 0:
                 console.print(
-                    f"\n❌ {report['summary']['failed_tests']} tests failed!", style="red"
+                    f"\n❌ {report['summary']['failed_tests']} tests failed!",
+                    style="red",
                 )
                 sys.exit(1)
             else:

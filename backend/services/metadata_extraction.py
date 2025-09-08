@@ -135,7 +135,9 @@ class MetadataExtractionService:
 
         return list(systems)
 
-    def extract_keywords(self, text: str, max_keywords: int = 20) -> List[Tuple[str, float]]:
+    def extract_keywords(
+        self, text: str, max_keywords: int = 20
+    ) -> List[Tuple[str, float]]:
         """Extract keywords using TF-IDF-like scoring."""
         if not text.strip():
             return []
@@ -198,7 +200,9 @@ class MetadataExtractionService:
 
         return best_type, confidence
 
-    def calculate_quality_score(self, text: str, entities: Dict[str, List[str]]) -> float:
+    def calculate_quality_score(
+        self, text: str, entities: Dict[str, List[str]]
+    ) -> float:
         """Calculate document quality score."""
         if not text.strip():
             return 0.0
@@ -296,6 +300,8 @@ class MetadataExtractionService:
         return metadata
 
 
-def get_metadata_extraction_service(settings: Settings = None) -> MetadataExtractionService:
+def get_metadata_extraction_service(
+    settings: Settings = None,
+) -> MetadataExtractionService:
     """Get configured metadata extraction service instance."""
     return MetadataExtractionService(settings)

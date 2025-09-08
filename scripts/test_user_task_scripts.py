@@ -72,7 +72,10 @@ def test_user_edits():
 
     try:
         result = handle_user_edits(
-            sample_requirements, sample_user_edits, "Sample document content", "test_document.txt"
+            sample_requirements,
+            sample_user_edits,
+            "Sample document content",
+            "test_document.txt",
         )
 
         print(f"✅ User edits processed successfully")
@@ -128,10 +131,18 @@ def test_rerun_extraction():
         )
 
         print(f"✅ Rerun extraction processed successfully")
-        print(f"   Total requirements: {result['rerun_metadata']['total_requirements']}")
-        print(f"   New requirements: {len(result['rerun_metadata']['new_requirements'])}")
-        print(f"   Modified requirements: {len(result['rerun_metadata']['modified_requirements'])}")
-        print(f"   Removed requirements: {len(result['rerun_metadata']['removed_requirements'])}")
+        print(
+            f"   Total requirements: {result['rerun_metadata']['total_requirements']}"
+        )
+        print(
+            f"   New requirements: {len(result['rerun_metadata']['new_requirements'])}"
+        )
+        print(
+            f"   Modified requirements: {len(result['rerun_metadata']['modified_requirements'])}"
+        )
+        print(
+            f"   Removed requirements: {len(result['rerun_metadata']['removed_requirements'])}"
+        )
 
         summary = result["rerun_metadata"]["comparison_summary"]
         print(f"   Change percentage: {summary['change_percentage']:.1f}%")

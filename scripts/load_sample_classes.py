@@ -19,7 +19,11 @@ SAMPLE_CLASSES = {
         {"id": "Class3", "label": "Component", "type": "class"},
     ],
     "my-onto2": [
-        {"id": "Class1", "label": "Constraint", "type": "class"},  # Same name as in my-ontology
+        {
+            "id": "Class1",
+            "label": "Constraint",
+            "type": "class",
+        },  # Same name as in my-ontology
         {"id": "Class4", "label": "Process", "type": "class"},
         {"id": "Class5", "label": "Function", "type": "class"},
     ],
@@ -49,7 +53,9 @@ def load_classes_to_ontology(ontology_name, classes, token):
 
     # Save the ontology data
     response = requests.put(
-        f"{BASE_URL}/api/ontology/?graph={graph_iri}", json=ontology_data, headers=headers
+        f"{BASE_URL}/api/ontology/?graph={graph_iri}",
+        json=ontology_data,
+        headers=headers,
     )
 
     if response.status_code == 200:
@@ -121,10 +127,14 @@ def main():
             print(f"🔍 Verifying classes in {ontology_name}...")
             verify_classes_loaded(ontology_name, token)
 
-    print(f"\n🎉 Successfully loaded classes into {success_count}/{len(SAMPLE_CLASSES)} ontologies")
+    print(
+        f"\n🎉 Successfully loaded classes into {success_count}/{len(SAMPLE_CLASSES)} ontologies"
+    )
 
     if success_count == len(SAMPLE_CLASSES):
-        print("\n✅ All ontologies now have classes! You can now test the import functionality.")
+        print(
+            "\n✅ All ontologies now have classes! You can now test the import functionality."
+        )
         print("   - Both ontologies have a 'Constraint' class that should match")
         print("   - Try importing one ontology into the other to see class matching")
     else:

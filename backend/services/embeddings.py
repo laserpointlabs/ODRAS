@@ -120,7 +120,9 @@ class SentenceTransformersEmbedder(BaseEmbedder):
 
         # Encode texts
         embeddings = transformer.encode(
-            texts, normalize_embeddings=self.model.normalize_default, show_progress_bar=False
+            texts,
+            normalize_embeddings=self.model.normalize_default,
+            show_progress_bar=False,
         )
 
         # Convert to list of lists
@@ -233,7 +235,9 @@ class EmbeddingService:
         self._models = {model.id: model for model in DEFAULT_EMBEDDING_MODELS}
         self._embedders: Dict[str, BaseEmbedder] = {}
 
-    def get_embedder(self, model_id: str, config: Optional[Dict[str, Any]] = None) -> BaseEmbedder:
+    def get_embedder(
+        self, model_id: str, config: Optional[Dict[str, Any]] = None
+    ) -> BaseEmbedder:
         """Get or create an embedder instance for a model."""
         if model_id not in self._embedders:
             model = self.get_model(model_id)
@@ -245,7 +249,9 @@ class EmbeddingService:
 
         return self._embedders[model_id]
 
-    def _create_embedder(self, model: EmbeddingModel, config: Dict[str, Any]) -> BaseEmbedder:
+    def _create_embedder(
+        self, model: EmbeddingModel, config: Dict[str, Any]
+    ) -> BaseEmbedder:
         """Create an embedder instance based on the model provider."""
         if model.provider == EmbeddingProvider.SIMPLE_HASHER:
             return SimpleHasherEmbedder(model)

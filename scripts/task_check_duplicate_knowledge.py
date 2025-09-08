@@ -30,7 +30,9 @@ from services.embedding_service import EmbeddingService
 
 
 def check_duplicate_knowledge(
-    knowledge_data: Dict, similarity_threshold: float = 0.85, search_scope: str = "global"
+    knowledge_data: Dict,
+    similarity_threshold: float = 0.85,
+    search_scope: str = "global",
 ) -> Dict[str, Any]:
     """
     Check for duplicate knowledge in the knowledge base.
@@ -90,7 +92,9 @@ def check_duplicate_knowledge(
                 collection_name=collection_name,
                 query_vector=query_embedding,
                 limit=10,  # Get top 10 similar items
-                score_threshold=max(0.5, similarity_threshold - 0.2),  # Cast a wider net
+                score_threshold=max(
+                    0.5, similarity_threshold - 0.2
+                ),  # Cast a wider net
                 filters=search_filters,
             )
         except Exception as e:
@@ -107,7 +111,9 @@ def check_duplicate_knowledge(
             payload = item.get("payload", {})
 
             # Calculate additional similarity metrics
-            content_similarity = calculate_content_similarity(content, payload.get("content", ""))
+            content_similarity = calculate_content_similarity(
+                content, payload.get("content", "")
+            )
             title_similarity = calculate_title_similarity(
                 knowledge_data.get("metadata", {}).get("title", ""),
                 payload.get("metadata", {}).get("title", ""),
@@ -139,7 +145,10 @@ def check_duplicate_knowledge(
         content_hash = hashlib.sha256(content.encode("utf-8")).hexdigest()
         for candidate in duplicate_candidates:
             candidate_content = candidate.get("content_preview", "").replace("...", "")
-            if content_hash == hashlib.sha256(candidate_content.encode("utf-8")).hexdigest():
+            if (
+                content_hash
+                == hashlib.sha256(candidate_content.encode("utf-8")).hexdigest()
+            ):
                 candidate["duplicate_type"] = "exact_match"
                 candidate["similarity_score"] = 1.0
 
@@ -151,7 +160,9 @@ def check_duplicate_knowledge(
 
             print(f"Found {len(duplicate_candidates)} potential duplicates")
             for candidate in duplicate_candidates[:3]:  # Show top 3
-                print(f"  - {candidate['title']}: {candidate['similarity_score']:.3f} similarity")
+                print(
+                    f"  - {candidate['title']}: {candidate['similarity_score']:.3f} similarity"
+                )
         else:
             print("No duplicates found")
 

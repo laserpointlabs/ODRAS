@@ -21,7 +21,13 @@ REQUIREMENT_SCHEMA = {
                 "properties": {
                     "id": {"type": "string"},
                     "type": {
-                        "enum": ["Component", "Interface", "Process", "Function", "Condition"]
+                        "enum": [
+                            "Component",
+                            "Interface",
+                            "Process",
+                            "Function",
+                            "Condition",
+                        ]
                     },
                     "label": {"type": "string"},
                 },

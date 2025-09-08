@@ -58,13 +58,17 @@ async def process_requirements_with_llm(
     llm_team = LLMTeam(settings)
     processed_requirements = []
 
-    print(f"Processing {len(requirements_list)} requirements with {iterations} iterations each")
+    print(
+        f"Processing {len(requirements_list)} requirements with {iterations} iterations each"
+    )
     print(f"Using {llm_provider} with model {llm_model}")
 
     processing_start_time = time.time()
 
     for req_idx, req in enumerate(requirements_list):
-        print(f"Processing requirement {req_idx + 1}/{len(requirements_list)}: {req['id']}")
+        print(
+            f"Processing requirement {req_idx + 1}/{len(requirements_list)}: {req['id']}"
+        )
 
         req_results = []
         req_start_time = time.time()
@@ -86,7 +90,9 @@ async def process_requirements_with_llm(
                     "requirement_id": req["id"],
                     "requirement_text": req["text"],
                     "llm_response": llm_result,
-                    "confidence": _calculate_iteration_confidence(i, iterations, llm_result),
+                    "confidence": _calculate_iteration_confidence(
+                        i, iterations, llm_result
+                    ),
                     "processing_time": time.time(),
                     "status": "success",
                     "iteration_duration": time.time() - req_start_time,
@@ -133,7 +139,9 @@ async def process_requirements_with_llm(
                 "successful_iterations": len(successful_results),
                 "total_iterations": len(req_results),
                 "total_processing_time": req_processing_time,
-                "success_rate": len(successful_results) / len(req_results) if req_results else 0.0,
+                "success_rate": (
+                    len(successful_results) / len(req_results) if req_results else 0.0
+                ),
             }
         )
 
@@ -238,7 +246,9 @@ def _create_analysis_prompt(requirement: Dict, iteration: int) -> str:
     return prompt.strip()
 
 
-def _simulate_openai_analysis(requirement: Dict, iteration: int, prompt: str) -> Dict[str, Any]:
+def _simulate_openai_analysis(
+    requirement: Dict, iteration: int, prompt: str
+) -> Dict[str, Any]:
     """Simulate OpenAI analysis (replace with actual API call)."""
 
     # Simulate different responses for each iteration
@@ -270,7 +280,9 @@ def _simulate_openai_analysis(requirement: Dict, iteration: int, prompt: str) ->
     }
 
 
-def _simulate_ollama_analysis(requirement: Dict, iteration: int, prompt: str) -> Dict[str, Any]:
+def _simulate_ollama_analysis(
+    requirement: Dict, iteration: int, prompt: str
+) -> Dict[str, Any]:
     """Simulate Ollama analysis (replace with actual API call)."""
 
     # Simulate different responses for each iteration
@@ -354,16 +366,22 @@ async def main():
     )
 
     print("LLM Processing Results:")
-    print(f"Total Requirements Processed: {result['llm_results']['total_requirements_processed']}")
+    print(
+        f"Total Requirements Processed: {result['llm_results']['total_requirements_processed']}"
+    )
     print(f"Total Iterations: {result['llm_results']['total_iterations']}")
-    print(f"Total Processing Time: {result['llm_results']['total_processing_time']:.2f}s")
+    print(
+        f"Total Processing Time: {result['llm_results']['total_processing_time']:.2f}s"
+    )
     print(
         f"Success Rate: {result['llm_results']['successful_iterations_total']}/{result['llm_results']['total_iterations']}"
     )
 
     print("\nProcessed Requirements:")
     for req in result["processed_requirements"]:
-        print(f"  {req['original_requirement']['id']}: {req['original_requirement']['text']}")
+        print(
+            f"  {req['original_requirement']['id']}: {req['original_requirement']['text']}"
+        )
         print(f"    Average Confidence: {req['average_confidence']:.3f}")
         print(f"    Success Rate: {req['success_rate']:.2f}")
         print(f"    Processing Time: {req['total_processing_time']:.2f}s")

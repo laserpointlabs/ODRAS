@@ -87,7 +87,10 @@ class RAGComparativeTest:
                     "similarity_threshold": 0.4,
                     "response_style": "comprehensive",
                 },
-                headers={"Authorization": f"Bearer {token}", "Content-Type": "application/json"},
+                headers={
+                    "Authorization": f"Bearer {token}",
+                    "Content-Type": "application/json",
+                },
                 timeout=30,
             )
             print(f"      📥 Original RAG response: {response.status_code}")
@@ -103,7 +106,10 @@ class RAGComparativeTest:
                     "error": None,
                 }
             else:
-                return {"success": False, "error": f"HTTP {response.status_code}: {response.text}"}
+                return {
+                    "success": False,
+                    "error": f"HTTP {response.status_code}: {response.text}",
+                }
 
         except Exception as e:
             return {"success": False, "error": f"Exception: {str(e)}"}
@@ -192,7 +198,9 @@ class RAGComparativeTest:
                     )
 
                     if status_response.status_code == 404:
-                        print(f"      ✅ Process completed and cleaned up after {i + 1}s")
+                        print(
+                            f"      ✅ Process completed and cleaned up after {i + 1}s"
+                        )
                         break
                     elif status_response.status_code == 200:
                         process_info = status_response.json()
@@ -231,7 +239,9 @@ class RAGComparativeTest:
                     chunks_found = 0
                     try:
                         stats = (
-                            json.loads(retrieval_stats) if isinstance(retrieval_stats, str) else {}
+                            json.loads(retrieval_stats)
+                            if isinstance(retrieval_stats, str)
+                            else {}
                         )
                         chunks_found = stats.get("total_results", 0)
                     except:
@@ -269,7 +279,10 @@ class RAGComparativeTest:
                     }
 
             except Exception as e:
-                return {"success": False, "error": f"Results retrieval failed: {str(e)}"}
+                return {
+                    "success": False,
+                    "error": f"Results retrieval failed: {str(e)}",
+                }
 
             return {"success": False, "error": "Could not retrieve results"}
 
@@ -299,7 +312,11 @@ class RAGComparativeTest:
 
         coverage = len(found_terms) / len(key_terms) if key_terms else 0.0
 
-        return {"found_terms": found_terms, "missing_terms": missing_terms, "coverage": coverage}
+        return {
+            "found_terms": found_terms,
+            "missing_terms": missing_terms,
+            "coverage": coverage,
+        }
 
     def run_comparative_test(self):
         """Run comprehensive comparison test."""
@@ -348,7 +365,9 @@ class RAGComparativeTest:
                     print(f"   ✅ Chunks found: {original_result['chunks_found']}")
                     print(f"   📄 Response: {original_result['response'][:100]}...")
                 else:
-                    print(f"   ❌ Failed: {original_result.get('error', 'Unknown error')}")
+                    print(
+                        f"   ❌ Failed: {original_result.get('error', 'Unknown error')}"
+                    )
 
                 # Test BPMN RAG
                 print("\n🔍 Testing BPMN RAG...")
@@ -367,7 +386,9 @@ class RAGComparativeTest:
                     print(f"   ❌ Failed: {bpmn_result.get('error', 'Unknown error')}")
 
                 # Compare results
-                comparison = self.compare_results(original_result, bpmn_result, key_terms)
+                comparison = self.compare_results(
+                    original_result, bpmn_result, key_terms
+                )
                 self.results.append(
                     {
                         "query": query,
@@ -381,10 +402,14 @@ class RAGComparativeTest:
                 print(f"\n📊 Comparison:")
                 print(f"   Both successful: {comparison['both_successful']}")
                 print(f"   Text similarity: {comparison['similarity']:.3f}")
-                print(f"   Key terms coverage: {comparison['key_terms']['coverage']:.3f}")
+                print(
+                    f"   Key terms coverage: {comparison['key_terms']['coverage']:.3f}"
+                )
 
                 if comparison["key_terms"]["missing_terms"]:
-                    print(f"   Missing terms: {comparison['key_terms']['missing_terms']}")
+                    print(
+                        f"   Missing terms: {comparison['key_terms']['missing_terms']}"
+                    )
 
                 print("=" * 60)
 
@@ -396,12 +421,18 @@ class RAGComparativeTest:
         finally:
             self.stop_external_worker()
 
-    def compare_results(self, original: Dict, bpmn: Dict, key_terms: List[str]) -> Dict[str, Any]:
+    def compare_results(
+        self, original: Dict, bpmn: Dict, key_terms: List[str]
+    ) -> Dict[str, Any]:
         """Compare original and BPMN results."""
         both_successful = original.get("success", False) and bpmn.get("success", False)
 
         similarity = 0.0
-        key_terms_analysis = {"coverage": 0.0, "found_terms": [], "missing_terms": key_terms}
+        key_terms_analysis = {
+            "coverage": 0.0,
+            "found_terms": [],
+            "missing_terms": key_terms,
+        }
 
         if both_successful:
             original_text = original.get("response", "")
@@ -414,7 +445,8 @@ class RAGComparativeTest:
             "both_successful": both_successful,
             "similarity": similarity,
             "key_terms": key_terms_analysis,
-            "chunks_match": original.get("chunks_found", 0) == bpmn.get("chunks_found", 0),
+            "chunks_match": original.get("chunks_found", 0)
+            == bpmn.get("chunks_found", 0),
         }
 
     def generate_summary_report(self):
@@ -423,7 +455,9 @@ class RAGComparativeTest:
         print("=" * 50)
 
         total_tests = len(self.results)
-        successful_both = len([r for r in self.results if r["comparison"]["both_successful"]])
+        successful_both = len(
+            [r for r in self.results if r["comparison"]["both_successful"]]
+        )
 
         # Calculate averages
         similarities = [
@@ -433,9 +467,13 @@ class RAGComparativeTest:
         ]
         avg_similarity = sum(similarities) / len(similarities) if similarities else 0.0
 
-        key_term_coverages = [r["comparison"]["key_terms"]["coverage"] for r in self.results]
+        key_term_coverages = [
+            r["comparison"]["key_terms"]["coverage"] for r in self.results
+        ]
         avg_key_coverage = (
-            sum(key_term_coverages) / len(key_term_coverages) if key_term_coverages else 0.0
+            sum(key_term_coverages) / len(key_term_coverages)
+            if key_term_coverages
+            else 0.0
         )
 
         # Success metrics
@@ -469,7 +507,9 @@ class RAGComparativeTest:
                 )
 
                 if not orig_success:
-                    print(f"      Original Error: {result['original'].get('error', 'Unknown')}")
+                    print(
+                        f"      Original Error: {result['original'].get('error', 'Unknown')}"
+                    )
                 if not bpmn_success:
                     print(f"      BPMN Error: {result['bpmn'].get('error', 'Unknown')}")
 
@@ -480,7 +520,9 @@ class RAGComparativeTest:
             print(f"   🎉 EXCELLENT: All {total_tests} tests passed!")
             print(f"   ✅ BPMN RAG has full functional parity with Original RAG")
         elif successful_both >= total_tests * 0.8:
-            print(f"   ✅ GOOD: {successful_both}/{total_tests} tests passed (80%+ success rate)")
+            print(
+                f"   ✅ GOOD: {successful_both}/{total_tests} tests passed (80%+ success rate)"
+            )
             print(f"   🔧 Minor issues to address in failing tests")
         elif successful_both >= total_tests * 0.6:
             print(
@@ -507,7 +549,11 @@ class RAGComparativeTest:
         else:
             print(f"   🔑 Key term coverage is POOR ({avg_key_coverage:.3f})")
 
-        return successful_both == total_tests and avg_similarity >= 0.5 and avg_key_coverage >= 0.6
+        return (
+            successful_both == total_tests
+            and avg_similarity >= 0.5
+            and avg_key_coverage >= 0.6
+        )
 
 
 def main():

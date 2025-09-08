@@ -43,7 +43,9 @@ def generate_embeddings(
     try:
         if not chunks_data:
             embedding_result["processing_status"] = "failure"
-            embedding_result["errors"].append("No chunks provided for embedding generation")
+            embedding_result["errors"].append(
+                "No chunks provided for embedding generation"
+            )
             return embedding_result
 
         settings = Settings()
@@ -94,7 +96,9 @@ def generate_embeddings(
                             "chunk_id": chunk_metadata[metadata_idx]["chunk_id"],
                             "chunk_index": chunk_metadata[metadata_idx]["chunk_index"],
                             "embedding": (
-                                embedding.tolist() if hasattr(embedding, "tolist") else embedding
+                                embedding.tolist()
+                                if hasattr(embedding, "tolist")
+                                else embedding
                             ),
                             "embedding_dimension": len(embedding),
                             "content_preview": (
@@ -102,7 +106,9 @@ def generate_embeddings(
                                 if len(texts[metadata_idx]) > 200
                                 else texts[metadata_idx]
                             ),
-                            "content_length": chunk_metadata[metadata_idx]["content_length"],
+                            "content_length": chunk_metadata[metadata_idx][
+                                "content_length"
+                            ],
                             "word_count": chunk_metadata[metadata_idx]["word_count"],
                             "batch_index": batch_idx // batch_size,
                         }
@@ -120,7 +126,9 @@ def generate_embeddings(
 
         if not all_embeddings:
             embedding_result["processing_status"] = "failure"
-            embedding_result["errors"].append("No embeddings were successfully generated")
+            embedding_result["errors"].append(
+                "No embeddings were successfully generated"
+            )
             return embedding_result
 
         embedding_result["embeddings_generated"] = all_embeddings
@@ -128,7 +136,9 @@ def generate_embeddings(
         # Calculate statistics
         processing_time = time.time() - start_time
         total_embeddings = len(all_embeddings)
-        embedding_dimensions = all_embeddings[0]["embedding_dimension"] if all_embeddings else 0
+        embedding_dimensions = (
+            all_embeddings[0]["embedding_dimension"] if all_embeddings else 0
+        )
         total_text_length = sum(chunk["content_length"] for chunk in chunk_metadata)
         total_words = sum(chunk["word_count"] for chunk in chunk_metadata)
 
@@ -146,15 +156,21 @@ def generate_embeddings(
             ),
             "batch_size_used": batch_size,
             "total_batches": total_batches,
-            "failed_batches": len([e for e in embedding_result["errors"] if "batch" in e]),
+            "failed_batches": len(
+                [e for e in embedding_result["errors"] if "batch" in e]
+            ),
             "model_used": embedding_model or settings.embedding_model or "default",
-            "success_rate": (total_embeddings / len(chunks_data)) * 100 if chunks_data else 0,
+            "success_rate": (
+                (total_embeddings / len(chunks_data)) * 100 if chunks_data else 0
+            ),
         }
 
         print(f"Successfully generated {total_embeddings} embeddings")
         print(f"Embedding dimension: {embedding_dimensions}")
         print(f"Processing time: {processing_time:.2f} seconds")
-        print(f"Average time per embedding: {processing_time / total_embeddings:.3f} seconds")
+        print(
+            f"Average time per embedding: {processing_time / total_embeddings:.3f} seconds"
+        )
 
     except Exception as e:
         embedding_result["processing_status"] = "failure"
@@ -213,14 +229,18 @@ def validate_embeddings(embeddings: List[Dict]) -> Dict[str, Any]:
             "consistent_dimensions": len(unique_dimensions) == 1,
             "common_dimension": max(dimensions) if dimensions else 0,
             "zero_vector_count": zero_vectors,
-            "zero_vector_percentage": (zero_vectors / len(embeddings)) * 100 if embeddings else 0,
+            "zero_vector_percentage": (
+                (zero_vectors / len(embeddings)) * 100 if embeddings else 0
+            ),
         }
 
         # Consistency checks
         validation_result["consistency_checks"] = {
             "all_have_embeddings": all("embedding" in emb for emb in embeddings),
             "all_have_ids": all("chunk_id" in emb for emb in embeddings),
-            "all_have_content_preview": all("content_preview" in emb for emb in embeddings),
+            "all_have_content_preview": all(
+                "content_preview" in emb for emb in embeddings
+            ),
             "dimension_consistency": len(unique_dimensions) == 1,
         }
 

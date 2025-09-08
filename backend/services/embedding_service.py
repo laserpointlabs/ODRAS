@@ -51,7 +51,9 @@ class EmbeddingService:
         self.model_configs = self._get_model_configurations()
 
         # Set up model cache directory
-        self.cache_dir = getattr(self.settings, "embedding_cache_dir", "./models/embeddings")
+        self.cache_dir = getattr(
+            self.settings, "embedding_cache_dir", "./models/embeddings"
+        )
         os.makedirs(self.cache_dir, exist_ok=True)
 
         logger.info("Embedding service initialized")
@@ -174,8 +176,12 @@ class EmbeddingService:
                 return False
 
             if config["type"] == "sentence_transformer":
-                logger.info(f"Loading SentenceTransformer model: {config['model_name']}")
-                model = SentenceTransformer(config["model_name"], cache_folder=self.cache_dir)
+                logger.info(
+                    f"Loading SentenceTransformer model: {config['model_name']}"
+                )
+                model = SentenceTransformer(
+                    config["model_name"], cache_folder=self.cache_dir
+                )
                 self.models[model_id] = {
                     "model": model,
                     "type": "sentence_transformer",
@@ -287,10 +293,14 @@ class EmbeddingService:
                 client = openai.OpenAI(api_key=api_key)
 
                 # Process in batches (OpenAI has rate limits)
-                for i in range(0, len(truncated_texts), min(batch_size, 100)):  # OpenAI limit
+                for i in range(
+                    0, len(truncated_texts), min(batch_size, 100)
+                ):  # OpenAI limit
                     batch = truncated_texts[i : i + min(batch_size, 100)]
 
-                    response = client.embeddings.create(input=batch, model=config["model_name"])
+                    response = client.embeddings.create(
+                        input=batch, model=config["model_name"]
+                    )
 
                     batch_embeddings = [data.embedding for data in response.data]
                     embeddings.extend(batch_embeddings)
@@ -298,11 +308,15 @@ class EmbeddingService:
             else:
                 raise RuntimeError(f"Unsupported model type: {model_info['type']}")
 
-            logger.info(f"Generated {len(embeddings)} embeddings using model '{model_id}'")
+            logger.info(
+                f"Generated {len(embeddings)} embeddings using model '{model_id}'"
+            )
             return embeddings
 
         except Exception as e:
-            logger.error(f"Failed to generate embeddings with model '{model_id}': {str(e)}")
+            logger.error(
+                f"Failed to generate embeddings with model '{model_id}': {str(e)}"
+            )
             raise RuntimeError(f"Embedding generation failed: {str(e)}")
 
     def generate_single_embedding(
@@ -322,7 +336,10 @@ class EmbeddingService:
         return embeddings[0] if embeddings else []
 
     def compute_similarity(
-        self, embedding1: List[float], embedding2: List[float], similarity_type: str = "cosine"
+        self,
+        embedding1: List[float],
+        embedding2: List[float],
+        similarity_type: str = "cosine",
     ) -> float:
         """
         Compute similarity between two embeddings.
@@ -346,7 +363,9 @@ class EmbeddingService:
                 dot_product = np.dot(vec1, vec2)
                 norm1 = np.linalg.norm(vec1)
                 norm2 = np.linalg.norm(vec2)
-                return float(dot_product / (norm1 * norm2)) if norm1 * norm2 != 0 else 0.0
+                return (
+                    float(dot_product / (norm1 * norm2)) if norm1 * norm2 != 0 else 0.0
+                )
 
             elif similarity_type == "euclidean":
                 # Euclidean distance (converted to similarity)
@@ -427,7 +446,9 @@ class EmbeddingService:
             if available_models:
                 try:
                     default_model = self.get_default_model()
-                    test_embedding = self.generate_single_embedding("test", default_model)
+                    test_embedding = self.generate_single_embedding(
+                        "test", default_model
+                    )
                     test_successful = len(test_embedding) > 0
                 except:
                     pass

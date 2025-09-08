@@ -67,7 +67,8 @@ def get_db_service() -> DatabaseService:
 
 @router.get("/", response_model=Dict[str, Any])
 async def get_ontology(
-    graph: Optional[str] = None, manager: OntologyManager = Depends(get_ontology_manager)
+    graph: Optional[str] = None,
+    manager: OntologyManager = Depends(get_ontology_manager),
 ):
     """
     Retrieve the current ontology in JSON format.
@@ -90,7 +91,9 @@ async def get_ontology(
         }
     except Exception as e:
         logger.error(f"Failed to get ontology: {e}")
-        raise HTTPException(status_code=500, detail=f"Failed to retrieve ontology: {str(e)}")
+        raise HTTPException(
+            status_code=500, detail=f"Failed to retrieve ontology: {str(e)}"
+        )
 
 
 @router.put("/", response_model=OntologyResponse)
@@ -116,7 +119,12 @@ async def update_ontology(
         # If this is a partial update, merge with existing ontology
         if not all(
             key in ontology_dict
-            for key in ["metadata", "classes", "object_properties", "datatype_properties"]
+            for key in [
+                "metadata",
+                "classes",
+                "object_properties",
+                "datatype_properties",
+            ]
         ):
             current_ontology = manager.get_current_ontology_json()
             for key, value in ontology_dict.items():
@@ -139,7 +147,9 @@ async def update_ontology(
 
     except Exception as e:
         logger.error(f"Failed to update ontology: {e}")
-        raise HTTPException(status_code=500, detail=f"Failed to update ontology: {str(e)}")
+        raise HTTPException(
+            status_code=500, detail=f"Failed to update ontology: {str(e)}"
+        )
 
 
 @router.post("/classes", response_model=OntologyResponse)
@@ -167,7 +177,9 @@ async def add_class(
 
         if result["success"]:
             return OntologyResponse(
-                success=True, message=result["message"], data={"class_uri": result.get("class_uri")}
+                success=True,
+                message=result["message"],
+                data={"class_uri": result.get("class_uri")},
             )
         else:
             raise HTTPException(status_code=400, detail=result["error"])
@@ -179,7 +191,8 @@ async def add_class(
 
 @router.post("/properties", response_model=OntologyResponse)
 async def add_property(
-    property_data: OntologyProperty, manager: OntologyManager = Depends(get_ontology_manager)
+    property_data: OntologyProperty,
+    manager: OntologyManager = Depends(get_ontology_manager),
 ):
     """
     Add a new property to the ontology.
@@ -208,7 +221,9 @@ async def add_property(
 
 
 @router.delete("/classes/{class_name}", response_model=OntologyResponse)
-async def delete_class(class_name: str, manager: OntologyManager = Depends(get_ontology_manager)):
+async def delete_class(
+    class_name: str, manager: OntologyManager = Depends(get_ontology_manager)
+):
     """
     Delete a class from the ontology.
 
@@ -254,11 +269,15 @@ async def delete_property(
 
     except Exception as e:
         logger.error(f"Failed to delete property: {e}")
-        raise HTTPException(status_code=500, detail=f"Failed to delete property: {str(e)}")
+        raise HTTPException(
+            status_code=500, detail=f"Failed to delete property: {str(e)}"
+        )
 
 
 @router.get("/statistics", response_model=Dict[str, Any])
-async def get_ontology_statistics(manager: OntologyManager = Depends(get_ontology_manager)):
+async def get_ontology_statistics(
+    manager: OntologyManager = Depends(get_ontology_manager),
+):
     """
     Get statistics about the current ontology.
 
@@ -267,10 +286,16 @@ async def get_ontology_statistics(manager: OntologyManager = Depends(get_ontolog
     """
     try:
         stats = manager.get_ontology_statistics()
-        return {"success": True, "data": stats, "message": "Statistics retrieved successfully"}
+        return {
+            "success": True,
+            "data": stats,
+            "message": "Statistics retrieved successfully",
+        }
     except Exception as e:
         logger.error(f"Failed to get ontology statistics: {e}")
-        raise HTTPException(status_code=500, detail=f"Failed to get statistics: {str(e)}")
+        raise HTTPException(
+            status_code=500, detail=f"Failed to get statistics: {str(e)}"
+        )
 
 
 @router.post("/validate", response_model=OntologyResponse)
@@ -292,9 +317,15 @@ async def validate_ontology(
 
         return OntologyResponse(
             success=validation_result["valid"],
-            message="Validation completed" if validation_result["valid"] else "Validation failed",
+            message=(
+                "Validation completed"
+                if validation_result["valid"]
+                else "Validation failed"
+            ),
             data=(
-                {"errors": validation_result["errors"]} if not validation_result["valid"] else None
+                {"errors": validation_result["errors"]}
+                if not validation_result["valid"]
+                else None
             ),
         )
 
@@ -362,7 +393,9 @@ async def import_ontology_file(
 
 
 @router.get("/export/{format}")
-async def export_ontology(format: str, manager: OntologyManager = Depends(get_ontology_manager)):
+async def export_ontology(
+    format: str, manager: OntologyManager = Depends(get_ontology_manager)
+):
     """
     Export the current ontology in various formats.
 
@@ -390,7 +423,9 @@ async def export_ontology(format: str, manager: OntologyManager = Depends(get_on
 
 
 @router.get("/layout", response_model=Dict[str, Any])
-async def get_layout(graph: str, manager: OntologyManager = Depends(get_ontology_manager)):
+async def get_layout(
+    graph: str, manager: OntologyManager = Depends(get_ontology_manager)
+):
     """
     Retrieve layout data for a specific ontology graph.
 
@@ -402,10 +437,16 @@ async def get_layout(graph: str, manager: OntologyManager = Depends(get_ontology
     """
     try:
         layout_data = manager.get_layout_by_graph(graph)
-        return {"success": True, "data": layout_data, "message": "Layout retrieved successfully"}
+        return {
+            "success": True,
+            "data": layout_data,
+            "message": "Layout retrieved successfully",
+        }
     except Exception as e:
         logger.error(f"Failed to get layout: {e}")
-        raise HTTPException(status_code=500, detail=f"Failed to retrieve layout: {str(e)}")
+        raise HTTPException(
+            status_code=500, detail=f"Failed to retrieve layout: {str(e)}"
+        )
 
 
 @router.put("/layout", response_model=OntologyResponse)
@@ -429,7 +470,9 @@ async def save_layout(
 
         if result["success"]:
             return OntologyResponse(
-                success=True, message=result["message"], data={"layout_id": result.get("layout_id")}
+                success=True,
+                message=result["message"],
+                data={"layout_id": result.get("layout_id")},
             )
         else:
             raise HTTPException(status_code=400, detail=result["error"])
@@ -493,4 +536,6 @@ async def validate_ontology_integrity(
         }
     except Exception as e:
         logger.error(f"Failed to validate integrity: {e}")
-        raise HTTPException(status_code=500, detail=f"Failed to validate integrity: {str(e)}")
+        raise HTTPException(
+            status_code=500, detail=f"Failed to validate integrity: {str(e)}"
+        )

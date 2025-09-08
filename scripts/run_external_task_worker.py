@@ -20,7 +20,10 @@ from services.external_task_worker import ExternalTaskWorker
 logging.basicConfig(
     level=logging.INFO,
     format="%(asctime)s - %(name)s - %(levelname)s - %(message)s",
-    handlers=[logging.StreamHandler(sys.stdout), logging.FileHandler("external_task_worker.log")],
+    handlers=[
+        logging.StreamHandler(sys.stdout),
+        logging.FileHandler("external_task_worker.log"),
+    ],
 )
 
 logger = logging.getLogger(__name__)

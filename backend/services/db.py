@@ -210,7 +210,8 @@ class DatabaseService:
         try:
             with conn.cursor() as cur:
                 cur.execute(
-                    "DELETE FROM public.ontologies_registry WHERE graph_iri=%s", (graph_iri,)
+                    "DELETE FROM public.ontologies_registry WHERE graph_iri=%s",
+                    (graph_iri,),
                 )
                 conn.commit()
         finally:
@@ -240,7 +241,9 @@ class DatabaseService:
         finally:
             self._return(conn)
 
-    def update_ontology_reference_status(self, graph_iri: str, is_reference: bool) -> bool:
+    def update_ontology_reference_status(
+        self, graph_iri: str, is_reference: bool
+    ) -> bool:
         """Update the reference status of an ontology."""
         conn = self._conn()
         try:

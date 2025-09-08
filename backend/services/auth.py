@@ -168,7 +168,11 @@ def get_user(authorization: Optional[str] = Header(None)):
             )
             conn.commit()
 
-            user = {"user_id": str(user_id), "username": username, "is_admin": bool(is_admin)}
+            user = {
+                "user_id": str(user_id),
+                "username": username,
+                "is_admin": bool(is_admin),
+            }
 
             # Cache the result
             TOKENS_CACHE[token_hash] = user

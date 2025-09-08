@@ -36,7 +36,9 @@ class NamespaceCreate(BaseModel):
 
 
 class NamespaceUpdate(BaseModel):
-    status: Optional[str] = Field(None, description="Namespace status: draft, released, deprecated")
+    status: Optional[str] = Field(
+        None, description="Namespace status: draft, released, deprecated"
+    )
     owners: Optional[List[str]] = Field(None, description="Owner email addresses")
     description: Optional[str] = Field(None, description="Namespace description")
 
@@ -105,11 +107,13 @@ def create_namespace(
 
                 # Check if prefix already exists
                 cur.execute(
-                    "SELECT id FROM namespace_registry WHERE prefix = %s", (namespace.prefix,)
+                    "SELECT id FROM namespace_registry WHERE prefix = %s",
+                    (namespace.prefix,),
                 )
                 if cur.fetchone():
                     raise HTTPException(
-                        status_code=400, detail=f"Prefix '{namespace.prefix}' already exists"
+                        status_code=400,
+                        detail=f"Prefix '{namespace.prefix}' already exists",
                     )
 
                 # Create namespace
@@ -144,7 +148,9 @@ def create_namespace(
                 conn.commit()
 
                 # Fetch and return created namespace
-                cur.execute("SELECT * FROM namespace_registry WHERE id = %s", (namespace_id,))
+                cur.execute(
+                    "SELECT * FROM namespace_registry WHERE id = %s", (namespace_id,)
+                )
                 result = cur.fetchone()
 
                 return NamespaceResponse(
@@ -220,14 +226,18 @@ def list_namespaces(
 
 @router.get("/{namespace_id}", response_model=NamespaceResponse)
 def get_namespace(
-    namespace_id: str, db: DatabaseService = Depends(get_db), admin_user=Depends(get_admin_user)
+    namespace_id: str,
+    db: DatabaseService = Depends(get_db),
+    admin_user=Depends(get_admin_user),
 ):
     """Get namespace details (admin only)"""
     try:
         conn = db._conn()
         try:
             with conn.cursor() as cur:
-                cur.execute("SELECT * FROM namespace_registry WHERE id = %s", (namespace_id,))
+                cur.execute(
+                    "SELECT * FROM namespace_registry WHERE id = %s", (namespace_id,)
+                )
                 result = cur.fetchone()
 
                 if not result:
@@ -266,7 +276,9 @@ def update_namespace(
         try:
             with conn.cursor() as cur:
                 # Check if namespace exists
-                cur.execute("SELECT id FROM namespace_registry WHERE id = %s", (namespace_id,))
+                cur.execute(
+                    "SELECT id FROM namespace_registry WHERE id = %s", (namespace_id,)
+                )
                 if not cur.fetchone():
                     raise HTTPException(status_code=404, detail="Namespace not found")
 
@@ -277,12 +289,19 @@ def update_namespace(
                     SET status = %s, owners = %s, description = %s, updated_at = NOW()
                     WHERE id = %s
                     """,
-                    (update_data.status, update_data.owners, update_data.description, namespace_id),
+                    (
+                        update_data.status,
+                        update_data.owners,
+                        update_data.description,
+                        namespace_id,
+                    ),
                 )
                 conn.commit()
 
                 # Fetch and return updated namespace
-                cur.execute("SELECT * FROM namespace_registry WHERE id = %s", (namespace_id,))
+                cur.execute(
+                    "SELECT * FROM namespace_registry WHERE id = %s", (namespace_id,)
+                )
                 result = cur.fetchone()
 
                 return NamespaceResponse(
@@ -346,8 +365,12 @@ def list_public_namespaces(
                         "prefix": row[4],  # prefix
                         "description": row[7],  # description
                         "version": row[10] if len(row) > 10 else None,  # version
-                        "version_iri": row[11] if len(row) > 11 else None,  # version_iri
-                        "version_status": row[12] if len(row) > 12 else None,  # version_status
+                        "version_iri": (
+                            row[11] if len(row) > 11 else None
+                        ),  # version_iri
+                        "version_status": (
+                            row[12] if len(row) > 12 else None
+                        ),  # version_status
                     }
                     for row in results
                 ]
@@ -412,7 +435,9 @@ def list_available_namespaces(
 
 @router.delete("/{namespace_id}")
 def delete_namespace(
-    namespace_id: str, db: DatabaseService = Depends(get_db), admin_user=Depends(get_admin_user)
+    namespace_id: str,
+    db: DatabaseService = Depends(get_db),
+    admin_user=Depends(get_admin_user),
 ):
     """Delete a namespace (admin only)"""
     try:
@@ -420,7 +445,9 @@ def delete_namespace(
         try:
             with conn.cursor() as cur:
                 # Check if namespace exists
-                cur.execute("SELECT name FROM namespace_registry WHERE id = %s", (namespace_id,))
+                cur.execute(
+                    "SELECT name FROM namespace_registry WHERE id = %s", (namespace_id,)
+                )
                 result = cur.fetchone()
                 if not result:
                     raise HTTPException(status_code=404, detail="Namespace not found")
@@ -429,7 +456,9 @@ def delete_namespace(
                 # You might want to add this check depending on your requirements
 
                 # Delete the namespace
-                cur.execute("DELETE FROM namespace_registry WHERE id = %s", (namespace_id,))
+                cur.execute(
+                    "DELETE FROM namespace_registry WHERE id = %s", (namespace_id,)
+                )
                 conn.commit()
 
                 return {"message": f"Namespace '{result[0]}' deleted successfully"}

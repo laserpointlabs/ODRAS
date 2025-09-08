@@ -47,12 +47,14 @@ def get_camunda_process_data(process_id: str) -> dict:
     try:
         # Get process instance info
         process_response = requests.get(
-            f"http://localhost:8080/engine-rest/process-instance/{process_id}", timeout=10
+            f"http://localhost:8080/engine-rest/process-instance/{process_id}",
+            timeout=10,
         )
 
         # Get process variables
         variables_response = requests.get(
-            f"http://localhost:8080/engine-rest/process-instance/{process_id}/variables", timeout=10
+            f"http://localhost:8080/engine-rest/process-instance/{process_id}/variables",
+            timeout=10,
         )
 
         # Get process history if current call fails
@@ -84,7 +86,9 @@ def get_camunda_process_data(process_id: str) -> dict:
             result["completed"] = history_data.get("endTime") is not None
             result["from_history"] = True
         else:
-            result["error"] = f"Process not found (status: {process_response.status_code})"
+            result["error"] = (
+                f"Process not found (status: {process_response.status_code})"
+            )
             return result
 
         # Parse variables
@@ -117,7 +121,11 @@ def get_camunda_process_data(process_id: str) -> dict:
         return result
 
     except Exception as e:
-        return {"process_id": process_id, "found": False, "error": f"Exception: {str(e)}"}
+        return {
+            "process_id": process_id,
+            "found": False,
+            "error": f"Exception: {str(e)}",
+        }
 
 
 def start_rag_query(query: str) -> str:
@@ -185,7 +193,9 @@ def extract_results(process_data: dict):
 
             elif var_name == "reranked_context" and value:
                 try:
-                    context_data = json.loads(value) if isinstance(value, str) else value
+                    context_data = (
+                        json.loads(value) if isinstance(value, str) else value
+                    )
                     if context_data:
                         print(f"\n📚 Retrieved Context:")
                         for i, chunk in enumerate(context_data[:3], 1):
@@ -233,7 +243,8 @@ def test_rag_complete(query: str):
             try:
                 # Check if process is complete
                 status_response = requests.get(
-                    f"http://localhost:8080/engine-rest/process-instance/{process_id}", timeout=5
+                    f"http://localhost:8080/engine-rest/process-instance/{process_id}",
+                    timeout=5,
                 )
 
                 if status_response.status_code == 200:
@@ -248,7 +259,9 @@ def test_rag_complete(query: str):
 
                 elif status_response.status_code == 404:
                     # Process completed and cleaned up
-                    print(f"   ✅ Process completed and cleaned up after {check_count} seconds!")
+                    print(
+                        f"   ✅ Process completed and cleaned up after {check_count} seconds!"
+                    )
                     break
                 else:
                     print(f"   ⚠️  Unexpected status: {status_response.status_code}")
@@ -266,7 +279,9 @@ def test_rag_complete(query: str):
         process_data = get_camunda_process_data(process_id)
 
         if not process_data.get("found"):
-            print(f"❌ Process not found in Camunda: {process_data.get('error', 'Unknown error')}")
+            print(
+                f"❌ Process not found in Camunda: {process_data.get('error', 'Unknown error')}"
+            )
             return False
 
         # Extract and show results
@@ -293,7 +308,9 @@ def test_rag_complete(query: str):
 
 
 if __name__ == "__main__":
-    query = sys.argv[1] if len(sys.argv) > 1 else "What is the required position accuracy?"
+    query = (
+        sys.argv[1] if len(sys.argv) > 1 else "What is the required position accuracy?"
+    )
     success = test_rag_complete(query)
 
     if not success:

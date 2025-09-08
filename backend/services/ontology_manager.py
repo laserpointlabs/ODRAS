@@ -204,16 +204,25 @@ class OntologyManager:
 
             # Check if class already exists
             if self._class_exists(class_uri):
-                return {"success": False, "error": f"Class {class_data['name']} already exists"}
+                return {
+                    "success": False,
+                    "error": f"Class {class_data['name']} already exists",
+                }
 
             # Create RDF triples for the new class
             triples = [
                 (class_uri, RDF.type, OWL.Class),
-                (class_uri, RDFS.label, Literal(class_data.get("label", class_data["name"]))),
+                (
+                    class_uri,
+                    RDFS.label,
+                    Literal(class_data.get("label", class_data["name"])),
+                ),
             ]
 
             if class_data.get("comment"):
-                triples.append((class_uri, RDFS.comment, Literal(class_data["comment"])))
+                triples.append(
+                    (class_uri, RDFS.comment, Literal(class_data["comment"]))
+                )
 
             if class_data.get("subclass_of"):
                 parent_uri = URIRef(f"{self.base_uri}#{class_data['subclass_of']}")
@@ -265,11 +274,17 @@ class OntologyManager:
             # Create RDF triples for the new property
             triples = [
                 (prop_uri, RDF.type, prop_type),
-                (prop_uri, RDFS.label, Literal(property_data.get("label", property_data["name"]))),
+                (
+                    prop_uri,
+                    RDFS.label,
+                    Literal(property_data.get("label", property_data["name"])),
+                ),
             ]
 
             if property_data.get("comment"):
-                triples.append((prop_uri, RDFS.comment, Literal(property_data["comment"])))
+                triples.append(
+                    (prop_uri, RDFS.comment, Literal(property_data["comment"]))
+                )
 
             if property_data.get("domain"):
                 domain_uri = URIRef(f"{self.base_uri}#{property_data['domain']}")
@@ -370,7 +385,9 @@ class OntologyManager:
 
             return {
                 "classes": int(bindings.get("classCount", {}).get("value", 0)),
-                "object_properties": int(bindings.get("objectPropertyCount", {}).get("value", 0)),
+                "object_properties": int(
+                    bindings.get("objectPropertyCount", {}).get("value", 0)
+                ),
                 "datatype_properties": int(
                     bindings.get("datatypePropertyCount", {}).get("value", 0)
                 ),
@@ -642,7 +659,12 @@ class OntologyManager:
         errors = []
 
         # Check required top-level keys
-        required_keys = ["metadata", "classes", "object_properties", "datatype_properties"]
+        required_keys = [
+            "metadata",
+            "classes",
+            "object_properties",
+            "datatype_properties",
+        ]
         for key in required_keys:
             if key not in ontology_json:
                 errors.append(f"Missing required key: {key}")
@@ -677,7 +699,9 @@ class OntologyManager:
             if "name" in metadata:
                 graph.add((ontology_uri, RDFS.label, Literal(metadata["name"])))
             if "description" in metadata:
-                graph.add((ontology_uri, RDFS.comment, Literal(metadata["description"])))
+                graph.add(
+                    (ontology_uri, RDFS.comment, Literal(metadata["description"]))
+                )
 
         # Add classes
         for cls in ontology_json.get("classes", []):
@@ -723,7 +747,13 @@ class OntologyManager:
                 graph.add((prop_uri, RDFS.domain, domain_uri))
 
             if "range" in prop:
-                if prop["range"] in ["string", "integer", "float", "boolean", "dateTime"]:
+                if prop["range"] in [
+                    "string",
+                    "integer",
+                    "float",
+                    "boolean",
+                    "dateTime",
+                ]:
                     range_uri = XSD[prop["range"]]
                 else:
                     range_uri = URIRef(f"{self.base_uri}#{prop['range']}")
@@ -915,7 +945,9 @@ class OntologyManager:
                     "nodes": json.loads(binding.get("nodes", {}).get("value", "[]")),
                     "edges": json.loads(binding.get("edges", {}).get("value", "[]")),
                     "zoom": float(binding.get("zoom", {}).get("value", 1.0)),
-                    "pan": json.loads(binding.get("pan", {}).get("value", '{"x": 0, "y": 0}')),
+                    "pan": json.loads(
+                        binding.get("pan", {}).get("value", '{"x": 0, "y": 0}')
+                    ),
                 }
             else:
                 # Return default layout if none exists
@@ -938,7 +970,9 @@ class OntologyManager:
                 "pan": {"x": 0, "y": 0},
             }
 
-    def save_layout_by_graph(self, graph_iri: str, layout_data: Dict[str, Any]) -> Dict[str, Any]:
+    def save_layout_by_graph(
+        self, graph_iri: str, layout_data: Dict[str, Any]
+    ) -> Dict[str, Any]:
         """
         Save layout data for a specific ontology graph.
 
@@ -966,7 +1000,9 @@ class OntologyManager:
             nodes_json = json.dumps(layout_data.get("nodes", [])).replace('"', '\\"')
             edges_json = json.dumps(layout_data.get("edges", [])).replace('"', '\\"')
             zoom_value = layout_data.get("zoom", 1.0)
-            pan_json = json.dumps(layout_data.get("pan", {"x": 0, "y": 0})).replace('"', '\\"')
+            pan_json = json.dumps(layout_data.get("pan", {"x": 0, "y": 0})).replace(
+                '"', '\\"'
+            )
 
             insert_query = f"""
             INSERT DATA {{
@@ -999,7 +1035,9 @@ class OntologyManager:
             logger.error(f"Failed to save layout for {graph_iri}: {e}")
             return {"success": False, "error": f"Save failed: {str(e)}"}
 
-    def mint_unique_iri(self, base_name: str, entity_type: str, graph_iri: str = None) -> str:
+    def mint_unique_iri(
+        self, base_name: str, entity_type: str, graph_iri: str = None
+    ) -> str:
         """
         Mint a unique IRI for a new entity, ensuring no conflicts exist.
 
@@ -1177,7 +1215,10 @@ class OntologyManager:
                 "warnings": warnings,
                 "errors": errors,
                 "entity_count": len(
-                    set(binding["s"]["value"] for binding in results["results"]["bindings"])
+                    set(
+                        binding["s"]["value"]
+                        for binding in results["results"]["bindings"]
+                    )
                 ),
             }
 

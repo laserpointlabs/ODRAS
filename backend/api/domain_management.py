@@ -26,9 +26,12 @@ public_router = APIRouter(prefix="/api/domains", tags=["public-domains"])
 # Pydantic models for request/response
 class DomainCreate(BaseModel):
     domain: str = Field(
-        ..., description="Domain name (lowercase letters, numbers, hyphens only, 2-50 chars)"
+        ...,
+        description="Domain name (lowercase letters, numbers, hyphens only, 2-50 chars)",
     )
-    description: str = Field(..., description="Description of what the domain represents")
+    description: str = Field(
+        ..., description="Description of what the domain represents"
+    )
     owner: str = Field(..., description="Owner email address")
 
     @validator("domain")
@@ -44,7 +47,9 @@ class DomainCreate(BaseModel):
 class DomainUpdate(BaseModel):
     description: Optional[str] = Field(None, description="Updated description")
     owner: Optional[str] = Field(None, description="Updated owner email")
-    status: Optional[str] = Field(None, description="Status: active, deprecated, archived")
+    status: Optional[str] = Field(
+        None, description="Status: active, deprecated, archived"
+    )
 
 
 class DomainResponse(BaseModel):
@@ -69,7 +74,9 @@ def get_db():
 
 @router.post("/", response_model=DomainResponse)
 def create_domain(
-    domain: DomainCreate, db: DatabaseService = Depends(get_db), admin_user=Depends(get_admin_user)
+    domain: DomainCreate,
+    db: DatabaseService = Depends(get_db),
+    admin_user=Depends(get_admin_user),
 ):
     """Create a new domain (admin only)"""
     try:
@@ -77,7 +84,9 @@ def create_domain(
         try:
             with conn.cursor() as cur:
                 # Check if domain already exists
-                cur.execute("SELECT id FROM domain_registry WHERE domain = %s", (domain.domain,))
+                cur.execute(
+                    "SELECT id FROM domain_registry WHERE domain = %s", (domain.domain,)
+                )
                 if cur.fetchone():
                     raise HTTPException(status_code=400, detail="Domain already exists")
 
@@ -123,7 +132,9 @@ def create_domain(
 
 @router.get("/{domain_id}", response_model=DomainResponse)
 def get_domain(
-    domain_id: str, db: DatabaseService = Depends(get_db), admin_user=Depends(get_admin_user)
+    domain_id: str,
+    db: DatabaseService = Depends(get_db),
+    admin_user=Depends(get_admin_user),
 ):
     """Get a specific domain by ID (admin only)"""
     try:
@@ -213,7 +224,9 @@ def update_domain(
         try:
             with conn.cursor() as cur:
                 # Check if domain exists
-                cur.execute("SELECT domain FROM domain_registry WHERE id = %s", (domain_id,))
+                cur.execute(
+                    "SELECT domain FROM domain_registry WHERE id = %s", (domain_id,)
+                )
                 result = cur.fetchone()
                 if not result:
                     raise HTTPException(status_code=404, detail="Domain not found")
@@ -269,7 +282,9 @@ def update_domain(
 
 @router.delete("/{domain_id}")
 def delete_domain(
-    domain_id: str, db: DatabaseService = Depends(get_db), admin_user=Depends(get_admin_user)
+    domain_id: str,
+    db: DatabaseService = Depends(get_db),
+    admin_user=Depends(get_admin_user),
 ):
     """Delete a domain (admin only)"""
     try:
@@ -277,7 +292,9 @@ def delete_domain(
         try:
             with conn.cursor() as cur:
                 # Check if domain exists
-                cur.execute("SELECT domain FROM domain_registry WHERE id = %s", (domain_id,))
+                cur.execute(
+                    "SELECT domain FROM domain_registry WHERE id = %s", (domain_id,)
+                )
                 result = cur.fetchone()
                 if not result:
                     raise HTTPException(status_code=404, detail="Domain not found")

@@ -19,7 +19,11 @@ def get_conn():
         )
     # Fallback to defaults
     return psycopg2.connect(
-        host="localhost", port=5432, dbname="odras", user="postgres", password="password"
+        host="localhost",
+        port=5432,
+        dbname="odras",
+        user="postgres",
+        password="password",
     )
 
 
@@ -44,7 +48,9 @@ def main():
             # Ontologies registry
             cur.execute("TRUNCATE TABLE public.ontologies_registry;")
             conn.commit()
-            print("Truncated users, projects, memberships, jobs, requirements, ontologies registry")
+            print(
+                "Truncated users, projects, memberships, jobs, requirements, ontologies registry"
+            )
 
             # Seed two users
             cur.execute(

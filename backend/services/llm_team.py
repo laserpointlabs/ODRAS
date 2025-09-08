@@ -34,18 +34,28 @@ class LLMTeam:
         # Use custom personas if provided, otherwise use default ones
         if custom_personas:
             personas = [
-                (p["name"], p["system_prompt"]) for p in custom_personas if p.get("is_active", True)
+                (p["name"], p["system_prompt"])
+                for p in custom_personas
+                if p.get("is_active", True)
             ]
         else:
             # Default personas
             personas = [
-                ("Extractor", "You extract ontology-grounded entities from requirements."),
-                ("Reviewer", "You validate and correct extracted JSON to fit the schema strictly."),
+                (
+                    "Extractor",
+                    "You extract ontology-grounded entities from requirements.",
+                ),
+                (
+                    "Reviewer",
+                    "You validate and correct extracted JSON to fit the schema strictly.",
+                ),
             ]
 
         outputs = []
         for role, system in personas:
-            response = await self._call_model(requirement_text, system, ontology_json_schema)
+            response = await self._call_model(
+                requirement_text, system, ontology_json_schema
+            )
             if response:
                 outputs.append(response)
 
@@ -106,7 +116,10 @@ class LLMTeam:
             }
 
         url = "https://api.openai.com/v1/chat/completions"
-        headers = {"Authorization": f"Bearer {api_key}", "Content-Type": "application/json"}
+        headers = {
+            "Authorization": f"Bearer {api_key}",
+            "Content-Type": "application/json",
+        }
         model = self.settings.llm_model
         payload = {
             "model": model,
@@ -114,7 +127,8 @@ class LLMTeam:
             "messages": [
                 {
                     "role": "system",
-                    "content": system_prompt + " Return ONLY JSON conforming to the schema.",
+                    "content": system_prompt
+                    + " Return ONLY JSON conforming to the schema.",
                 },
                 {
                     "role": "user",
@@ -142,9 +156,15 @@ class LLMTeam:
                     return result
                 except json.JSONDecodeError as e:
                     logger.warning(f"Failed to parse OpenAI response as JSON: {e}")
-                    return {"text": text, "state": "Draft", "originates_from": "parse-error"}
+                    return {
+                        "text": text,
+                        "state": "Draft",
+                        "originates_from": "parse-error",
+                    }
         except httpx.HTTPStatusError as e:
-            logger.error(f"OpenAI API returned HTTP {e.response.status_code}: {e.response.text}")
+            logger.error(
+                f"OpenAI API returned HTTP {e.response.status_code}: {e.response.text}"
+            )
             return {"text": text, "state": "Draft", "originates_from": "api-error"}
         except httpx.TimeoutException:
             logger.error("OpenAI API request timed out")
@@ -174,7 +194,8 @@ class LLMTeam:
             "messages": [
                 {
                     "role": "system",
-                    "content": system_prompt + " Return ONLY JSON conforming to the schema.",
+                    "content": system_prompt
+                    + " Return ONLY JSON conforming to the schema.",
                 },
                 {
                     "role": "user",
@@ -203,9 +224,15 @@ class LLMTeam:
                     return result
                 except json.JSONDecodeError as e:
                     logger.warning(f"Failed to parse Ollama response as JSON: {e}")
-                    return {"text": text, "state": "Draft", "originates_from": "parse-error"}
+                    return {
+                        "text": text,
+                        "state": "Draft",
+                        "originates_from": "parse-error",
+                    }
         except httpx.HTTPStatusError as e:
-            logger.error(f"Ollama API returned HTTP {e.response.status_code}: {e.response.text}")
+            logger.error(
+                f"Ollama API returned HTTP {e.response.status_code}: {e.response.text}"
+            )
             return {"text": text, "state": "Draft", "originates_from": "api-error"}
         except httpx.TimeoutException:
             logger.error("Ollama API request timed out")

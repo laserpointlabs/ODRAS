@@ -93,7 +93,9 @@ async def store_vector_chunks_in_qdrant(file_id: str, knowledge_asset_id: str):
         # ALSO store chunks in PostgreSQL for UI content display
         print(f"📋 Storing chunks in PostgreSQL for content display...")
 
-        from backend.services.knowledge_transformation import get_knowledge_transformation_service
+        from backend.services.knowledge_transformation import (
+            get_knowledge_transformation_service,
+        )
 
         knowledge_service = get_knowledge_transformation_service()
         conn = knowledge_service.db_service._conn()
@@ -101,7 +103,9 @@ async def store_vector_chunks_in_qdrant(file_id: str, knowledge_asset_id: str):
         try:
             with conn.cursor() as cur:
                 for i, chunk_data in enumerate(embeddings_data):
-                    qdrant_point_id = point_ids[i] if i < len(point_ids) else str(uuid.uuid4())
+                    qdrant_point_id = (
+                        point_ids[i] if i < len(point_ids) else str(uuid.uuid4())
+                    )
 
                     # Insert chunk into PostgreSQL knowledge_chunks table
                     cur.execute(
@@ -193,7 +197,9 @@ async def store_vector_chunks_in_qdrant(file_id: str, knowledge_asset_id: str):
 def main():
     """Main function for command line usage."""
     if len(sys.argv) < 3:
-        print("Usage: python3 step_store_vector_chunks.py <file_id> <knowledge_asset_id>")
+        print(
+            "Usage: python3 step_store_vector_chunks.py <file_id> <knowledge_asset_id>"
+        )
         sys.exit(1)
 
     file_id = sys.argv[1]

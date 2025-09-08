@@ -24,7 +24,9 @@ sys.path.append(os.path.join(os.path.dirname(__file__), "..", "backend"))
 from services.config import Settings
 
 
-def extract_requirements_from_document(document_content: str, document_filename: str) -> dict:
+def extract_requirements_from_document(
+    document_content: str, document_filename: str
+) -> dict:
     """
     Extract requirements from document using enhanced keyword patterns.
 
@@ -80,7 +82,9 @@ def extract_requirements_from_document(document_content: str, document_filename:
                         "pattern": pattern,
                         "pattern_id": pattern_idx,
                         "source_file": document_filename,
-                        "extraction_confidence": _calculate_confidence(clean_text, pattern),
+                        "extraction_confidence": _calculate_confidence(
+                            clean_text, pattern
+                        ),
                         "timestamp": time.time(),
                         "line_number": _find_line_number(document_content, clean_text),
                         "category": _categorize_requirement(clean_text),
@@ -136,7 +140,14 @@ def _calculate_confidence(text: str, pattern: str) -> float:
         base_confidence += 0.2
 
     # Boost confidence for specific technical terms
-    technical_terms = ["system", "component", "interface", "function", "performance", "security"]
+    technical_terms = [
+        "system",
+        "component",
+        "interface",
+        "function",
+        "performance",
+        "security",
+    ]
     for term in technical_terms:
         if term.lower() in text.lower():
             base_confidence += 0.05
@@ -164,16 +175,24 @@ def _categorize_requirement(text: str) -> str:
     text_lower = text.lower()
 
     if any(word in text_lower for word in ["shall", "must", "will"]):
-        if any(word in text_lower for word in ["performance", "speed", "latency", "throughput"]):
+        if any(
+            word in text_lower
+            for word in ["performance", "speed", "latency", "throughput"]
+        ):
             return "Performance"
         elif any(
             word in text_lower
             for word in ["security", "privacy", "authentication", "authorization"]
         ):
             return "Security"
-        elif any(word in text_lower for word in ["interface", "api", "protocol", "format"]):
+        elif any(
+            word in text_lower for word in ["interface", "api", "protocol", "format"]
+        ):
             return "Interface"
-        elif any(word in text_lower for word in ["reliability", "availability", "maintainability"]):
+        elif any(
+            word in text_lower
+            for word in ["reliability", "availability", "maintainability"]
+        ):
             return "Quality"
         else:
             return "Functional"
@@ -239,11 +258,15 @@ def main():
 
     print("Extraction Results:")
     print(f"Total Requirements: {result['extraction_metadata']['total_requirements']}")
-    print(f"Extraction Time: {result['extraction_metadata']['extraction_duration']:.3f}s")
+    print(
+        f"Extraction Time: {result['extraction_metadata']['extraction_duration']:.3f}s"
+    )
     print("\nRequirements:")
     for req in result["requirements_list"]:
         print(f"  {req['id']}: {req['text'][:80]}...")
-        print(f"    Category: {req['category']}, Confidence: {req['extraction_confidence']:.2f}")
+        print(
+            f"    Category: {req['category']}, Confidence: {req['extraction_confidence']:.2f}"
+        )
 
 
 if __name__ == "__main__":

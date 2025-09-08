@@ -16,7 +16,9 @@ import psycopg2
 from psycopg2.extras import RealDictCursor
 import requests
 
-logging.basicConfig(level=logging.INFO, format="%(asctime)s - %(levelname)s - %(message)s")
+logging.basicConfig(
+    level=logging.INFO, format="%(asctime)s - %(levelname)s - %(message)s"
+)
 logger = logging.getLogger(__name__)
 
 # Configuration
@@ -60,7 +62,11 @@ class DefaultOntologyCreator:
 
         try:
             conn = psycopg2.connect(
-                host="localhost", database="odras", user="postgres", password="password", port=5432
+                host="localhost",
+                database="odras",
+                user="postgres",
+                password="password",
+                port=5432,
             )
 
             with conn.cursor(cursor_factory=RealDictCursor) as cur:
@@ -107,7 +113,9 @@ class DefaultOntologyCreator:
                     # Check if we already have our default ontology
                     for onto in ontologies:
                         if "default-project-ontology" in onto.get("graphIri", ""):
-                            logger.info("✅ Default ontology already exists, skipping creation")
+                            logger.info(
+                                "✅ Default ontology already exists, skipping creation"
+                            )
                             return True
 
                 logger.info("No default ontology found, will create one")
@@ -140,7 +148,9 @@ class DefaultOntologyCreator:
                 logger.info(f"✅ Created ontology: {graph_iri}")
                 return graph_iri
             else:
-                logger.error(f"Failed to create ontology: {response.status_code} - {response.text}")
+                logger.error(
+                    f"Failed to create ontology: {response.status_code} - {response.text}"
+                )
                 return None
 
     def load_ontology_json(self) -> Dict[str, Any]:
@@ -182,7 +192,9 @@ class DefaultOntologyCreator:
                 lines.append(f'  rdfs:comment "{cls["comment"]}" ;')
             if cls.get("subclass_of"):
                 lines.append(f"  rdfs:subClassOf odras:{cls['subclass_of']} ;")
-            lines[-1] = lines[-1].rstrip(" ;") + " ."  # Replace last semicolon with period
+            lines[-1] = (
+                lines[-1].rstrip(" ;") + " ."
+            )  # Replace last semicolon with period
             lines.append("")
 
         # Add object properties
@@ -270,8 +282,15 @@ class DefaultOntologyCreator:
             col = i % 3
 
             node = {
-                "data": {"id": f"Class_{cls['name']}", "label": cls["label"], "type": "class"},
-                "position": {"x": x_start + (col * x_spacing), "y": y_pos + (row * 150)},
+                "data": {
+                    "id": f"Class_{cls['name']}",
+                    "label": cls["label"],
+                    "type": "class",
+                },
+                "position": {
+                    "x": x_start + (col * x_spacing),
+                    "y": y_pos + (row * 150),
+                },
             }
             nodes.append(node)
 
@@ -308,7 +327,11 @@ class DefaultOntologyCreator:
         # Register the ontology in the database
         try:
             conn = psycopg2.connect(
-                host="localhost", database="odras", user="postgres", password="password", port=5432
+                host="localhost",
+                database="odras",
+                user="postgres",
+                password="password",
+                port=5432,
             )
 
             with conn.cursor() as cur:
@@ -320,7 +343,12 @@ class DefaultOntologyCreator:
                     ON CONFLICT (graph_iri) DO UPDATE
                     SET label = EXCLUDED.label, updated_at = NOW()
                 """,
-                    (self.default_project_id, graph_iri, "Default Project Ontology", "base"),
+                    (
+                        self.default_project_id,
+                        graph_iri,
+                        "Default Project Ontology",
+                        "base",
+                    ),
                 )
 
                 conn.commit()

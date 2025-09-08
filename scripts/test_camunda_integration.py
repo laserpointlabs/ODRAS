@@ -79,7 +79,9 @@ async def test_document_upload():
 
     async with httpx.AsyncClient() as client:
         try:
-            response = await client.post(f"{API_BASE}/api/upload", files=files, data=data)
+            response = await client.post(
+                f"{API_BASE}/api/upload", files=files, data=data
+            )
             if response.status_code == 200:
                 result = response.json()
                 print(f"✅ Document upload successful!")

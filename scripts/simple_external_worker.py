@@ -114,7 +114,9 @@ class SimpleExternalWorker:
                 print(f"❌ Task {task_id} marked as failed")
                 return True
             else:
-                print(f"❌ Failed to report task failure {task_id}: {response.status_code}")
+                print(
+                    f"❌ Failed to report task failure {task_id}: {response.status_code}"
+                )
                 return False
 
         except Exception as e:
@@ -146,14 +148,27 @@ class SimpleExternalWorker:
             elif topic == "chunk-document":
                 chunking_strategy = variables.get("chunking_strategy", "hybrid")
                 chunk_size = variables.get("chunk_size", 512)
-                cmd = ["python3", str(script_path), file_id, chunking_strategy, str(chunk_size)]
+                cmd = [
+                    "python3",
+                    str(script_path),
+                    file_id,
+                    chunking_strategy,
+                    str(chunk_size),
+                ]
             elif topic == "generate-embeddings":
                 embedding_model = variables.get("embedding_model", "all-MiniLM-L6-v2")
                 cmd = ["python3", str(script_path), file_id, embedding_model]
             elif topic == "create-knowledge-asset":
                 document_type = variables.get("document_type", "text")
                 filename = variables.get("filename", "unknown_file")
-                cmd = ["python3", str(script_path), file_id, project_id, document_type, filename]
+                cmd = [
+                    "python3",
+                    str(script_path),
+                    file_id,
+                    project_id,
+                    document_type,
+                    filename,
+                ]
             elif topic == "store-vector-chunks":
                 knowledge_asset_id = variables.get("knowledge_asset_id", "auto")
                 cmd = ["python3", str(script_path), file_id, knowledge_asset_id]
@@ -167,7 +182,11 @@ class SimpleExternalWorker:
 
             # Execute the script
             result = subprocess.run(
-                cmd, cwd=project_root, capture_output=True, text=True, timeout=300  # 5 minutes
+                cmd,
+                cwd=project_root,
+                capture_output=True,
+                text=True,
+                timeout=300,  # 5 minutes
             )
 
             if result.returncode == 0:
@@ -189,7 +208,10 @@ class SimpleExternalWorker:
                 for key, value in script_result.items():
                     if isinstance(value, dict) or isinstance(value, list):
                         # Serialize complex objects as JSON strings
-                        camunda_vars[key] = {"value": json.dumps(value), "type": "String"}
+                        camunda_vars[key] = {
+                            "value": json.dumps(value),
+                            "type": "String",
+                        }
                     elif isinstance(value, bool):
                         camunda_vars[key] = {"value": value, "type": "Boolean"}
                     elif isinstance(value, int):
@@ -228,7 +250,9 @@ class SimpleExternalWorker:
                         print(f"🔄 Processing task {task_id} for topic '{topic}'")
 
                         # Execute the script
-                        success, result = self.execute_script(topic, task.get("variables", {}))
+                        success, result = self.execute_script(
+                            topic, task.get("variables", {})
+                        )
 
                         if success:
                             # Complete the task with results

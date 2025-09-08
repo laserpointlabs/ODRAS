@@ -58,7 +58,13 @@ class SimpleScriptWorker:
             elif task_type == "chunk-document":
                 chunking_strategy = variables.get("chunking_strategy", "hybrid")
                 chunk_size = variables.get("chunk_size", 512)
-                cmd = ["python3", str(script_path), file_id, chunking_strategy, str(chunk_size)]
+                cmd = [
+                    "python3",
+                    str(script_path),
+                    file_id,
+                    chunking_strategy,
+                    str(chunk_size),
+                ]
             elif task_type == "generate-embeddings":
                 embedding_model = variables.get("embedding_model", "all-MiniLM-L6-v2")
                 cmd = ["python3", str(script_path), file_id, embedding_model]

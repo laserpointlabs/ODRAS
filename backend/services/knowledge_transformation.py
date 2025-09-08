@@ -210,7 +210,10 @@ class KnowledgeTransformationService:
             content_type = file_metadata.get("content_type", "application/octet-stream")
             filename = file_metadata.get("filename", "unknown")
 
-            if content_type.startswith("text/") or content_type == "application/octet-stream":
+            if (
+                content_type.startswith("text/")
+                or content_type == "application/octet-stream"
+            ):
                 # Plain text or binary treated as text
                 try:
                     extracted_text = content.decode("utf-8")
@@ -222,11 +225,15 @@ class KnowledgeTransformationService:
 
             elif content_type == "application/pdf":
                 # TODO: Implement PDF text extraction
-                logger.warning(f"PDF text extraction not yet implemented for file {file_id}")
+                logger.warning(
+                    f"PDF text extraction not yet implemented for file {file_id}"
+                )
                 extracted_text = f"[PDF content extraction not implemented: {filename}]"
 
             else:
-                logger.warning(f"Unsupported content type {content_type} for file {file_id}")
+                logger.warning(
+                    f"Unsupported content type {content_type} for file {file_id}"
+                )
                 extracted_text = f"[Unsupported file type: {content_type}]"
 
             extraction_metadata = {
@@ -237,7 +244,9 @@ class KnowledgeTransformationService:
                 "extraction_method": "utf8_decode",
             }
 
-            logger.info(f"Extracted {len(extracted_text)} characters from file {file_id}")
+            logger.info(
+                f"Extracted {len(extracted_text)} characters from file {file_id}"
+            )
             return extracted_text, extraction_metadata
 
         except Exception as e:
@@ -344,14 +353,20 @@ class KnowledgeTransformationService:
             texts = [chunk.content for chunk in chunks]
 
             # Generate embeddings
-            logger.info(f"Generating embeddings for {len(texts)} chunks using {embedding_model}")
-            embeddings = self.embedding_service.generate_embeddings(texts, embedding_model)
+            logger.info(
+                f"Generating embeddings for {len(texts)} chunks using {embedding_model}"
+            )
+            embeddings = self.embedding_service.generate_embeddings(
+                texts, embedding_model
+            )
 
             # Prepare vectors for Qdrant
             vectors_data = []
             qdrant_point_ids = []
 
-            for i, (chunk, chunk_id, embedding) in enumerate(zip(chunks, chunk_ids, embeddings)):
+            for i, (chunk, chunk_id, embedding) in enumerate(
+                zip(chunks, chunk_ids, embeddings)
+            ):
                 qdrant_point_id = str(uuid4())
                 qdrant_point_ids.append(qdrant_point_id)
 
@@ -365,9 +380,13 @@ class KnowledgeTransformationService:
                     "token_count": chunk.metadata.token_count,
                     "text": chunk.content,  # Full text for RAG retrieval
                     "content_preview": (
-                        chunk.content[:200] + "..." if len(chunk.content) > 200 else chunk.content
+                        chunk.content[:200] + "..."
+                        if len(chunk.content) > 200
+                        else chunk.content
                     ),
-                    "source_asset": asset_metadata.get("title", f"Asset {asset_id[:8]}"),
+                    "source_asset": asset_metadata.get(
+                        "title", f"Asset {asset_id[:8]}"
+                    ),
                     "document_type": asset_metadata.get("document_type", "document"),
                 }
 
@@ -376,7 +395,9 @@ class KnowledgeTransformationService:
                 )
 
             # Store vectors in Qdrant
-            stored_ids = self.qdrant_service.store_vectors(collection_name, vectors_data)
+            stored_ids = self.qdrant_service.store_vectors(
+                collection_name, vectors_data
+            )
 
             # Update chunk records with Qdrant point IDs
             conn = self.db_service._conn()
@@ -395,7 +416,9 @@ class KnowledgeTransformationService:
             finally:
                 self.db_service._return(conn)
 
-            logger.info(f"Stored {len(stored_ids)} vectors in Qdrant collection {collection_name}")
+            logger.info(
+                f"Stored {len(stored_ids)} vectors in Qdrant collection {collection_name}"
+            )
             return qdrant_point_ids
 
         except Exception as e:
@@ -423,7 +446,10 @@ class KnowledgeTransformationService:
             self.db_service._return(conn)
 
     async def transform_file_to_knowledge(
-        self, file_id: str, project_id: str, processing_options: Optional[Dict[str, Any]] = None
+        self,
+        file_id: str,
+        project_id: str,
+        processing_options: Optional[Dict[str, Any]] = None,
     ) -> str:
         """
         Main orchestration method to transform a file into a knowledge asset.
@@ -453,7 +479,9 @@ class KnowledgeTransformationService:
 
             # Step 1: Extract text content
             logger.info("Step 1: Extracting text content")
-            extracted_text, extraction_metadata = await self.extract_text_content(file_id)
+            extracted_text, extraction_metadata = await self.extract_text_content(
+                file_id
+            )
 
             if not extracted_text.strip():
                 raise ValueError("No text content could be extracted from file")
@@ -505,7 +533,11 @@ class KnowledgeTransformationService:
             # Step 6: Generate and store embeddings
             logger.info("Step 6: Generating and storing embeddings")
             qdrant_point_ids = await self.generate_and_store_embeddings(
-                chunks, chunk_ids, asset_id, project_id, processing_config["embedding_model"]
+                chunks,
+                chunk_ids,
+                asset_id,
+                project_id,
+                processing_config["embedding_model"],
             )
 
             await self.update_job_progress(job_id, 80, "running")
@@ -526,7 +558,9 @@ class KnowledgeTransformationService:
             await self.update_asset_processing_stats(asset_id, processing_stats)
             await self.update_job_progress(job_id, 100, "completed")
 
-            logger.info(f"Successfully transformed file {file_id} to knowledge asset {asset_id}")
+            logger.info(
+                f"Successfully transformed file {file_id} to knowledge asset {asset_id}"
+            )
             logger.info(
                 f"Generated {len(chunks)} chunks with {chunk_stats['total_tokens']} total tokens"
             )
@@ -575,7 +609,8 @@ class KnowledgeTransformationService:
             try:
                 with conn.cursor() as cur:
                     cur.execute(
-                        "SELECT filename, original_filename FROM files WHERE id = %s", (file_id,)
+                        "SELECT filename, original_filename FROM files WHERE id = %s",
+                        (file_id,),
                     )
                     result = cur.fetchone()
 
@@ -590,7 +625,9 @@ class KnowledgeTransformationService:
                                 base_name = base_name.rsplit(".", 1)[0]
 
                             # Convert to readable title
-                            title = base_name.replace("_", " ").replace("-", " ").title()
+                            title = (
+                                base_name.replace("_", " ").replace("-", " ").title()
+                            )
                             return title
 
                     # Fallback if no filename found
@@ -633,7 +670,10 @@ class KnowledgeTransformationService:
                             "document_type": result[1] or "document",
                         }
                     else:
-                        return {"title": f"Asset {asset_id[:8]}", "document_type": "document"}
+                        return {
+                            "title": f"Asset {asset_id[:8]}",
+                            "document_type": "document",
+                        }
 
             finally:
                 self.db_service._return(conn)
@@ -670,4 +710,6 @@ async def transform_file_to_knowledge_asset(
         Knowledge asset ID
     """
     service = get_knowledge_transformation_service()
-    return await service.transform_file_to_knowledge(file_id, project_id, processing_options)
+    return await service.transform_file_to_knowledge(
+        file_id, project_id, processing_options
+    )

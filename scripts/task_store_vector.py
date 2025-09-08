@@ -87,12 +87,16 @@ def store_results_in_vector_db(processed_requirements: List[Dict]) -> Dict[str, 
                         "iteration_number": iteration["iteration"],
                         "timestamp": iteration["processing_time"],
                         "collection": collection_name,
-                        "source_file": req["original_requirement"].get("source_file", "Unknown"),
+                        "source_file": req["original_requirement"].get(
+                            "source_file", "Unknown"
+                        ),
                         "extraction_confidence": req["original_requirement"].get(
                             "extraction_confidence", 0.0
                         ),
                         "processing_metadata": {
-                            "total_processing_time": req.get("total_processing_time", 0.0),
+                            "total_processing_time": req.get(
+                                "total_processing_time", 0.0
+                            ),
                             "success_rate": req.get("success_rate", 0.0),
                             "average_confidence": req.get("average_confidence", 0.0),
                         },
@@ -106,11 +110,15 @@ def store_results_in_vector_db(processed_requirements: List[Dict]) -> Dict[str, 
 
                     # Add constraints if available
                     if "constraints" in iteration["llm_response"]:
-                        payload["constraints"] = iteration["llm_response"]["constraints"]
+                        payload["constraints"] = iteration["llm_response"][
+                            "constraints"
+                        ]
 
                     # Add dependencies if available
                     if "dependencies" in iteration["llm_response"]:
-                        payload["dependencies"] = iteration["llm_response"]["dependencies"]
+                        payload["dependencies"] = iteration["llm_response"][
+                            "dependencies"
+                        ]
 
                     vectors.append(vector)
                     payloads.append(payload)
@@ -138,13 +146,21 @@ def store_results_in_vector_db(processed_requirements: List[Dict]) -> Dict[str, 
         vector_store_status["metadata"].update(
             {
                 "storage_duration": storage_time,
-                "vectors_per_second": len(vectors) / storage_time if storage_time > 0 else 0,
+                "vectors_per_second": (
+                    len(vectors) / storage_time if storage_time > 0 else 0
+                ),
                 "total_requirements_processed": len(processed_requirements),
                 "total_iterations_processed": sum(
                     len(req["iterations"]) for req in processed_requirements
                 ),
                 "successful_iterations": sum(
-                    len([iter for iter in req["iterations"] if iter["status"] == "success"])
+                    len(
+                        [
+                            iter
+                            for iter in req["iterations"]
+                            if iter["status"] == "success"
+                        ]
+                    )
                     for req in processed_requirements
                 ),
                 "storage_timestamp": time.time(),

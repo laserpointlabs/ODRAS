@@ -37,7 +37,9 @@ class PersistenceLayer:
                 logger.info(f"Creating Qdrant collection: {self.collection}")
                 self.qdrant.recreate_collection(
                     collection_name=self.collection,
-                    vectors_config=qmodels.VectorParams(size=384, distance=qmodels.Distance.COSINE),
+                    vectors_config=qmodels.VectorParams(
+                        size=384, distance=qmodels.Distance.COSINE
+                    ),
                 )
             else:
                 logger.debug(f"Qdrant collection {self.collection} already exists")
@@ -124,7 +126,11 @@ class PersistenceLayer:
 
             headers = {"Content-Type": "text/turtle"}
             resp = requests.put(
-                graph_store_url, data=ttl.encode("utf-8"), headers=headers, auth=auth, timeout=10
+                graph_store_url,
+                data=ttl.encode("utf-8"),
+                headers=headers,
+                auth=auth,
+                timeout=10,
             )
             if 200 <= resp.status_code < 300:
                 return
@@ -178,7 +184,9 @@ class PersistenceLayer:
                 self.settings, "fuseki_password", None
             ):
                 try:
-                    sparql.setCredentials(self.settings.fuseki_user, self.settings.fuseki_password)
+                    sparql.setCredentials(
+                        self.settings.fuseki_user, self.settings.fuseki_password
+                    )
                 except Exception:
                     pass
 
