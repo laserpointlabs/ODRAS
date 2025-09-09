@@ -71,7 +71,9 @@ def put_named_graph(
     url = f"{base}/data?graph={quote(graph_iri, safe=':/#') }"
     headers = {"Content-Type": "text/turtle"}
     auth = (username, password) if username and password else None
-    resp = requests.put(url, data=turtle.encode("utf-8"), headers=headers, auth=auth, timeout=20)
+    resp = requests.put(
+        url, data=turtle.encode("utf-8"), headers=headers, auth=auth, timeout=20
+    )
     return resp
 
 
@@ -100,7 +102,9 @@ def load_graphs(
 
 
 def main() -> int:
-    ap = argparse.ArgumentParser(description="Load sample ontologies into Fuseki as named graphs")
+    ap = argparse.ArgumentParser(
+        description="Load sample ontologies into Fuseki as named graphs"
+    )
     ap.add_argument(
         "--fuseki",
         default="http://localhost:3030/odras",
@@ -111,8 +115,12 @@ def main() -> int:
         default="demo",
         help="Project id to embed in graph IRIs (used by UI filter)",
     )
-    ap.add_argument("--user", dest="username", default=None, help="Fuseki username (optional)")
-    ap.add_argument("--password", dest="password", default=None, help="Fuseki password (optional)")
+    ap.add_argument(
+        "--user", dest="username", default=None, help="Fuseki username (optional)"
+    )
+    ap.add_argument(
+        "--password", dest="password", default=None, help="Fuseki password (optional)"
+    )
     ap.add_argument(
         "--graphs",
         nargs="*",
@@ -124,7 +132,9 @@ def main() -> int:
     print(
         f"Loading {len(args.graphs)} ontologies into {args.fuseki} for project '{args.project}'..."
     )
-    created = load_graphs(args.fuseki, args.project, args.graphs, args.username, args.password)
+    created = load_graphs(
+        args.fuseki, args.project, args.graphs, args.username, args.password
+    )
     print(f"Created/updated: {len(created)} graphs")
     for g in created:
         print(" -", g)

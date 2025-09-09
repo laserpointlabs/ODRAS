@@ -39,7 +39,9 @@ class CreateEmbeddingModelRequest(BaseModel):
     normalize_default: bool = Field(
         default=True, description="Whether to normalize embeddings by default"
     )
-    config: Optional[Dict[str, Any]] = Field(default=None, description="Additional configuration")
+    config: Optional[Dict[str, Any]] = Field(
+        default=None, description="Additional configuration"
+    )
 
 
 class UpdateEmbeddingModelRequest(BaseModel):
@@ -182,13 +184,17 @@ async def create_embedding_model(
         # Check if model already exists
         existing = embedding_service.get_model(body.id)
         if existing:
-            raise HTTPException(status_code=400, detail=f"Model {body.id} already exists")
+            raise HTTPException(
+                status_code=400, detail=f"Model {body.id} already exists"
+            )
 
         # Validate provider
         try:
             provider = EmbeddingProvider(body.provider)
         except ValueError:
-            raise HTTPException(status_code=400, detail=f"Invalid provider: {body.provider}")
+            raise HTTPException(
+                status_code=400, detail=f"Invalid provider: {body.provider}"
+            )
 
         # Create model
         model = EmbeddingModel(
@@ -401,4 +407,6 @@ async def get_model_info(
 
     except Exception as e:
         logger.error(f"Failed to get model info for {model_id}: {e}")
-        raise HTTPException(status_code=500, detail=f"Failed to get model info: {str(e)}")
+        raise HTTPException(
+            status_code=500, detail=f"Failed to get model info: {str(e)}"
+        )

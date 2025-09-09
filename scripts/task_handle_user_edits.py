@@ -163,7 +163,9 @@ def _apply_single_edit(requirements: List[Dict], edit: Dict) -> Dict[str, Any]:
             "text": new_value,
             "pattern": "user_manual",
             "source_file": (
-                requirements[0].get("source_file", "unknown") if requirements else "unknown"
+                requirements[0].get("source_file", "unknown")
+                if requirements
+                else "unknown"
             ),
             "extraction_confidence": 1.0,  # User-defined, high confidence
             "timestamp": time.time(),
@@ -231,12 +233,16 @@ def _validate_edited_requirements(requirements: List[Dict]) -> Dict[str, Any]:
         # Check confidence range
         confidence = req.get("extraction_confidence", 0)
         if not (0.0 <= confidence <= 1.0):
-            validation_errors.append(f"Requirement {req['id']}: Invalid confidence {confidence}")
+            validation_errors.append(
+                f"Requirement {req['id']}: Invalid confidence {confidence}"
+            )
 
     return {
         "passed": len(validation_errors) == 0,
         "errors": validation_errors,
-        "total_requirements": len([r for r in requirements if not r.get("deleted", False)]),
+        "total_requirements": len(
+            [r for r in requirements if not r.get("deleted", False)]
+        ),
     }
 
 

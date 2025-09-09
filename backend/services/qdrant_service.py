@@ -114,7 +114,9 @@ class QdrantService:
             logger.error(f"Failed to ensure collection '{collection_name}': {str(e)}")
             return False
 
-    def store_vectors(self, collection_name: str, vectors: List[Dict[str, Any]]) -> List[str]:
+    def store_vectors(
+        self, collection_name: str, vectors: List[Dict[str, Any]]
+    ) -> List[str]:
         """
         Store vectors with metadata in Qdrant.
 
@@ -162,7 +164,9 @@ class QdrantService:
             # Batch upsert
             self.client.upsert(collection_name=collection_name, points=points)
 
-            logger.info(f"Stored {len(points)} vectors in collection '{collection_name}'")
+            logger.info(
+                f"Stored {len(points)} vectors in collection '{collection_name}'"
+            )
             return point_ids
 
         except Exception as e:
@@ -210,10 +214,14 @@ class QdrantService:
                     if isinstance(value, list):
                         # Any of the values
                         for val in value:
-                            conditions.append(FieldCondition(key=key, match=MatchValue(value=val)))
+                            conditions.append(
+                                FieldCondition(key=key, match=MatchValue(value=val))
+                            )
                     else:
                         # Exact match
-                        conditions.append(FieldCondition(key=key, match=MatchValue(value=value)))
+                        conditions.append(
+                            FieldCondition(key=key, match=MatchValue(value=value))
+                        )
 
                 if conditions:
                     qdrant_filter = (
@@ -271,14 +279,18 @@ class QdrantService:
                 points_selector=rest.PointIdsList(points=point_ids),
             )
 
-            logger.info(f"Deleted {len(point_ids)} vectors from collection '{collection_name}'")
+            logger.info(
+                f"Deleted {len(point_ids)} vectors from collection '{collection_name}'"
+            )
             return True
 
         except Exception as e:
             logger.error(f"Failed to delete vectors from '{collection_name}': {str(e)}")
             return False
 
-    def delete_by_filter(self, collection_name: str, metadata_filter: Dict[str, Any]) -> bool:
+    def delete_by_filter(
+        self, collection_name: str, metadata_filter: Dict[str, Any]
+    ) -> bool:
         """
         Delete vectors by metadata filter.
 
@@ -293,7 +305,9 @@ class QdrantService:
             # Build filter conditions
             conditions = []
             for key, value in metadata_filter.items():
-                conditions.append(FieldCondition(key=key, match=MatchValue(value=value)))
+                conditions.append(
+                    FieldCondition(key=key, match=MatchValue(value=value))
+                )
 
             if not conditions:
                 logger.warning("No filter conditions provided for deletion")
@@ -337,13 +351,17 @@ class QdrantService:
                 "points_count": info.points_count,
                 "segments_count": info.segments_count,
                 "status": info.status.name if info.status else "unknown",
-                "optimizer_status": (info.optimizer_status.ok if info.optimizer_status else True),
+                "optimizer_status": (
+                    info.optimizer_status.ok if info.optimizer_status else True
+                ),
                 "disk_data_size": getattr(info, "disk_data_size", 0),
                 "ram_data_size": getattr(info, "ram_data_size", 0),
             }
 
         except Exception as e:
-            logger.error(f"Failed to get collection info for '{collection_name}': {str(e)}")
+            logger.error(
+                f"Failed to get collection info for '{collection_name}': {str(e)}"
+            )
             return None
 
     def list_collections(self) -> List[str]:
@@ -428,7 +446,9 @@ class QdrantService:
                 metadata_filter=metadata_filter,
             )
 
-            logger.info(f"Found {len(results)} similar chunks for query: '{query_text[:50]}...'")
+            logger.info(
+                f"Found {len(results)} similar chunks for query: '{query_text[:50]}...'"
+            )
             return results
 
         except Exception as e:
