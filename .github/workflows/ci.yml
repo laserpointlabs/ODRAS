@@ -248,15 +248,59 @@ jobs:
         pytest tests/api/test_auth_endpoints.py::TestAuthenticationEndpoints::test_logout_success -v
         pytest tests/api/test_auth_endpoints.py::TestAuthenticationEndpoints::test_token_expiration -v
     
-    # TODO: Add comprehensive test suite once auth is working
-    # - name: Run comprehensive test suite
-    #   run: |
-    #     python scripts/run_comprehensive_tests.py --verbose
+    - name: Run comprehensive API endpoint tests
+      run: |
+        # Test all major API endpoint groups
+        echo "Testing User Management API endpoints..."
+        pytest tests/api/test_user_management_endpoints.py -v --tb=short
+        
+        echo "Testing Project Management API endpoints..."
+        pytest tests/api/test_project_management_endpoints.py -v --tb=short
+        
+        echo "Testing Knowledge Management API endpoints..."
+        pytest tests/api/test_knowledge_management_endpoints.py -v --tb=short
+        
+        echo "Testing Namespace Management API endpoints..."
+        pytest tests/api/test_namespace_management_endpoints.py -v --tb=short
+        
+        echo "Testing Workflow API endpoints..."
+        pytest tests/api/test_workflow_endpoints.py -v --tb=short
+        
+        echo "Testing Service Status API endpoints..."
+        pytest tests/api/test_service_status_endpoints.py -v --tb=short
     
-    # TODO: Add API endpoint validation once auth is working  
-    # - name: Run API endpoint validation
-    #   run: |
-    #     python scripts/validate_all_endpoints.py --verbose
+    - name: Run comprehensive API endpoint validation
+      run: |
+        # Start the FastAPI server in the background
+        echo "Starting FastAPI server for endpoint validation..."
+        python -m uvicorn backend.main:app --host 0.0.0.0 --port 8000 &
+        SERVER_PID=$!
+        
+        # Wait for server to start
+        sleep 10
+        
+        # Run comprehensive endpoint validation
+        echo "Running comprehensive API endpoint validation..."
+        python scripts/validate_all_endpoints.py --base-url http://localhost:8000 --verbose --output api_validation_results.json
+        
+        # Stop the server
+        kill $SERVER_PID
+        
+        # Display validation results
+        if [ -f api_validation_results.json ]; then
+          echo "API Validation Results:"
+          python -c "
+          import json
+          with open('api_validation_results.json') as f:
+              data = json.load(f)
+          summary = data['summary']
+          print(f'Total Endpoints: {summary[\"total_endpoints\"]}')
+          print(f'Successful: {summary[\"successful_endpoints\"]}')
+          print(f'Errors: {summary[\"error_endpoints\"]}')
+          print(f'Skipped: {summary[\"skipped_endpoints\"]}')
+          print(f'Success Rate: {summary[\"success_rate\"]}')
+          "
+        fi
 
     # TODO: Add unit tests with coverage once auth tests pass
     # - name: Run unit tests with coverage

@@ -189,9 +189,7 @@ async def complete_test_task(process_instance_id: str, user_decision: Dict):
         TEST_PROCESSES[process_instance_id]["completed_at"] = datetime.now().isoformat()
 
     return {
-        "task_id": TEST_PROCESSES.get(process_instance_id, {}).get(
-            "task_id", "unknown"
-        ),
+        "task_id": TEST_PROCESSES.get(process_instance_id, {}).get("task_id", "unknown"),
         "process_instance_id": process_instance_id,
         "decision": decision,
         "status": "completed",
@@ -214,7 +212,5 @@ async def get_test_status():
         "pending_review": sum(
             1 for p in TEST_PROCESSES.values() if p["status"] == "pending_review"
         ),
-        "completed": sum(
-            1 for p in TEST_PROCESSES.values() if p["status"].startswith("completed")
-        ),
+        "completed": sum(1 for p in TEST_PROCESSES.values() if p["status"].startswith("completed")),
     }

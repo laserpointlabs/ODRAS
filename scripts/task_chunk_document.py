@@ -128,9 +128,7 @@ def chunk_document(
 
         # Basic content preprocessing
         # Remove excessive whitespace while preserving structure
-        cleaned_content = re.sub(
-            r"\n\s*\n\s*\n+", "\n\n", cleaned_content
-        )  # Max 2 newlines
+        cleaned_content = re.sub(r"\n\s*\n\s*\n+", "\n\n", cleaned_content)  # Max 2 newlines
         cleaned_content = re.sub(r"[ \t]+", " ", cleaned_content)  # Normalize spaces
 
         # Split into chunks
@@ -145,9 +143,7 @@ def chunk_document(
             )
         else:
             # Simple fallback chunking
-            chunks = simple_chunk_text(
-                cleaned_content, config.chunk_size, config.overlap_size
-            )
+            chunks = simple_chunk_text(cleaned_content, config.chunk_size, config.overlap_size)
 
         # Process chunks and add metadata
         processed_chunks = []
@@ -183,9 +179,7 @@ def chunk_document(
 
             # Quality checks for chunk
             quality_indicators = {
-                "size_appropriate": config.min_chunk_size
-                <= len(chunk)
-                <= config.max_chunk_size,
+                "size_appropriate": config.min_chunk_size <= len(chunk) <= config.max_chunk_size,
                 "has_complete_sentences": chunk.rstrip().endswith((".", "!", "?", ";")),
                 "not_just_whitespace": chunk.strip() != "",
                 "has_meaningful_content": len(re.sub(r"[\s\W]", "", chunk)) > 10,
@@ -206,18 +200,12 @@ def chunk_document(
             "original_length": len(cleaned_content),
             "average_chunk_size": avg_chunk_size,
             "min_chunk_size": (
-                min(len(chunk["content"]) for chunk in processed_chunks)
-                if processed_chunks
-                else 0
+                min(len(chunk["content"]) for chunk in processed_chunks) if processed_chunks else 0
             ),
             "max_chunk_size": (
-                max(len(chunk["content"]) for chunk in processed_chunks)
-                if processed_chunks
-                else 0
+                max(len(chunk["content"]) for chunk in processed_chunks) if processed_chunks else 0
             ),
-            "compression_ratio": (
-                total_chars / len(cleaned_content) if cleaned_content else 0
-            ),
+            "compression_ratio": (total_chars / len(cleaned_content) if cleaned_content else 0),
             "config_used": {
                 "chunk_size": config.chunk_size,
                 "overlap_size": config.overlap_size,

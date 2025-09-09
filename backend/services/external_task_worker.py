@@ -208,9 +208,7 @@ class ExternalTaskWorker:
             if response.status_code == 200:
                 return response.json()
             else:
-                logger.warning(
-                    f"Failed to fetch tasks: {response.status_code} - {response.text}"
-                )
+                logger.warning(f"Failed to fetch tasks: {response.status_code} - {response.text}")
                 return []
 
         except Exception as e:
@@ -489,9 +487,7 @@ class ExternalTaskWorker:
         similarity_threshold = float(variables.get("similarity_threshold", 0.85))
         search_scope = variables.get("search_scope", "global")
 
-        result = check_duplicate_knowledge(
-            knowledge_data, similarity_threshold, search_scope
-        )
+        result = check_duplicate_knowledge(knowledge_data, similarity_threshold, search_scope)
         return result
 
     # RAG Query Pipeline Handlers
@@ -558,14 +554,12 @@ class ExternalTaskWorker:
 
         # Simple reranking - sort by similarity score
         if retrieved_chunks:
-            retrieved_chunks.sort(
-                key=lambda x: x.get("similarity_score", 0), reverse=True
-            )
+            retrieved_chunks.sort(key=lambda x: x.get("similarity_score", 0), reverse=True)
             # Keep top 5
             reranked_chunks = retrieved_chunks[:5]
-            avg_score = sum(
-                chunk.get("similarity_score", 0) for chunk in reranked_chunks
-            ) / len(reranked_chunks)
+            avg_score = sum(chunk.get("similarity_score", 0) for chunk in reranked_chunks) / len(
+                reranked_chunks
+            )
         else:
             reranked_chunks = []
             avg_score = 0.0
@@ -616,9 +610,7 @@ class ExternalTaskWorker:
     def handle_construct_prompt(self, variables: Dict) -> Dict:
         """Handle prompt construction with retrieved context."""
         processed_query = variables.get("processed_query", {})
-        context_chunks = variables.get(
-            "reranked_context", variables.get("retrieved_chunks", [])
-        )
+        context_chunks = variables.get("reranked_context", variables.get("retrieved_chunks", []))
 
         if isinstance(processed_query, str):
             processed_query = json.loads(processed_query)
@@ -717,9 +709,7 @@ Note: Limited context available for this query."""
     def handle_process_response(self, variables: Dict) -> Dict:
         """Handle response processing and formatting."""
         llm_response = variables.get("llm_response", "")
-        context_chunks = variables.get(
-            "reranked_context", variables.get("retrieved_chunks", [])
-        )
+        context_chunks = variables.get("reranked_context", variables.get("retrieved_chunks", []))
 
         if isinstance(context_chunks, str):
             context_chunks = json.loads(context_chunks)
@@ -740,9 +730,7 @@ Note: Limited context available for this query."""
         if citations:
             final_response += "\n\nSources:\n"
             for citation in citations:
-                final_response += (
-                    f"{citation['citation_id']} {citation['source_document']}\n"
-                )
+                final_response += f"{citation['citation_id']} {citation['source_document']}\n"
 
         return {
             "final_response": final_response,
@@ -756,9 +744,7 @@ Note: Limited context available for this query."""
             "errors": [],
         }
 
-    def simple_retrieval_fallback(
-        self, processed_query: Dict, search_parameters: Dict
-    ) -> Dict:
+    def simple_retrieval_fallback(self, processed_query: Dict, search_parameters: Dict) -> Dict:
         """Simple synchronous fallback for context retrieval."""
         try:
             # Use the existing RAG service directly
@@ -813,10 +799,7 @@ Note: Limited context available for this query."""
                     "total_results": len(retrieved_chunks),
                     "search_method": "existing_rag_service",
                     "avg_similarity": (
-                        sum(
-                            chunk.get("similarity_score", 0)
-                            for chunk in retrieved_chunks
-                        )
+                        sum(chunk.get("similarity_score", 0) for chunk in retrieved_chunks)
                         / len(retrieved_chunks)
                         if retrieved_chunks
                         else 0.0
@@ -847,9 +830,7 @@ Note: Limited context available for this query."""
         interaction_log = {
             "query": processed_query.get("original_query", ""),
             "response_preview": (
-                final_response[:200] + "..."
-                if len(final_response) > 200
-                else final_response
+                final_response[:200] + "..." if len(final_response) > 200 else final_response
             ),
             "query_type": processed_query.get("query_type", "unknown"),
             "response_length": len(final_response),
