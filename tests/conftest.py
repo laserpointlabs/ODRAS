@@ -28,14 +28,14 @@ class InMemoryDB:
     ):
         # Return a minimal dict compatible with main.login expectations
         return {
-            "user_id": f"user-{username}",
+            "user_id": str(uuid.uuid4()),  # Generate proper UUID
             "username": username,
             "display_name": display_name or username,
             "is_admin": is_admin,
         }
 
     # Projects
-    def create_project(self, name: str, owner_user_id: str, description=None):
+    def create_project(self, name: str, owner_user_id: str, description=None, namespace_id=None, domain=None):
         pid = str(uuid.uuid4())
         proj = {
             "project_id": pid,
@@ -45,6 +45,8 @@ class InMemoryDB:
             "updated_at": None,
             "created_by": owner_user_id,
             "is_active": True,
+            "namespace_id": namespace_id,
+            "domain": domain,
         }
         self.projects[pid] = proj
         self.members.setdefault(pid, set()).add(owner_user_id)

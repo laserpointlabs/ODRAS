@@ -71,7 +71,7 @@ async def test_upload_and_list_files():
         assert up.get("file_id")
 
         # List files by project
-        r = await client.get("/api/files", params={"project_id": pid})
+        r = await client.get("/api/files", params={"project_id": pid}, headers=headers)
         assert r.status_code == 200
         listing = r.json()
         assert listing.get("success") is True
@@ -199,7 +199,7 @@ async def test_full_file_manager_flow_jdehart(monkeypatch):
         assert all(fids)
 
         # List and verify
-        lr = await client.get("/api/files", params={"project_id": pid})
+        lr = await client.get("/api/files", params={"project_id": pid}, headers=headers)
         assert lr.status_code == 200
         files_list = lr.json().get("files") or []
         names = {f.get("filename") for f in files_list}
