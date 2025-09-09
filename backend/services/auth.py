@@ -50,7 +50,9 @@ def create_token(user_id: str, username: str, is_admin: bool, token: str) -> Non
     try:
         uuid.UUID(user_id)
     except ValueError as e:
-        raise ValueError(f"Invalid user_id format: {user_id!r}. Expected UUID format.") from e
+        raise ValueError(
+            f"Invalid user_id format: {user_id!r}. Expected UUID format."
+        ) from e
 
     token_hash = _hash_token(token)
     db = _get_db_service()

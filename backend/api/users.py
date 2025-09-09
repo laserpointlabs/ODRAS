@@ -23,20 +23,28 @@ class UserCreate(BaseModel):
     username: str = Field(
         ..., min_length=3, max_length=50, description="Username (3-50 characters)"
     )
-    password: str = Field(..., min_length=8, description="Password (minimum 8 characters)")
-    display_name: Optional[str] = Field(None, max_length=100, description="Display name")
+    password: str = Field(
+        ..., min_length=8, description="Password (minimum 8 characters)"
+    )
+    display_name: Optional[str] = Field(
+        None, max_length=100, description="Display name"
+    )
     is_admin: bool = Field(False, description="Admin privileges")
 
 
 class UserUpdate(BaseModel):
-    display_name: Optional[str] = Field(None, max_length=100, description="Display name")
+    display_name: Optional[str] = Field(
+        None, max_length=100, description="Display name"
+    )
     is_admin: Optional[bool] = Field(None, description="Admin privileges")
     is_active: Optional[bool] = Field(None, description="Account status")
 
 
 class PasswordChange(BaseModel):
     old_password: str = Field(..., description="Current password")
-    new_password: str = Field(..., min_length=8, description="New password (minimum 8 characters)")
+    new_password: str = Field(
+        ..., min_length=8, description="New password (minimum 8 characters)"
+    )
 
 
 class UserResponse(BaseModel):
@@ -57,8 +65,16 @@ class UserResponse(BaseModel):
             display_name=user_dict["display_name"],
             is_admin=bool(user_dict["is_admin"]),
             is_active=bool(user_dict["is_active"]),
-            created_at=(user_dict["created_at"].isoformat() if user_dict.get("created_at") else ""),
-            updated_at=(user_dict["updated_at"].isoformat() if user_dict.get("updated_at") else ""),
+            created_at=(
+                user_dict["created_at"].isoformat()
+                if user_dict.get("created_at")
+                else ""
+            ),
+            updated_at=(
+                user_dict["updated_at"].isoformat()
+                if user_dict.get("updated_at")
+                else ""
+            ),
         )
 
 
@@ -83,7 +99,9 @@ def create_user(
             is_admin=user_data.is_admin,
         )
 
-        logger.info(f"User created: {user_data.username} by admin {admin_user['username']}")
+        logger.info(
+            f"User created: {user_data.username} by admin {admin_user['username']}"
+        )
         return UserResponse.from_user_dict(user)
 
     except ValueError as e:

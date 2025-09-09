@@ -72,7 +72,9 @@ class DatabaseService:
                 try:
                     uuid.UUID(str(user_dict["user_id"]))
                 except ValueError as e:
-                    raise ValueError(f"Invalid user_id created: {user_dict['user_id']!r}") from e
+                    raise ValueError(
+                        f"Invalid user_id created: {user_dict['user_id']!r}"
+                    ) from e
                 return user_dict
         finally:
             self._return(conn)
@@ -302,7 +304,9 @@ class DatabaseService:
         finally:
             self._return(conn)
 
-    def update_ontology_reference_status(self, graph_iri: str, is_reference: bool) -> bool:
+    def update_ontology_reference_status(
+        self, graph_iri: str, is_reference: bool
+    ) -> bool:
         """Update the reference status of an ontology."""
         conn = self._conn()
         try:

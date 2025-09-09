@@ -17,7 +17,9 @@ def deploy_bpmn_to_camunda():
     """Deploy the BPMN file to Camunda."""
 
     # Path to the BPMN file
-    bpmn_file = Path(__file__).parent.parent / "bpmn" / "odras_requirements_analysis.bpmn"
+    bpmn_file = (
+        Path(__file__).parent.parent / "bpmn" / "odras_requirements_analysis.bpmn"
+    )
 
     if not bpmn_file.exists():
         print(f"BPMN file not found: {bpmn_file}")
@@ -30,7 +32,9 @@ def deploy_bpmn_to_camunda():
     # Deploy to Camunda
     deploy_url = f"{CAMUNDA_REST_API}/deployment/create"
 
-    files = {"file": ("odras_requirements_analysis.bpmn", bpmn_content, "application/xml")}
+    files = {
+        "file": ("odras_requirements_analysis.bpmn", bpmn_content, "application/xml")
+    }
 
     data = {
         "deployment-name": "odras-requirements-analysis",
@@ -64,7 +68,9 @@ def start_process_instance(
 ):
     """Start a new process instance with the given parameters."""
 
-    start_url = f"{CAMUNDA_REST_API}/process-definition/key/odras_requirements_analysis/start"
+    start_url = (
+        f"{CAMUNDA_REST_API}/process-definition/key/odras_requirements_analysis/start"
+    )
 
     variables = {
         "document_content": {"value": document_content, "type": "String"},
@@ -112,7 +118,9 @@ def get_process_status(process_instance_id: str):
 def get_process_variables(process_instance_id: str):
     """Get the variables of a process instance."""
 
-    variables_url = f"{CAMUNDA_REST_API}/process-instance/{process_instance_id}/variables"
+    variables_url = (
+        f"{CAMUNDA_REST_API}/process-instance/{process_instance_id}/variables"
+    )
 
     try:
         response = requests.get(variables_url)

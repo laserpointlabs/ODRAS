@@ -30,10 +30,14 @@ class AutoScriptExecutor:
     ) -> str:
         """Execute the complete knowledge processing workflow using individual scripts."""
         try:
-            logger.info(f"🔄 Auto-executing knowledge processing workflow for file {file_id}")
+            logger.info(
+                f"🔄 Auto-executing knowledge processing workflow for file {file_id}"
+            )
 
             # Step 1: Extract text
-            step1_result = await self._run_script("step_extract_text.py", [file_id, project_id])
+            step1_result = await self._run_script(
+                "step_extract_text.py", [file_id, project_id]
+            )
             if not step1_result.get("success"):
                 raise ValueError(f"Text extraction failed: {step1_result.get('error')}")
 
@@ -44,15 +48,21 @@ class AutoScriptExecutor:
                 "step_chunk_document.py", [file_id, chunking_strategy, chunk_size]
             )
             if not step2_result.get("success"):
-                raise ValueError(f"Document chunking failed: {step2_result.get('error')}")
+                raise ValueError(
+                    f"Document chunking failed: {step2_result.get('error')}"
+                )
 
             # Step 3: Generate embeddings
-            embedding_model = processing_options.get("embedding_model", "all-MiniLM-L6-v2")
+            embedding_model = processing_options.get(
+                "embedding_model", "all-MiniLM-L6-v2"
+            )
             step3_result = await self._run_script(
                 "step_generate_embeddings.py", [file_id, embedding_model]
             )
             if not step3_result.get("success"):
-                raise ValueError(f"Embedding generation failed: {step3_result.get('error')}")
+                raise ValueError(
+                    f"Embedding generation failed: {step3_result.get('error')}"
+                )
 
             # Step 4: Create knowledge asset
             document_type = processing_options.get("document_type", "text")
@@ -60,7 +70,9 @@ class AutoScriptExecutor:
                 "step_create_knowledge_asset.py", [file_id, project_id, document_type]
             )
             if not step4_result.get("success"):
-                raise ValueError(f"Knowledge asset creation failed: {step4_result.get('error')}")
+                raise ValueError(
+                    f"Knowledge asset creation failed: {step4_result.get('error')}"
+                )
 
             knowledge_asset_id = step4_result.get("knowledge_asset_id")
             if not knowledge_asset_id:
@@ -103,7 +115,9 @@ class AutoScriptExecutor:
 
             # Wait for completion with reasonable timeout
             try:
-                stdout, stderr = await asyncio.wait_for(process.communicate(), timeout=60)
+                stdout, stderr = await asyncio.wait_for(
+                    process.communicate(), timeout=60
+                )
                 result_returncode = process.returncode
                 result_stdout = stdout.decode("utf-8") if stdout else ""
                 result_stderr = stderr.decode("utf-8") if stderr else ""
