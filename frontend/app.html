@@ -147,6 +147,13 @@
     .workbench { display: none; }
     .workbench.active { display: flex; flex-direction: column; flex: 1; min-height: 0; }
     .workbench.active .onto-layout { flex: 1; min-height: 0; }
+    
+    /* Admin workbench specific styling for scrollable content */
+    #wb-admin.workbench.active {
+      overflow-y: auto;
+      padding: 16px;
+      padding-bottom: 32px; /* Extra bottom padding to ensure last section is fully visible */
+    }
     .status-dot { display: inline-block; width: 8px; height: 8px; border-radius: 50%; margin-right: 6px; }
     .ok { background: var(--ok); } .warn { background: var(--warn); } .err { background: var(--err); }
     .muted { color: var(--muted); }
@@ -557,6 +564,19 @@
       border-radius: 4px;
       font-size: 13px;
       transition: border-color 0.2s ease;
+    }
+    
+    .form-text-display {
+      width: 100%;
+      padding: 8px 10px;
+      background: var(--panel-2);
+      color: var(--text);
+      border: 1px solid var(--border);
+      border-radius: 4px;
+      font-size: 13px;
+      min-height: 20px;
+      display: flex;
+      align-items: center;
     }
     
     .form-input:focus,
@@ -1082,13 +1102,9 @@
                     </div>
                     <div class="form-group">
                       <label class="form-label" for="propType">Type</label>
-                      <select id="propType" class="form-select">
-                        <option value="class">Class</option>
-                        <option value="objectProperty">Object Property</option>
-                        <option value="dataProperty">Data Property</option>
-                        <option value="note">Note</option>
-                        <option value="model">Model</option>
-                      </select>
+                      <div id="propType" class="form-text-display">
+                        <span id="propTypeValue">Class</span>
+                      </div>
                     </div>
                   </div>
                   
@@ -1462,14 +1478,6 @@
         <section id="wb-admin" class="workbench">
           <h2>Admin</h2>
           <div class="muted">Namespace management and system administration.</div>
-          
-          <!-- Test Button -->
-          <div style="margin: 10px 0;">
-            <button class="btn" onclick="testToggle()">Test Toggle Function</button>
-            <button class="btn" onclick="alert('Button click works!')">Test Alert</button>
-            <button class="btn" onclick="console.log('toggleSection function:', typeof toggleSection); alert('toggleSection type: ' + typeof toggleSection)">Check Function</button>
-            <button class="btn" onclick="addSectionListeners()">Add Event Listeners</button>
-          </div>
           
           <!-- Installation Configuration Section -->
           <div style="margin-top: 20px;">
@@ -5525,11 +5533,22 @@
       }
     };
 
+    function getTypeDisplayName(type) {
+      const typeMap = {
+        'class': 'Class',
+        'objectProperty': 'Object Property',
+        'dataProperty': 'Data Property',
+        'note': 'Note',
+        'model': 'Model'
+      };
+      return typeMap[type] || 'Class';
+    }
+
     function updatePropertiesPanelFromSelection() {
       const form = qs('#ontoPropsForm'); if (!form || !ontoState.cy) return;
       const sel = ontoState.cy.$(':selected');
       const nameEl = qs('#propName');
-      const typeEl = qs('#propType');
+      const typeValueEl = qs('#propTypeValue');
       
       let currentAttrs = {};
       let objectType = 'class';
@@ -5537,9 +5556,10 @@
       if (sel.length === 1 && sel[0].isNode()) {
         const n = sel[0];
         nameEl.value = n.data('label') || n.id();
-        typeEl.value = n.data('type') || 'class';
+        const nodeType = n.data('type') || 'class';
+        typeValueEl.textContent = getTypeDisplayName(nodeType);
         currentAttrs = n.data('attrs') || {};
-        objectType = n.data('type') || 'class';
+        objectType = nodeType;
         
         // Lazy load additional metadata for imported ontologies
         if (activeOntologyIri && activeOntologyIri.includes('/onto/') && !currentAttrs.definition) {
@@ -5548,18 +5568,19 @@
       } else if (sel.length === 1 && sel[0].isEdge()) {
         const e = sel[0];
         nameEl.value = e.data('predicate') || e.id();
-        typeEl.value = e.data('type') || 'objectProperty';
+        const edgeType = e.data('type') || 'objectProperty';
+        typeValueEl.textContent = getTypeDisplayName(edgeType);
         currentAttrs = e.data('attrs') || {};
         
         // Lazy load additional metadata for imported ontologies
         if (activeOntologyIri && activeOntologyIri.includes('/onto/') && !currentAttrs.definition) {
           loadAdditionalMetadataForElement(e.id(), activeOntologyIri);
         }
-        objectType = e.data('type') || 'objectProperty';
+        objectType = edgeType;
       } else {
         const pid = (activeProject && (activeProject.id || activeProject.project_id)) ? (activeProject.id || activeProject.project_id) : 'default';
         nameEl.value = localStorage.getItem(`onto_model_name__${pid}`) || 'Ontology Model';
-        typeEl.value = 'model';
+        typeValueEl.textContent = getTypeDisplayName('model');
         objectType = 'model';
         try {
           currentAttrs = JSON.parse(localStorage.getItem(`onto_model_attrs__${pid}`) || '{}');
@@ -5691,7 +5712,16 @@
       deleteBtn.title = 'Remove attribute';
       
       // Only show delete button for custom attributes (not in template)
-      const template = attributeTemplates[qs('#propType')?.value || 'class'] || {};
+      let objectType = 'class';
+      if (ontoState.cy) {
+        const sel = ontoState.cy.$(':selected');
+        if (sel.length === 1) {
+          objectType = sel[0].data('type') || 'class';
+        } else {
+          objectType = 'model';
+        }
+      }
+      const template = attributeTemplates[objectType] || {};
       if (template[key]) {
         deleteBtn.style.display = 'none';
       }
@@ -6659,18 +6689,17 @@
             if (!ontoState.cy) return;
             const sel = ontoState.cy.$(':selected');
             const nameEl = qs('#propName');
-            const typeEl = qs('#propType');
             const attrs = getCurrentAttributes();
             
             if (sel.length === 1 && sel[0].isNode()) {
               const n = sel[0];
               n.data('label', nameEl.value.trim() || n.data('label'));
-              n.data('type', typeEl.value || n.data('type'));
+              // Type is read-only, don't change it
               n.data('attrs', attrs);
             } else if (sel.length === 1 && sel[0].isEdge()) {
               const ed = sel[0];
               ed.data('predicate', nameEl.value.trim() || ed.data('predicate'));
-              ed.data('type', typeEl.value || ed.data('type'));
+              // Type is read-only, don't change it
               ed.data('attrs', attrs);
             } else {
               const pid = (activeProject && (activeProject.id || activeProject.project_id)) ? (activeProject.id || activeProject.project_id) : 'default';
@@ -6695,8 +6724,15 @@
           }
         } else if (e.target === qs('#resetAttrsBtn')) {
           // Reset to template
-          const typeEl = qs('#propType');
-          const objectType = typeEl ? typeEl.value : 'class';
+          let objectType = 'class';
+          if (ontoState.cy) {
+            const sel = ontoState.cy.$(':selected');
+            if (sel.length === 1) {
+              objectType = sel[0].data('type') || 'class';
+            } else {
+              objectType = 'model';
+            }
+          }
           updateAttributeEditor(objectType, {});
         }
       });
@@ -6717,15 +6753,7 @@
         if (toggleBtn) toggleBtn.click();
       });
       
-      // Add event listener for type changes
-      const typeEl = qs('#propType');
-      if (typeEl) {
-        typeEl.addEventListener('change', () => {
-          const objectType = typeEl.value;
-          const currentAttrs = getCurrentAttributes();
-          updateAttributeEditor(objectType, currentAttrs);
-        });
-      }
+      // Type is now read-only, no event listener needed
       const fileInput = () => qs('#ontoImportFile');
       document.addEventListener('change', async (e) => {
         if (e.target === fileInput()) {
