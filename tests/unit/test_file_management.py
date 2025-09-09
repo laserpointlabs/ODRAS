@@ -20,8 +20,10 @@ def _set_env(tmp_path, monkeypatch):
 
 
 async def _login(client: AsyncClient, username: str = "jdehart") -> str:
+    # Use the correct password for the user
+    password = "jdehart123!" if username == "jdehart" else "admin123!"
     r = await client.post(
-        "/api/auth/login", json={"username": username, "password": ""}
+        "/api/auth/login", json={"username": username, "password": password}
     )
     assert r.status_code == 200, r.text
     data = r.json()

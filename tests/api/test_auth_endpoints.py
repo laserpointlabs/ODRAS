@@ -24,7 +24,7 @@ class TestAuthenticationEndpoints:
     async def test_login_success(self, client):
         """Test successful user login"""
         response = await client.post(
-            "/api/auth/login", json={"username": "jdehart", "password": ""}
+            "/api/auth/login", json={"username": "jdehart", "password": "jdehart123!"}
         )
 
         assert response.status_code == 200
@@ -55,7 +55,7 @@ class TestAuthenticationEndpoints:
         """Test getting current user with valid token"""
         # First login to get token
         login_response = await client.post(
-            "/api/auth/login", json={"username": "jdehart", "password": ""}
+            "/api/auth/login", json={"username": "jdehart", "password": "jdehart123!"}
         )
         token = login_response.json()["token"]
 
@@ -88,7 +88,7 @@ class TestAuthenticationEndpoints:
         """Test successful logout"""
         # First login to get token
         login_response = await client.post(
-            "/api/auth/login", json={"username": "jdehart", "password": ""}
+            "/api/auth/login", json={"username": "jdehart", "password": "jdehart123!"}
         )
         token = login_response.json()["token"]
 
@@ -110,7 +110,7 @@ class TestAuthenticationEndpoints:
         """Test that tokens expire after logout"""
         # Login and get token
         login_response = await client.post(
-            "/api/auth/login", json={"username": "jdehart", "password": ""}
+            "/api/auth/login", json={"username": "jdehart", "password": "jdehart123!"}
         )
         token = login_response.json()["token"]
 

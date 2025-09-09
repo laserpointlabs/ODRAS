@@ -24,7 +24,7 @@ class TestOntologyEndpoints:
     async def auth_token(self, client):
         """Get authentication token"""
         response = await client.post(
-            "/api/auth/login", json={"username": "jdehart", "password": ""}
+            "/api/auth/login", json={"username": "jdehart", "password": "jdehart123!"}
         )
         return response.json()["token"]
 
