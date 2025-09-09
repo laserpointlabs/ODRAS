@@ -11,9 +11,7 @@ import os
 from pathlib import Path
 
 
-def deploy_bpmn_workflow(
-    camunda_url: str, bpmn_file_path: str, deployment_name: str
-) -> bool:
+def deploy_bpmn_workflow(camunda_url: str, bpmn_file_path: str, deployment_name: str) -> bool:
     """
     Deploy a BPMN workflow to Camunda.
 
@@ -59,9 +57,7 @@ def deploy_bpmn_workflow(
                 print(f"   Deployment ID: {deployment_id}")
 
                 for process_key, process_info in deployed_processes.items():
-                    print(
-                        f"   Process: {process_info.get('key')} (v{process_info.get('version')})"
-                    )
+                    print(f"   Process: {process_info.get('key')} (v{process_info.get('version')})")
 
                 return True
             else:
@@ -112,9 +108,7 @@ def test_workflow_deployment(camunda_url: str, process_key: str) -> bool:
         return False
 
 
-def start_test_process(
-    camunda_url: str, process_key: str, variables: dict = None
-) -> bool:
+def start_test_process(camunda_url: str, process_key: str, variables: dict = None) -> bool:
     """
     Start a test process instance to verify deployment.
 
@@ -198,9 +192,7 @@ def main():
     deployment_results = []
     for workflow in workflows:
         bpmn_file_path = bpmn_dir / workflow["file"]
-        success = deploy_bpmn_workflow(
-            camunda_url, str(bpmn_file_path), workflow["name"]
-        )
+        success = deploy_bpmn_workflow(camunda_url, str(bpmn_file_path), workflow["name"])
         deployment_results.append((workflow, success))
         print()
 

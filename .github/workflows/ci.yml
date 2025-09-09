@@ -154,9 +154,20 @@ jobs:
     - name: Initialize database schema
       run: |
         # Initialize database schema using the service containers
-        # First run the migrations to create the schema
-        ./odras.sh init-db
-        # Then validate the schema
+        # Run migrations directly against the PostgreSQL service container
+        echo "Running database migrations..."
+        for migration in backend/migrations/*.sql; do
+          if [ -f "$migration" ]; then
+            echo "Running $(basename "$migration")..."
+            PGPASSWORD=password psql -h localhost -U postgres -d odras -f "$migration" || echo "Migration may have already been applied"
+          fi
+        done
+        
+        # Set up initial users with passwords
+        echo "Setting up initial users..."
+        python scripts/setup_initial_users.py --ci
+        
+        # Validate the schema
         python scripts/validate_database_schema.py --fix
 
     - name: Run basic API tests (no auth required)

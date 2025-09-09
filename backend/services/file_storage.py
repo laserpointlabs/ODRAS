@@ -92,9 +92,7 @@ class StorageBackend(ABC):
     """Abstract base class for storage backends."""
 
     @abstractmethod
-    async def store_file(
-        self, file_id: str, content: bytes, metadata: FileMetadata
-    ) -> bool:
+    async def store_file(self, file_id: str, content: bytes, metadata: FileMetadata) -> bool:
         """Store file content with metadata."""
         pass
 
@@ -147,9 +145,7 @@ class MinIOBackend(StorageBackend):
 
     def __init__(self, settings: Settings):
         if not MINIO_AVAILABLE:
-            raise ImportError(
-                "MinIO client not available. Install with: pip install minio"
-            )
+            raise ImportError("MinIO client not available. Install with: pip install minio")
 
         self.settings = settings
         self.client = Minio(
@@ -170,9 +166,7 @@ class MinIOBackend(StorageBackend):
         except S3Error as e:
             logger.error(f"Failed to create/check MinIO bucket: {e}")
 
-    async def store_file(
-        self, file_id: str, content: bytes, metadata: FileMetadata
-    ) -> bool:
+    async def store_file(self, file_id: str, content: bytes, metadata: FileMetadata) -> bool:
         """Store file in MinIO."""
         try:
             import json
@@ -232,9 +226,7 @@ class MinIOBackend(StorageBackend):
         """Delete file from MinIO."""
         try:
             # Delete file content
-            self.client.remove_object(
-                bucket_name=self.bucket_name, object_name=f"files/{file_id}"
-            )
+            self.client.remove_object(bucket_name=self.bucket_name, object_name=f"files/{file_id}")
 
             # Delete metadata
             self.client.remove_object(
@@ -250,9 +242,7 @@ class MinIOBackend(StorageBackend):
     async def file_exists(self, file_id: str) -> bool:
         """Check if file exists in MinIO."""
         try:
-            self.client.stat_object(
-                bucket_name=self.bucket_name, object_name=f"files/{file_id}"
-            )
+            self.client.stat_object(bucket_name=self.bucket_name, object_name=f"files/{file_id}")
             return True
 
         except S3Error:
@@ -283,9 +273,7 @@ class MinIOBackend(StorageBackend):
 
             prefix = "metadata/"
             # MinIO list_objects is iterator
-            objects = self.client.list_objects(
-                self.bucket_name, prefix=prefix, recursive=True
-            )
+            objects = self.client.list_objects(self.bucket_name, prefix=prefix, recursive=True)
             for obj in objects:
                 if not obj.object_name or not obj.object_name.endswith(".json"):
                     continue
@@ -424,9 +412,7 @@ class PostgreSQLBackend(StorageBackend):
             )
 
         self.settings = settings
-        self.metadata_only = (
-            metadata_only  # When True, only store metadata in files table
-        )
+        self.metadata_only = metadata_only  # When True, only store metadata in files table
         self.connection_pool = psycopg2.pool.ThreadedConnectionPool(
             minconn=1,
             maxconn=10,
@@ -497,9 +483,7 @@ class PostgreSQLBackend(StorageBackend):
         except psycopg2.Error as e:
             logger.error(f"Failed to create PostgreSQL tables: {e}")
 
-    async def store_file(
-        self, file_id: str, content: bytes, metadata: FileMetadata
-    ) -> bool:
+    async def store_file(self, file_id: str, content: bytes, metadata: FileMetadata) -> bool:
         """Store file in PostgreSQL."""
         try:
             conn = self.connection_pool.getconn()
@@ -759,9 +743,7 @@ class LocalFilesystemBackend(StorageBackend):
         (self.storage_path / "files").mkdir(exist_ok=True)
         (self.storage_path / "metadata").mkdir(exist_ok=True)
 
-    async def store_file(
-        self, file_id: str, content: bytes, metadata: FileMetadata
-    ) -> bool:
+    async def store_file(self, file_id: str, content: bytes, metadata: FileMetadata) -> bool:
         """Store file on local filesystem."""
         try:
             # Store file content
@@ -923,9 +905,7 @@ class LocalFilesystemBackend(StorageBackend):
             return results[offset : offset + limit]
 
         except Exception as e:
-            logger.error(
-                f"Failed to list files with visibility from local filesystem: {e}"
-            )
+            logger.error(f"Failed to list files with visibility from local filesystem: {e}")
             return []
 
 
@@ -940,9 +920,7 @@ class FileStorageService:
         if POSTGRES_AVAILABLE and settings.storage_backend != "local":
             # Use metadata-only mode when PostgreSQL is not the primary storage backend
             metadata_only = settings.storage_backend != "postgresql"
-            self.metadata_backend = PostgreSQLBackend(
-                settings, metadata_only=metadata_only
-            )
+            self.metadata_backend = PostgreSQLBackend(settings, metadata_only=metadata_only)
         else:
             self.metadata_backend = None
 
@@ -1041,10 +1019,7 @@ class FileStorageService:
 
             if success:
                 # If using MinIO (or other non-PostgreSQL backends), also store metadata in PostgreSQL
-                if (
-                    self.metadata_backend
-                    and self.settings.storage_backend != "postgresql"
-                ):
+                if self.metadata_backend and self.settings.storage_backend != "postgresql":
                     try:
                         metadata_success = await self.metadata_backend.store_file(
                             file_id, content, metadata
@@ -1289,9 +1264,7 @@ class FileStorageService:
             return filtered_files[offset : offset + limit]
 
         except Exception as e:
-            logger.error(
-                f"Failed to list files with visibility and user filtering: {e}"
-            )
+            logger.error(f"Failed to list files with visibility and user filtering: {e}")
             return []
 
     async def get_file_content(self, file_id: str) -> Optional[bytes]:

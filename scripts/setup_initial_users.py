@@ -58,18 +58,14 @@ def setup_initial_users():
             )
 
             if not cur.fetchone():
-                print(
-                    "❌ Password fields not found. Please run the migration script first:"
-                )
+                print("❌ Password fields not found. Please run the migration script first:")
                 print("   psql -U postgres -d odras -f scripts/migrate_auth_system.sql")
                 return False
 
             # Update existing users with passwords
             for username, password in default_passwords.items():
                 # Check if user exists
-                cur.execute(
-                    "SELECT user_id FROM public.users WHERE username = %s", (username,)
-                )
+                cur.execute("SELECT user_id FROM public.users WHERE username = %s", (username,))
                 if not cur.fetchone():
                     print(f"⚠️  User {username} not found, skipping...")
                     continue
@@ -126,9 +122,7 @@ def create_admin_user():
     try:
         with conn.cursor() as cur:
             # Check if user exists
-            cur.execute(
-                "SELECT user_id FROM public.users WHERE username = %s", (username,)
-            )
+            cur.execute("SELECT user_id FROM public.users WHERE username = %s", (username,))
             if cur.fetchone():
                 print(f"❌ User {username} already exists")
                 return False
@@ -163,15 +157,24 @@ def main():
     print("🚀 ODRAS User Setup Script")
     print("=" * 40)
 
-    # Check if we should create a new admin
-    create_new = input("Create a new admin user? (y/N): ").strip().lower()
-    if create_new == "y":
-        if not create_admin_user():
-            return 1
+    # Check for CI mode
+    ci_mode = "--ci" in sys.argv
 
-    # Setup initial users
-    if not setup_initial_users():
-        return 1
+    if ci_mode:
+        print("Running in CI mode (non-interactive)")
+        # Setup initial users without prompting
+        if not setup_initial_users():
+            return 1
+    else:
+        # Check if we should create a new admin
+        create_new = input("Create a new admin user? (y/N): ").strip().lower()
+        if create_new == "y":
+            if not create_admin_user():
+                return 1
+
+        # Setup initial users
+        if not setup_initial_users():
+            return 1
 
     print("\n✅ Setup complete! You can now use proper password authentication.")
     return 0
