@@ -58,18 +58,14 @@ def setup_initial_users():
             )
 
             if not cur.fetchone():
-                print(
-                    "❌ Password fields not found. Please run the migration script first:"
-                )
+                print("❌ Password fields not found. Please run the migration script first:")
                 print("   psql -U postgres -d odras -f scripts/migrate_auth_system.sql")
                 return False
 
             # Update existing users with passwords
             for username, password in default_passwords.items():
                 # Check if user exists
-                cur.execute(
-                    "SELECT user_id FROM public.users WHERE username = %s", (username,)
-                )
+                cur.execute("SELECT user_id FROM public.users WHERE username = %s", (username,))
                 if not cur.fetchone():
                     print(f"⚠️  User {username} not found, skipping...")
                     continue
@@ -126,9 +122,7 @@ def create_admin_user():
     try:
         with conn.cursor() as cur:
             # Check if user exists
-            cur.execute(
-                "SELECT user_id FROM public.users WHERE username = %s", (username,)
-            )
+            cur.execute("SELECT user_id FROM public.users WHERE username = %s", (username,))
             if cur.fetchone():
                 print(f"❌ User {username} already exists")
                 return False

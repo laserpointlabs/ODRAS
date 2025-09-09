@@ -32,9 +32,7 @@ async def chunk_document_content(
         # Get chunking service
         chunking_service = get_chunking_service(settings)
 
-        print(
-            f"🔪 Step 2: Chunking document {file_id} with {chunking_strategy} strategy"
-        )
+        print(f"🔪 Step 2: Chunking document {file_id} with {chunking_strategy} strategy")
 
         # Read extracted text from step 1 (from BPMN process variables or temp storage)
         # In a real BPMN setup, this would come from process variables
@@ -127,9 +125,7 @@ async def chunk_document_content(
 def main():
     """Main function for command line usage."""
     if len(sys.argv) < 2:
-        print(
-            "Usage: python3 step_chunk_document.py <file_id> [chunking_strategy] [chunk_size]"
-        )
+        print("Usage: python3 step_chunk_document.py <file_id> [chunking_strategy] [chunk_size]")
         sys.exit(1)
 
     file_id = sys.argv[1]
