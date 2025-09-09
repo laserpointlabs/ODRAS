@@ -55,9 +55,6 @@ class DatabaseService:
                     try:
                         uuid.UUID(str(user_dict["user_id"]))
                     except ValueError as e:
-                        logger.error(
-                            f"Invalid user_id in database for username {username}: {user_dict['user_id']!r}"
-                        )
                         raise ValueError(
                             f"Invalid user_id in database: {user_dict['user_id']!r}"
                         ) from e
@@ -75,9 +72,6 @@ class DatabaseService:
                 try:
                     uuid.UUID(str(user_dict["user_id"]))
                 except ValueError as e:
-                    logger.error(
-                        f"Invalid user_id created for username {username}: {user_dict['user_id']!r}"
-                    )
                     raise ValueError(
                         f"Invalid user_id created: {user_dict['user_id']!r}"
                     ) from e

@@ -157,11 +157,6 @@ def login(body: Dict):
         u = db.get_or_create_user(
             username=username, display_name=username, is_admin=is_admin_flag
         )
-        # Debug: Log the user object returned from database
-        logger.info(f"User object from database: {u}")
-        logger.info(f"User ID type: {type(u['user_id'])}")
-        logger.info(f"User ID value: {repr(u['user_id'])}")
-
         user = {
             "username": u["username"],
             "user_id": str(u["user_id"]),
