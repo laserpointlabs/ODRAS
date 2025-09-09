@@ -39,7 +39,9 @@ class Neo4jService:
     def __init__(self, settings: Settings = None):
         """Initialize Neo4j service with configuration."""
         if not NEO4J_AVAILABLE:
-            raise RuntimeError("Neo4j driver not available. Install with: pip install neo4j")
+            raise RuntimeError(
+                "Neo4j driver not available. Install with: pip install neo4j"
+            )
 
         self.settings = settings or Settings()
         self.driver: Optional[Driver] = None
@@ -56,7 +58,9 @@ class Neo4jService:
             neo4j_password = getattr(self.settings, "neo4j_password", "password")
 
             logger.info(f"Connecting to Neo4j at {neo4j_uri}")
-            self.driver = GraphDatabase.driver(neo4j_uri, auth=(neo4j_user, neo4j_password))
+            self.driver = GraphDatabase.driver(
+                neo4j_uri, auth=(neo4j_user, neo4j_password)
+            )
 
             # Test connection
             with self.driver.session() as session:
@@ -296,7 +300,11 @@ class Neo4jService:
                     if from_label
                     else "(from {id: $from_id})"
                 )
-                to_match = f"(to:{to_label} {{id: $to_id}})" if to_label else "(to {id: $to_id})"
+                to_match = (
+                    f"(to:{to_label} {{id: $to_id}})"
+                    if to_label
+                    else "(to {id: $to_id})"
+                )
 
                 # Build properties clause
                 props_str = ""
@@ -468,14 +476,18 @@ class Neo4jService:
                     ORDER BY depth
                     """
 
-                result = session.run(query, {"node_id": node_id, "max_depth": max_depth})
+                result = session.run(
+                    query, {"node_id": node_id, "max_depth": max_depth}
+                )
 
                 affected_nodes = []
                 for record in result:
                     node_key = (
                         "affected"
                         if analysis_type == "downstream"
-                        else ("dependency" if analysis_type == "upstream" else "connected")
+                        else (
+                            "dependency" if analysis_type == "upstream" else "connected"
+                        )
                     )
                     node = record.get(node_key)
 
@@ -501,7 +513,9 @@ class Neo4jService:
             logger.error(f"Impact analysis failed for {node_id}: {str(e)}")
             return {"error": str(e)}
 
-    def execute_cypher(self, query: str, parameters: Dict[str, Any] = None) -> List[Dict[str, Any]]:
+    def execute_cypher(
+        self, query: str, parameters: Dict[str, Any] = None
+    ) -> List[Dict[str, Any]]:
         """
         Execute a custom Cypher query.
 
@@ -555,10 +569,12 @@ class Neo4jService:
                 ).data()
 
                 # Get total counts
-                total_nodes = session.run("MATCH (n) RETURN count(n) as total").single()["total"]
-                total_rels = session.run("MATCH ()-[r]->() RETURN count(r) as total").single()[
-                    "total"
-                ]
+                total_nodes = session.run(
+                    "MATCH (n) RETURN count(n) as total"
+                ).single()["total"]
+                total_rels = session.run(
+                    "MATCH ()-[r]->() RETURN count(r) as total"
+                ).single()["total"]
 
                 return {
                     "total_nodes": total_nodes,

@@ -134,10 +134,14 @@ def main():
             print(f"🔍 Verifying classes in {ontology_name}...")
             verify_classes_loaded(ontology_name, token)
 
-    print(f"\n🎉 Successfully added classes to {success_count}/{len(ontologies)} ontologies")
+    print(
+        f"\n🎉 Successfully added classes to {success_count}/{len(ontologies)} ontologies"
+    )
 
     if success_count == len(ontologies):
-        print("\n✅ All ontologies now have classes! You can now test the import functionality.")
+        print(
+            "\n✅ All ontologies now have classes! You can now test the import functionality."
+        )
         print("   - Both ontologies have a 'Constraint' class that should match")
         print("   - Try importing one ontology into the other to see class matching")
     else:

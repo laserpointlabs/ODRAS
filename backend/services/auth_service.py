@@ -23,7 +23,9 @@ class AuthService:
         self.db = db_service
         self.settings = Settings()
 
-    def hash_password(self, password: str, salt: Optional[str] = None) -> Tuple[str, str]:
+    def hash_password(
+        self, password: str, salt: Optional[str] = None
+    ) -> Tuple[str, str]:
         """Hash a password using PBKDF2 with a random salt."""
         if salt is None:
             salt = secrets.token_hex(32)
@@ -76,7 +78,14 @@ class AuthService:
                     VALUES (%s, %s, %s, %s, %s, %s, NOW(), NOW())
                     RETURNING user_id, username, display_name, is_admin, is_active, created_at
                     """,
-                    (username, display_name or username, password_hash, salt, is_admin, is_active),
+                    (
+                        username,
+                        display_name or username,
+                        password_hash,
+                        salt,
+                        is_admin,
+                        is_active,
+                    ),
                 )
                 result = cur.fetchone()
                 conn.commit()
@@ -126,7 +135,9 @@ class AuthService:
         finally:
             self.db._return(conn)
 
-    def authenticate_user(self, username: str, password: str) -> Optional[Dict[str, any]]:
+    def authenticate_user(
+        self, username: str, password: str
+    ) -> Optional[Dict[str, any]]:
         """Authenticate a user with username and password."""
         user = self.get_user_by_username(username)
         if not user:
@@ -149,7 +160,9 @@ class AuthService:
             "is_active": user["is_active"],
         }
 
-    def update_user_password(self, user_id: str, old_password: str, new_password: str) -> bool:
+    def update_user_password(
+        self, user_id: str, old_password: str, new_password: str
+    ) -> bool:
         """Update user password with old password verification."""
         if len(new_password) < 8:
             raise ValueError("New password must be at least 8 characters long")
@@ -159,7 +172,8 @@ class AuthService:
             with conn.cursor() as cur:
                 # Get current user data
                 cur.execute(
-                    "SELECT password_hash, salt FROM public.users WHERE user_id = %s", (user_id,)
+                    "SELECT password_hash, salt FROM public.users WHERE user_id = %s",
+                    (user_id,),
                 )
                 result = cur.fetchone()
                 if not result:

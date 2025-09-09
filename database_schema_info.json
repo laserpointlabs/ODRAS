@@ -1,0 +1,110 @@
+{
+  "last_updated": "2025-09-09T11:55:50.229306",
+  "total_migrations": 13,
+  "migrations": {
+    "000_files_table.sql": {
+      "version": "000",
+      "description": "Files Table",
+      "dependencies": [],
+      "checksum": "0ececc5fd9fd86520fe99af27fe17256",
+      "created_at": "2025-09-02T16:46:22.067852",
+      "modified_at": "2025-09-02T16:46:22.067852"
+    },
+    "001_knowledge_management.sql": {
+      "version": "001",
+      "description": "Knowledge Management",
+      "dependencies": [],
+      "checksum": "dd2dbfae291a64b01915db9551a82b3e",
+      "created_at": "2025-09-02T16:46:22.067852",
+      "modified_at": "2025-09-02T16:46:22.067852"
+    },
+    "002_knowledge_public_assets.sql": {
+      "version": "002",
+      "description": "Knowledge Public Assets",
+      "dependencies": [],
+      "checksum": "b513b2673f1970801cd5768b03661aaf",
+      "created_at": "2025-09-02T16:46:22.067852",
+      "modified_at": "2025-09-02T16:46:22.067852"
+    },
+    "003_auth_tokens.sql": {
+      "version": "003",
+      "description": "Auth Tokens",
+      "dependencies": [],
+      "checksum": "58c5308b286984d9e34ca01d106bce27",
+      "created_at": "2025-09-04T12:21:23.388685",
+      "modified_at": "2025-09-04T12:21:23.388685"
+    },
+    "004_users_table.sql": {
+      "version": "004",
+      "description": "Users Table",
+      "dependencies": [],
+      "checksum": "f9b162340d5303ef39f249ea99b77f46",
+      "created_at": "2025-09-04T12:45:55.089640",
+      "modified_at": "2025-09-04T12:45:55.089640"
+    },
+    "005_prefix_management.sql": {
+      "version": "005",
+      "description": "Prefix Management",
+      "dependencies": [],
+      "checksum": "372ad54e5289e42188d07b84fcecd48b",
+      "created_at": "2025-09-05T14:20:18.760507",
+      "modified_at": "2025-09-05T14:20:18.760507"
+    },
+    "006_update_prefix_constraint.sql": {
+      "version": "006",
+      "description": "Update Prefix Constraint",
+      "dependencies": [],
+      "checksum": "2b577efbbdda0a2226e88c97a1ab6bb0",
+      "created_at": "2025-09-05T14:51:40.638649",
+      "modified_at": "2025-09-05T14:51:40.638649"
+    },
+    "007_revert_prefix_constraint.sql": {
+      "version": "007",
+      "description": "Revert Prefix Constraint",
+      "dependencies": [],
+      "checksum": "e259a5979bdb71419172974e10041bf6",
+      "created_at": "2025-09-05T17:56:41.347645",
+      "modified_at": "2025-09-05T17:56:41.347645"
+    },
+    "008_create_projects_table.sql": {
+      "version": "008",
+      "description": "Create Projects Table",
+      "dependencies": [],
+      "checksum": "a3961472bf16ab094aa0c19834b5bfe8",
+      "created_at": "2025-09-08T11:52:04.319105",
+      "modified_at": "2025-09-08T11:52:04.319105"
+    },
+    "009_create_domains_table.sql": {
+      "version": "009",
+      "description": "Create Domains Table",
+      "dependencies": [],
+      "checksum": "e348af5fde154410364df5d7183dc335",
+      "created_at": "2025-09-08T11:32:21.147537",
+      "modified_at": "2025-09-08T11:32:21.147537"
+    },
+    "010_namespace_management.sql": {
+      "version": "010",
+      "description": "Namespace Management",
+      "dependencies": [],
+      "checksum": "c06e1e8660cdb40c95fedb88603a251b",
+      "created_at": "2025-09-08T15:13:44.509278",
+      "modified_at": "2025-09-05T14:20:18.760507"
+    },
+    "011_add_service_namespace_type.sql": {
+      "version": "011",
+      "description": "Add Service Namespace Type",
+      "dependencies": [],
+      "checksum": "8431f9e99251bce670ac84bfed860696",
+      "created_at": "2025-09-08T15:14:04.442454",
+      "modified_at": "2025-09-05T14:20:18.790508"
+    },
+    "012_migrate_auth_system.sql": {
+      "version": "012",
+      "description": "Migrate Auth System",
+      "dependencies": [],
+      "checksum": "b4a5f357ba46cdbb9ef7214af161097e",
+      "created_at": "2025-09-09T11:51:50.124326",
+      "modified_at": "2025-09-09T11:51:50.124326"
+    }
+  }
+}

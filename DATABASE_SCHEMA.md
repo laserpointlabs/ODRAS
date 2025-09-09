@@ -1,6 +1,6 @@
 # ODRAS Database Schema Documentation
 
-Generated on: 2025-09-09 11:46:44
+Generated on: 2025-09-09 11:55:50
 
 ## Overview
 
@@ -8,7 +8,7 @@ This document describes the ODRAS database schema and migration system.
 
 ## Migration Files
 
-Total migrations: 12
+Total migrations: 13
 
 ### 000_files_table.sql
 
@@ -118,6 +118,15 @@ Total migrations: 12
 - **Modified**: 2025-09-05 14:20:18
 - **Checksum**: 8431f9e99251bce670ac84bfed860696
 
+### 012_migrate_auth_system.sql
+
+- **Version**: 012
+- **Description**: Migrate Auth System
+- **Dependencies**: None
+- **Created**: 2025-09-09 11:51:50
+- **Modified**: 2025-09-09 11:51:50
+- **Checksum**: b4a5f357ba46cdbb9ef7214af161097e
+
 
 ## Schema Validation
 
@@ -167,3 +176,4 @@ The migrations are applied in this order:
 10. 009_create_domains_table.sql
 11. 010_namespace_management.sql
 12. 011_add_service_namespace_type.sql
+13. 012_migrate_auth_system.sql

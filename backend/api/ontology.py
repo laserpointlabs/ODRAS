@@ -91,7 +91,9 @@ async def get_ontology(
         }
     except Exception as e:
         logger.error(f"Failed to get ontology: {e}")
-        raise HTTPException(status_code=500, detail=f"Failed to retrieve ontology: {str(e)}")
+        raise HTTPException(
+            status_code=500, detail=f"Failed to retrieve ontology: {str(e)}"
+        )
 
 
 @router.put("/", response_model=OntologyResponse)
@@ -145,7 +147,9 @@ async def update_ontology(
 
     except Exception as e:
         logger.error(f"Failed to update ontology: {e}")
-        raise HTTPException(status_code=500, detail=f"Failed to update ontology: {str(e)}")
+        raise HTTPException(
+            status_code=500, detail=f"Failed to update ontology: {str(e)}"
+        )
 
 
 @router.post("/classes", response_model=OntologyResponse)
@@ -217,7 +221,9 @@ async def add_property(
 
 
 @router.delete("/classes/{class_name}", response_model=OntologyResponse)
-async def delete_class(class_name: str, manager: OntologyManager = Depends(get_ontology_manager)):
+async def delete_class(
+    class_name: str, manager: OntologyManager = Depends(get_ontology_manager)
+):
     """
     Delete a class from the ontology.
 
@@ -263,7 +269,9 @@ async def delete_property(
 
     except Exception as e:
         logger.error(f"Failed to delete property: {e}")
-        raise HTTPException(status_code=500, detail=f"Failed to delete property: {str(e)}")
+        raise HTTPException(
+            status_code=500, detail=f"Failed to delete property: {str(e)}"
+        )
 
 
 @router.get("/statistics", response_model=Dict[str, Any])
@@ -285,7 +293,9 @@ async def get_ontology_statistics(
         }
     except Exception as e:
         logger.error(f"Failed to get ontology statistics: {e}")
-        raise HTTPException(status_code=500, detail=f"Failed to get statistics: {str(e)}")
+        raise HTTPException(
+            status_code=500, detail=f"Failed to get statistics: {str(e)}"
+        )
 
 
 @router.post("/validate", response_model=OntologyResponse)
@@ -307,9 +317,15 @@ async def validate_ontology(
 
         return OntologyResponse(
             success=validation_result["valid"],
-            message=("Validation completed" if validation_result["valid"] else "Validation failed"),
+            message=(
+                "Validation completed"
+                if validation_result["valid"]
+                else "Validation failed"
+            ),
             data=(
-                {"errors": validation_result["errors"]} if not validation_result["valid"] else None
+                {"errors": validation_result["errors"]}
+                if not validation_result["valid"]
+                else None
             ),
         )
 
@@ -377,7 +393,9 @@ async def import_ontology_file(
 
 
 @router.get("/export/{format}")
-async def export_ontology(format: str, manager: OntologyManager = Depends(get_ontology_manager)):
+async def export_ontology(
+    format: str, manager: OntologyManager = Depends(get_ontology_manager)
+):
     """
     Export the current ontology in various formats.
 
@@ -405,7 +423,9 @@ async def export_ontology(format: str, manager: OntologyManager = Depends(get_on
 
 
 @router.get("/layout", response_model=Dict[str, Any])
-async def get_layout(graph: str, manager: OntologyManager = Depends(get_ontology_manager)):
+async def get_layout(
+    graph: str, manager: OntologyManager = Depends(get_ontology_manager)
+):
     """
     Retrieve layout data for a specific ontology graph.
 
@@ -424,7 +444,9 @@ async def get_layout(graph: str, manager: OntologyManager = Depends(get_ontology
         }
     except Exception as e:
         logger.error(f"Failed to get layout: {e}")
-        raise HTTPException(status_code=500, detail=f"Failed to retrieve layout: {str(e)}")
+        raise HTTPException(
+            status_code=500, detail=f"Failed to retrieve layout: {str(e)}"
+        )
 
 
 @router.put("/layout", response_model=OntologyResponse)
@@ -514,4 +536,6 @@ async def validate_ontology_integrity(
         }
     except Exception as e:
         logger.error(f"Failed to validate integrity: {e}")
-        raise HTTPException(status_code=500, detail=f"Failed to validate integrity: {str(e)}")
+        raise HTTPException(
+            status_code=500, detail=f"Failed to validate integrity: {str(e)}"
+        )

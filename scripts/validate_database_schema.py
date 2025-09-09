@@ -141,7 +141,9 @@ class DatabaseSchemaValidator:
         # Check for missing migrations in script
         missing_in_script = set(actual_migrations) - set(script_migrations)
         if missing_in_script:
-            errors.append(f"Migratations missing from odras.sh: {sorted(missing_in_script)}")
+            errors.append(
+                f"Migratations missing from odras.sh: {sorted(missing_in_script)}"
+            )
 
         # Check for extra migrations in script
         extra_in_script = set(script_migrations) - set(actual_migrations)
@@ -285,7 +287,9 @@ except Exception as e:
 
         try:
             # Check if Docker is running
-            result = subprocess.run(["docker", "ps"], capture_output=True, text=True, timeout=10)
+            result = subprocess.run(
+                ["docker", "ps"], capture_output=True, text=True, timeout=10
+            )
             if result.returncode != 0:
                 errors.append("Docker is not running or not accessible")
                 return ValidationResult(False, errors, warnings, fixes_applied)
@@ -302,7 +306,9 @@ except Exception as e:
                 errors.append("Error checking Docker containers")
                 return ValidationResult(False, errors, warnings, fixes_applied)
 
-            containers = result.stdout.strip().split("\n") if result.stdout.strip() else []
+            containers = (
+                result.stdout.strip().split("\n") if result.stdout.strip() else []
+            )
             expected_containers = [
                 "odras_postgres",
                 "odras_neo4j",
@@ -442,7 +448,9 @@ except Exception as e:
 
         return ValidationResult(len(errors) == 0, errors, warnings, fixes_applied)
 
-    def run_comprehensive_validation(self, fix_issues: bool = False) -> ValidationResult:
+    def run_comprehensive_validation(
+        self, fix_issues: bool = False
+    ) -> ValidationResult:
         """Run comprehensive database schema validation"""
         print("🚀 Starting comprehensive database schema validation...")
         print("=" * 60)
@@ -470,9 +478,13 @@ except Exception as e:
             if result.errors:
                 all_errors.extend([f"{check_name}: {error}" for error in result.errors])
             if result.warnings:
-                all_warnings.extend([f"{check_name}: {warning}" for warning in result.warnings])
+                all_warnings.extend(
+                    [f"{check_name}: {warning}" for warning in result.warnings]
+                )
             if result.fixes_applied:
-                all_fixes.extend([f"{check_name}: {fix}" for fix in result.fixes_applied])
+                all_fixes.extend(
+                    [f"{check_name}: {fix}" for fix in result.fixes_applied]
+                )
 
         # Apply fixes if requested
         if fix_issues and all_errors:
@@ -484,7 +496,9 @@ except Exception as e:
                 if self.fix_odras_script():
                     all_fixes.append("ODRAS Script: Updated migration list")
                     # Remove fixed errors
-                    all_errors = [error for error in all_errors if "ODRAS Script" not in error]
+                    all_errors = [
+                        error for error in all_errors if "ODRAS Script" not in error
+                    ]
 
         # Print summary
         print(f"\n📊 Validation Summary")
@@ -528,7 +542,9 @@ def main():
     parser.add_argument(
         "--fix", action="store_true", help="Automatically fix issues where possible"
     )
-    parser.add_argument("--verbose", "-v", action="store_true", help="Enable verbose output")
+    parser.add_argument(
+        "--verbose", "-v", action="store_true", help="Enable verbose output"
+    )
 
     args = parser.parse_args()
 

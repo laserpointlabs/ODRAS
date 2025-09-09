@@ -26,7 +26,9 @@ class PrefixCreate(BaseModel):
         ...,
         description="Prefix (lowercase letters and numbers only, 2-20 chars, e.g., 'dod', 'industry', 'lockheed')",
     )
-    description: str = Field(..., description="Description of what the prefix represents")
+    description: str = Field(
+        ..., description="Description of what the prefix represents"
+    )
     owner: str = Field(..., description="Owner email address")
 
     @validator("prefix")
@@ -43,7 +45,9 @@ class PrefixCreate(BaseModel):
 class PrefixUpdate(BaseModel):
     description: Optional[str] = Field(None, description="Updated description")
     owner: Optional[str] = Field(None, description="Updated owner email")
-    status: Optional[str] = Field(None, description="Status: active, deprecated, archived")
+    status: Optional[str] = Field(
+        None, description="Status: active, deprecated, archived"
+    )
 
 
 class PrefixResponse(BaseModel):
@@ -78,7 +82,9 @@ def create_prefix(
         try:
             with conn.cursor() as cur:
                 # Check if prefix already exists
-                cur.execute("SELECT id FROM prefix_registry WHERE prefix = %s", (prefix.prefix,))
+                cur.execute(
+                    "SELECT id FROM prefix_registry WHERE prefix = %s", (prefix.prefix,)
+                )
                 if cur.fetchone():
                     raise HTTPException(status_code=400, detail="Prefix already exists")
 
@@ -179,7 +185,9 @@ def update_prefix(
         try:
             with conn.cursor() as cur:
                 # Check if prefix exists
-                cur.execute("SELECT prefix FROM prefix_registry WHERE id = %s", (prefix_id,))
+                cur.execute(
+                    "SELECT prefix FROM prefix_registry WHERE id = %s", (prefix_id,)
+                )
                 result = cur.fetchone()
                 if not result:
                     raise HTTPException(status_code=404, detail="Prefix not found")
@@ -245,7 +253,9 @@ def delete_prefix(
         try:
             with conn.cursor() as cur:
                 # Check if prefix exists
-                cur.execute("SELECT prefix FROM prefix_registry WHERE id = %s", (prefix_id,))
+                cur.execute(
+                    "SELECT prefix FROM prefix_registry WHERE id = %s", (prefix_id,)
+                )
                 result = cur.fetchone()
                 if not result:
                     raise HTTPException(status_code=404, detail="Prefix not found")

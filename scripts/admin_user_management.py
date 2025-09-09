@@ -35,14 +35,20 @@ def list_users():
 
     print("\n👥 Users:")
     print("-" * 80)
-    print(f"{'Username':<20} {'Display Name':<20} {'Admin':<8} {'Active':<8} {'Created'}")
+    print(
+        f"{'Username':<20} {'Display Name':<20} {'Admin':<8} {'Active':<8} {'Created'}"
+    )
     print("-" * 80)
 
     for user in users:
         status = "✅" if user["is_active"] else "❌"
         admin = "✅" if user["is_admin"] else "❌"
-        created = user["created_at"].strftime("%Y-%m-%d") if user["created_at"] else "Unknown"
-        print(f"{user['username']:<20} {user['display_name']:<20} {admin:<8} {status:<8} {created}")
+        created = (
+            user["created_at"].strftime("%Y-%m-%d") if user["created_at"] else "Unknown"
+        )
+        print(
+            f"{user['username']:<20} {user['display_name']:<20} {admin:<8} {status:<8} {created}"
+        )
 
 
 def create_user():
@@ -67,7 +73,10 @@ def create_user():
     try:
         auth_service = get_auth_service()
         user = auth_service.create_user(
-            username=username, password=password, display_name=display_name, is_admin=is_admin
+            username=username,
+            password=password,
+            display_name=display_name,
+            is_admin=is_admin,
         )
         print(f"✅ User created successfully: {user['username']}")
     except ValueError as e:
@@ -154,7 +163,9 @@ def toggle_user_status():
     new_status = "inactive" if user["is_active"] else "active"
 
     confirm = (
-        input(f"Change {username} from {current_status} to {new_status}? (y/N): ").strip().lower()
+        input(f"Change {username} from {current_status} to {new_status}? (y/N): ")
+        .strip()
+        .lower()
     )
     if confirm != "y":
         print("Cancelled.")
