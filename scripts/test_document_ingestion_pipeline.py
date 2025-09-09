@@ -17,9 +17,7 @@ import requests
 
 def create_test_document(content: str) -> str:
     """Create a temporary test document."""
-    with tempfile.NamedTemporaryFile(
-        mode="w", suffix=".txt", delete=False, encoding="utf-8"
-    ) as f:
+    with tempfile.NamedTemporaryFile(mode="w", suffix=".txt", delete=False, encoding="utf-8") as f:
         f.write(content)
         return f.name
 
@@ -58,14 +56,10 @@ def deploy_document_ingestion_workflow(camunda_url: str, bpmn_path: str) -> bool
         return False
 
 
-def start_document_ingestion_process(
-    camunda_url: str, document_path: str, filename: str
-) -> str:
+def start_document_ingestion_process(camunda_url: str, document_path: str, filename: str) -> str:
     """Start a document ingestion process instance."""
     try:
-        start_url = (
-            f"{camunda_url}/process-definition/key/document_ingestion_process/start"
-        )
+        start_url = f"{camunda_url}/process-definition/key/document_ingestion_process/start"
 
         payload = {
             "variables": {
@@ -96,9 +90,7 @@ def start_document_ingestion_process(
 def main():
     """Main test function."""
     camunda_url = "http://localhost:8080/engine-rest"
-    bpmn_path = (
-        Path(__file__).parent.parent / "bpmn" / "document_ingestion_pipeline.bpmn"
-    )
+    bpmn_path = Path(__file__).parent.parent / "bpmn" / "document_ingestion_pipeline.bpmn"
 
     print("🧪 Document Ingestion Pipeline Test")
     print("=" * 40)
@@ -157,9 +149,7 @@ The system must support concurrent processing of multiple documents.
     if instance_id:
         print("\n🎯 Document Ingestion Process Started Successfully!")
         print("\n💡 Next Steps:")
-        print(
-            "   1. Start external task worker: python scripts/run_external_task_worker.py"
-        )
+        print("   1. Start external task worker: python scripts/run_external_task_worker.py")
         print("   2. Monitor in Camunda Cockpit: http://localhost:8080")
         print(f"   3. Process Instance ID: {instance_id}")
 

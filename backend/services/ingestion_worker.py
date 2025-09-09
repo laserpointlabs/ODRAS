@@ -40,9 +40,7 @@ class IngestionWorker:
         self.embedding_service = EmbeddingService()
         self.persistence = PersistenceLayer(self.settings)
 
-    async def ingest_files(
-        self, file_ids: List[str], params: Dict[str, Any]
-    ) -> Dict[str, Any]:
+    async def ingest_files(self, file_ids: List[str], params: Dict[str, Any]) -> Dict[str, Any]:
         """Process multiple files with chunking and embedding.
 
         Returns:
@@ -63,9 +61,7 @@ class IngestionWorker:
             try:
                 # Mark as processing
                 try:
-                    await self.storage.update_file_tags(
-                        file_id, {"status": "processing"}
-                    )
+                    await self.storage.update_file_tags(file_id, {"status": "processing"})
                 except Exception:
                     pass
 
@@ -77,18 +73,14 @@ class IngestionWorker:
                     successful += 1
                     # Mark as embedded on success
                     try:
-                        await self.storage.update_file_tags(
-                            file_id, {"status": "embedded"}
-                        )
+                        await self.storage.update_file_tags(file_id, {"status": "embedded"})
                     except Exception:
                         pass
                 else:
                     failed += 1
                     # Mark as failed
                     try:
-                        await self.storage.update_file_tags(
-                            file_id, {"status": "failed"}
-                        )
+                        await self.storage.update_file_tags(file_id, {"status": "failed"})
                     except Exception:
                         pass
 
@@ -220,12 +212,8 @@ class IngestionWorker:
 
             # Upsert into vector store
             try:
-                self.persistence.upsert_vector_records(
-                    embeddings=embeddings, payloads=payloads
-                )
-                logger.info(
-                    f"Successfully stored {len(payloads)} vectors for file {file_id}"
-                )
+                self.persistence.upsert_vector_records(embeddings=embeddings, payloads=payloads)
+                logger.info(f"Successfully stored {len(payloads)} vectors for file {file_id}")
             except Exception as e:
                 logger.error(f"Vector store upsert failed for file {file_id}: {e}")
                 return {

@@ -69,6 +69,11 @@ app.include_router(prefix_router)
 app.include_router(domain_router)
 app.include_router(domain_public_router)
 
+# Import and include users router (after app creation to avoid circular import)
+from backend.api.users import router as users_router
+
+app.include_router(users_router)
+
 # Configuration instance
 settings = Settings()
 # Lazily tolerate DB unavailability in CI/import contexts
@@ -145,35 +150,37 @@ def login(body: Dict):
     password = body.get("password") or ""
     if not username:
         raise HTTPException(status_code=400, detail="Username required")
-    # Allowlist users (env ALLOWED_USERS="admin,jdehart")
-    allowed_env = os.environ.get("ALLOWED_USERS", "admin,jdehart")
-    allowed = {u.strip() for u in allowed_env.split(",") if u.strip()}
-    if username not in allowed:
-        raise HTTPException(status_code=403, detail="User not allowed")
-    token = secrets.token_hex(16)
-    # get or create DB user
+    if not password:
+        raise HTTPException(status_code=400, detail="Password required")
+
+    # Use new authentication service
     try:
-        is_admin_flag = username.lower() == "admin"
-        u = db.get_or_create_user(
-            username=username, display_name=username, is_admin=is_admin_flag
-        )
-        user = {
-            "username": u["username"],
-            "user_id": str(u["user_id"]),
-            "is_admin": bool(u.get("is_admin", False)),
-        }
+        from .services.auth_service import AuthService
+
+        auth_service = AuthService(db)
+
+        # Authenticate user with password
+        user = auth_service.authenticate_user(username, password)
+        if not user:
+            raise HTTPException(status_code=401, detail="Invalid username or password")
+
+        # Generate token
+        token = secrets.token_hex(16)
 
         # Store token in persistent database
         create_token(
-            user_id=str(u["user_id"]),
-            username=u["username"],
-            is_admin=bool(u.get("is_admin", False)),
+            user_id=user["user_id"],
+            username=user["username"],
+            is_admin=user["is_admin"],
             token=token,
         )
 
         return {"token": token}
+    except HTTPException:
+        raise
     except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Auth failed: {str(e)}")
+        logger.error(f"Login error: {e}")
+        raise HTTPException(status_code=500, detail="Authentication failed")
 
 
 @app.get("/api/auth/me")
@@ -259,9 +266,7 @@ def create_project(body: Dict, user=Depends(get_user)):
         except HTTPException:
             raise
         except Exception as e:
-            raise HTTPException(
-                status_code=500, detail=f"Error validating namespace: {e}"
-            )
+            raise HTTPException(status_code=500, detail=f"Error validating namespace: {e}")
 
     try:
         proj = db.create_project(
@@ -373,6 +378,10 @@ def update_project(project_id: str, body: Dict, user=Depends(get_user)):
     """Update project details"""
     try:
         # Check if user has access to this project
+        if not db.is_user_member(project_id=project_id, user_id=user["user_id"]):
+            raise HTTPException(status_code=403, detail="Access denied")
+
+        # Get user role for permission check
         conn = db._conn()
         try:
             with conn.cursor() as cur:
@@ -387,65 +396,26 @@ def update_project(project_id: str, body: Dict, user=Depends(get_user)):
                 if not membership:
                     raise HTTPException(status_code=403, detail="Access denied")
 
-                # Only owners can update projects
-                if membership[0] != "owner":
+                # Allow owners and editors to update projects
+                role = membership[0]
+                if role not in ("owner", "editor"):
                     raise HTTPException(
                         status_code=403,
-                        detail="Only project owners can update projects",
+                        detail="Only project owners or editors can update projects",
                     )
-
-                # Build update query dynamically based on provided fields
-                update_fields = []
-                update_values = []
-
-                if "name" in body and body["name"]:
-                    update_fields.append("name = %s")
-                    update_values.append(body["name"].strip())
-
-                if "description" in body:
-                    update_fields.append("description = %s")
-                    update_values.append(
-                        body["description"] if body["description"] else None
-                    )
-
-                if "domain" in body:
-                    update_fields.append("domain = %s")
-                    update_values.append(body["domain"] if body["domain"] else None)
-
-                if "namespace_id" in body:
-                    update_fields.append("namespace_id = %s")
-                    update_values.append(
-                        body["namespace_id"] if body["namespace_id"] else None
-                    )
-
-                if not update_fields:
-                    raise HTTPException(
-                        status_code=400, detail="No valid fields to update"
-                    )
-
-                update_fields.append("updated_at = NOW()")
-                update_values.append(project_id)
-
-                cur.execute(
-                    f"""
-                    UPDATE public.projects 
-                    SET {', '.join(update_fields)}
-                    WHERE project_id = %s
-                    RETURNING project_id, name, description, created_at, updated_at, 
-                              is_active, namespace_id, domain, created_by
-                """,
-                    update_values,
-                )
-
-                result = cur.fetchone()
-                if not result:
-                    raise HTTPException(status_code=404, detail="Project not found")
-
-                return {
-                    "project": dict(zip([desc[0] for desc in cur.description], result))
-                }
         finally:
             db._return(conn)
+
+        # Use the database service update method
+        result = db.update_project(
+            project_id=project_id,
+            name=body.get("name", "").strip() if body.get("name") else None,
+            description=body.get("description") if body.get("description") else None,
+            domain=body.get("domain") if body.get("domain") else None,
+            namespace_id=body.get("namespace_id") if body.get("namespace_id") else None,
+        )
+
+        return {"project": result}
     except HTTPException:
         raise
     except Exception as e:
@@ -471,9 +441,7 @@ def delete_project(project_id: str, user=Depends(get_user)):
                     "DELETE FROM public.project_members WHERE project_id = %s",
                     (project_id,),
                 )
-                cur.execute(
-                    "DELETE FROM public.projects WHERE project_id = %s", (project_id,)
-                )
+                cur.execute("DELETE FROM public.projects WHERE project_id = %s", (project_id,))
                 conn.commit()
         finally:
             db._return(conn)
@@ -510,20 +478,9 @@ def restore_project(project_id: str, user=Depends(get_user)):
         raise HTTPException(status_code=500, detail=str(e))
 
 
-@app.put("/api/projects/{project_id}")
-def rename_project(project_id: str, body: Dict, user=Depends(get_user)):
-    name = (body.get("name") or "").strip()
-    if not name:
-        raise HTTPException(status_code=400, detail="Name required")
-    try:
-        if not db.is_user_member(project_id=project_id, user_id=user["user_id"]):
-            raise HTTPException(status_code=403, detail="Not a member of project")
-        proj = db.rename_project(project_id=project_id, new_name=name)
-        return {"project": proj}
-    except HTTPException:
-        raise
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
+# Removed duplicate PUT route for /api/projects/{project_id} to avoid overriding the
+# comprehensive update endpoint above. The single update endpoint handles renames
+# (name) as well as description, domain, and namespace_id.
 
 
 @app.on_event("startup")
@@ -638,9 +595,7 @@ async def list_ontologies(project: Optional[str] = None):
             "Content-Type": "application/sparql-query",
         }
         async with httpx.AsyncClient(timeout=30) as client:
-            r = await client.post(
-                query_url, content=sparql.encode("utf-8"), headers=headers
-            )
+            r = await client.post(query_url, content=sparql.encode("utf-8"), headers=headers)
             r.raise_for_status()
             data = r.json()
             rows = data.get("results", {}).get("bindings", [])
@@ -658,9 +613,7 @@ async def list_ontologies(project: Optional[str] = None):
             # Fallback: any non-empty named graph if no owl:Ontology found
             if not ontologies:
                 sparql2 = "SELECT DISTINCT ?graph WHERE { GRAPH ?graph { ?s ?p ?o } } ORDER BY STR(?graph) LIMIT 200"
-                r2 = await client.post(
-                    query_url, content=sparql2.encode("utf-8"), headers=headers
-                )
+                r2 = await client.post(query_url, content=sparql2.encode("utf-8"), headers=headers)
                 r2.raise_for_status()
                 data2 = r2.json()
                 for b in data2.get("results", {}).get("bindings", []):
@@ -677,9 +630,7 @@ async def list_ontologies(project: Optional[str] = None):
         detail = he.response.text if he.response is not None else str(he)
         raise HTTPException(status_code=500, detail=f"SPARQL error: {detail}")
     except Exception as e:
-        raise HTTPException(
-            status_code=500, detail=f"Failed to list ontologies: {str(e)}"
-        )
+        raise HTTPException(status_code=500, detail=f"Failed to list ontologies: {str(e)}")
 
 
 @app.post("/api/ontologies")
@@ -698,9 +649,7 @@ async def create_ontology(body: Dict, user=Depends(get_user)):
 
     # Only admins can create reference ontologies
     if is_reference and not user.get("is_admin", False):
-        raise HTTPException(
-            status_code=403, detail="Only admins can create reference ontologies"
-        )
+        raise HTTPException(status_code=403, detail="Only admins can create reference ontologies")
 
     # Generate proper organizational URI based on installation configuration
     settings = Settings()
@@ -710,9 +659,7 @@ async def create_ontology(body: Dict, user=Depends(get_user)):
     if is_reference:
         # For reference ontologies, use the namespace system
         if project.startswith("core-"):
-            graph_iri = namespace_generator.generate_ontology_uri(
-                "core", ontology_name=name
-            )
+            graph_iri = namespace_generator.generate_ontology_uri("core", ontology_name=name)
         elif project.startswith("domain-"):
             domain = project.replace("domain-", "")
             graph_iri = namespace_generator.generate_ontology_uri(
@@ -762,11 +709,7 @@ async def create_ontology(body: Dict, user=Depends(get_user)):
         base = s.fuseki_url.rstrip("/")
         url = f"{base}/data?graph={graph_iri}"
         headers = {"Content-Type": "text/turtle"}
-        auth = (
-            (s.fuseki_user, s.fuseki_password)
-            if s.fuseki_user and s.fuseki_password
-            else None
-        )
+        auth = (s.fuseki_user, s.fuseki_password) if s.fuseki_user and s.fuseki_password else None
         resp = requests.put(
             url, data=turtle.encode("utf-8"), headers=headers, auth=auth, timeout=20
         )
@@ -787,9 +730,7 @@ async def create_ontology(body: Dict, user=Depends(get_user)):
             status_code=500, detail=f"Fuseki returned {resp.status_code}: {resp.text}"
         )
     except Exception as e:
-        raise HTTPException(
-            status_code=500, detail=f"Failed to create ontology: {str(e)}"
-        )
+        raise HTTPException(status_code=500, detail=f"Failed to create ontology: {str(e)}")
 
 
 @app.get("/api/ontologies/reference")
@@ -832,9 +773,7 @@ async def toggle_reference_ontology(body: Dict, user=Depends(get_admin_user)):
 
     try:
         # Update the reference status in the database
-        result = db.update_ontology_reference_status(
-            graph_iri=graph_iri, is_reference=is_reference
-        )
+        result = db.update_ontology_reference_status(graph_iri=graph_iri, is_reference=is_reference)
         if result:
             return {
                 "success": True,
@@ -844,9 +783,7 @@ async def toggle_reference_ontology(body: Dict, user=Depends(get_admin_user)):
         else:
             raise HTTPException(status_code=404, detail="Ontology not found")
     except Exception as e:
-        raise HTTPException(
-            status_code=500, detail=f"Failed to update reference status: {str(e)}"
-        )
+        raise HTTPException(status_code=500, detail=f"Failed to update reference status: {str(e)}")
 
 
 @app.post("/api/ontologies/import-url")
@@ -864,9 +801,7 @@ async def import_ontology_from_url(body: Dict, user=Depends(get_user)):
     # Only admins can set ontologies as reference
     is_admin = user.get("is_admin", False)
     if is_admin:
-        is_reference = body.get(
-            "is_reference", True
-        )  # Default to reference for URL imports
+        is_reference = body.get("is_reference", True)  # Default to reference for URL imports
     else:
         is_reference = False  # Non-admins cannot set as reference
 
@@ -899,13 +834,9 @@ async def import_ontology_from_url(body: Dict, user=Depends(get_user)):
                 format = "n3"
             else:
                 # Try to auto-detect format
-                if content.strip().startswith("<?xml") or content.strip().startswith(
-                    "<rdf"
-                ):
+                if content.strip().startswith("<?xml") or content.strip().startswith("<rdf"):
                     format = "xml"
-                elif content.strip().startswith(
-                    "@prefix"
-                ) or content.strip().startswith("PREFIX"):
+                elif content.strip().startswith("@prefix") or content.strip().startswith("PREFIX"):
                     format = "turtle"
                 else:
                     format = "xml"  # Default fallback
@@ -974,27 +905,19 @@ async def import_ontology_from_url(body: Dict, user=Depends(get_user)):
         }
 
     except httpx.HTTPError as e:
-        raise HTTPException(
-            status_code=400, detail=f"Failed to fetch ontology from URL: {str(e)}"
-        )
+        raise HTTPException(status_code=400, detail=f"Failed to fetch ontology from URL: {str(e)}")
     except Exception as e:
-        raise HTTPException(
-            status_code=500, detail=f"Failed to import ontology: {str(e)}"
-        )
+        raise HTTPException(status_code=500, detail=f"Failed to import ontology: {str(e)}")
 
 
 @app.delete("/api/ontologies")
-async def delete_ontology(
-    graph: str, project: Optional[str] = None, user=Depends(get_user)
-):
+async def delete_ontology(graph: str, project: Optional[str] = None, user=Depends(get_user)):
     """Delete a named graph (drop ontology)."""
     if not graph:
         raise HTTPException(status_code=400, detail="graph parameter required")
     try:
         # Optional membership check if project provided
-        if project and not db.is_user_member(
-            project_id=project, user_id=user["user_id"]
-        ):
+        if project and not db.is_user_member(project_id=project, user_id=user["user_id"]):
             raise HTTPException(status_code=403, detail="Not a member of project")
         s = Settings()
         update_url = f"{s.fuseki_url.rstrip('/')}/update"
@@ -1002,9 +925,7 @@ async def delete_ontology(
         # Delete the main ontology graph
         query = f"DROP GRAPH <{graph}>"
         headers = {"Content-Type": "application/sparql-update"}
-        r = requests.post(
-            update_url, data=query.encode("utf-8"), headers=headers, timeout=20
-        )
+        r = requests.post(update_url, data=query.encode("utf-8"), headers=headers, timeout=20)
 
         # Also delete the associated layout graph if it exists
         layout_graph = f"{graph}#layout"
@@ -1025,13 +946,9 @@ async def delete_ontology(
             except Exception:
                 pass
             return {"deleted": graph}
-        raise HTTPException(
-            status_code=500, detail=f"Fuseki returned {r.status_code}: {r.text}"
-        )
+        raise HTTPException(status_code=500, detail=f"Fuseki returned {r.status_code}: {r.text}")
     except Exception as e:
-        raise HTTPException(
-            status_code=500, detail=f"Failed to delete ontology: {str(e)}"
-        )
+        raise HTTPException(status_code=500, detail=f"Failed to delete ontology: {str(e)}")
 
 
 @app.put("/api/ontologies/label")
@@ -1053,11 +970,7 @@ async def relabel_ontology(body: Dict):
             f"WHERE  {{ GRAPH <{graph}> {{ ?o a owl:Ontology . OPTIONAL {{ ?o rdfs:label ?old }} }} }}\n"
         )
         headers = {"Content-Type": "application/sparql-update"}
-        auth = (
-            (s.fuseki_user, s.fuseki_password)
-            if s.fuseki_user and s.fuseki_password
-            else None
-        )
+        auth = (s.fuseki_user, s.fuseki_password) if s.fuseki_user and s.fuseki_password else None
         r = requests.post(
             update_url,
             data=sparql.encode("utf-8"),
@@ -1067,13 +980,9 @@ async def relabel_ontology(body: Dict):
         )
         if 200 <= r.status_code < 300:
             return {"graphIri": graph, "label": label}
-        raise HTTPException(
-            status_code=500, detail=f"Fuseki returned {r.status_code}: {r.text}"
-        )
+        raise HTTPException(status_code=500, detail=f"Fuseki returned {r.status_code}: {r.text}")
     except Exception as e:
-        raise HTTPException(
-            status_code=500, detail=f"Failed to relabel ontology: {str(e)}"
-        )
+        raise HTTPException(status_code=500, detail=f"Failed to relabel ontology: {str(e)}")
 
 
 @app.post("/api/ontology/save")
@@ -1084,9 +993,7 @@ async def save_ontology(graph: str, request: Request):
     try:
         ttl_bytes = await request.body()
         if not ttl_bytes:
-            raise HTTPException(
-                status_code=400, detail="Empty body; expected Turtle content"
-            )
+            raise HTTPException(status_code=400, detail="Empty body; expected Turtle content")
         s = Settings()
         base = s.fuseki_url.rstrip("/")
         # First, DROP the target graph to avoid lingering triples
@@ -1094,19 +1001,13 @@ async def save_ontology(graph: str, request: Request):
             upd_url = f"{base}/update"
             upd_headers = {"Content-Type": "application/sparql-update"}
             drop_q = f"DROP GRAPH <{graph}>"
-            requests.post(
-                upd_url, data=drop_q.encode("utf-8"), headers=upd_headers, timeout=15
-            )
+            requests.post(upd_url, data=drop_q.encode("utf-8"), headers=upd_headers, timeout=15)
         except Exception:
             pass
         # Then write via Graph Store PUT
         url = f"{base}/data"
         headers = {"Content-Type": "text/turtle"}
-        auth = (
-            (s.fuseki_user, s.fuseki_password)
-            if s.fuseki_user and s.fuseki_password
-            else None
-        )
+        auth = (s.fuseki_user, s.fuseki_password) if s.fuseki_user and s.fuseki_password else None
         r = requests.put(
             url,
             params={"graph": graph},
@@ -1117,15 +1018,11 @@ async def save_ontology(graph: str, request: Request):
         )
         if 200 <= r.status_code < 300:
             return {"success": True, "graphIri": graph, "message": "Saved to Fuseki"}
-        raise HTTPException(
-            status_code=500, detail=f"Fuseki returned {r.status_code}: {r.text}"
-        )
+        raise HTTPException(status_code=500, detail=f"Fuseki returned {r.status_code}: {r.text}")
     except HTTPException:
         raise
     except Exception as e:
-        raise HTTPException(
-            status_code=500, detail=f"Failed to save ontology: {str(e)}"
-        )
+        raise HTTPException(status_code=500, detail=f"Failed to save ontology: {str(e)}")
 
 
 @app.get("/api/ontology/summary")
@@ -1152,9 +1049,7 @@ async def ontology_summary():
                     {
                         "type": type_val,
                         "count": (
-                            int(count_val)
-                            if count_val and count_val.isdigit()
-                            else count_val
+                            int(count_val) if count_val and count_val.isdigit() else count_val
                         ),
                     }
                 )
@@ -1179,9 +1074,7 @@ async def ontology_sparql(body: Dict):
         }
         # Prefer POST for longer queries
         async with httpx.AsyncClient(timeout=60) as client:
-            r = await client.post(
-                query_url, content=query.encode("utf-8"), headers=headers
-            )
+            r = await client.post(query_url, content=query.encode("utf-8"), headers=headers)
             r.raise_for_status()
             return r.json()
     except httpx.HTTPStatusError as he:
@@ -1198,17 +1091,13 @@ async def user_review_interface(
     """Requirements review interface or main interface."""
 
     # If taskId or process_instance_id is provided and not empty, show the review interface
-    if (taskId and taskId.strip()) or (
-        process_instance_id and process_instance_id.strip()
-    ):
+    if (taskId and taskId.strip()) or (process_instance_id and process_instance_id.strip()):
         from backend.review_interface import generate_review_interface_html
 
         # Ensure we have non-None values
         task_id_safe = taskId or ""
         process_id_safe = process_instance_id or ""
-        return HTMLResponse(
-            content=generate_review_interface_html(task_id_safe, process_id_safe)
-        )
+        return HTMLResponse(content=generate_review_interface_html(task_id_safe, process_id_safe))
 
     # Otherwise show the main interface
     html_content = """
@@ -1591,9 +1480,7 @@ async def upload_document(
         )
 
         if not process_id:
-            raise HTTPException(
-                status_code=500, detail="Failed to start Camunda process"
-            )
+            raise HTTPException(status_code=500, detail="Failed to start Camunda process")
 
         # Store run info
         run_id = str(process_id)
@@ -1632,9 +1519,7 @@ async def start_camunda_process(
         return None
 
     # Start process instance
-    start_url = (
-        f"{CAMUNDA_REST_API}/process-definition/key/odras_requirements_analysis/start"
-    )
+    start_url = f"{CAMUNDA_REST_API}/process-definition/key/odras_requirements_analysis/start"
 
     variables = {
         "document_content": {"value": document_content, "type": "String"},
@@ -2900,9 +2785,7 @@ async def test_prompt(prompt_id: str, test_data: Dict):
         filled_prompt = prompt["prompt_template"]
         for variable in prompt.get("variables", []):
             if variable in test_data:
-                filled_prompt = filled_prompt.replace(
-                    f"{{{variable}}}", str(test_data[variable])
-                )
+                filled_prompt = filled_prompt.replace(f"{{{variable}}}", str(test_data[variable]))
 
         return {
             "prompt_id": prompt_id,
@@ -2975,9 +2858,7 @@ async def get_user_tasks(process_instance_id: str):
 
             # Filter for user tasks
             user_tasks = [
-                task
-                for task in tasks
-                if task.get("taskDefinitionKey") == "Task_UserReview"
+                task for task in tasks if task.get("taskDefinitionKey") == "Task_UserReview"
             ]
 
             return {
@@ -2986,9 +2867,7 @@ async def get_user_tasks(process_instance_id: str):
                 "total_tasks": len(user_tasks),
             }
     except Exception as e:
-        raise HTTPException(
-            status_code=500, detail=f"Error fetching user tasks: {str(e)}"
-        )
+        raise HTTPException(status_code=500, detail=f"Error fetching user tasks: {str(e)}")
 
 
 @app.get("/api/user-tasks/{process_instance_id}/requirements")
@@ -2996,9 +2875,7 @@ async def get_requirements_for_review(process_instance_id: str):
     """Get extracted requirements for user review."""
     try:
         # Get process variables to find requirements
-        variables_url = (
-            f"{CAMUNDA_REST_API}/process-instance/{process_instance_id}/variables"
-        )
+        variables_url = f"{CAMUNDA_REST_API}/process-instance/{process_instance_id}/variables"
 
         async with httpx.AsyncClient(timeout=10) as client:
             response = await client.get(variables_url)
@@ -3015,9 +2892,7 @@ async def get_requirements_for_review(process_instance_id: str):
                     requirements_list = requirements_data
 
             document_content = variables.get("document_content", {}).get("value", "")
-            document_filename = variables.get("document_filename", {}).get(
-                "value", "unknown"
-            )
+            document_filename = variables.get("document_filename", {}).get("value", "unknown")
 
             return {
                 "process_instance_id": process_instance_id,
@@ -3027,9 +2902,7 @@ async def get_requirements_for_review(process_instance_id: str):
                 "total_requirements": len(requirements_list),
             }
     except Exception as e:
-        raise HTTPException(
-            status_code=500, detail=f"Error fetching requirements: {str(e)}"
-        )
+        raise HTTPException(status_code=500, detail=f"Error fetching requirements: {str(e)}")
 
 
 @app.post("/api/user-tasks/{process_instance_id}/complete")
@@ -3047,17 +2920,11 @@ async def complete_user_task(process_instance_id: str, user_decision: Dict):
 
             # Find the user review task
             user_task = next(
-                (
-                    task
-                    for task in tasks
-                    if task.get("taskDefinitionKey") == "Task_UserReview"
-                ),
+                (task for task in tasks if task.get("taskDefinitionKey") == "Task_UserReview"),
                 None,
             )
             if not user_task:
-                raise HTTPException(
-                    status_code=404, detail="User review task not found"
-                )
+                raise HTTPException(status_code=404, detail="User review task not found")
 
             task_id = user_task["id"]
 
@@ -3081,9 +2948,7 @@ async def complete_user_task(process_instance_id: str, user_decision: Dict):
 
             # Complete the task
             complete_url = f"{CAMUNDA_REST_API}/task/{task_id}/complete"
-            complete_response = await client.post(
-                complete_url, json={"variables": variables}
-            )
+            complete_response = await client.post(complete_url, json={"variables": variables})
             complete_response.raise_for_status()
 
             # Update run status
@@ -3099,9 +2964,7 @@ async def complete_user_task(process_instance_id: str, user_decision: Dict):
                 "message": f"User task completed with decision: {decision}",
             }
     except Exception as e:
-        raise HTTPException(
-            status_code=500, detail=f"Error completing user task: {str(e)}"
-        )
+        raise HTTPException(status_code=500, detail=f"Error completing user task: {str(e)}")
 
 
 @app.get("/api/user-tasks/{process_instance_id}/status")
@@ -3117,7 +2980,9 @@ async def get_user_task_status(process_instance_id: str):
             instance = response.json()
 
             # Get current activities
-            activities_url = f"{CAMUNDA_REST_API}/process-instance/{process_instance_id}/activity-instances"
+            activities_url = (
+                f"{CAMUNDA_REST_API}/process-instance/{process_instance_id}/activity-instances"
+            )
             activities_response = await client.get(activities_url)
             activities_response.raise_for_status()
             activities = activities_response.json()
@@ -3144,9 +3009,7 @@ async def get_user_task_status(process_instance_id: str):
                 "end_time": instance.get("endTime"),
             }
     except Exception as e:
-        raise HTTPException(
-            status_code=500, detail=f"Error fetching task status: {str(e)}"
-        )
+        raise HTTPException(status_code=500, detail=f"Error fetching task status: {str(e)}")
 
 
 def run():

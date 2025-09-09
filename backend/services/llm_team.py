@@ -34,9 +34,7 @@ class LLMTeam:
         # Use custom personas if provided, otherwise use default ones
         if custom_personas:
             personas = [
-                (p["name"], p["system_prompt"])
-                for p in custom_personas
-                if p.get("is_active", True)
+                (p["name"], p["system_prompt"]) for p in custom_personas if p.get("is_active", True)
             ]
         else:
             # Default personas
@@ -53,9 +51,7 @@ class LLMTeam:
 
         outputs = []
         for role, system in personas:
-            response = await self._call_model(
-                requirement_text, system, ontology_json_schema
-            )
+            response = await self._call_model(requirement_text, system, ontology_json_schema)
             if response:
                 outputs.append(response)
 
@@ -127,8 +123,7 @@ class LLMTeam:
             "messages": [
                 {
                     "role": "system",
-                    "content": system_prompt
-                    + " Return ONLY JSON conforming to the schema.",
+                    "content": system_prompt + " Return ONLY JSON conforming to the schema.",
                 },
                 {
                     "role": "user",
@@ -162,9 +157,7 @@ class LLMTeam:
                         "originates_from": "parse-error",
                     }
         except httpx.HTTPStatusError as e:
-            logger.error(
-                f"OpenAI API returned HTTP {e.response.status_code}: {e.response.text}"
-            )
+            logger.error(f"OpenAI API returned HTTP {e.response.status_code}: {e.response.text}")
             return {"text": text, "state": "Draft", "originates_from": "api-error"}
         except httpx.TimeoutException:
             logger.error("OpenAI API request timed out")
@@ -194,8 +187,7 @@ class LLMTeam:
             "messages": [
                 {
                     "role": "system",
-                    "content": system_prompt
-                    + " Return ONLY JSON conforming to the schema.",
+                    "content": system_prompt + " Return ONLY JSON conforming to the schema.",
                 },
                 {
                     "role": "user",
@@ -230,9 +222,7 @@ class LLMTeam:
                         "originates_from": "parse-error",
                     }
         except httpx.HTTPStatusError as e:
-            logger.error(
-                f"Ollama API returned HTTP {e.response.status_code}: {e.response.text}"
-            )
+            logger.error(f"Ollama API returned HTTP {e.response.status_code}: {e.response.text}")
             return {"text": text, "state": "Draft", "originates_from": "api-error"}
         except httpx.TimeoutException:
             logger.error("Ollama API request timed out")

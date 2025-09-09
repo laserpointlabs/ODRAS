@@ -52,9 +52,7 @@ class NamespaceSyncService:
                 )
 
                 if response.status_code == 200:
-                    logger.info(
-                        f"Successfully synced class {class_data['local_name']} to Fuseki"
-                    )
+                    logger.info(f"Successfully synced class {class_data['local_name']} to Fuseki")
                     return True
                 else:
                     logger.error(
@@ -83,7 +81,9 @@ class NamespaceSyncService:
                 """
 
                 if class_data.get("comment"):
-                    class_triple += f'<{class_data["iri"]}> rdfs:comment "{class_data["comment"]}" .'
+                    class_triple += (
+                        f'<{class_data["iri"]}> rdfs:comment "{class_data["comment"]}" .'
+                    )
 
                 class_triples.append(class_triple)
 
@@ -243,9 +243,7 @@ class NamespaceSyncService:
                 )
 
                 if delete_response.status_code != 200:
-                    logger.error(
-                        f"Failed to delete old class data: {delete_response.status_code}"
-                    )
+                    logger.error(f"Failed to delete old class data: {delete_response.status_code}")
                     return False
 
                 # Insert new values

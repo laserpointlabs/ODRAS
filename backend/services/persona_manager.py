@@ -17,9 +17,7 @@ class PersonaManager:
                 response = await client.get(f"{self.base_url}/api/personas")
                 if response.status_code == 200:
                     data = response.json()
-                    return [
-                        p for p in data.get("personas", []) if p.get("is_active", True)
-                    ]
+                    return [p for p in data.get("personas", []) if p.get("is_active", True)]
                 else:
                     return []
         except Exception as e:
@@ -33,9 +31,7 @@ class PersonaManager:
                 response = await client.get(f"{self.base_url}/api/prompts")
                 if response.status_code == 200:
                     data = response.json()
-                    return [
-                        p for p in data.get("prompts", []) if p.get("is_active", True)
-                    ]
+                    return [p for p in data.get("prompts", []) if p.get("is_active", True)]
                 else:
                     return []
         except Exception as e:
@@ -82,9 +78,7 @@ class PersonaManager:
         """Delete a persona."""
         try:
             async with httpx.AsyncClient(timeout=10) as client:
-                response = await client.delete(
-                    f"{self.base_url}/api/personas/{persona_id}"
-                )
+                response = await client.delete(f"{self.base_url}/api/personas/{persona_id}")
                 return response.status_code == 200
         except Exception as e:
             print(f"Error deleting persona: {e}")

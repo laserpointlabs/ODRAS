@@ -1561,6 +1561,30 @@
             </div>
           </div>
 
+          <!-- User Management Section -->
+          <div class="section collapsed">
+            <div class="section-header" onclick="toggleSection(this)" style="cursor: pointer; padding: 10px; background: var(--panel); border: 1px solid var(--border); border-radius: 8px; margin-bottom: 10px; display: flex; justify-content: space-between; align-items: center;">
+              <span style="font-weight: bold; color: var(--text);">User Management</span>
+              <span class="section-toggle" style="font-size: 14px;">▶</span>
+            </div>
+            <div class="section-content" style="display: none;">
+              <div style="display: flex; gap: 10px; margin-bottom: 20px; flex-wrap: wrap;">
+                <button class="btn" onclick="loadUsers()">Refresh Users</button>
+                <button class="btn" onclick="showCreateUserModal()">Create User</button>
+                <button class="btn" onclick="showChangePasswordModal()">Change My Password</button>
+                <label style="display: flex; align-items: center; gap: 8px; margin-left: auto;">
+                  <input type="checkbox" id="showInactiveUsers" onchange="loadUsers()" style="margin: 0;">
+                  <span style="color: var(--text); font-size: 14px;">Show inactive users</span>
+                </label>
+              </div>
+              
+              <!-- User List -->
+              <div id="userList" style="background: var(--panel); border: 1px solid var(--border); border-radius: 8px; padding: 16px;">
+                <div style="text-align: center; color: var(--muted);">Loading users...</div>
+              </div>
+            </div>
+          </div>
+
         </section>
       </main>
     </div>
@@ -3847,6 +3871,7 @@
         if (wb === 'admin') {
           loadPrefixes();
           loadDomains();
+          loadUsers(); // Load user management data
           // Only load namespaces if user is authenticated
           const token = localStorage.getItem('odras_token');
           if (token) {
@@ -4642,6 +4667,23 @@
                   body: JSON.stringify({ name: newName.trim() })
                 });
                 if (res.ok) {
+                  // Verify via API that the rename persisted
+                  try {
+                    const vr = await fetch(`/api/projects/${encodeURIComponent(pid)}`, { headers: { Authorization: 'Bearer ' + token }});
+                    if (vr.ok) {
+                      const vj = await vr.json();
+                      const vproj = vj.project || vj;
+                      const serverName = (vproj.name || vproj.project_name || '').trim();
+                      if (serverName !== newName.trim()) {
+                        alert('Rename saved but verification failed: expected "' + newName.trim() + '", got "' + serverName + '". UI will refresh.');
+                      }
+                    } else {
+                      const t = await vr.text().catch(()=>String(vr.status));
+                      alert('Rename saved, but verification request failed: ' + t);
+                    }
+                  } catch (_) {
+                    // Non-fatal verification error
+                  }
                   await loadProjects();
                 } else {
                   const t = await res.text().catch(()=>String(res.status));
@@ -8919,6 +8961,7 @@
         if (document.querySelector('#wb-admin.workbench.active')) {
           loadPrefixes();
           loadDomains();
+          loadUsers(); // Load user management data
           // Only load namespaces if user is authenticated
           const token = localStorage.getItem('odras_token');
           if (token) {
@@ -11032,9 +11075,44 @@
           // Reload project info
           loadProjectInfo();
           
+          // Refresh project list and tree to reflect updated name/details
+          try { await loadProjects(); } catch(_) {}
+
           // Update namespace display
           updateNamespaceDisplay(projectId);
           
+          // Verify via API that changes persisted
+          try {
+            const verifyRes = await fetch(`/api/projects/${projectId}`, {
+              headers: { 'Authorization': `Bearer ${token}` }
+            });
+            if (verifyRes.ok) {
+              const verifyJson = await verifyRes.json();
+              const serverProject = verifyJson.project || verifyJson;
+              const mismatches = [];
+              const expectedName = updateData.name;
+              const serverName = (serverProject.name || serverProject.project_name || '').trim();
+              if (serverName !== expectedName) mismatches.push(`name: expected "${expectedName}", got "${serverName}"`);
+              const expectedDesc = updateData.description || null;
+              const serverDesc = (serverProject.description === '' ? null : serverProject.description);
+              if ((serverDesc || null) !== expectedDesc) mismatches.push('description');
+              const expectedDomain = updateData.domain || null;
+              const serverDomain = serverProject.domain || null;
+              if ((serverDomain || null) !== expectedDomain) mismatches.push('domain');
+              const expectedNs = updateData.namespace_id ? String(updateData.namespace_id) : null;
+              const serverNs = serverProject.namespace_id != null ? String(serverProject.namespace_id) : null;
+              if (serverNs !== expectedNs) mismatches.push('namespace_id');
+              if (mismatches.length) {
+                alert('Project saved but verification mismatch for: ' + mismatches.join(', '));
+              }
+            } else {
+              const t = await verifyRes.text().catch(()=>String(verifyRes.status));
+              alert('Project saved, but verification request failed: ' + t);
+            }
+          } catch (_) {
+            // Non-fatal verification error
+          }
+
           alert('Project updated successfully!');
         } else {
           const error = await response.json();
@@ -11666,6 +11744,338 @@
     window.toggleSection = toggleSection;
     window.showEditPrefixModal = showEditPrefixModal;
     window.updatePrefix = updatePrefix;
+
+    // User Management Functions
+    async function loadUsers() {
+      console.log('🔄 Loading users...');
+      try {
+        const token = localStorage.getItem('odras_token');
+        const showInactive = document.getElementById('showInactiveUsers')?.checked || false;
+        const url = `/api/users/?include_inactive=${showInactive}`;
+        
+        const response = await fetch(url, {
+          headers: {
+            'Authorization': `Bearer ${token}`
+          }
+        });
+        
+        if (response.ok) {
+          const users = await response.json();
+          console.log('✅ Loaded users:', users.length);
+          renderUserList(users);
+        } else {
+          console.error('Failed to load users:', response.status, response.statusText);
+          document.getElementById('userList').innerHTML = 
+            `<div style="color: var(--err); text-align: center;">Error loading users: ${response.statusText}</div>`;
+        }
+      } catch (error) {
+        console.error('Error loading users:', error);
+        document.getElementById('userList').innerHTML = 
+          `<div style="color: var(--err); text-align: center;">Error loading users: ${error.message}</div>`;
+      }
+    }
+
+    function renderUserList(users) {
+      const container = document.getElementById('userList');
+      
+      if (users.length === 0) {
+        container.innerHTML = '<div style="text-align: center; color: var(--muted);">No users found</div>';
+        return;
+      }
+
+      const html = users.map(user => {
+        const statusColor = user.is_active ? 'var(--success)' : 'var(--err)';
+        const statusText = user.is_active ? 'Active' : 'Inactive';
+        const adminBadge = user.is_admin ? '<span style="background: var(--accent); color: white; padding: 2px 6px; border-radius: 4px; font-size: 12px; margin-left: 8px;">ADMIN</span>' : '';
+        const createdDate = new Date(user.created_at).toLocaleDateString();
+        
+        return `
+          <div style="display: flex; justify-content: space-between; align-items: center; padding: 12px; border: 1px solid var(--border); border-radius: 6px; margin-bottom: 8px; background: var(--bg);">
+            <div style="flex: 1;">
+              <div style="display: flex; align-items: center; margin-bottom: 4px;">
+                <span style="font-weight: bold; color: var(--text);">${user.username}</span>
+                ${adminBadge}
+                <span style="width: 8px; height: 8px; border-radius: 50%; background: ${statusColor}; margin-left: 12px;"></span>
+                <span style="color: ${statusColor}; margin-left: 4px; font-size: 14px;">${statusText}</span>
+              </div>
+              <div style="color: var(--muted); font-size: 14px;">
+                <div>Display Name: ${user.display_name || 'Not set'}</div>
+                <div>Created: ${createdDate}</div>
+              </div>
+            </div>
+            <div style="display: flex; gap: 8px;">
+              <button class="btn" onclick="editUser('${user.user_id}')" style="padding: 6px 12px; font-size: 12px;">Edit</button>
+              <button class="btn" onclick="toggleUserStatus('${user.user_id}', ${user.is_active})" style="padding: 6px 12px; font-size: 12px; background: ${user.is_active ? 'var(--err)' : 'var(--success)'};">
+                ${user.is_active ? 'Deactivate' : 'Activate'}
+              </button>
+            </div>
+          </div>
+        `;
+      }).join('');
+
+      container.innerHTML = html;
+    }
+
+    function showCreateUserModal() {
+      const modal = document.createElement('div');
+      modal.className = 'modal';
+      modal.style.cssText = `
+        position: fixed; top: 0; left: 0; width: 100%; height: 100%; 
+        background: rgba(0,0,0,0.5); display: flex; align-items: center; 
+        justify-content: center; z-index: 1000;
+      `;
+      
+      modal.innerHTML = `
+        <div style="background: var(--panel); border: 1px solid var(--border); border-radius: 8px; padding: 24px; width: 400px; max-width: 90vw;">
+          <h3 style="margin: 0 0 16px 0; color: var(--text);">Create New User</h3>
+          
+          <div style="display: grid; gap: 16px;">
+            <div>
+              <label style="display: block; margin-bottom: 4px; color: var(--text); font-weight: bold;">Username *</label>
+              <input type="text" id="newUserUsername" placeholder="Enter username" 
+                     style="width: 100%; padding: 8px; border: 1px solid var(--border); border-radius: 4px; background: var(--bg); color: var(--text);">
+            </div>
+            
+            <div>
+              <label style="display: block; margin-bottom: 4px; color: var(--text); font-weight: bold;">Password *</label>
+              <input type="password" id="newUserPassword" placeholder="Enter password (min 8 characters)" 
+                     style="width: 100%; padding: 8px; border: 1px solid var(--border); border-radius: 4px; background: var(--bg); color: var(--text);">
+            </div>
+            
+            <div>
+              <label style="display: block; margin-bottom: 4px; color: var(--text); font-weight: bold;">Display Name</label>
+              <input type="text" id="newUserDisplayName" placeholder="Enter display name (optional)" 
+                     style="width: 100%; padding: 8px; border: 1px solid var(--border); border-radius: 4px; background: var(--bg); color: var(--text);">
+            </div>
+            
+            <div style="display: flex; align-items: center; gap: 8px;">
+              <input type="checkbox" id="newUserIsAdmin" style="margin: 0;">
+              <label for="newUserIsAdmin" style="color: var(--text); margin: 0;">Admin privileges</label>
+            </div>
+          </div>
+          
+          <div style="display: flex; gap: 12px; margin-top: 20px; justify-content: flex-end;">
+            <button class="btn" onclick="document.querySelector('.modal').remove()" style="background: var(--muted);">Cancel</button>
+            <button class="btn" onclick="createUser()" style="background: var(--accent);">Create User</button>
+          </div>
+        </div>
+      `;
+      
+      document.body.appendChild(modal);
+    }
+
+    async function createUser() {
+      try {
+        const username = document.getElementById('newUserUsername').value.trim();
+        const password = document.getElementById('newUserPassword').value;
+        const displayName = document.getElementById('newUserDisplayName').value.trim();
+        const isAdmin = document.getElementById('newUserIsAdmin').checked;
+        
+        if (!username || !password) {
+          alert('Username and password are required');
+          return;
+        }
+        
+        if (password.length < 8) {
+          alert('Password must be at least 8 characters long');
+          return;
+        }
+        
+        const token = localStorage.getItem('odras_token');
+        const response = await fetch('/api/users/', {
+          method: 'POST',
+          headers: {
+            'Authorization': `Bearer ${token}`,
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify({
+            username: username,
+            password: password,
+            display_name: displayName || null,
+            is_admin: isAdmin
+          })
+        });
+        
+        if (response.ok) {
+          document.querySelector('.modal').remove();
+          await loadUsers();
+          alert('User created successfully!');
+        } else {
+          const error = await response.text();
+          alert(`Error creating user: ${error}`);
+        }
+      } catch (error) {
+        console.error('Error creating user:', error);
+        alert(`Error creating user: ${error.message}`);
+      }
+    }
+
+    function editUser(userId) {
+      // For now, just show a simple edit modal
+      // In a full implementation, you'd load user details and show an edit form
+      const newDisplayName = prompt('Enter new display name:');
+      if (newDisplayName !== null) {
+        updateUser(userId, { display_name: newDisplayName });
+      }
+    }
+
+    async function updateUser(userId, updates) {
+      try {
+        const token = localStorage.getItem('odras_token');
+        const response = await fetch(`/api/users/${userId}`, {
+          method: 'PUT',
+          headers: {
+            'Authorization': `Bearer ${token}`,
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify(updates)
+        });
+        
+        if (response.ok) {
+          await loadUsers();
+          alert('User updated successfully!');
+        } else {
+          const error = await response.text();
+          alert(`Error updating user: ${error}`);
+        }
+      } catch (error) {
+        console.error('Error updating user:', error);
+        alert(`Error updating user: ${error.message}`);
+      }
+    }
+
+    async function toggleUserStatus(userId, currentStatus) {
+      const action = currentStatus ? 'deactivate' : 'activate';
+      const confirmMessage = `Are you sure you want to ${action} this user?`;
+      
+      if (!confirm(confirmMessage)) {
+        return;
+      }
+      
+      try {
+        const token = localStorage.getItem('odras_token');
+        const url = currentStatus ? `/api/users/${userId}` : `/api/users/${userId}/activate`;
+        const method = currentStatus ? 'DELETE' : 'POST';
+        
+        const response = await fetch(url, {
+          method: method,
+          headers: {
+            'Authorization': `Bearer ${token}`
+          }
+        });
+        
+        if (response.ok) {
+          await loadUsers();
+          alert(`User ${action}d successfully!`);
+        } else {
+          const error = await response.text();
+          alert(`Error ${action}ing user: ${error}`);
+        }
+      } catch (error) {
+        console.error(`Error ${action}ing user:`, error);
+        alert(`Error ${action}ing user: ${error.message}`);
+      }
+    }
+
+    function showChangePasswordModal() {
+      const modal = document.createElement('div');
+      modal.className = 'modal';
+      modal.style.cssText = `
+        position: fixed; top: 0; left: 0; width: 100%; height: 100%; 
+        background: rgba(0,0,0,0.5); display: flex; align-items: center; 
+        justify-content: center; z-index: 1000;
+      `;
+      
+      modal.innerHTML = `
+        <div style="background: var(--panel); border: 1px solid var(--border); border-radius: 8px; padding: 24px; width: 400px; max-width: 90vw;">
+          <h3 style="margin: 0 0 16px 0; color: var(--text);">Change Password</h3>
+          
+          <div style="display: grid; gap: 16px;">
+            <div>
+              <label style="display: block; margin-bottom: 4px; color: var(--text); font-weight: bold;">Current Password *</label>
+              <input type="password" id="currentPassword" placeholder="Enter current password" 
+                     style="width: 100%; padding: 8px; border: 1px solid var(--border); border-radius: 4px; background: var(--bg); color: var(--text);">
+            </div>
+            
+            <div>
+              <label style="display: block; margin-bottom: 4px; color: var(--text); font-weight: bold;">New Password *</label>
+              <input type="password" id="newPassword" placeholder="Enter new password (min 8 characters)" 
+                     style="width: 100%; padding: 8px; border: 1px solid var(--border); border-radius: 4px; background: var(--bg); color: var(--text);">
+            </div>
+            
+            <div>
+              <label style="display: block; margin-bottom: 4px; color: var(--text); font-weight: bold;">Confirm New Password *</label>
+              <input type="password" id="confirmPassword" placeholder="Confirm new password" 
+                     style="width: 100%; padding: 8px; border: 1px solid var(--border); border-radius: 4px; background: var(--bg); color: var(--text);">
+            </div>
+          </div>
+          
+          <div style="display: flex; gap: 12px; margin-top: 20px; justify-content: flex-end;">
+            <button class="btn" onclick="document.querySelector('.modal').remove()" style="background: var(--muted);">Cancel</button>
+            <button class="btn" onclick="changePassword()" style="background: var(--accent);">Change Password</button>
+          </div>
+        </div>
+      `;
+      
+      document.body.appendChild(modal);
+    }
+
+    async function changePassword() {
+      try {
+        const currentPassword = document.getElementById('currentPassword').value;
+        const newPassword = document.getElementById('newPassword').value;
+        const confirmPassword = document.getElementById('confirmPassword').value;
+        
+        if (!currentPassword || !newPassword || !confirmPassword) {
+          alert('All fields are required');
+          return;
+        }
+        
+        if (newPassword.length < 8) {
+          alert('New password must be at least 8 characters long');
+          return;
+        }
+        
+        if (newPassword !== confirmPassword) {
+          alert('New passwords do not match');
+          return;
+        }
+        
+        const token = localStorage.getItem('odras_token');
+        const response = await fetch('/api/users/me/password', {
+          method: 'PUT',
+          headers: {
+            'Authorization': `Bearer ${token}`,
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify({
+            old_password: currentPassword,
+            new_password: newPassword
+          })
+        });
+        
+        if (response.ok) {
+          document.querySelector('.modal').remove();
+          alert('Password changed successfully!');
+        } else {
+          const error = await response.text();
+          alert(`Error changing password: ${error}`);
+        }
+      } catch (error) {
+        console.error('Error changing password:', error);
+        alert(`Error changing password: ${error.message}`);
+      }
+    }
+
+    // Make user management functions globally available
+    window.loadUsers = loadUsers;
+    window.showCreateUserModal = showCreateUserModal;
+    window.createUser = createUser;
+    window.editUser = editUser;
+    window.updateUser = updateUser;
+    window.toggleUserStatus = toggleUserStatus;
+    window.showChangePasswordModal = showChangePasswordModal;
+    window.changePassword = changePassword;
     
           // Test function for debugging
       function testToggle() {

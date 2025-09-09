@@ -48,9 +48,7 @@ def check_postgres_data(conn):
     try:
         with conn.cursor() as cur:
             # Check users
-            cur.execute(
-                "SELECT user_id, username, display_name, is_admin FROM public.users"
-            )
+            cur.execute("SELECT user_id, username, display_name, is_admin FROM public.users")
             users = cur.fetchall()
             floating_data["users"] = [
                 {
@@ -119,13 +117,10 @@ def check_postgres_data(conn):
             ]
 
             # Check extraction jobs
-            cur.execute(
-                "SELECT job_id, project_id, file_id, status FROM public.extraction_jobs"
-            )
+            cur.execute("SELECT job_id, project_id, file_id, status FROM public.extraction_jobs")
             jobs = cur.fetchall()
             floating_data["extraction_jobs"] = [
-                {"job_id": j[0], "project_id": j[1], "file_id": j[2], "status": j[3]}
-                for j in jobs
+                {"job_id": j[0], "project_id": j[1], "file_id": j[2], "status": j[3]} for j in jobs
             ]
 
             # Check requirements
@@ -177,9 +172,7 @@ def check_fuseki_data():
 
         # List datasets
         datasets_url = f"{fuseki_url}/$/datasets"
-        auth = (
-            (fuseki_user, fuseki_password) if fuseki_user and fuseki_password else None
-        )
+        auth = (fuseki_user, fuseki_password) if fuseki_user and fuseki_password else None
 
         response = requests.get(datasets_url, auth=auth, timeout=10)
         if response.status_code == 200:
@@ -215,15 +208,10 @@ def check_fuseki_data():
                         results = graph_response.json()
                         graphs = [
                             binding["g"]["value"]
-                            for binding in results.get("results", {}).get(
-                                "bindings", []
-                            )
+                            for binding in results.get("results", {}).get("bindings", [])
                         ]
                         floating_graphs.extend(
-                            [
-                                {"dataset": dataset_name, "graph": graph}
-                                for graph in graphs
-                            ]
+                            [{"dataset": dataset_name, "graph": graph} for graph in graphs]
                         )
 
                 except Exception as e:
@@ -298,9 +286,7 @@ def check_qdrant_data():
         return []
 
 
-def generate_cleanup_report(
-    floating_data, fuseki_graphs, neo4j_data, qdrant_collections
-):
+def generate_cleanup_report(floating_data, fuseki_graphs, neo4j_data, qdrant_collections):
     """Generate a comprehensive cleanup report."""
     print("\n" + "=" * 60)
     print("FLOATING DATA CLEANUP REPORT")
@@ -379,9 +365,7 @@ def main():
         qdrant_collections = check_qdrant_data()
 
         # Generate report
-        generate_cleanup_report(
-            floating_data, fuseki_graphs, neo4j_data, qdrant_collections
-        )
+        generate_cleanup_report(floating_data, fuseki_graphs, neo4j_data, qdrant_collections)
 
         return 0
 

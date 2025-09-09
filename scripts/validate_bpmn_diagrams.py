@@ -90,9 +90,7 @@ def validate_bpmn_diagram(bpmn_file_path: str) -> dict:
             sequence_flows = [
                 elem for elem in process_elements if elem.tag.endswith("sequenceFlow")
             ]
-            sequence_flow_ids = {
-                flow.get("id") for flow in sequence_flows if flow.get("id")
-            }
+            sequence_flow_ids = {flow.get("id") for flow in sequence_flows if flow.get("id")}
             edge_element_ids = {
                 edge.get("bpmnElement") for edge in edges if edge.get("bpmnElement")
             }
@@ -124,11 +122,7 @@ def validate_bpmn_diagram(bpmn_file_path: str) -> dict:
         if result["has_diagram"] and result["diagram_shapes"] == 0:
             result["warnings"].append("Diagram section exists but no shapes defined")
 
-        if (
-            result["has_diagram"]
-            and result["diagram_edges"] == 0
-            and len(sequence_flows) > 0
-        ):
+        if result["has_diagram"] and result["diagram_edges"] == 0 and len(sequence_flows) > 0:
             result["warnings"].append(
                 "Diagram section exists but no edges defined for sequence flows"
             )
