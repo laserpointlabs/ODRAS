@@ -980,6 +980,7 @@ init_databases() {
             "009_create_domains_table.sql"
             "010_namespace_management.sql"
             "011_add_service_namespace_type.sql"
+            "012_migrate_auth_system.sql"
         )
         
         for migration in "${migrations[@]}"; do

@@ -230,9 +230,9 @@ from backend.services.db import DatabaseService
 from backend.services.config import Settings
 import os
 
-# Set environment to use test database (or main database in CI)
-test_db = os.environ.get('POSTGRES_DATABASE', 'odras_test')
-os.environ['POSTGRES_DATABASE'] = test_db
+# Use main database for validation
+# test_db = os.environ.get('POSTGRES_DATABASE', 'odras')
+# os.environ['POSTGRES_DATABASE'] = test_db
 
 try:
     db = DatabaseService(Settings())
@@ -373,6 +373,75 @@ except Exception as e:
             print(f"   ❌ Error fixing odras.sh: {e}")
             return False
 
+    def validate_users_table_schema(self) -> ValidationResult:
+        """Validate that the users table has the required password fields"""
+        errors = []
+        warnings = []
+        fixes_applied = []
+
+        print("🔍 Validating users table schema...")
+
+        try:
+            # Test users table schema by importing and running validation directly
+            import sys
+
+            sys.path.insert(0, str(self.project_root))
+            from backend.services.db import DatabaseService
+            from backend.services.config import Settings
+
+            db = DatabaseService(Settings())
+            conn = db._conn()
+
+            with conn.cursor() as cur:
+                # Check if users table exists
+                cur.execute(
+                    """
+                    SELECT column_name, data_type, is_nullable 
+                    FROM information_schema.columns 
+                    WHERE table_name = 'users' AND table_schema = 'public'
+                    ORDER BY ordinal_position
+                """
+                )
+                columns = cur.fetchall()
+
+                if not columns:
+                    errors.append("Users table not found")
+                    return ValidationResult(False, errors, warnings, fixes_applied)
+
+                # Check for required password fields
+                column_names = [col[0] for col in columns]
+                required_fields = [
+                    "user_id",
+                    "username",
+                    "display_name",
+                    "password_hash",
+                    "salt",
+                    "is_admin",
+                    "is_active",
+                    "created_at",
+                    "updated_at",
+                ]
+
+                missing_fields = set(required_fields) - set(column_names)
+                if missing_fields:
+                    errors.append(f"Missing required fields: {missing_fields}")
+                    return ValidationResult(False, errors, warnings, fixes_applied)
+
+                # Check if password_hash and salt are NOT NULL
+                for col in columns:
+                    if col[0] in ["password_hash", "salt"] and col[2] == "YES":
+                        errors.append(f"Field {col[0]} should be NOT NULL")
+                        return ValidationResult(False, errors, warnings, fixes_applied)
+
+                print("   ✅ Users table schema validation successful")
+
+            db._return(conn)
+
+        except Exception as e:
+            errors.append(f"Error validating users table schema: {e}")
+
+        return ValidationResult(len(errors) == 0, errors, warnings, fixes_applied)
+
     def run_comprehensive_validation(self, fix_issues: bool = False) -> ValidationResult:
         """Run comprehensive database schema validation"""
         print("🚀 Starting comprehensive database schema validation...")
@@ -388,6 +457,7 @@ except Exception as e:
             ("ODRAS Script", self.validate_odras_script),
             ("Database Connection", self.validate_database_connection),
             ("Migration Application", self.validate_migration_application),
+            ("Users Table Schema", self.validate_users_table_schema),
             ("Docker Services", self.validate_docker_services),
         ]
 
