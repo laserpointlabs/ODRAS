@@ -4,6 +4,7 @@ Provides REST API for ontology management operations.
 """
 
 import logging
+from datetime import datetime
 from typing import Any, Dict, List, Optional
 
 from fastapi import APIRouter, Body, Depends, HTTPException
@@ -348,7 +349,7 @@ async def import_ontology_file(
         ontology_json = {
             "metadata": {
                 "name": "Imported Ontology",
-                "imported_at": manager._get_current_timestamp(),
+                "imported_at": datetime.now().isoformat(),
                 "format": format,
                 "namespace": manager.base_uri,
             },

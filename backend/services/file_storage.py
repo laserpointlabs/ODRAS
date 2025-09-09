@@ -493,8 +493,8 @@ class PostgreSQLBackend(StorageBackend):
                     """
                     INSERT INTO files 
                     (id, filename, content_type, file_size, hash_md5, hash_sha256, 
-                     storage_path, project_id, tags, created_at, updated_at)
-                    VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
+                     storage_path, project_id, tags, created_at, updated_at, created_by)
+                    VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
                     ON CONFLICT (id) DO UPDATE SET
                         filename = EXCLUDED.filename,
                         content_type = EXCLUDED.content_type,
@@ -515,6 +515,7 @@ class PostgreSQLBackend(StorageBackend):
                         json.dumps(metadata.tags or {}),  # Proper JSON serialization
                         metadata.created_at,
                         metadata.updated_at,
+                        metadata.created_by,
                     ),
                 )
 
@@ -1297,20 +1298,22 @@ class FileStorageService:
             File metadata dict or None if not found
         """
         try:
-            # Query the files table for metadata
-            if isinstance(self.backend, PostgreSQLBackend):
-                return await self._get_metadata_from_db(file_id)
-            else:
-                # For other backends, use retrieve_file and extract metadata
-                file_data = await self.retrieve_file(file_id)
-                if file_data:
-                    return {
-                        "file_id": file_data.get("file_id"),
-                        "filename": "unknown",  # Need to get from backend-specific metadata
-                        "content_type": "application/octet-stream",
-                        "size": file_data.get("size", 0),
-                    }
-                return None
+            # Always try to get metadata from PostgreSQL database first
+            # This works for all backends since metadata is always stored in PostgreSQL
+            metadata = await self._get_metadata_from_db(file_id)
+            if metadata:
+                return metadata
+
+            # Fallback: For other backends, use retrieve_file and extract basic metadata
+            file_data = await self.retrieve_file(file_id)
+            if file_data:
+                return {
+                    "file_id": file_data.get("file_id"),
+                    "filename": "unknown",  # Need to get from backend-specific metadata
+                    "content_type": "application/octet-stream",
+                    "size": file_data.get("size", 0),
+                }
+            return None
         except Exception as e:
             logger.error(f"Failed to get file metadata for {file_id}: {e}")
             return None
@@ -1318,16 +1321,23 @@ class FileStorageService:
     async def _get_metadata_from_db(self, file_id: str) -> Optional[Dict[str, Any]]:
         """Get metadata from PostgreSQL database."""
         try:
-            backend = self.backend
-            if not isinstance(backend, PostgreSQLBackend):
-                return None
+            # Create a direct PostgreSQL connection for metadata
+            # Metadata is always stored in PostgreSQL regardless of storage backend
+            import psycopg2
+            from psycopg2.extras import RealDictCursor
 
-            conn = backend.connection_pool.getconn()
+            conn = psycopg2.connect(
+                host=self.settings.postgres_host,
+                port=self.settings.postgres_port,
+                database=self.settings.postgres_database,
+                user=self.settings.postgres_user,
+                password=self.settings.postgres_password,
+            )
             with conn.cursor(cursor_factory=RealDictCursor) as cursor:
                 cursor.execute(
                     """
                     SELECT id, filename, content_type, file_size, hash_md5, hash_sha256,
-                           storage_path, project_id, tags, created_at, updated_at, metadata
+                           storage_path, project_id, tags, created_at, updated_at, metadata, created_by
                     FROM files 
                     WHERE id = %s
                     """,
@@ -1342,8 +1352,10 @@ class FileStorageService:
             logger.error(f"Failed to get metadata from database for {file_id}: {e}")
             return None
         finally:
-            if isinstance(backend, PostgreSQLBackend):
-                backend.connection_pool.putconn(conn)
+            try:
+                conn.close()
+            except:
+                pass
 
 
 # Global service instance

@@ -319,7 +319,7 @@ def update_namespace(
 # Public endpoints for namespace discovery (no admin required)
 
 
-@router.get("/public/namespaces", response_model=List[Dict[str, Any]])
+@public_router.get("/public/namespaces", response_model=List[Dict[str, Any]])
 def list_public_namespaces(
     db: DatabaseService = Depends(get_db),
     type_filter: Optional[str] = Query(None, description="Filter by namespace type"),
@@ -368,7 +368,7 @@ def list_public_namespaces(
         raise HTTPException(status_code=500, detail=str(e))
 
 
-@router.get("/available/namespaces", response_model=List[Dict[str, Any]])
+@public_router.get("/available/namespaces", response_model=List[Dict[str, Any]])
 def list_available_namespaces(
     db: DatabaseService = Depends(get_db),
     type_filter: Optional[str] = Query(None, description="Filter by namespace type"),

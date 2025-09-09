@@ -184,7 +184,9 @@ async def upload_file(
         user = get_user(authorization)
         if not user:
             raise HTTPException(status_code=401, detail="Invalid token")
-        if not db.is_user_member(project_id=project_id, user_id=user["user_id"]):
+        if not user.get("is_admin", False) and not db.is_user_member(
+            project_id=project_id, user_id=user["user_id"]
+        ):
             raise HTTPException(status_code=403, detail="Not a member of project")
 
         # Read file content
@@ -427,7 +429,19 @@ async def delete_file(
             raise HTTPException(status_code=404, detail="File not found")
 
         is_admin = user.get("is_admin", False)
-        is_owner = file_metadata.get("created_by") == user["user_id"]
+        file_created_by = file_metadata.get("created_by")
+        user_id = user["user_id"]
+        is_owner = file_created_by == user_id
+
+        # Debug logging
+        logger.info(
+            f"File deletion auth check: file_id={file_id}, user_id={user_id}, is_admin={is_admin}"
+        )
+        logger.info(
+            f"File metadata created_by: {repr(file_created_by)} (type: {type(file_created_by)})"
+        )
+        logger.info(f"User ID: {repr(user_id)} (type: {type(user_id)})")
+        logger.info(f"Is owner: {is_owner}, Is admin: {is_admin}")
 
         if not (is_admin or is_owner):
             raise HTTPException(status_code=403, detail="Not authorized to delete this file")
@@ -566,7 +580,9 @@ async def import_file_by_url(
         if not project_id:
             raise HTTPException(status_code=400, detail="project_id required")
         # Check project membership
-        if not db.is_user_member(project_id=project_id, user_id=user["user_id"]):
+        if not user.get("is_admin", False) and not db.is_user_member(
+            project_id=project_id, user_id=user["user_id"]
+        ):
             raise HTTPException(status_code=403, detail="Not a member of project")
         # Fetch bytes
         async with httpx.AsyncClient(timeout=30) as client:
@@ -632,7 +648,9 @@ async def batch_upload_files(
         if not project_id:
             raise HTTPException(status_code=400, detail="project_id required")
         # Check project membership
-        if not db.is_user_member(project_id=project_id, user_id=user["user_id"]):
+        if not user.get("is_admin", False) and not db.is_user_member(
+            project_id=project_id, user_id=user["user_id"]
+        ):
             raise HTTPException(status_code=403, detail="Not a member of project")
 
         results = []
@@ -699,6 +717,7 @@ async def process_uploaded_file(
     llm_model: Optional[str] = Form(None),
     iterations: int = Form(10),
     storage_service: FileStorageService = Depends(get_file_storage_service),
+    user: Dict = Depends(get_user),  # Add user authentication
 ):
     """
     Trigger processing of an uploaded file (e.g., requirements extraction) by starting the Camunda BPMN process.
@@ -714,6 +733,30 @@ async def process_uploaded_file(
         Processing initiation result including Camunda process instance info
     """
     try:
+        # Check file ownership and permissions
+        file_metadata = await storage_service.get_file_metadata(file_id)
+        if not file_metadata:
+            raise HTTPException(status_code=404, detail="File not found")
+
+        is_admin = user.get("is_admin", False)
+        is_owner = file_metadata.get("created_by") == user["user_id"]
+
+        # For project-based files, check project membership
+        project_id = file_metadata.get("project_id")
+        has_project_access = False
+        if project_id:
+            # Import db service to check project membership
+            from ..services.db import DatabaseService
+            from ..services.config import Settings
+
+            db = DatabaseService(Settings())
+            has_project_access = is_admin or db.is_user_member(
+                project_id=project_id, user_id=user["user_id"]
+            )
+
+        if not (is_admin or is_owner or has_project_access):
+            raise HTTPException(status_code=403, detail="Not authorized to process this file")
+
         # Retrieve stored file content
         file_data = await storage_service.retrieve_file(file_id)
         if file_data is None:
@@ -726,10 +769,14 @@ async def process_uploaded_file(
         CAMUNDA_BASE_URL = "http://localhost:8080"
         CAMUNDA_REST_API = f"{CAMUNDA_BASE_URL}/engine-rest"
 
-        # Build variables for starting process instance
+        # Build variables for starting process instance (match upload format)
         variables = {
-            "document_content": {"value": document_content, "type": "String"},
-            "document_filename": {"value": document_filename, "type": "String"},
+            "file_id": {"value": file_id, "type": "String"},
+            "project_id": {"value": file_metadata.get("project_id"), "type": "String"},
+            "filename": {"value": file_metadata.get("filename", "unknown"), "type": "String"},
+            "document_type": {"value": "knowledge", "type": "String"},
+            "embedding_model": {"value": "all-MiniLM-L6-v2", "type": "String"},
+            "chunking_strategy": {"value": "smart_default", "type": "String"},
             "llm_provider": {
                 "value": (llm_provider or Settings().llm_provider),
                 "type": "String",
@@ -738,10 +785,11 @@ async def process_uploaded_file(
                 "value": (llm_model or Settings().llm_model),
                 "type": "String",
             },
-            "iterations": {"value": iterations, "type": "Integer"},
         }
 
-        start_url = f"{CAMUNDA_REST_API}/process-definition/key/odras_requirements_analysis/start"
+        start_url = (
+            f"{CAMUNDA_REST_API}/process-definition/key/automatic_knowledge_processing/start"
+        )
         async with httpx.AsyncClient(timeout=30) as client:
             response = await client.post(start_url, json={"variables": variables})
             response.raise_for_status()

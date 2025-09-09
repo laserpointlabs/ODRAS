@@ -314,17 +314,18 @@ def get_project(project_id: str, user=Depends(get_user)):
                 if not project:
                     raise HTTPException(status_code=404, detail="Project not found")
 
-                # Check if user has access to this project
-                cur.execute(
-                    """
-                    SELECT role FROM public.project_members 
-                    WHERE project_id = %s AND user_id = %s
-                """,
-                    (project_id, user["user_id"]),
-                )
-                membership = cur.fetchone()
-                if not membership:
-                    raise HTTPException(status_code=403, detail="Access denied")
+                # Check if user has access to this project (admin users have access to all projects)
+                if not user.get("is_admin", False):
+                    cur.execute(
+                        """
+                        SELECT role FROM public.project_members 
+                        WHERE project_id = %s AND user_id = %s
+                    """,
+                        (project_id, user["user_id"]),
+                    )
+                    membership = cur.fetchone()
+                    if not membership:
+                        raise HTTPException(status_code=403, detail="Access denied")
 
                 return {"project": dict(project)}
         finally:
@@ -360,17 +361,18 @@ def get_project_namespace(project_id: str, user=Depends(get_user)):
                 if not project:
                     raise HTTPException(status_code=404, detail="Project not found")
 
-                # Check if user has access to this project
-                cur.execute(
-                    """
-                    SELECT role FROM public.project_members 
-                    WHERE project_id = %s AND user_id = %s
-                """,
-                    (project_id, user["user_id"]),
-                )
-                membership = cur.fetchone()
-                if not membership:
-                    raise HTTPException(status_code=403, detail="Access denied")
+                # Check if user has access to this project (admin users have access to all projects)
+                if not user.get("is_admin", False):
+                    cur.execute(
+                        """
+                        SELECT role FROM public.project_members 
+                        WHERE project_id = %s AND user_id = %s
+                    """,
+                        (project_id, user["user_id"]),
+                    )
+                    membership = cur.fetchone()
+                    if not membership:
+                        raise HTTPException(status_code=403, detail="Access denied")
 
                 return dict(project)
         finally:
@@ -385,34 +387,37 @@ def get_project_namespace(project_id: str, user=Depends(get_user)):
 def update_project(project_id: str, body: Dict, user=Depends(get_user)):
     """Update project details"""
     try:
-        # Check if user has access to this project
-        if not db.is_user_member(project_id=project_id, user_id=user["user_id"]):
+        # Check if user has access to this project (admin users have access to all projects)
+        if not user.get("is_admin", False) and not db.is_user_member(
+            project_id=project_id, user_id=user["user_id"]
+        ):
             raise HTTPException(status_code=403, detail="Access denied")
 
-        # Get user role for permission check
-        conn = db._conn()
-        try:
-            with conn.cursor() as cur:
-                cur.execute(
-                    """
-                    SELECT role FROM public.project_members 
-                    WHERE project_id = %s AND user_id = %s
-                """,
-                    (project_id, user["user_id"]),
-                )
-                membership = cur.fetchone()
-                if not membership:
-                    raise HTTPException(status_code=403, detail="Access denied")
-
-                # Allow owners and editors to update projects
-                role = membership[0]
-                if role not in ("owner", "editor"):
-                    raise HTTPException(
-                        status_code=403,
-                        detail="Only project owners or editors can update projects",
+        # Get user role for permission check (admin users can update any project)
+        if not user.get("is_admin", False):
+            conn = db._conn()
+            try:
+                with conn.cursor() as cur:
+                    cur.execute(
+                        """
+                        SELECT role FROM public.project_members 
+                        WHERE project_id = %s AND user_id = %s
+                    """,
+                        (project_id, user["user_id"]),
                     )
-        finally:
-            db._return(conn)
+                    membership = cur.fetchone()
+                    if not membership:
+                        raise HTTPException(status_code=403, detail="Access denied")
+
+                    # Allow owners and editors to update projects
+                    role = membership[0]
+                    if role not in ("owner", "editor"):
+                        raise HTTPException(
+                            status_code=403,
+                            detail="Only project owners or editors can update projects",
+                        )
+            finally:
+                db._return(conn)
 
         # Use the database service update method
         result = db.update_project(
@@ -439,8 +444,10 @@ def delete_project(project_id: str, user=Depends(get_user)):
     artifacts to the user or an archive space.
     """
     try:
-        # Ensure user is a member/owner; for now, require any membership
-        if not db.is_user_member(project_id=project_id, user_id=user["user_id"]):
+        # Ensure user is a member/owner; admin users can delete any project
+        if not user.get("is_admin", False) and not db.is_user_member(
+            project_id=project_id, user_id=user["user_id"]
+        ):
             raise HTTPException(status_code=403, detail="Not a member of project")
         conn = db._conn()
         try:
@@ -463,7 +470,9 @@ def delete_project(project_id: str, user=Depends(get_user)):
 @app.post("/api/projects/{project_id}/archive")
 def archive_project(project_id: str, user=Depends(get_user)):
     try:
-        if not db.is_user_member(project_id=project_id, user_id=user["user_id"]):
+        if not user.get("is_admin", False) and not db.is_user_member(
+            project_id=project_id, user_id=user["user_id"]
+        ):
             raise HTTPException(status_code=403, detail="Not a member of project")
         db.archive_project(project_id)
         return {"archived": project_id}
@@ -476,7 +485,9 @@ def archive_project(project_id: str, user=Depends(get_user)):
 @app.post("/api/projects/{project_id}/restore")
 def restore_project(project_id: str, user=Depends(get_user)):
     try:
-        if not db.is_user_member(project_id=project_id, user_id=user["user_id"]):
+        if not user.get("is_admin", False) and not db.is_user_member(
+            project_id=project_id, user_id=user["user_id"]
+        ):
             raise HTTPException(status_code=403, detail="Not a member of project")
         db.restore_project(project_id)
         return {"restored": project_id}

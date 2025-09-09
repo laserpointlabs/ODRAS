@@ -7146,6 +7146,11 @@
           // Admin visibility toggle - only for admin users
           buttons.push(`<button class="btn admin-only" data-action="toggle-visibility" data-id="${id}" data-visibility="${meta.visibility || 'private'}" title="Toggle visibility (Admin)" style="display:none;">${(meta.visibility === 'public') ? '🔒' : '🌐'}</button>`);
           
+          // Reprocess button - for regenerating knowledge assets
+          if (!isSharedFile || isAdminUser) {
+            buttons.push(`<button class="btn" data-action="reprocess" data-id="${id}" title="Reprocess file to regenerate knowledge asset">🔄 Reprocess</button>`);
+          }
+          
           // Delete button - disabled for shared files for non-admin users
           if (!isSharedFile || isAdminUser) {
             buttons.push(`<button class="btn" data-action="delete" data-id="${id}">Delete</button>`);
@@ -7325,6 +7330,18 @@
           } else { 
             console.error('🗑️  Delete failed, not refreshing library');
             toast('Delete failed', true); 
+          }
+        }
+        if (action === 'reprocess') {
+          if (!confirm('Reprocess this file to regenerate knowledge asset?')) return;
+          console.log('🔄 Starting reprocess for file:', id);
+          const ok = await reprocessFileViaApi(id);
+          console.log('🔄 Reprocess result:', ok);
+          if (ok) {
+            toast('File reprocessing started');
+            await window.loadLibraryFromApi();
+          } else {
+            toast('Reprocess failed', true);
           }
         }
         if (action === 'toggle-visibility') {
@@ -7836,7 +7853,11 @@
           const pid = window.currentProjectId ? window.currentProjectId() : ''; if (!pid) { toast('Select a project first', true); return; }
           const fd = new FormData(); fd.append('url', u); fd.append('project_id', pid);
           try {
-            const res = await fetch('/api/files/import-url', { method: 'POST', body: fd });
+            const res = await fetch('/api/files/import-url', { 
+              method: 'POST', 
+              headers: { 'Authorization': `Bearer ${localStorage.getItem('odras_token')}` },
+              body: fd 
+            });
             const js = await res.json().catch(()=>({}));
             if (!res.ok || js.success === false) throw new Error(js.detail || js.error || 'Import failed');
             if (el) el.textContent = `Imported URL: ${u}`;
@@ -7985,7 +8006,14 @@
         };
         // Optimistically mark status=processing for selected files
         try { await Promise.all(ids.map(async (fid)=>{
-          await fetch(`/api/files/${encodeURIComponent(fid)}/tags`, { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ tags: { status: 'processing' } }) });
+          await fetch(`/api/files/${encodeURIComponent(fid)}/tags`, { 
+            method: 'PUT', 
+            headers: { 
+              'Content-Type': 'application/json',
+              'Authorization': `Bearer ${localStorage.getItem('odras_token')}`
+            }, 
+            body: JSON.stringify({ tags: { status: 'processing' } }) 
+          });
         })); } catch(_) {}
         closeIngestParamsModal();
         const res = await startWorkflowStartApi('ingestion_pipeline', pid, ids, params);
@@ -8023,7 +8051,12 @@
     async function deleteStoredFileViaApi(fileId) {
       console.log('🗑️  Deleting file:', fileId);
       try { 
-        const res = await fetch(`/api/files/${encodeURIComponent(fileId)}`, { method: 'DELETE' }); 
+        const res = await fetch(`/api/files/${encodeURIComponent(fileId)}`, { 
+          method: 'DELETE',
+          headers: {
+            'Authorization': `Bearer ${localStorage.getItem('odras_token')}`
+          }
+        }); 
         console.log('🗑️  Delete response:', res.status, res.statusText);
         
         if (res.ok) {
@@ -8039,10 +8072,53 @@
       }
     }
     async function getFileUrlViaApi(fileId) {
-      try { const res = await fetch(`/api/files/${encodeURIComponent(fileId)}/url`); const js = await res.json(); return (js && js.url) ? js.url : (js && js.success && js.file_id ? js.url : null); } catch(_) { return null; }
+      try { 
+        const res = await fetch(`/api/files/${encodeURIComponent(fileId)}/url`, {
+          headers: { 'Authorization': `Bearer ${localStorage.getItem('odras_token')}` }
+        }); 
+        const js = await res.json(); 
+        return (js && js.url) ? js.url : (js && js.success && js.file_id ? js.url : null); 
+      } catch(_) { return null; }
     }
     async function processFileViaApi(fileId) {
-      try { const fd = new FormData(); const res = await fetch(`/api/files/${encodeURIComponent(fileId)}/process`, { method: 'POST', body: fd }); return res.ok; } catch(_) { return false; }
+      try { 
+        const fd = new FormData(); 
+        const res = await fetch(`/api/files/${encodeURIComponent(fileId)}/process`, { 
+          method: 'POST', 
+          headers: { 'Authorization': `Bearer ${localStorage.getItem('odras_token')}` },
+          body: fd 
+        }); 
+        return res.ok; 
+      } catch(_) { return false; }
+    }
+    
+    async function reprocessFileViaApi(fileId) {
+      console.log('🔄 Reprocessing file:', fileId);
+      try {
+        // Call the file processing endpoint to regenerate knowledge asset
+        const fd = new FormData();
+        fd.append('processing_type', 'extract_requirements');
+        fd.append('iterations', '10');
+        
+        const res = await fetch(`/api/files/${encodeURIComponent(fileId)}/process`, { 
+          method: 'POST', 
+          headers: { 'Authorization': `Bearer ${localStorage.getItem('odras_token')}` },
+          body: fd 
+        }); 
+        
+        console.log('🔄 Reprocess response:', res.status, res.statusText);
+        
+        if (res.ok) {
+          console.log('🔄 Reprocess successful');
+          return true;
+        } else {
+          console.error('🔄 Reprocess failed:', res.status);
+          return false;
+        }
+      } catch(e) { 
+        console.error('🔄 Reprocess error:', e);
+        return false; 
+      }
     }
     function clearFilePreview() {
       console.log('👁️  Clearing file preview');

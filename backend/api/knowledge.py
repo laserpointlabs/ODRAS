@@ -4,6 +4,7 @@ Knowledge Management API endpoints.
 Provides CRUD operations for knowledge assets, chunks, and processing jobs.
 """
 
+import json
 import logging
 from datetime import datetime, timezone
 from typing import Dict, List, Optional, Any
@@ -368,8 +369,10 @@ async def create_knowledge_asset(
             f"Creating knowledge asset '{asset_data.title}' for project {project_id} by user {user.get('user_id')}"
         )
 
-        # Verify user has access to project
-        if not db.is_user_member(project_id=project_id, user_id=user["user_id"]):
+        # Verify user has access to project (admin users have access to all projects)
+        if not user.get("is_admin", False) and not db.is_user_member(
+            project_id=project_id, user_id=user["user_id"]
+        ):
             raise HTTPException(status_code=403, detail="Not a member of project")
 
         # Verify source file exists if provided
@@ -410,7 +413,7 @@ async def create_knowledge_asset(
                         asset_data.title,
                         asset_data.document_type,
                         asset_data.content_summary,
-                        asset_data.metadata,
+                        json.dumps(asset_data.metadata),
                         now,
                         now,
                         "active",
@@ -588,7 +591,7 @@ async def update_knowledge_asset(
 
                 if asset_data.metadata is not None:
                     updates.append("metadata = %s")
-                    params.append(asset_data.metadata)
+                    params.append(json.dumps(asset_data.metadata))
 
                 if asset_data.status is not None:
                     updates.append("status = %s")
@@ -954,7 +957,9 @@ async def list_processing_jobs(
 
         # Project filter with user access check
         if project_id:
-            if not db.is_user_member(project_id=project_id, user_id=user["user_id"]):
+            if not user.get("is_admin", False) and not db.is_user_member(
+                project_id=project_id, user_id=user["user_id"]
+            ):
                 raise HTTPException(status_code=403, detail="Not a member of project")
             where_clauses.append("ka.project_id = %s")
             params.append(project_id)
