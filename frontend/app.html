@@ -2586,6 +2586,12 @@
         menu.dataset.nodeType = t;
       });
       function showInlineEditor(target) {
+        // Don't allow editing of imported elements
+        if (target.hasClass('imported')) {
+          console.log('🔍 Cannot edit imported element:', target.data('label'));
+          return;
+        }
+        
         const input = qs('#ontoInlineEdit'); if (!input) return;
         const pos = target.renderedPosition();
         const rect = qs('#cy').getBoundingClientRect();
@@ -3881,10 +3887,14 @@
               // Use the original node ID from the local storage data if available, otherwise generate one
               const originalId = snap.importNodes?.[index]?.data?.id || `Class${index + 1}`;
               const id = `imp:${imp}#${originalId}`;
+              console.log('🔍 Creating imported node with ID:', id, 'originalId:', originalId, 'from snapNode:', snap.importNodes?.[index]);
               if (ontoState.cy.$(`#${CSS.escape(id)}`).length) return;
               const pos = savedPos[id] ? savedPos[id] : nextPos();
-              console.log('🔍 Position for', id, ':', pos, 'saved:', !!savedPos[id]);
-              const node = ontoState.cy.add({ group: 'nodes', data: { id, iri: c.iri || originalId, label: c.label, type: 'class', importSource: imp, attrs: c.attrs || {} }, position: pos, classes: 'imported' });
+              console.log('🔍 Position for', id, ':', pos, 'saved:', !!savedPos[id], 'savedPos keys:', Object.keys(savedPos));
+              // Generate proper IRI for imported element using import source namespace
+              const elementIri = c.iri || `${imp}#${slugId(c.label) || originalId}`;
+              console.log('🔍 Creating imported node:', c.label, 'with IRI:', elementIri, 'from data:', c);
+              const node = ontoState.cy.add({ group: 'nodes', data: { id, iri: elementIri, label: c.label, type: 'class', importSource: imp, attrs: c.attrs || {} }, position: pos, classes: 'imported' });
               added.push(node);
             });
           }
@@ -3933,11 +3943,13 @@
               if (!ontoState.cy.$(`#${CSS.escape(sid)}`).length) {
                 const label = e.sourceIri.includes('#') ? e.sourceIri.split('#').pop() : e.sourceIri.split('/').pop();
                 const pos = savedPos[sid] ? savedPos[sid] : nextPos();
+                // Use the actual sourceIri as the element IRI
                 added.push(ontoState.cy.add({ group: 'nodes', data: { id: sid, iri: e.sourceIri, label, type: 'class', importSource: imp, attrs: e.attrs || {} }, position: pos, classes: 'imported' }));
               }
               if (!ontoState.cy.$(`#${CSS.escape(tid)}`).length) {
                 const label = e.targetIri.includes('#') ? e.targetIri.split('#').pop() : e.targetIri.split('/').pop();
                 const pos = savedPos[tid] ? savedPos[tid] : nextPos();
+                // Use the actual targetIri as the element IRI
                 added.push(ontoState.cy.add({ group: 'nodes', data: { id: tid, iri: e.targetIri, label, type: 'class', importSource: imp, attrs: e.attrs || {} }, position: pos, classes: 'imported' }));
               }
               const edge = ontoState.cy.add({ group: 'edges', data: { id: `impE${Date.now()}_${idx++}`, source: sid, target: tid, predicate: e.label, type: 'objectProperty', importSource: imp, attrs: e.attrs || {} }, classes: 'imported' });
@@ -3948,7 +3960,7 @@
           added.forEach(el => {
             try {
               if (el.isNode && el.isNode()) {
-                el.selectable(false); el.grabbable(true); el.locked(false);
+                el.selectable(true); el.grabbable(true); el.locked(false); // Allow selection for imported elements
               } else {
                 el.selectable(false); el.grabbable(false); el.locked(true);
               }
@@ -3961,6 +3973,18 @@
               const pseudoPositions = loadPseudoNodePositions(activeOntologyIri);
               pseudoPositions[el.id()] = { x: el.position('x'), y: el.position('y') };
               savePseudoNodePositions(activeOntologyIri, pseudoPositions);
+            });
+          });
+          
+          // Add position saving for imported nodes
+          added.filter(el => el.isNode && el.isNode() && el.hasClass('imported') && !el.data('isPseudo')).forEach(el => {
+            el.on('free', () => {
+              const imp = el.data('importSource');
+              if (!imp || !activeOntologyIri) return;
+              const curr = loadOverlayPositions(activeOntologyIri, imp);
+              curr[el.id()] = el.position();
+              console.log('🔍 Saving position for imported element', el.id(), ':', el.position(), 'in import', imp);
+              saveOverlayPositions(activeOntologyIri, imp, curr);
             });
           });
 
@@ -6374,9 +6398,11 @@
       
       if (sel.length === 1 && sel[0].isNode()) {
         const n = sel[0];
+        const isImported = n.hasClass('imported');
         nameEl.value = n.data('label') || n.id();
+        nameEl.disabled = isImported; // Disable name editing for imported elements
         const nodeType = n.data('type') || 'class';
-        typeValueEl.textContent = getTypeDisplayName(nodeType);
+        typeValueEl.textContent = getTypeDisplayName(nodeType) + (isImported ? ' (Imported)' : '');
         currentAttrs = n.data('attrs') || {};
         objectType = nodeType;
         
@@ -6407,36 +6433,76 @@
       }
       
       // Update attribute editor
-      updateAttributeEditor(objectType, currentAttrs);
+      const isImportedElement = (sel.length === 1 && sel[0].hasClass('imported'));
+      updateAttributeEditor(objectType, currentAttrs, isImportedElement);
       
       // Update element IRI display
       updateElementIriDisplay();
     }
 
-    function updateAttributeEditor(objectType, currentAttrs) {
+    function updateAttributeEditor(objectType, currentAttrs, isReadOnly = false) {
       const container = qs('#propAttrsContainer');
       if (!container) return;
       
       container.innerHTML = '';
       
+      if (isReadOnly) {
+        // Show read-only message for imported elements
+        const readOnlyMsg = document.createElement('div');
+        readOnlyMsg.style.cssText = `
+          padding: 12px;
+          background: var(--panel-2);
+          border: 1px solid var(--border);
+          border-radius: 6px;
+          text-align: center;
+          color: var(--muted);
+          font-style: italic;
+          margin-bottom: 8px;
+        `;
+        readOnlyMsg.innerHTML = '🔒 Imported elements are read-only<br><small>Properties cannot be modified</small>';
+        container.appendChild(readOnlyMsg);
+      }
+      
       const template = attributeTemplates[objectType] || {};
       
       // Add template attributes
       Object.entries(template).forEach(([key, config]) => {
-        const attrDiv = createAttributeField(key, config, currentAttrs[key] || '');
+        const attrDiv = createAttributeField(key, config, currentAttrs[key] || '', isReadOnly);
         container.appendChild(attrDiv);
       });
       
       // Add any custom attributes not in template
       Object.entries(currentAttrs).forEach(([key, value]) => {
         if (!template[key]) {
-          const attrDiv = createAttributeField(key, { type: 'text', label: key }, value);
+          const attrDiv = createAttributeField(key, { type: 'text', label: key }, value, isReadOnly);
           container.appendChild(attrDiv);
         }
       });
+      
+      // Disable save button for imported elements
+      const saveBtn = qs('#propSaveBtn');
+      if (saveBtn) {
+        saveBtn.disabled = isReadOnly;
+        saveBtn.style.opacity = isReadOnly ? '0.5' : '1';
+        saveBtn.title = isReadOnly ? 'Cannot save changes to imported elements' : 'Save changes';
+      }
+      
+      // Disable add and reset buttons for imported elements
+      const addBtn = qs('#addAttrBtn');
+      const resetBtn = qs('#resetAttrsBtn');
+      if (addBtn) {
+        addBtn.disabled = isReadOnly;
+        addBtn.style.opacity = isReadOnly ? '0.5' : '1';
+        addBtn.title = isReadOnly ? 'Cannot add attributes to imported elements' : 'Add custom attribute';
+      }
+      if (resetBtn) {
+        resetBtn.disabled = isReadOnly;
+        resetBtn.style.opacity = isReadOnly ? '0.5' : '1';
+        resetBtn.title = isReadOnly ? 'Cannot reset attributes of imported elements' : 'Reset to template';
+      }
     }
 
-    function createAttributeField(key, config, value) {
+    function createAttributeField(key, config, value, isReadOnly = false) {
       const div = document.createElement('div');
       div.style.display = 'grid';
       div.style.gridTemplateColumns = '1fr auto';
@@ -6514,6 +6580,14 @@
         input.style.fontSize = '12px';
       }
       
+      // Make input read-only for imported elements
+      if (isReadOnly) {
+        input.disabled = true;
+        input.style.opacity = '0.6';
+        input.style.cursor = 'not-allowed';
+        input.title = 'This field cannot be edited for imported elements';
+      }
+      
       input.dataset.attrKey = key;
       input.dataset.attrType = config.type || 'text';
       
@@ -6546,8 +6620,18 @@
       }
       
       deleteBtn.onclick = () => {
-        div.remove();
+        if (!isReadOnly) {
+          div.remove();
+        }
       };
+      
+      // Disable delete button for read-only fields
+      if (isReadOnly) {
+        deleteBtn.disabled = true;
+        deleteBtn.style.opacity = '0.3';
+        deleteBtn.style.cursor = 'not-allowed';
+        deleteBtn.title = 'Cannot delete attributes of imported elements';
+      }
       
       inputContainer.appendChild(input);
       inputContainer.appendChild(deleteBtn);
@@ -6638,21 +6722,52 @@
         const element = sel[0];
         const elementId = element.id();
         const elementType = element.data('type') || (element.isNode() ? 'class' : 'objectProperty');
+        const isImported = element.hasClass('imported');
+        const importSource = element.data('importSource');
         
-        // Generate IRI using model namespace instead of ontology IRI
         let iri = '';
-        const modelNamespace = getModelNamespace();
+        let namespace = '';
         
-        // Use element label if available, otherwise use ID
-        const elementLabel = element.data('label') || elementId;
-        const sluggedLabel = slugId(elementLabel) || elementId;
-        
-        iri = `${modelNamespace}#${sluggedLabel}`;
-        
-        iriEl.textContent = iri;
-        iriEl.title = `IRI: ${iri}\nType: ${elementType}\nModel Namespace: ${modelNamespace}\nClick to copy`;
-        iriEl.style.color = '#60a5fa';
-        iriEl.style.opacity = '1';
+        if (isImported && importSource) {
+          // For imported elements, use their original IRI and show the import source
+          const originalIri = element.data('iri');
+          console.log('🔍 Imported element selected:', {
+            elementId,
+            elementLabel: element.data('label'),
+            originalIri,
+            importSource,
+            elementData: element.data()
+          });
+          
+          if (originalIri && originalIri !== elementId && !originalIri.includes('Class')) {
+            iri = originalIri;
+            namespace = importSource;
+          } else {
+            // Fallback: construct IRI using import source as namespace
+            const elementLabel = element.data('label') || elementId;
+            const sluggedLabel = slugId(elementLabel) || elementId;
+            iri = `${importSource}#${sluggedLabel}`;
+            namespace = importSource;
+          }
+          
+          iriEl.textContent = iri;
+          iriEl.title = `IRI: ${iri}\nType: ${elementType}\nImported from: ${importSource}\nClick to copy`;
+          iriEl.style.color = '#fbbf24'; // Different color for imported elements
+          iriEl.style.opacity = '1';
+        } else {
+          // For local elements, use model namespace as before
+          const modelNamespace = getModelNamespace();
+          const elementLabel = element.data('label') || elementId;
+          const sluggedLabel = slugId(elementLabel) || elementId;
+          
+          iri = `${modelNamespace}#${sluggedLabel}`;
+          namespace = modelNamespace;
+          
+          iriEl.textContent = iri;
+          iriEl.title = `IRI: ${iri}\nType: ${elementType}\nModel Namespace: ${namespace}\nClick to copy`;
+          iriEl.style.color = '#60a5fa';
+          iriEl.style.opacity = '1';
+        }
         
         // Show copy button
         if (copyBtn) {
