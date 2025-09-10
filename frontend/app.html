@@ -9659,9 +9659,9 @@
           return;
         }
 
-        // For now, use the first selected prefix as the primary prefix
-        // TODO: Update backend to handle multiple prefixes
-        const prefix = selectedPrefixes[0];
+        // Use the compound name as the prefix identifier (matches the name pattern)
+        const prefixString = selectedPrefixes.join('-');
+        const prefix = `${prefixString}-${type}`;
 
         const response = await fetch('/api/admin/namespaces/', {
           method: 'POST',

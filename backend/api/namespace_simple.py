@@ -103,16 +103,47 @@ def create_namespace(
                         detail=f"Namespace '{namespace.name}' of type '{namespace.type}' already exists",
                     )
 
-                # Check if prefix already exists
+                # Check if this namespace path already exists (not individual prefixes)
                 cur.execute(
-                    "SELECT id FROM namespace_registry WHERE prefix = %s",
-                    (namespace.prefix,),
+                    "SELECT id FROM namespace_registry WHERE path = %s",
+                    (namespace.path,),
                 )
                 if cur.fetchone():
                     raise HTTPException(
                         status_code=400,
-                        detail=f"Prefix '{namespace.prefix}' already exists",
+                        detail=f"Namespace path '{namespace.path}' already exists",
                     )
+
+                # Validate that prefix components (excluding the type) exist in prefix_registry
+                path_components = namespace.path.split("/")
+                valid_namespace_types = [
+                    "core",
+                    "service",
+                    "domain",
+                    "program",
+                    "project",
+                    "industry",
+                    "vocab",
+                    "shapes",
+                    "align",
+                ]
+
+                # Check if the last component is a namespace type - if so, exclude it from prefix validation
+                prefixes_to_validate = path_components
+                if path_components and path_components[-1] in valid_namespace_types:
+                    prefixes_to_validate = path_components[:-1]  # Exclude the type suffix
+
+                for prefix in prefixes_to_validate:
+                    if prefix:  # Skip empty components
+                        cur.execute(
+                            "SELECT id FROM prefix_registry WHERE prefix = %s AND status = 'active'",
+                            (prefix,),
+                        )
+                        if not cur.fetchone():
+                            raise HTTPException(
+                                status_code=400,
+                                detail=f"Prefix '{prefix}' does not exist or is not active. Create it in Prefix Management first.",
+                            )
 
                 # Create namespace
                 namespace_id = str(uuid.uuid4())
