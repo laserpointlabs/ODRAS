@@ -2279,8 +2279,8 @@
           // Clear current selection
           ontoState.cy.$(':selected').unselect();
           
-          // Find and select the corresponding node in the canvas
-          const node = ontoState.cy.$(`#${nodeId}`);
+          // Find and select the corresponding node in the canvas (escape special characters in ID)
+          const node = ontoState.cy.$(`#${CSS.escape(nodeId)}`);
           if (node.length > 0) {
             node.select();
             
@@ -2294,6 +2294,8 @@
             
             // Update properties panel with selected element data
             updatePropertiesPanelFromSelection();
+          } else {
+            console.log('🔍 Could not find node with ID:', nodeId);
           }
         }
       } else if (type === 'edge') {
@@ -2303,8 +2305,8 @@
           // Clear current selection
           ontoState.cy.$(':selected').unselect();
           
-          // Find and select the corresponding edge in the canvas
-          const edge = ontoState.cy.$(`#${edgeId}`);
+          // Find and select the corresponding edge in the canvas (escape special characters in ID)
+          const edge = ontoState.cy.$(`#${CSS.escape(edgeId)}`);
           if (edge.length > 0) {
             edge.select();
             
@@ -2318,6 +2320,8 @@
             
             // Update properties panel with selected element data
             updatePropertiesPanelFromSelection();
+          } else {
+            console.log('🔍 Could not find edge with ID:', edgeId);
           }
         }
       }
@@ -5683,6 +5687,9 @@
         
         // Add click handler for tree item selection
         row.onclick = async (e) => { 
+          // Don't trigger if clicking on a button (like visibility toggle)
+          if (e.target.tagName === 'BUTTON') return;
+          console.log('🔍 Tree item clicked:', li.dataset.nodeType, li.dataset.nodeId);
           selectNode(li); 
           await handleTreeSelection(li); 
         };
