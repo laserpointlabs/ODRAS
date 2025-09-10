@@ -2388,12 +2388,27 @@
           } },
           { selector: 'node[type = "note"], .note', style: {
             'shape': 'round-rectangle',
-            'background-color': '#2a1f0a',
-            'border-color': '#8b5a1e',
-            'border-style': 'dashed',
-            'border-width': 1,
-            'label': 'data(label)',
-            'color': '#f5e6cc',
+            'background-color': function(ele) {
+              const noteType = ele.data('attrs') && ele.data('attrs').noteType;
+              return getNoteTypeStyle(noteType || 'Note').backgroundColor;
+            },
+            'border-color': function(ele) {
+              const noteType = ele.data('attrs') && ele.data('attrs').noteType;
+              return getNoteTypeStyle(noteType || 'Note').borderColor;
+            },
+            'border-style': 'solid',
+            'border-width': 2,
+            'label': function(ele) { 
+              const noteType = ele.data('attrs') && ele.data('attrs').noteType;
+              const symbol = getNoteTypeStyle(noteType || 'Note').symbol;
+              const content = ele.data('attrs') && ele.data('attrs').content;
+              const text = content || ele.data('label') || 'Note';
+              return symbol + ' ' + text; 
+            },
+            'color': function(ele) {
+              const noteType = ele.data('attrs') && ele.data('attrs').noteType;
+              return getNoteTypeStyle(noteType || 'Note').textColor;
+            },
             'font-size': 12,
             'text-wrap': 'wrap',
             'text-max-width': 220,
@@ -2691,7 +2706,7 @@
         } else if (ontoType === 'note') {
           const nid = `Note${Date.now()}`;
           const text = `Note ${nid.slice(-4)}`;
-          ontoState.cy.add({ group: 'nodes', data: { id: nid, label: text, type: 'note', attrs: {} }, position: pos, classes: 'note' });
+          ontoState.cy.add({ group: 'nodes', data: { id: nid, label: text, type: 'note', attrs: { noteType: 'Note' } }, position: pos, classes: 'note' });
           // If exactly one class is selected, auto-link note -> class
           const sel = ontoState.cy.nodes(':selected').filter(n => (n.data('type')||'class') === 'class');
           if (sel && sel.length === 1) {
@@ -6150,6 +6165,7 @@
         functional: { type: 'checkbox', label: 'Functional', placeholder: 'Is this a functional property?' }
       },
       note: {
+        noteType: { type: 'select', label: 'Note Type', options: ['Note', 'Warning', 'Issue', 'Todo', 'Info', 'Success', 'Question'], placeholder: 'Select note type' },
         content: { type: 'textarea', label: 'Content', placeholder: 'Note content' },
         author: { type: 'text', label: 'Author', placeholder: 'Note author' },
         created_date: { type: 'date', label: 'Created Date', placeholder: 'Creation date' }
@@ -6163,6 +6179,56 @@
         imports: { type: 'textarea', label: 'Imports (owl:imports)', placeholder: 'Imported ontology URIs' }
       }
     };
+
+    // Note type styling configuration
+    function getNoteTypeStyle(noteType) {
+      const styles = {
+        'Note': {
+          backgroundColor: '#2a1f0a',
+          borderColor: '#8b5a1e',
+          textColor: '#f5e6cc',
+          symbol: '📝'
+        },
+        'Warning': {
+          backgroundColor: '#2d1b0f',
+          borderColor: '#d97706',
+          textColor: '#fbbf24',
+          symbol: '⚠️'
+        },
+        'Issue': {
+          backgroundColor: '#2d0f0f',
+          borderColor: '#dc2626',
+          textColor: '#fca5a5',
+          symbol: '❗'
+        },
+        'Todo': {
+          backgroundColor: '#1e1b2d',
+          borderColor: '#7c3aed',
+          textColor: '#c4b5fd',
+          symbol: '✅'
+        },
+        'Info': {
+          backgroundColor: '#0f1a2d',
+          borderColor: '#2563eb',
+          textColor: '#93c5fd',
+          symbol: 'ℹ️'
+        },
+        'Success': {
+          backgroundColor: '#0f2d1a',
+          borderColor: '#16a34a',
+          textColor: '#86efac',
+          symbol: '✨'
+        },
+        'Question': {
+          backgroundColor: '#2d1a0f',
+          borderColor: '#ea580c',
+          textColor: '#fdba74',
+          symbol: '❓'
+        }
+      };
+      
+      return styles[noteType] || styles['Note'];
+    }
 
     function getTypeDisplayName(type) {
       const typeMap = {
@@ -7367,6 +7433,13 @@
               n.data('label', nameEl.value.trim() || n.data('label'));
               // Type is read-only, don't change it
               n.data('attrs', attrs);
+              
+              // Force canvas refresh for notes to update styling
+              if (n.data('type') === 'note') {
+                n.style('background-color', getNoteTypeStyle(attrs.noteType || 'Note').backgroundColor);
+                n.style('border-color', getNoteTypeStyle(attrs.noteType || 'Note').borderColor);
+                n.style('color', getNoteTypeStyle(attrs.noteType || 'Note').textColor);
+              }
             } else if (sel.length === 1 && sel[0].isEdge()) {
               const ed = sel[0];
               ed.data('predicate', nameEl.value.trim() || ed.data('predicate'));
