@@ -22,10 +22,13 @@ import secrets
 import logging
 from psycopg2.extras import RealDictCursor
 
+logger = logging.getLogger(__name__)
+
 # Import services using relative imports
 from .services.config import Settings
 from .services.db import DatabaseService
 from .services.namespace_uri_generator import NamespaceURIGenerator
+from .services.resource_uri_service import get_resource_uri_service
 from .services.auth import (
     get_user as auth_get_user,
     get_admin_user,
@@ -670,13 +673,20 @@ async def create_ontology(body: Dict, user=Depends(get_user)):
     if is_reference and not user.get("is_admin", False):
         raise HTTPException(status_code=403, detail="Only admins can create reference ontologies")
 
-    # Generate proper organizational URI based on installation configuration
+    # Use centralized URI service for consistent namespace-aware URI generation
     settings = Settings()
-    namespace_generator = NamespaceURIGenerator(settings)
+    uri_service = get_resource_uri_service(settings, db)
+    namespace_generator = NamespaceURIGenerator(settings)  # Always initialize for header generation
 
-    # Determine namespace type and parameters based on project structure
+    # Validate installation configuration
+    config_issues = uri_service.validate_installation_config()
+    if config_issues:
+        for issue in config_issues:
+            logger.warning(f"URI Configuration Issue: {issue}")
+
     if is_reference:
-        # For reference ontologies, use the namespace system
+        # For reference ontologies, use the legacy namespace generator for now
+        # TODO: Integrate reference ontology patterns into ResourceURIService
         if project.startswith("core-"):
             graph_iri = namespace_generator.generate_ontology_uri("core", ontology_name=name)
         elif project.startswith("domain-"):
@@ -689,25 +699,19 @@ async def create_ontology(body: Dict, user=Depends(get_user)):
             graph_iri = namespace_generator.generate_ontology_uri(
                 "program", program=program, ontology_name=name
             )
-        elif project.startswith("project-"):
-            # Extract program and project from project string like "project-avp-x1"
-            parts = project.replace("project-", "").split("-")
-            if len(parts) >= 2:
-                program = parts[0]
-                project_name = "-".join(parts[1:])
-                graph_iri = namespace_generator.generate_ontology_uri(
-                    "project", program=program, project=project_name, ontology_name=name
-                )
-            else:
-                graph_iri = namespace_generator.generate_ontology_uri(
-                    "project", program=project, ontology_name=name
-                )
         else:
-            # Fallback to simple structure
-            graph_iri = f"{settings.installation_base_uri}/{project}/{name}"
+            # Use standard project-based URI even for reference ontologies
+            graph_iri = uri_service.generate_ontology_uri(project, name)
     else:
-        # For working ontologies, use simple workspace structure
-        graph_iri = f"{settings.installation_base_uri}/{project}/{name}"
+        # For working ontologies, use the new centralized URI service
+        graph_iri = uri_service.generate_ontology_uri(project, name)
+
+        logger.info(f"Generated ontology URI: {graph_iri} for project: {project}, name: {name}")
+        logger.info(f"Installation base URI: {settings.installation_base_uri}")
+
+        # Log namespace info for debugging
+        namespace_info = uri_service.get_namespace_info(project)
+        logger.info(f"Project namespace info: {namespace_info}")
 
     # Generate proper ontology header
     external_imports = namespace_generator.get_external_namespace_mappings()
@@ -766,18 +770,75 @@ async def list_reference_ontologies(user=Depends(get_user)):
 
 @app.get("/api/installation/config")
 async def get_installation_config():
-    """Get installation configuration for frontend."""
+    """Get installation configuration for frontend with URI validation."""
     try:
         settings = Settings()
+        uri_service = get_resource_uri_service(settings, db)
+
+        # Validate configuration
+        config_issues = uri_service.validate_installation_config()
+
         return {
             "organization": settings.installation_organization,
             "baseUri": settings.installation_base_uri,
             "prefix": settings.installation_prefix,
             "type": settings.installation_type,
             "programOffice": settings.installation_program_office,
+            "validation": {"valid": len(config_issues) == 0, "issues": config_issues},
         }
     except Exception as e:
         logger.error(f"Error getting installation config: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@app.get("/api/installation/uri-diagnostics")
+async def get_uri_diagnostics(user=Depends(get_user)):
+    """Diagnostic endpoint for URI generation issues."""
+    try:
+        settings = Settings()
+        uri_service = get_resource_uri_service(settings, db)
+
+        # Get configuration validation
+        config_issues = uri_service.validate_installation_config()
+
+        # Get sample URIs for demonstration
+        sample_project_id = "ce1da05a-9a56-4531-aa47-7f030aae2614"  # From logs
+        sample_uris = {}
+
+        try:
+            sample_uris = {
+                "project_uri": uri_service.generate_project_uri(sample_project_id),
+                "ontology_uri": uri_service.generate_ontology_uri(
+                    sample_project_id, "sample-ontology"
+                ),
+                "entity_uri": uri_service.generate_ontology_entity_uri(
+                    sample_project_id, "sample-ontology", "SampleClass"
+                ),
+                "file_uri": uri_service.generate_file_uri(sample_project_id, "requirements.pdf"),
+                "knowledge_uri": uri_service.generate_knowledge_uri(
+                    sample_project_id, "threat-analysis"
+                ),
+                "admin_uri": uri_service.generate_admin_uri("configs", "fuseki-settings"),
+                "shared_uri": uri_service.generate_shared_uri("libraries", "common-vocabularies"),
+            }
+        except Exception as e:
+            logger.warning(f"Failed to generate sample URIs: {e}")
+
+        # Get namespace info for sample project
+        namespace_info = uri_service.get_namespace_info(sample_project_id)
+
+        return {
+            "installation_config": {
+                "base_uri": settings.installation_base_uri,
+                "organization": settings.installation_organization,
+                "validation": {"valid": len(config_issues) == 0, "issues": config_issues},
+            },
+            "sample_project_info": namespace_info,
+            "sample_uris": sample_uris,
+            "expected_pattern": "{base_uri}/{namespace_path}/{project_uuid}/{resource_type}/{resource_name}",
+        }
+    except Exception as e:
+        logger.error(f"Error in URI diagnostics: {e}")
         raise HTTPException(status_code=500, detail=str(e))
 
 

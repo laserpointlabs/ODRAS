@@ -18,6 +18,7 @@ from SPARQLWrapper import POST, SPARQLWrapper
 
 from .config import Settings
 from .namespace_uri_generator import NamespaceURIGenerator
+from .resource_uri_service import ResourceURIService
 
 logger = logging.getLogger(__name__)
 
@@ -31,7 +32,7 @@ class OntologyManager:
     - Ontology validation
     """
 
-    def __init__(self, settings: Settings):
+    def __init__(self, settings: Settings, db_service=None):
         self.settings = settings
         self.fuseki_url = settings.fuseki_url
         self.fuseki_query_url = f"{self.fuseki_url}/query"
@@ -40,10 +41,19 @@ class OntologyManager:
         # Initialize namespace URI generator
         self.namespace_generator = NamespaceURIGenerator(settings)
 
+        # Initialize resource URI service for proper namespace-aware URIs
+        if db_service:
+            self.uri_service = ResourceURIService(settings, db_service)
+        else:
+            from .db import DatabaseService
+
+            self.uri_service = ResourceURIService(settings, DatabaseService(settings))
+
         # Define ODRAS namespace using installation configuration
         self.base_uri = settings.installation_base_uri
         self.odras_ns = Namespace(f"{self.base_uri}/#")
         self.current_graph_uri = None
+        self.current_project_id = None
 
         # Initialize RDF graph for working copy
         self.graph = Graph()
@@ -51,11 +61,17 @@ class OntologyManager:
         self.graph.bind("owl", OWL)
         self.graph.bind("rdfs", RDFS)
 
-    def set_graph_context(self, graph_uri: str):
+    def set_graph_context(self, graph_uri: str, project_id: Optional[str] = None):
         """Set the current graph context for operations."""
         self.current_graph_uri = graph_uri
+        self.current_project_id = project_id
+
         # Update base_uri to use the graph URI as the namespace
         self.base_uri = graph_uri
+
+        # Extract project ID from URI if not provided
+        if not project_id and self.uri_service:
+            self.current_project_id = self.uri_service.parse_project_from_uri(graph_uri)
 
     def get_current_ontology_json(self) -> Dict[str, Any]:
         """
@@ -200,7 +216,22 @@ class OntologyManager:
             Dict containing operation result
         """
         try:
-            class_uri = URIRef(f"{self.base_uri}#{class_data['name']}")
+            # Debug: log the base_uri being used for entity generation
+            logger.info(f"OntologyManager.add_class - base_uri: {self.base_uri}")
+            logger.info(f"OntologyManager.add_class - current_graph_uri: {self.current_graph_uri}")
+            logger.info(
+                f"OntologyManager.add_class - current_project_id: {getattr(self, 'current_project_id', 'None')}"
+            )
+
+            # CRITICAL FIX: Use the current_graph_uri as the base for entity URIs if available
+            if self.current_graph_uri:
+                base_for_entities = self.current_graph_uri
+                logger.info(f"Using current_graph_uri as entity base: {base_for_entities}")
+            else:
+                base_for_entities = self.base_uri
+                logger.info(f"Using fallback base_uri as entity base: {base_for_entities}")
+
+            class_uri = URIRef(f"{base_for_entities}#{class_data['name']}")
 
             # Check if class already exists
             if self._class_exists(class_uri):

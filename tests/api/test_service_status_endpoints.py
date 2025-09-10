@@ -150,3 +150,4 @@ class TestServiceStatusEndpoints:
                 model = data["models"][0]
                 # Models should have at least a name or id field
                 assert "name" in model or "id" in model or isinstance(model, str)
+

@@ -182,3 +182,4 @@ class TestNamespaceManagementEndpoints:
                 response = client.get(endpoint)
             
             assert response.status_code != 401, f"{method} {endpoint} should not require auth"
+

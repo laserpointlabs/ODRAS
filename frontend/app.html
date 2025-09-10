@@ -2118,12 +2118,20 @@
     }
 
     function computeOntologyIri(projectId, name, version) {
+      // This function generates project-scoped ontology URIs following the namespace design
+      // Pattern: {base_uri}/{namespace_path}/{project_uuid}/ontologies/{name}
+      console.log('⚠️ computeOntologyIri called - this may be generating old-format URIs');
+      console.log('Project ID:', projectId, 'Name:', name, 'Version:', version);
+      
+      // For now, return a simple placeholder - the backend ResourceURIService should handle proper URI generation
       const pid = encodeURIComponent(projectId || 'project');
       const n = slugify(name || 'ontology');
       const ver = version ? ('/v' + encodeURIComponent(version)) : '';
       
-      // Use installation base URI instead of hardcoded odras.local
-      return `${INSTALLATION_CONFIG.baseUri}/${pid}/${n}${ver}`;
+      // Note: This is a legacy pattern - proper URIs should come from backend ResourceURIService
+      const uri = `${INSTALLATION_CONFIG.baseUri}/legacy/${pid}/${n}${ver}`;
+      console.log('⚠️ Generated legacy URI:', uri, '(should be replaced by backend service)');
+      return uri;
     }
 
     async function handleTreeSelection(li) {
@@ -2152,7 +2160,7 @@
             attrs.displayLabel = friendly;
             attrs.graphIri = iri;
             // Set namespace based on installation configuration
-            attrs.namespace = INSTALLATION_CONFIG.baseUri + '/ontology';
+            attrs.namespace = iri;  // Use the actual graph IRI as namespace
             localStorage.setItem(`onto_model_attrs__${pid}`, JSON.stringify(attrs));
             // Keep project-scoped label map in sync so the top node reflects selection
             try { saveOntologyLabel(iri, friendly); } catch(_) {}
@@ -4332,7 +4340,7 @@
             attrs.displayLabel = friendly; 
             attrs.graphIri = savedIri;
             // Set namespace based on installation configuration
-            attrs.namespace = INSTALLATION_CONFIG.baseUri + '/ontology';
+            attrs.namespace = iri;  // Use the actual graph IRI as namespace
             localStorage.setItem(`onto_model_attrs__${pid2}`, JSON.stringify(attrs));
             updatePropertiesPanelFromSelection();
           } catch(_) {}
@@ -4382,9 +4390,9 @@
                       let attrs = {};
                       try { attrs = JSON.parse(localStorage.getItem(`onto_model_attrs__${pid}`) || '{}'); } catch(_) { attrs = {}; }
                       attrs.displayLabel = newLabel;
-                      // Ensure namespace is set based on installation configuration
-                      if (!attrs.namespace) {
-                        attrs.namespace = INSTALLATION_CONFIG.baseUri + '/ontology';
+                      // Ensure namespace matches the graph IRI
+                      if (!attrs.namespace || attrs.namespace.endsWith('/ontology')) {
+                        attrs.namespace = li.dataset.iri || activeOntologyIri;
                       }
                       localStorage.setItem(`onto_model_attrs__${pid}`, JSON.stringify(attrs));
                     } catch(_) {}
@@ -4997,6 +5005,7 @@
                 }
                 
                 console.log('🔧 Creating ontology with project namespace inheritance:', body);
+                console.log('🔧 Frontend sending project ID:', pid2, 'from project object:', project);
                 
                 const res = await fetch('/api/ontologies', { 
                   method: 'POST', 
@@ -5813,17 +5822,33 @@
     }
 
     function getModelNamespace() {
-      // Get model namespace from attributes or use installation configuration
+      // Get model namespace from active ontology IRI (proper project-scoped URI)
+      if (activeOntologyIri) {
+        console.log('🔧 getModelNamespace using activeOntologyIri:', activeOntologyIri);
+        return activeOntologyIri;
+      }
+      
+      // Try to get from stored attributes
       const pid = (activeProject && (activeProject.id || activeProject.project_id)) ? (activeProject.id || activeProject.project_id) : 'default';
       try {
         const modelAttrs = JSON.parse(localStorage.getItem(`onto_model_attrs__${pid}`) || '{}');
-        if (modelAttrs.namespace) {
+        if (modelAttrs.namespace && !modelAttrs.namespace.endsWith('/ontology')) {
+          console.log('🔧 getModelNamespace using stored namespace:', modelAttrs.namespace);
           return modelAttrs.namespace;
-      }
+        }
+        // If the stored namespace is the old hardcoded one, update it
+        if (modelAttrs.graphIri) {
+          console.log('🔧 getModelNamespace updating stored namespace to use graphIri:', modelAttrs.graphIri);
+          modelAttrs.namespace = modelAttrs.graphIri;
+          localStorage.setItem(`onto_model_attrs__${pid}`, JSON.stringify(modelAttrs));
+          return modelAttrs.graphIri;
+        }
       } catch(_) {}
       
-      // Use installation configuration as fallback
-      return INSTALLATION_CONFIG.baseUri + '/ontology';
+      // Use installation configuration as fallback (but this is wrong for project-scoped ontologies)
+      const fallback = INSTALLATION_CONFIG.baseUri + '/ontology';
+      console.log('⚠️ getModelNamespace using hardcoded fallback (this should not happen):', fallback);
+      return fallback;
     }
 
     function updateElementIriDisplay() {

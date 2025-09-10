@@ -249,3 +249,4 @@ class TestUserManagementEndpoints:
                 response = client.put(endpoint, json={})
             
             assert response.status_code == 401, f"{method} {endpoint} should require auth"
+

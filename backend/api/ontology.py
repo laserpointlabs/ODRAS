@@ -59,7 +59,11 @@ router = APIRouter(prefix="/api/ontology", tags=["ontology"])
 def get_ontology_manager() -> OntologyManager:
     """Dependency to get OntologyManager instance."""
     settings = Settings()
-    return OntologyManager(settings)
+    # Pass db_service to ensure proper ResourceURIService initialization
+    from ..services.db import DatabaseService
+
+    db_service = DatabaseService(settings)
+    return OntologyManager(settings, db_service)
 
 
 def get_db_service() -> DatabaseService:
@@ -82,6 +86,13 @@ async def get_ontology(
     """
     try:
         if graph:
+            # Extract project ID from graph URI for proper context
+            project_id = (
+                manager.uri_service.parse_project_from_uri(graph)
+                if hasattr(manager, "uri_service")
+                else None
+            )
+            manager.set_graph_context(graph, project_id or "")
             ontology_json = manager.get_ontology_json_by_graph(graph)
         else:
             ontology_json = manager.get_current_ontology_json()
@@ -168,7 +179,13 @@ async def add_class(
     try:
         # Set the graph context if provided
         if graph:
-            manager.set_graph_context(graph)
+            # Extract project ID from graph URI to ensure proper entity URI generation
+            project_id = (
+                manager.uri_service.parse_project_from_uri(graph)
+                if hasattr(manager, "uri_service")
+                else None
+            )
+            manager.set_graph_context(graph, project_id or "")
 
         result = manager.add_class(class_data.dict())
 
@@ -482,7 +499,7 @@ async def mint_unique_iri(
         Unique IRI string
     """
     try:
-        unique_iri = manager.mint_unique_iri(base_name, entity_type, graph)
+        unique_iri = manager.mint_unique_iri(base_name, entity_type, graph or "")
         return {
             "success": True,
             "data": {"iri": unique_iri},
