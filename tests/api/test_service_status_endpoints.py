@@ -151,3 +151,5 @@ class TestServiceStatusEndpoints:
                 # Models should have at least a name or id field
                 assert "name" in model or "id" in model or isinstance(model, str)
 
+
+
