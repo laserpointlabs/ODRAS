@@ -464,6 +464,36 @@
       z-index: 1; 
       background: var(--panel-2); 
     }
+    .onto-tree-controls { display: flex; gap: 4px; align-items: center; }
+    .class-visibility-toggle {
+      background: none;
+      border: none;
+      color: var(--muted);
+      cursor: pointer;
+      padding: 2px 4px;
+      margin-left: 4px;
+      border-radius: 3px;
+      font-size: 12px;
+      transition: opacity 0.2s ease;
+    }
+    .class-visibility-toggle:hover {
+      background: var(--border);
+      color: var(--text);
+    }
+    
+    /* Pseudo-import node styling */
+    .pseudo-import {
+      background-color: #e3f2fd !important;
+      border: 2px solid #2196f3 !important;
+      border-style: dashed !important;
+      font-style: italic !important;
+    }
+    
+    .pseudo-equivalence {
+      stroke: #2196f3 !important;
+      stroke-dasharray: 5,5 !important;
+      stroke-width: 2px !important;
+    }
     .onto-tree-scroll { overflow: auto; padding: 6px; height: 100%; min-height: 0; }
     .onto-treeview [role="tree"] { list-style: none; margin: 0; padding: 4px; }
     .onto-treeview [role="group"] { list-style: none; margin: 0; padding-left: 16px; border-left: 1px dashed var(--border); }
@@ -1067,9 +1097,17 @@
             <aside class="onto-tree" aria-label="Ontology Tree">
               <div class="onto-tree-header" id="ontoTreeHeader">
                 <div class="muted">Ontology</div>
-                <button class="iconbtn" id="ontoTreeToggle" title="Collapse">
-                  <svg id="ontoTreeToggleIcon" viewBox="0 0 24 24" fill="none" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M9 6l6 6-6 6"/></svg>
-                </button>
+                <div class="onto-tree-controls">
+                  <button class="iconbtn" id="ontoVisibilityToggle" title="Toggle Visibility">
+                    <svg viewBox="0 0 24 24" fill="none" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round">
+                      <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/>
+                      <circle cx="12" cy="12" r="3"/>
+                    </svg>
+                  </button>
+                  <button class="iconbtn" id="ontoTreeToggle" title="Collapse">
+                    <svg id="ontoTreeToggleIcon" viewBox="0 0 24 24" fill="none" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M9 6l6 6-6 6"/></svg>
+                  </button>
+                </div>
               </div>
               <div class="onto-tree-scroll">
                 <nav class="onto-treeview" aria-label="Ontology">
@@ -1639,7 +1677,26 @@
     window.addEventListener('beforeunload', () => { try { if (ontoState && ontoState.cy && activeOntologyIri) persistOntologyToLocalStorage(); } catch(_) {} });
 
     // Ontology workbench state
-    const ontoState = { cy: null, eh: null, connectMode: false, clickConnectFrom: null, nextId: 1, currentPredicateType: 'objectProperty', isCanvasActive: false };
+    const ontoState = { 
+      cy: null, 
+      eh: null, 
+      connectMode: false, 
+      clickConnectFrom: null, 
+      nextId: 1, 
+      currentPredicateType: 'objectProperty', 
+      isCanvasActive: false,
+      suspendAutosave: false,
+      autosaveBound: false,
+       visibilityState: {
+         classes: true,
+         dataProperties: true,
+         notes: true,
+         edges: true,
+         imported: true
+       },
+       collapsedImports: new Set(), // Track which imports are collapsed
+       elementVisibility: {} // Track individual element visibility {elementId: true/false}
+    };
     let activeProject = null;
     let suppressWorkbenchSwitch = false;
     let activeOntologyIri = null;
@@ -2144,6 +2201,7 @@
     async function handleTreeSelection(li) {
       if (!li || !li.dataset) return;
       const type = li.dataset.nodeType || '';
+      
       if (type === 'ontology') {
         const iri = li.dataset.iri;
         if (iri) {
@@ -2171,6 +2229,15 @@
             localStorage.setItem(`onto_model_attrs__${pid}`, JSON.stringify(attrs));
             // Keep project-scoped label map in sync so the top node reflects selection
             try { saveOntologyLabel(iri, friendly); } catch(_) {}
+            
+            // Load collapsed imports state for this ontology
+            ontoState.collapsedImports = loadCollapsedImports(iri);
+            
+            // Load visibility state for this ontology
+            ontoState.visibilityState = loadVisibilityState(iri);
+            
+            // Load individual element visibility for this ontology
+            ontoState.elementVisibility = loadElementVisibility(iri);
           } catch(_) {}
           updateOntoGraphLabel();
           // Load new graph from local storage if present, otherwise fetch from API
@@ -2179,6 +2246,10 @@
             ontoState.suspendAutosave = true;
             try { ontoState.cy.elements().remove(); } catch(_) {}
             await loadGraphFromLocalOrAPI(iri);
+            // Refresh overlay imports to restore visible imported ontologies
+            await overlayImportsRefresh();
+            // Apply saved visibility states after overlay refresh
+            updateCanvasVisibility();
             setTimeout(() => { ontoState.suspendAutosave = false; }, 50);
           }
           // Show model-level props when nothing selected
@@ -2200,6 +2271,54 @@
             params.set('graph', encodeURIComponent(iri));
             location.hash = params.toString();
           } catch(_) {}
+        }
+      } else if (type === 'class' || type === 'dataProperty' || type === 'note') {
+        // Handle individual element selection
+        const nodeId = li.dataset.nodeId;
+        if (nodeId && ontoState.cy) {
+          // Clear current selection
+          ontoState.cy.$(':selected').unselect();
+          
+          // Find and select the corresponding node in the canvas
+          const node = ontoState.cy.$(`#${nodeId}`);
+          if (node.length > 0) {
+            node.select();
+            
+            // Center the view on the selected node
+            ontoState.cy.animate({
+              center: { eles: node },
+              zoom: Math.max(ontoState.cy.zoom(), 0.8) // Ensure minimum zoom level
+            }, {
+              duration: 300
+            });
+            
+            // Update properties panel with selected element data
+            updatePropertiesPanelFromSelection();
+          }
+        }
+      } else if (type === 'edge') {
+        // Handle edge selection
+        const edgeId = li.dataset.edgeId;
+        if (edgeId && ontoState.cy) {
+          // Clear current selection
+          ontoState.cy.$(':selected').unselect();
+          
+          // Find and select the corresponding edge in the canvas
+          const edge = ontoState.cy.$(`#${edgeId}`);
+          if (edge.length > 0) {
+            edge.select();
+            
+            // Center the view on the selected edge
+            ontoState.cy.animate({
+              center: { eles: edge },
+              zoom: Math.max(ontoState.cy.zoom(), 0.8)
+            }, {
+              duration: 300
+            });
+            
+            // Update properties panel with selected element data
+            updatePropertiesPanelFromSelection();
+          }
         }
       }
     }
@@ -2340,6 +2459,20 @@
         ontoState.cy.on('select unselect add remove data free', () => {
           updatePropertiesPanelFromSelection();
           persistOntologyToLocalStorage();
+          
+          // Highlight corresponding tree item when canvas selection changes
+          const selected = ontoState.cy.$(':selected');
+          if (selected.length === 1) {
+            const element = selected[0];
+            if (element.isNode()) {
+              highlightTreeItem(element.id(), 'node');
+            } else if (element.isEdge()) {
+              highlightTreeItem(element.id(), 'edge');
+            }
+          } else {
+            // Clear tree selection when nothing is selected on canvas
+            qsa('.node-row').forEach(r => r.classList.remove('selected'));
+          }
         });
         // Persist overlay positions when moved
         ontoState.cy.on('free', 'node.imported', (ev) => {
@@ -2348,6 +2481,7 @@
             if (!imp || !activeOntologyIri) return;
             const curr = loadOverlayPositions(activeOntologyIri, imp);
             curr[n.id()] = n.position();
+            console.log('🔍 Saving position for', n.id(), ':', n.position(), 'in import', imp);
             saveOverlayPositions(activeOntologyIri, imp, curr);
           } catch(_) {}
         });
@@ -2358,6 +2492,7 @@
             if (!imp || !activeOntologyIri) return;
             const curr = loadOverlayPositions(activeOntologyIri, imp);
             curr[n.id()] = n.position();
+            console.log('🔍 Saving position for', n.id(), ':', n.position(), 'in import', imp);
             saveOverlayPositions(activeOntologyIri, imp, curr);
           } catch(_) {}
         });
@@ -2387,6 +2522,20 @@
         ontoState.cy.on('select unselect add remove data free', () => {
           updatePropertiesPanelFromSelection();
           persistOntologyToLocalStorage();
+          
+          // Highlight corresponding tree item when canvas selection changes
+          const selected = ontoState.cy.$(':selected');
+          if (selected.length === 1) {
+            const element = selected[0];
+            if (element.isNode()) {
+              highlightTreeItem(element.id(), 'node');
+            } else if (element.isEdge()) {
+              highlightTreeItem(element.id(), 'edge');
+            }
+          } else {
+            // Clear tree selection when nothing is selected on canvas
+            qsa('.node-row').forEach(r => r.classList.remove('selected'));
+          }
         });
       }
 
@@ -3279,6 +3428,80 @@
     function loadOverlayPositions(baseIri, importIri) { try { return JSON.parse(localStorage.getItem(overlayPositionsKey(baseIri, importIri)) || '{}'); } catch(_) { return {}; } }
     function saveOverlayPositions(baseIri, importIri, obj) { try { localStorage.setItem(overlayPositionsKey(baseIri, importIri), JSON.stringify(obj || {})); } catch(_) {} }
 
+    // Collapsed imports persistence
+    function collapsedImportsKey(baseIri) { return 'onto_collapsed_imports__' + encodeURIComponent(baseIri || ''); }
+    function loadCollapsedImports(baseIri) { 
+      try { 
+        const data = localStorage.getItem(collapsedImportsKey(baseIri));
+        return data ? new Set(JSON.parse(data)) : new Set(); 
+      } catch(_) { 
+        return new Set(); 
+      } 
+    }
+    function saveCollapsedImports(baseIri, collapsedSet) { 
+      try { 
+        localStorage.setItem(collapsedImportsKey(baseIri), JSON.stringify(Array.from(collapsedSet))); 
+      } catch(_) {} 
+    }
+
+    // Pseudo-node positions persistence
+    function pseudoNodePositionsKey(baseIri) { return 'onto_pseudo_positions__' + encodeURIComponent(baseIri || ''); }
+    function loadPseudoNodePositions(baseIri) { 
+      try { 
+        return JSON.parse(localStorage.getItem(pseudoNodePositionsKey(baseIri)) || '{}'); 
+      } catch(_) { 
+        return {}; 
+      } 
+    }
+    function savePseudoNodePositions(baseIri, positions) { 
+      try { 
+        localStorage.setItem(pseudoNodePositionsKey(baseIri), JSON.stringify(positions || {})); 
+      } catch(_) {} 
+    }
+
+    // Visibility state persistence
+    function visibilityStateKey(baseIri) { return 'onto_visibility_state__' + encodeURIComponent(baseIri || ''); }
+    function loadVisibilityState(baseIri) { 
+      try { 
+        const saved = JSON.parse(localStorage.getItem(visibilityStateKey(baseIri)) || '{}');
+        return {
+          classes: saved.classes !== undefined ? saved.classes : true,
+          dataProperties: saved.dataProperties !== undefined ? saved.dataProperties : true,
+          notes: saved.notes !== undefined ? saved.notes : true,
+          edges: saved.edges !== undefined ? saved.edges : true,
+          imported: saved.imported !== undefined ? saved.imported : true
+        };
+      } catch(_) { 
+        return {
+          classes: true,
+          dataProperties: true,
+          notes: true,
+          edges: true,
+          imported: true
+        }; 
+      } 
+    }
+    function saveVisibilityState(baseIri, state) { 
+      try { 
+        localStorage.setItem(visibilityStateKey(baseIri), JSON.stringify(state || {})); 
+      } catch(_) {} 
+    }
+
+    // Individual element visibility persistence
+    function elementVisibilityKey(baseIri) { return 'onto_element_visibility__' + encodeURIComponent(baseIri || ''); }
+    function loadElementVisibility(baseIri) { 
+      try { 
+        return JSON.parse(localStorage.getItem(elementVisibilityKey(baseIri)) || '{}'); 
+      } catch(_) { 
+        return {}; 
+      } 
+    }
+    function saveElementVisibility(baseIri, visibility) { 
+      try { 
+        localStorage.setItem(elementVisibilityKey(baseIri), JSON.stringify(visibility || {})); 
+      } catch(_) {} 
+    }
+
     async function fetchImportGraphSnapshot(importIri) {
       try {
         // First try to get data from local storage (consistent with importEquivCount)
@@ -3574,31 +3797,119 @@
           }
           // Add class nodes in a simple grid within the cluster; apply saved positions if available
           const savedPos = loadOverlayPositions(activeOntologyIri, imp);
-          snap.classes.forEach((c, index) => {
-            // Use the original node ID from the local storage data if available, otherwise generate one
-            const originalId = snap.importNodes?.[index]?.data?.id || `Class${index + 1}`;
-            const id = `imp:${imp}#${originalId}`;
-            if (ontoState.cy.$(`#${CSS.escape(id)}`).length) return;
-            const pos = savedPos[id] ? savedPos[id] : nextPos();
-            added.push(ontoState.cy.add({ group: 'nodes', data: { id, iri: c.iri || originalId, label: c.label, type: 'class', importSource: imp, attrs: c.attrs || {} }, position: pos, classes: 'imported' }));
-          });
-          // Add edges where both endpoints available; create missing nodes on demand
-          let idx = 0;
-          snap.edges.forEach(e => {
-            const sid = `imp:${imp}#${e.sourceIri}`;
-            const tid = `imp:${imp}#${e.targetIri}`;
-            if (!ontoState.cy.$(`#${CSS.escape(sid)}`).length) {
-              const label = e.sourceIri.includes('#') ? e.sourceIri.split('#').pop() : e.sourceIri.split('/').pop();
-              const pos = savedPos[sid] ? savedPos[sid] : nextPos();
-              added.push(ontoState.cy.add({ group: 'nodes', data: { id: sid, iri: e.sourceIri, label, type: 'class', importSource: imp, attrs: e.attrs || {} }, position: pos, classes: 'imported' }));
+          console.log('🔍 Loading saved positions for import:', imp, savedPos);
+          const isCollapsed = ontoState.collapsedImports.has(imp);
+          
+          if (isCollapsed) {
+            // Create pseudo-node for collapsed import
+            const importData = JSON.parse(localStorage.getItem('onto_imports__' + encodeURIComponent(activeOntologyIri || '')) || '[]').find(importData => importData.iri === imp);
+            const importName = importData?.label || imp.split('/').pop() || imp;
+            
+            // Check if pseudo-node already exists
+            const pseudoNodeId = `pseudo-import-${CSS.escape(imp)}`;
+            const existingPseudoNode = ontoState.cy.$(`#${CSS.escape(pseudoNodeId)}`);
+            
+            if (existingPseudoNode.length === 0) {
+              // Load saved position for pseudo-node
+              const pseudoPositions = loadPseudoNodePositions(activeOntologyIri);
+              let position = pseudoPositions[pseudoNodeId];
+              
+              if (!position) {
+                // Calculate center position for pseudo-node if no saved position
+                const baseBBox = ontoState.cy.nodes().filter(n => !n.hasClass('imported')).boundingBox();
+                const orderIndex = Math.max(0, visibleList.indexOf(imp));
+                const padX = 200, jitterX = orderIndex * 100, jitterY = orderIndex * 60;
+                const safe = (n, f)=> (Number.isFinite(n) ? n : f);
+                position = {
+                  x: safe(baseBBox.x2, 0) + padX + jitterX,
+                  y: safe(baseBBox.y1, 0) + jitterY
+                };
+              }
+              
+              const pseudoNode = ontoState.cy.add({
+                group: 'nodes',
+                data: {
+                  id: pseudoNodeId,
+                  label: importName,
+                  type: 'import',
+                  importSource: imp,
+                  isPseudo: true,
+                  attrs: {}
+                },
+                position: position,
+                classes: 'imported pseudo-import'
+              });
+              added.push(pseudoNode);
             }
-            if (!ontoState.cy.$(`#${CSS.escape(tid)}`).length) {
-              const label = e.targetIri.includes('#') ? e.targetIri.split('#').pop() : e.targetIri.split('/').pop();
-              const pos = savedPos[tid] ? savedPos[tid] : nextPos();
-              added.push(ontoState.cy.add({ group: 'nodes', data: { id: tid, iri: e.targetIri, label, type: 'class', importSource: imp, attrs: e.attrs || {} }, position: pos, classes: 'imported' }));
+          } else {
+            // Create all imported nodes normally
+            snap.classes.forEach((c, index) => {
+              // Use the original node ID from the local storage data if available, otherwise generate one
+              const originalId = snap.importNodes?.[index]?.data?.id || `Class${index + 1}`;
+              const id = `imp:${imp}#${originalId}`;
+              if (ontoState.cy.$(`#${CSS.escape(id)}`).length) return;
+              const pos = savedPos[id] ? savedPos[id] : nextPos();
+              console.log('🔍 Position for', id, ':', pos, 'saved:', !!savedPos[id]);
+              const node = ontoState.cy.add({ group: 'nodes', data: { id, iri: c.iri || originalId, label: c.label, type: 'class', importSource: imp, attrs: c.attrs || {} }, position: pos, classes: 'imported' });
+              added.push(node);
+            });
+          }
+          if (isCollapsed) {
+            // For collapsed imports, create equivalence edges from pseudo-node to base classes
+            const pseudoNodeId = `pseudo-import-${CSS.escape(imp)}`;
+            const pseudoNode = ontoState.cy.$(`#${CSS.escape(pseudoNodeId)}`);
+            
+            if (pseudoNode.length > 0) {
+              // Find equivalence relationships by matching imported class labels with base class labels
+              const baseClasses = ontoState.cy.nodes().filter(n => (n.data('type')||'class')==='class' && !n.hasClass('imported'));
+              const byKey = (s)=>String(s||'').trim().toLowerCase();
+              const baseMap = new Map(); 
+              baseClasses.forEach(n => baseMap.set(byKey(n.data('label')||n.id()), n));
+              
+              // Create equivalence edges for each imported class that matches a base class
+              snap.classes.forEach(c => {
+                const key = byKey(c.label);
+                const baseNode = baseMap.get(key);
+                if (baseNode) {
+                  const equivEdgeId = `pseudo-equiv-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
+                  const equivEdge = ontoState.cy.add({
+                    group: 'edges',
+                    data: {
+                      id: equivEdgeId,
+                      source: pseudoNodeId,
+                      target: baseNode.id(),
+                      predicate: 'equivalentClass',
+                      type: 'objectProperty',
+                      importSource: imp,
+                      isPseudo: true,
+                      attrs: {}
+                    },
+                    classes: 'imported imported-equivalence pseudo-equivalence'
+                  });
+                  added.push(equivEdge);
+                }
+              });
             }
-            added.push(ontoState.cy.add({ group: 'edges', data: { id: `impE${Date.now()}_${idx++}`, source: sid, target: tid, predicate: e.label, type: 'objectProperty', importSource: imp, attrs: e.attrs || {} }, classes: 'imported' }));
-          });
+          } else {
+            // Add edges where both endpoints available; create missing nodes on demand
+            let idx = 0;
+            snap.edges.forEach(e => {
+              const sid = `imp:${imp}#${e.sourceIri}`;
+              const tid = `imp:${imp}#${e.targetIri}`;
+              if (!ontoState.cy.$(`#${CSS.escape(sid)}`).length) {
+                const label = e.sourceIri.includes('#') ? e.sourceIri.split('#').pop() : e.sourceIri.split('/').pop();
+                const pos = savedPos[sid] ? savedPos[sid] : nextPos();
+                added.push(ontoState.cy.add({ group: 'nodes', data: { id: sid, iri: e.sourceIri, label, type: 'class', importSource: imp, attrs: e.attrs || {} }, position: pos, classes: 'imported' }));
+              }
+              if (!ontoState.cy.$(`#${CSS.escape(tid)}`).length) {
+                const label = e.targetIri.includes('#') ? e.targetIri.split('#').pop() : e.targetIri.split('/').pop();
+                const pos = savedPos[tid] ? savedPos[tid] : nextPos();
+                added.push(ontoState.cy.add({ group: 'nodes', data: { id: tid, iri: e.targetIri, label, type: 'class', importSource: imp, attrs: e.attrs || {} }, position: pos, classes: 'imported' }));
+              }
+              const edge = ontoState.cy.add({ group: 'edges', data: { id: `impE${Date.now()}_${idx++}`, source: sid, target: tid, predicate: e.label, type: 'objectProperty', importSource: imp, attrs: e.attrs || {} }, classes: 'imported' });
+              added.push(edge);
+            });
+          }
           // Make overlays semi-interactive for positioning: allow drag, but don't select or edit
           added.forEach(el => {
             try {
@@ -3609,23 +3920,36 @@
               }
             } catch(_) {}
           });
+          
+          // Add position saving for pseudo-nodes
+          added.filter(el => el.data('isPseudo')).forEach(el => {
+            el.on('free', () => {
+              const pseudoPositions = loadPseudoNodePositions(activeOntologyIri);
+              pseudoPositions[el.id()] = { x: el.position('x'), y: el.position('y') };
+              savePseudoNodePositions(activeOntologyIri, pseudoPositions);
+            });
+          });
 
           // Add owl:equivalentClass visual links between base and imported nodes (by label/local name)
-          try {
-            const baseClasses = ontoState.cy.nodes().filter(n => (n.data('type')||'class')==='class' && !n.hasClass('imported'));
-            const imported = ontoState.cy.nodes().filter(n => (n.data('type')||'class')==='class' && n.hasClass('imported') && (n.data('importSource')||'')===imp);
-            const byKey = (s)=>String(s||'').trim().toLowerCase();
-            const baseMap = new Map(); baseClasses.forEach(n => baseMap.set(byKey(n.data('label')||n.id()), n));
-            let idx2 = 0;
-            imported.forEach(n => {
-              const key = byKey(n.data('label')||n.id());
-              const base = baseMap.get(key);
-              if (base) {
-                const eid = `impEq${Date.now()}_${idx2++}`;
-                ontoState.cy.add({ group: 'edges', data: { id: eid, source: base.id(), target: n.id(), predicate: 'equivalentClass', type: 'objectProperty', importSource: imp, attrs: {} }, classes: 'imported imported-equivalence' });
-              }
-            });
-          } catch(_) {}
+          // Only create equivalence edges for expanded imports
+          if (!isCollapsed) {
+            try {
+              const baseClasses = ontoState.cy.nodes().filter(n => (n.data('type')||'class')==='class' && !n.hasClass('imported'));
+              const imported = ontoState.cy.nodes().filter(n => (n.data('type')||'class')==='class' && n.hasClass('imported') && (n.data('importSource')||'')===imp);
+              const byKey = (s)=>String(s||'').trim().toLowerCase();
+              const baseMap = new Map(); baseClasses.forEach(n => baseMap.set(byKey(n.data('label')||n.id()), n));
+              let idx2 = 0;
+              imported.forEach(n => {
+                const key = byKey(n.data('label')||n.id());
+                const base = baseMap.get(key);
+                if (base) {
+                  const eid = `impEq${Date.now()}_${idx2++}`;
+                  const equivEdge = ontoState.cy.add({ group: 'edges', data: { id: eid, source: base.id(), target: n.id(), predicate: 'equivalentClass', type: 'objectProperty', importSource: imp, attrs: {} }, classes: 'imported imported-equivalence' });
+                  added.push(equivEdge);
+                }
+              });
+            } catch(_) {}
+          }
         }
         // Do not persist imported overlays to base local storage
         refreshOntologyTree();
@@ -5209,9 +5533,34 @@
     function refreshOntologyTree() {
       const root = qs('#ontoTreeRoot');
       if (!root || !ontoState.cy) return;
-      const classes = ontoState.cy.nodes().filter(n => n.visible() && (n.data('type') || 'class') === 'class' && !n.hasClass('imported'));
-      const importedClasses = ontoState.cy.nodes().filter(n => n.visible() && (n.data('type') || 'class') === 'class' && n.hasClass('imported'));
-      const notes = ontoState.cy.nodes().filter(n => n.visible() && (n.data('type') || '') === 'note' && !n.hasClass('imported'));
+      
+      // Filter nodes based on visibility settings
+      const classes = ontoState.cy.nodes().filter(n => {
+        const nodeType = n.data('type') || 'class';
+        const isImported = n.hasClass('imported');
+        const isVisible = n.visible();
+        
+        // Always show classes in tree regardless of visibility state - visibility only affects canvas
+        return !isImported && nodeType === 'class';
+      });
+      
+      const importedClasses = ontoState.cy.nodes().filter(n => {
+        const nodeType = n.data('type') || 'class';
+        const isImported = n.hasClass('imported');
+        const isVisible = n.visible();
+        
+        // Always show imported classes in tree regardless of visibility state
+        return isImported && nodeType === 'class';
+      });
+      
+      const notes = ontoState.cy.nodes().filter(n => {
+        const nodeType = n.data('type') || '';
+        const isImported = n.hasClass('imported');
+        const isVisible = n.visible();
+        
+        // Always show notes in tree regardless of visibility state - don't check isVisible
+        return !isImported && nodeType === 'note';
+      });
       // Simple grouping: Classes as top-level; edges shown under a "Relationships" group per class
       root.innerHTML = '';
       const makeItem = (label, expanded = true, children = []) => {
@@ -5232,21 +5581,210 @@
       const items = [];
       classes.forEach(cls => {
         const label = cls.data('label') || cls.id();
-        const outEdges = cls.outgoers('edge');
+        const outEdges = cls.outgoers('edge').filter(e => {
+          // Always show edges in tree regardless of visibility state
+          return true;
+        });
         const rels = outEdges.map(e => {
           const other = e.target();
           const pred = e.data('predicate') || 'relatedTo';
           const type = e.data('type') || 'objectProperty';
-          return makeItem(`${pred} → ${(other.data('label') || other.id())} (${type})`, false, []);
+          const item = makeItem(`${pred} → ${(other.data('label') || other.id())} (${type})`, false, []);
+          // Set edge data attributes for tree selection
+          item.dataset.edgeId = e.id();
+          item.dataset.nodeType = 'edge';
+          return item;
         });
-        items.push(makeItem(label, false, rels));
+        const classItem = makeItem(label, false, rels);
+        // Set node data attributes for tree selection
+        classItem.dataset.nodeId = cls.id();
+        classItem.dataset.nodeType = 'class';
+        
+        // Add visibility toggle for individual classes
+        const row = classItem.querySelector('.onto-node-row');
+        if (row) {
+          const visibilityBtn = document.createElement('button');
+          visibilityBtn.className = 'class-visibility-toggle';
+          visibilityBtn.title = 'Toggle visibility';
+          visibilityBtn.innerHTML = '👁';
+          visibilityBtn.style.cssText = `
+            background: none;
+            border: none;
+            color: var(--muted);
+            cursor: pointer;
+            padding: 2px 4px;
+            margin-left: 4px;
+            border-radius: 3px;
+            font-size: 12px;
+          `;
+          
+          // Set initial visibility state based on saved element visibility or global state
+          const nodeId = cls.id();
+          let isVisible = cls.visible();
+          if (ontoState.elementVisibility.hasOwnProperty(nodeId)) {
+            isVisible = ontoState.elementVisibility[nodeId];
+          }
+          visibilityBtn.style.opacity = isVisible ? '1' : '0.3';
+          
+          visibilityBtn.addEventListener('click', (e) => {
+            e.stopPropagation();
+            const node = ontoState.cy.$(`#${cls.id()}`);
+            if (node.length > 0) {
+              if (node.visible()) {
+                node.hide();
+                visibilityBtn.style.opacity = '0.3';
+                // Save individual element visibility
+                if (activeOntologyIri) {
+                  ontoState.elementVisibility[cls.id()] = false;
+                  saveElementVisibility(activeOntologyIri, ontoState.elementVisibility);
+                }
+              } else {
+                node.show();
+                visibilityBtn.style.opacity = '1';
+                // Save individual element visibility
+                if (activeOntologyIri) {
+                  ontoState.elementVisibility[cls.id()] = true;
+                  saveElementVisibility(activeOntologyIri, ontoState.elementVisibility);
+                }
+              }
+              // Update properties panel if this node was selected
+              updatePropertiesPanelFromSelection();
+            }
+          });
+          
+          row.appendChild(visibilityBtn);
+        }
+        
+        items.push(classItem);
       });
       if (importedClasses.length) {
-        const importedChildren = importedClasses.map(cls => makeItem((cls.data('label')||cls.id()) + ' (imported)', false, []));
+        const importedChildren = importedClasses.map(cls => {
+          const item = makeItem((cls.data('label')||cls.id()) + ' (imported)', false, []);
+          item.dataset.nodeId = cls.id();
+          item.dataset.nodeType = 'class';
+          
+          // Add visibility toggle for imported classes
+          const row = item.querySelector('.onto-node-row');
+          if (row) {
+            const visibilityBtn = document.createElement('button');
+            visibilityBtn.className = 'class-visibility-toggle';
+            visibilityBtn.title = 'Toggle visibility';
+            visibilityBtn.innerHTML = '👁';
+            visibilityBtn.style.cssText = `
+              background: none;
+              border: none;
+              color: var(--muted);
+              cursor: pointer;
+              padding: 2px 4px;
+              margin-left: 4px;
+              border-radius: 3px;
+              font-size: 12px;
+            `;
+            
+            // Set initial visibility state based on saved element visibility or global state
+            const nodeId = cls.id();
+            let isVisible = cls.visible();
+            if (ontoState.elementVisibility.hasOwnProperty(nodeId)) {
+              isVisible = ontoState.elementVisibility[nodeId];
+            }
+            visibilityBtn.style.opacity = isVisible ? '1' : '0.3';
+            
+            visibilityBtn.addEventListener('click', (e) => {
+              e.stopPropagation();
+              const node = ontoState.cy.$(`#${cls.id()}`);
+              if (node.length > 0) {
+                if (node.visible()) {
+                  node.hide();
+                  visibilityBtn.style.opacity = '0.3';
+                  // Save individual element visibility
+                  if (activeOntologyIri) {
+                    ontoState.elementVisibility[cls.id()] = false;
+                    saveElementVisibility(activeOntologyIri, ontoState.elementVisibility);
+                  }
+                } else {
+                  node.show();
+                  visibilityBtn.style.opacity = '1';
+                  // Save individual element visibility
+                  if (activeOntologyIri) {
+                    ontoState.elementVisibility[cls.id()] = true;
+                    saveElementVisibility(activeOntologyIri, ontoState.elementVisibility);
+                  }
+                }
+                // Update properties panel if this node was selected
+                updatePropertiesPanelFromSelection();
+              }
+            });
+            
+            row.appendChild(visibilityBtn);
+          }
+          
+          return item;
+        });
         items.push(makeItem('Imported Classes', true, importedChildren));
       }
       if (notes.length) {
-        const noteChildren = notes.map(n => makeItem(n.data('label') || n.id(), false, []));
+        const noteChildren = notes.map(n => {
+          const item = makeItem(n.data('label') || n.id(), false, []);
+          item.dataset.nodeId = n.id();
+          item.dataset.nodeType = 'note';
+          
+          // Add visibility toggle for notes
+          const row = item.querySelector('.onto-node-row');
+          if (row) {
+            const visibilityBtn = document.createElement('button');
+            visibilityBtn.className = 'class-visibility-toggle';
+            visibilityBtn.title = 'Toggle visibility';
+            visibilityBtn.innerHTML = '👁';
+            visibilityBtn.style.cssText = `
+              background: none;
+              border: none;
+              color: var(--muted);
+              cursor: pointer;
+              padding: 2px 4px;
+              margin-left: 4px;
+              border-radius: 3px;
+              font-size: 12px;
+            `;
+            
+            // Set initial visibility state based on saved element visibility or global state
+            const nodeId = n.id();
+            let isVisible = n.visible();
+            if (ontoState.elementVisibility.hasOwnProperty(nodeId)) {
+              isVisible = ontoState.elementVisibility[nodeId];
+            }
+            visibilityBtn.style.opacity = isVisible ? '1' : '0.3';
+            
+            visibilityBtn.addEventListener('click', (e) => {
+              e.stopPropagation();
+              const node = ontoState.cy.$(`#${n.id()}`);
+              if (node.length > 0) {
+                if (node.visible()) {
+                  node.hide();
+                  visibilityBtn.style.opacity = '0.3';
+                  // Save individual element visibility
+                  if (activeOntologyIri) {
+                    ontoState.elementVisibility[n.id()] = false;
+                    saveElementVisibility(activeOntologyIri, ontoState.elementVisibility);
+                  }
+                } else {
+                  node.show();
+                  visibilityBtn.style.opacity = '1';
+                  // Save individual element visibility
+                  if (activeOntologyIri) {
+                    ontoState.elementVisibility[n.id()] = true;
+                    saveElementVisibility(activeOntologyIri, ontoState.elementVisibility);
+                  }
+                }
+                // Update properties panel if this node was selected
+                updatePropertiesPanelFromSelection();
+              }
+            });
+            
+            row.appendChild(visibilityBtn);
+          }
+          
+          return item;
+        });
         items.push(makeItem('Notes', true, noteChildren));
       }
       const ul = document.createElement('ul'); ul.setAttribute('role', 'group');
@@ -5299,9 +5837,26 @@
           await showReferenceOntologySelector();
         };
         
+        // Add collapse/expand all button (hidden for now)
+        const collapseBtn = document.createElement('button');
+        collapseBtn.className = 'btn tree-add-btn';
+        collapseBtn.title = 'Collapse/Expand All Imports';
+        collapseBtn.textContent = '⊞';
+        collapseBtn.style.marginLeft = '4px';
+        collapseBtn.style.fontSize = '12px';
+        collapseBtn.style.padding = '2px 6px';
+        collapseBtn.style.minWidth = '20px';
+        collapseBtn.style.height = '20px';
+        collapseBtn.style.display = 'none'; // Hidden for now
+        collapseBtn.onclick = (e) => {
+          e.stopPropagation();
+          toggleAllImportsCollapse();
+        };
+        
         row.appendChild(tw); 
         row.appendChild(lbl); 
         row.appendChild(addBtn);
+        row.appendChild(collapseBtn);
         importsRoot.appendChild(row);
         
         const ul = document.createElement('ul'); ul.setAttribute('role','group');
@@ -5510,9 +6065,27 @@
               cb.checked = !cb.checked;
             }
           });
+          // Add collapse/expand button (hidden for now)
+          const collapseBtn = document.createElement('button');
+          collapseBtn.className = 'btn tree-add-btn';
+          collapseBtn.title = 'Collapse/Expand Import';
+          collapseBtn.textContent = ontoState.collapsedImports.has(g) ? '⊞' : '⊟';
+          collapseBtn.style.marginLeft = '8px';
+          collapseBtn.style.fontSize = '12px';
+          collapseBtn.style.padding = '2px 6px';
+          collapseBtn.style.minWidth = '20px';
+          collapseBtn.style.height = '20px';
+          collapseBtn.style.display = 'none'; // Hidden for now
+          collapseBtn.onclick = (e) => {
+            e.stopPropagation();
+            toggleImportCollapse(g);
+            // Update button text
+            collapseBtn.textContent = ontoState.collapsedImports.has(g) ? '⊞' : '⊟';
+          };
+          
           r.onclick = (e)=>{ Array.from(ul.querySelectorAll('.onto-node-row')).forEach(n=>n.classList.remove('selected')); r.classList.add('selected'); };
           r.onkeydown = (e)=>{ const key=e.key||e.code; if (key==='Delete' || key==='Backspace') { e.preventDefault(); removeImport(g); } };
-          r.appendChild(cb); r.appendChild(t); r.appendChild(l);
+          r.appendChild(cb); r.appendChild(t); r.appendChild(l); r.appendChild(collapseBtn);
           li.appendChild(r); ul.appendChild(li);
         });
         importsRoot.appendChild(ul);
@@ -6215,11 +6788,11 @@
       
       // Create nodes for classes
       const classes = ontologyData.classes || [];
-      const classNameToId = {}; // Map class names to simple IDs
+      const classNameToId = {}; // Map class names to IDs
       
       classes.forEach((cls, index) => {
-        // Use simple sequential IDs like Class1, Class2, etc.
-        const classId = `Class${index + 1}`;
+        // Use the original URI as ID if available, otherwise fall back to simple ID
+        const classId = cls.iri || `Class${index + 1}`;
         classNameToId[cls.name] = classId;
         
         // Arrange in a grid layout
@@ -6229,6 +6802,7 @@
         const node = {
           data: {
             id: classId,
+            iri: cls.iri || classId, // Preserve original URI
             label: cls.label || cls.name,
             type: 'class'
           },
@@ -6333,8 +6907,8 @@
       const classNameToId = {}; // Map class names to simple IDs
       
       classes.forEach((cls, index) => {
-        // Use simple sequential IDs like Class1, Class2, etc.
-        const classId = `Class${index + 1}`;
+        // Use the original URI as ID if available, otherwise fall back to simple ID
+        const classId = cls.iri || `Class${index + 1}`;
         classNameToId[cls.name] = classId;
         
         // Get rich metadata for this class
@@ -6351,6 +6925,7 @@
         const node = {
           data: {
             id: classId,
+            iri: cls.iri || classId, // Preserve original URI
             label: displayLabel,
             type: 'class',
             attrs: richClass.attrs || {}
@@ -6505,6 +7080,15 @@
       try {
         console.log('🔍 loadGraphFromLocalOrAPI called for:', graphIri);
         
+        // Load collapsed imports state for this ontology
+        ontoState.collapsedImports = loadCollapsedImports(graphIri);
+        
+        // Load visibility state for this ontology
+        ontoState.visibilityState = loadVisibilityState(graphIri);
+        
+        // Load individual element visibility for this ontology
+        ontoState.elementVisibility = loadElementVisibility(graphIri);
+        
         // Check if this is an imported ontology by looking for the pattern in the graph IRI
         const isImportedOntology = graphIri.includes('/onto/') && !graphIri.includes('#layout');
         
@@ -6524,6 +7108,10 @@
             
             // Try to load layout from server
             await loadLayoutFromServer(graphIri);
+            
+            // Apply saved visibility states
+            updateCanvasVisibility();
+            
             console.log('✅ Graph loaded from local storage, preserving current state');
             console.log('📊 Data source:', data.source || 'unknown', 'Timestamp:', data.timestamp ? new Date(data.timestamp).toLocaleString() : 'unknown');
             return;
@@ -6609,6 +7197,9 @@
               requestAnimationFrame(()=>{ ontoState.cy.fit(); });
             }
             
+            // Apply saved visibility states
+            updateCanvasVisibility();
+            
             // Complete loading
             if (isImportedOntology) {
               updateOntologyLoadingProgress('Complete!', 100);
@@ -6629,6 +7220,12 @@
             hideOntologyLoadingIndicator();
           }
         }
+        
+        // Refresh overlay imports to restore visible imported ontologies
+        await overlayImportsRefresh();
+        
+        // Apply saved visibility states
+        updateCanvasVisibility();
         
       } catch(err) {
         console.error('Error loading ontology:', err);
@@ -6827,6 +7424,15 @@
         if (toggleBtn) toggleBtn.click();
       });
       
+      // Visibility toggle button
+      const visibilityToggle = qs('#ontoVisibilityToggle');
+      if (visibilityToggle) {
+        visibilityToggle.addEventListener('click', (e) => {
+          e.stopPropagation();
+          showVisibilityMenu();
+        });
+      }
+      
       // Type is now read-only, no event listener needed
       const fileInput = () => qs('#ontoImportFile');
       document.addEventListener('change', async (e) => {
@@ -6895,6 +7501,428 @@
       qsa('.node-row').forEach(r => r.classList.remove('selected'));
       const row = li.querySelector('.node-row');
       if (row) row.classList.add('selected');
+    }
+
+    function highlightTreeItem(elementId, elementType) {
+      // Clear current tree selection
+      qsa('.node-row').forEach(r => r.classList.remove('selected'));
+      
+      // Find the corresponding tree item
+      let treeItem = null;
+      if (elementType === 'node') {
+        treeItem = qs(`li[data-node-id="${elementId}"]`);
+      } else if (elementType === 'edge') {
+        treeItem = qs(`li[data-edge-id="${elementId}"]`);
+      }
+      
+      if (treeItem) {
+        const row = treeItem.querySelector('.node-row');
+        if (row) {
+          row.classList.add('selected');
+          // Scroll the tree item into view
+          row.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+        }
+      }
+    }
+
+    function toggleVisibility(type) {
+        if (ontoState.visibilityState.hasOwnProperty(type)) {
+          ontoState.visibilityState[type] = !ontoState.visibilityState[type];
+          
+          // Save visibility state
+          if (activeOntologyIri) {
+            saveVisibilityState(activeOntologyIri, ontoState.visibilityState);
+          }
+          
+          updateCanvasVisibility();
+          refreshOntologyTree();
+      }
+    }
+
+    function updateCanvasVisibility() {
+      if (!ontoState.cy) return;
+      
+      console.log('🔍 Updating canvas visibility:', ontoState.visibilityState);
+      
+      // Update node visibility based on type and visibility state
+      ontoState.cy.nodes().forEach(node => {
+        const nodeType = node.data('type') || 'class';
+        const isImported = node.hasClass('imported');
+        const nodeId = node.id();
+        
+        let shouldShow = true;
+        
+        if (isImported) {
+          shouldShow = ontoState.visibilityState.imported;
+        } else if (nodeType === 'class') {
+          shouldShow = ontoState.visibilityState.classes;
+        } else if (nodeType === 'dataProperty') {
+          shouldShow = ontoState.visibilityState.dataProperties;
+        } else if (nodeType === 'note') {
+          shouldShow = ontoState.visibilityState.notes;
+        }
+        
+        // If global visibility is enabled, check individual element visibility
+        // If global visibility is disabled, hide all elements of this type regardless of individual settings
+        if (shouldShow && ontoState.elementVisibility.hasOwnProperty(nodeId)) {
+          shouldShow = ontoState.elementVisibility[nodeId];
+        }
+        
+        if (shouldShow) {
+          node.show();
+        } else {
+          node.hide();
+        }
+      });
+      
+      // Update edge visibility
+      ontoState.cy.edges().forEach(edge => {
+        const shouldShow = ontoState.visibilityState.edges;
+        if (shouldShow) {
+          edge.show();
+        } else {
+          edge.hide();
+        }
+      });
+    }
+
+    function showVisibilityMenu() {
+      const menu = document.createElement('div');
+      menu.className = 'visibility-menu';
+      menu.style.cssText = `
+        position: fixed;
+        background: var(--panel);
+        border: 1px solid var(--border);
+        border-radius: 8px;
+        padding: 8px;
+        z-index: 10000;
+        box-shadow: 0 4px 12px rgba(0,0,0,0.3);
+        min-width: 200px;
+      `;
+      
+      const types = [
+        { key: 'classes', label: 'Classes' },
+        { key: 'dataProperties', label: 'Data Properties' },
+        { key: 'notes', label: 'Notes' },
+        { key: 'edges', label: 'Relationships' },
+        { key: 'imported', label: 'Imported Elements' }
+      ];
+      
+      // Add Show All / Hide All buttons
+      const showAllBtn = document.createElement('div');
+      showAllBtn.style.cssText = `
+        display: flex;
+        align-items: center;
+        padding: 6px 8px;
+        cursor: pointer;
+        border-radius: 4px;
+        border-bottom: 1px solid var(--border);
+        margin-bottom: 4px;
+      `;
+      showAllBtn.innerHTML = '<span style="color: var(--text); font-weight: bold;">Show All Classes</span>';
+      showAllBtn.addEventListener('click', (e) => {
+        e.stopPropagation();
+        if (!ontoState.cy) return;
+        ontoState.cy.nodes().forEach(node => {
+          if (node.data('type') === 'class' || node.data('type') === 'note') {
+            node.show();
+          }
+        });
+        refreshOntologyTree();
+      });
+      menu.appendChild(showAllBtn);
+      
+      const hideAllBtn = document.createElement('div');
+      hideAllBtn.style.cssText = `
+        display: flex;
+        align-items: center;
+        padding: 6px 8px;
+        cursor: pointer;
+        border-radius: 4px;
+        margin-bottom: 4px;
+      `;
+      hideAllBtn.innerHTML = '<span style="color: var(--text); font-weight: bold;">Hide All Classes</span>';
+      hideAllBtn.addEventListener('click', (e) => {
+        e.stopPropagation();
+        if (!ontoState.cy) return;
+        ontoState.cy.nodes().forEach(node => {
+          if (node.data('type') === 'class' || node.data('type') === 'note') {
+            node.hide();
+          }
+        });
+        refreshOntologyTree();
+      });
+      menu.appendChild(hideAllBtn);
+      
+      types.forEach(type => {
+        const item = document.createElement('div');
+        item.style.cssText = `
+          display: flex;
+          align-items: center;
+          padding: 6px 8px;
+          cursor: pointer;
+          border-radius: 4px;
+        `;
+        
+        const checkbox = document.createElement('input');
+        checkbox.type = 'checkbox';
+        checkbox.checked = ontoState.visibilityState[type.key];
+        checkbox.style.marginRight = '8px';
+        
+        const label = document.createElement('span');
+        label.textContent = type.label;
+        label.style.color = 'var(--text)';
+        
+        item.appendChild(checkbox);
+        item.appendChild(label);
+        
+        item.addEventListener('click', (e) => {
+          e.stopPropagation();
+          checkbox.checked = !checkbox.checked;
+          toggleVisibility(type.key);
+        });
+        
+        menu.appendChild(item);
+      });
+      
+      // Position menu near the button
+      const button = qs('#ontoVisibilityToggle');
+      const rect = button.getBoundingClientRect();
+      menu.style.left = (rect.left - 200) + 'px';
+      menu.style.top = (rect.bottom + 4) + 'px';
+      
+      document.body.appendChild(menu);
+      
+      // Close menu when clicking outside
+      const closeMenu = (e) => {
+        if (!menu.contains(e.target) && e.target !== button) {
+          document.body.removeChild(menu);
+          document.removeEventListener('click', closeMenu);
+        }
+      };
+      
+      setTimeout(() => {
+        document.addEventListener('click', closeMenu);
+      }, 100);
+    }
+
+    function toggleImportCollapse(importIri) {
+      if (!ontoState.cy || !activeOntologyIri) return;
+      
+      const isCollapsed = ontoState.collapsedImports.has(importIri);
+      
+      if (isCollapsed) {
+        // Expand: show all imported nodes and their edges, remove pseudo-node
+        ontoState.collapsedImports.delete(importIri);
+        const importedNodes = ontoState.cy.nodes(`[importSource="${importIri}"]`).filter(n => !n.data('isPseudo'));
+        const importedEdges = ontoState.cy.edges(`[importSource="${importIri}"]`).filter(e => !e.data('isPseudo'));
+        const pseudoNode = ontoState.cy.nodes(`#pseudo-import-${CSS.escape(importIri)}`);
+        const pseudoEdges = ontoState.cy.edges(`[importSource="${importIri}"][isPseudo="true"]`);
+        
+        // Remove pseudo-node and its pseudo-edges
+        pseudoNode.remove();
+        pseudoEdges.remove();
+        
+        // Show all original imported nodes and edges
+        importedNodes.show();
+        importedEdges.show();
+        console.log('🔍 Expanded import:', importIri, importedNodes.length, 'nodes,', importedEdges.length, 'edges');
+      } else {
+        // Collapse: create pseudo-node and hide all imported nodes, but maintain equivalence edges
+        ontoState.collapsedImports.add(importIri);
+        const importedNodes = ontoState.cy.nodes(`[importSource="${importIri}"]`).filter(n => !n.data('isPseudo'));
+        const importedEdges = ontoState.cy.edges(`[importSource="${importIri}"]`).filter(e => !e.data('isPseudo'));
+        
+        if (importedNodes.length > 0) {
+          // Get import name from localStorage or use IRI tail
+          const imports = JSON.parse(localStorage.getItem('onto_imports__' + encodeURIComponent(activeOntologyIri || '')) || '[]');
+          const importData = imports.find(imp => imp.iri === importIri);
+          const importName = importData?.label || importIri.split('/').pop() || importIri;
+          
+          // Calculate center position of imported nodes
+          const bbox = importedNodes.boundingBox();
+          const centerX = bbox.x1 + (bbox.w / 2);
+          const centerY = bbox.y1 + (bbox.h / 2);
+          
+          // Create pseudo-node representing the entire import
+          const pseudoNodeId = `pseudo-import-${CSS.escape(importIri)}`;
+          const pseudoNode = ontoState.cy.add({
+            group: 'nodes',
+            data: {
+              id: pseudoNodeId,
+              label: importName,
+              type: 'import',
+              importSource: importIri,
+              isPseudo: true,
+              attrs: {}
+            },
+            position: { x: centerX, y: centerY },
+            classes: 'imported pseudo-import'
+          });
+          
+          // Add position saving for pseudo-node
+          pseudoNode.on('free', () => {
+            const pseudoPositions = loadPseudoNodePositions(activeOntologyIri);
+            pseudoPositions[pseudoNodeId] = { x: pseudoNode.position('x'), y: pseudoNode.position('y') };
+            savePseudoNodePositions(activeOntologyIri, pseudoPositions);
+          });
+          
+          // Hide all imported nodes
+          importedNodes.hide();
+          
+          // Create equivalence edges from pseudo-node to base ontology classes
+          const equivalenceEdges = importedEdges.filter(edge => {
+            const source = edge.source();
+            const target = edge.target();
+            const isEquivalence = edge.data('predicate') === 'equivalentClass';
+            const connectsToBase = !source.hasClass('imported') || !target.hasClass('imported');
+            return isEquivalence && connectsToBase;
+          });
+          
+          // Create new equivalence edges from pseudo-node to base classes
+          equivalenceEdges.forEach(edge => {
+            const baseNode = edge.source().hasClass('imported') ? edge.target() : edge.source();
+            const equivEdgeId = `pseudo-equiv-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
+            
+            ontoState.cy.add({
+              group: 'edges',
+              data: {
+                id: equivEdgeId,
+                source: pseudoNodeId,
+                target: baseNode.id(),
+                predicate: 'equivalentClass',
+                type: 'objectProperty',
+                importSource: importIri,
+                isPseudo: true,
+                attrs: {}
+              },
+              classes: 'imported imported-equivalence pseudo-equivalence'
+            });
+          });
+          
+          // Hide original edges
+          importedEdges.hide();
+          
+          console.log('🔍 Collapsed import:', importIri, 'created pseudo-node with', equivalenceEdges.length, 'equivalence edges');
+        }
+      }
+      
+      // Save the collapsed state
+      saveCollapsedImports(activeOntologyIri, ontoState.collapsedImports);
+      
+      // Update the tree to reflect the change
+      refreshOntologyTree();
+    }
+
+    function toggleAllImportsCollapse() {
+      if (!ontoState.cy || !activeOntologyIri) return;
+      
+      const imports = JSON.parse(localStorage.getItem('onto_imports__' + encodeURIComponent(activeOntologyIri || '')) || '[]');
+      const allCollapsed = imports.every(imp => ontoState.collapsedImports.has(imp));
+      
+      if (allCollapsed) {
+        // Expand all
+        imports.forEach(imp => {
+          ontoState.collapsedImports.delete(imp);
+          const importedNodes = ontoState.cy.nodes(`[importSource="${imp}"]`).filter(n => !n.data('isPseudo'));
+          const importedEdges = ontoState.cy.edges(`[importSource="${imp}"]`).filter(e => !e.data('isPseudo'));
+          const pseudoNode = ontoState.cy.nodes(`#pseudo-import-${CSS.escape(imp)}`);
+          const pseudoEdges = ontoState.cy.edges(`[importSource="${imp}"][isPseudo="true"]`);
+          
+          // Remove pseudo-node and its pseudo-edges
+          pseudoNode.remove();
+          pseudoEdges.remove();
+          
+          // Show all original imported nodes and edges
+          importedNodes.show();
+          importedEdges.show();
+        });
+        console.log('🔍 Expanded all imports');
+      } else {
+        // Collapse all
+        imports.forEach(imp => {
+          ontoState.collapsedImports.add(imp);
+          const importedNodes = ontoState.cy.nodes(`[importSource="${imp}"]`).filter(n => !n.data('isPseudo'));
+          const importedEdges = ontoState.cy.edges(`[importSource="${imp}"]`).filter(e => !e.data('isPseudo'));
+          
+          if (importedNodes.length > 0) {
+            // Get import name from localStorage or use IRI tail
+            const importData = imports.find(importData => importData.iri === imp);
+            const importName = importData?.label || imp.split('/').pop() || imp;
+            
+            // Calculate center position of imported nodes
+            const bbox = importedNodes.boundingBox();
+            const centerX = bbox.x1 + (bbox.w / 2);
+            const centerY = bbox.y1 + (bbox.h / 2);
+            
+            // Create pseudo-node representing the entire import
+            const pseudoNodeId = `pseudo-import-${CSS.escape(imp)}`;
+            const pseudoNode = ontoState.cy.add({
+              group: 'nodes',
+              data: {
+                id: pseudoNodeId,
+                label: importName,
+                type: 'import',
+                importSource: imp,
+                isPseudo: true,
+                attrs: {}
+              },
+              position: { x: centerX, y: centerY },
+              classes: 'imported pseudo-import'
+            });
+            
+            // Add position saving for pseudo-node
+            pseudoNode.on('free', () => {
+              const pseudoPositions = loadPseudoNodePositions(activeOntologyIri);
+              pseudoPositions[pseudoNodeId] = { x: pseudoNode.position('x'), y: pseudoNode.position('y') };
+              savePseudoNodePositions(activeOntologyIri, pseudoPositions);
+            });
+            
+            // Hide all imported nodes
+            importedNodes.hide();
+            
+            // Create equivalence edges from pseudo-node to base ontology classes
+            const equivalenceEdges = importedEdges.filter(edge => {
+              const source = edge.source();
+              const target = edge.target();
+              const isEquivalence = edge.data('predicate') === 'equivalentClass';
+              const connectsToBase = !source.hasClass('imported') || !target.hasClass('imported');
+              return isEquivalence && connectsToBase;
+            });
+            
+            // Create new equivalence edges from pseudo-node to base classes
+            equivalenceEdges.forEach(edge => {
+              const baseNode = edge.source().hasClass('imported') ? edge.target() : edge.source();
+              const equivEdgeId = `pseudo-equiv-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
+              
+              ontoState.cy.add({
+                group: 'edges',
+                data: {
+                  id: equivEdgeId,
+                  source: pseudoNodeId,
+                  target: baseNode.id(),
+                  predicate: 'equivalentClass',
+                  type: 'objectProperty',
+                  importSource: imp,
+                  isPseudo: true,
+                  attrs: {}
+                },
+                classes: 'imported imported-equivalence pseudo-equivalence'
+              });
+            });
+            
+            // Hide original edges
+            importedEdges.hide();
+          }
+        });
+        console.log('🔍 Collapsed all imports');
+      }
+      
+      // Save the collapsed state
+      saveCollapsedImports(activeOntologyIri, ontoState.collapsedImports);
+      
+      // Update the tree to reflect the change
+      refreshOntologyTree();
     }
 
     function handleKey(e, li) {
