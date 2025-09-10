@@ -5631,9 +5631,25 @@
         li.setAttribute('role', 'treeitem');
         if (children.length) li.setAttribute('aria-expanded', expanded ? 'true' : 'false');
         const row = document.createElement('div'); row.className = 'onto-node-row';
+        row.tabIndex = 0;
         const twist = document.createElement('span'); twist.className = 'onto-twist'; if (children.length) twist.onclick = (e)=>{ e.stopPropagation(); li.setAttribute('aria-expanded', li.getAttribute('aria-expanded') === 'true' ? 'false' : 'true'); };
         const text = document.createElement('span'); text.className = 'onto-node-label'; text.textContent = label;
         row.appendChild(twist); row.appendChild(text); li.appendChild(row);
+        
+        // Add click handler for tree item selection
+        row.onclick = async (e) => { 
+          selectNode(li); 
+          await handleTreeSelection(li); 
+        };
+        row.onkeydown = (e) => {
+          const ENTER = 13, SPACE = 32;
+          if (e.keyCode === ENTER || e.keyCode === SPACE) {
+            selectNode(li); 
+            handleTreeSelection(li).catch(console.error); 
+            e.preventDefault();
+          }
+        };
+        
         if (children.length) {
           const ul = document.createElement('ul'); ul.setAttribute('role', 'group');
           children.forEach(c => ul.appendChild(c));
