@@ -2526,7 +2526,8 @@
               const srcType = (src && (src.data('type')||'class')) || 'class';
               const tgtType = (tgt && (tgt.data('type')||'class')) || 'class';
               if (srcType !== 'note' && tgtType !== 'note' && srcType === 'class' && tgtType === 'class') {
-                ontoState.cy.add({ group: 'edges', data: { id: `e${Date.now()}`, source: from, target: to, predicate: 'relatedTo', type: 'objectProperty', attrs: {} } });
+                const edgeAttrs = addCreationMetadata({});
+                ontoState.cy.add({ group: 'edges', data: { id: `e${Date.now()}`, source: from, target: to, predicate: 'relatedTo', type: 'objectProperty', attrs: edgeAttrs } });
                 refreshOntologyTree();
                 persistOntologyToLocalStorage();
               }
@@ -2575,10 +2576,24 @@
         const btnRel = qs('#menuAddRel');
         const btnDP = qs('#menuAddDataProp');
         if (t === 'note') {
-          if (btnRel) btnRel.textContent = 'Link to class/property';
+          if (btnRel) {
+            btnRel.innerHTML = `
+              <svg class="menu-icon" viewBox="0 0 24 24" fill="none" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round">
+                <circle cx="7" cy="12" r="3"/><circle cx="17" cy="12" r="3"/><path d="M10 12h4"/>
+              </svg>
+              Link to Class/Property
+            `;
+          }
           if (btnDP) btnDP.style.display = 'none';
         } else {
-          if (btnRel) btnRel.textContent = 'Add relationship';
+          if (btnRel) {
+            btnRel.innerHTML = `
+              <svg class="menu-icon" viewBox="0 0 24 24" fill="none" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round">
+                <circle cx="7" cy="12" r="3"/><circle cx="17" cy="12" r="3"/><path d="M10 12h4"/>
+              </svg>
+              Add Relationship
+            `;
+          }
           if (btnDP) btnDP.style.display = 'block';
         }
         showMenuAt(rect.left + rp.x + 6, rect.top + rp.y + 6);
@@ -2605,8 +2620,19 @@
         function commit(save) {
           if (save) {
             const v = input.value.trim();
-            if (target.isNode()) target.data('label', v || current);
-            else target.data('predicate', v || current);
+            if (target.isNode()) {
+              target.data('label', v || current);
+              // Update modification metadata for inline label changes
+              const currentAttrs = target.data('attrs') || {};
+              const updatedAttrs = updateModificationMetadata(currentAttrs);
+              target.data('attrs', updatedAttrs);
+            } else {
+              target.data('predicate', v || current);
+              // Update modification metadata for inline predicate changes
+              const currentAttrs = target.data('attrs') || {};
+              const updatedAttrs = updateModificationMetadata(currentAttrs);
+              target.data('attrs', updatedAttrs);
+            }
             refreshOntologyTree();
             persistOntologyToLocalStorage();
           }
@@ -2646,9 +2672,11 @@
           const pos = node.position();
           const pid = `DP${Date.now()}`;
           const label = `Data Property ${Date.now()%1000}`;
-          ontoState.cy.add({ group: 'nodes', data: { id: pid, label, type: 'dataProperty', attrs: {} }, position: { x: pos.x + 120, y: pos.y } });
+          const dpAttrs = addCreationMetadata({});
+          ontoState.cy.add({ group: 'nodes', data: { id: pid, label, type: 'dataProperty', attrs: dpAttrs }, position: { x: pos.x + 120, y: pos.y } });
           // Use objectProperty for the visual connector edge
-          ontoState.cy.add({ group: 'edges', data: { id: `edp${Date.now()}`, source: id, target: pid, predicate: label, type: 'objectProperty', attrs: {} } });
+          const edgeAttrs = addCreationMetadata({});
+          ontoState.cy.add({ group: 'edges', data: { id: `edp${Date.now()}`, source: id, target: pid, predicate: label, type: 'objectProperty', attrs: edgeAttrs } });
           refreshOntologyTree(); persistOntologyToLocalStorage();
           return;
         }
@@ -2661,10 +2689,12 @@
         const srcType = cmState.sourceType || (source.data('type')||'class');
         if (source.id() !== target.id()) {
           if (srcType === 'note' && (tgtType === 'class' || tgtType === 'dataProperty')) {
-            ontoState.cy.add({ group: 'edges', data: { id: `enote${Date.now()}`, source: source.id(), target: target.id(), predicate: 'note_for', type: 'note', attrs: {} } });
+            const edgeAttrs = addCreationMetadata({});
+            ontoState.cy.add({ group: 'edges', data: { id: `enote${Date.now()}`, source: source.id(), target: target.id(), predicate: 'note_for', type: 'note', attrs: edgeAttrs } });
             refreshOntologyTree(); persistOntologyToLocalStorage();
           } else if (srcType === 'class' && tgtType === 'class') {
-            ontoState.cy.add({ group: 'edges', data: { id: `e${Date.now()}`, source: source.id(), target: target.id(), predicate: 'relatedTo', type: 'objectProperty', attrs: {} } });
+            const edgeAttrs = addCreationMetadata({});
+            ontoState.cy.add({ group: 'edges', data: { id: `e${Date.now()}`, source: source.id(), target: target.id(), predicate: 'relatedTo', type: 'objectProperty', attrs: edgeAttrs } });
             refreshOntologyTree(); persistOntologyToLocalStorage();
           }
         }
@@ -2705,17 +2735,21 @@
           if (sel.length !== 1) { return; }
           const prop = `Data Property ${Date.now()%1000}`;
           const pid = `DP${Date.now()}`;
-          ontoState.cy.add({ group: 'nodes', data: { id: pid, label: prop, type: 'dataProperty', attrs: {} }, position: pos });
+          const dpAttrs = addCreationMetadata({});
+          ontoState.cy.add({ group: 'nodes', data: { id: pid, label: prop, type: 'dataProperty', attrs: dpAttrs }, position: pos });
           // Link edge is a visual connector; keep it as objectProperty for consistency
-          ontoState.cy.add({ group: 'edges', data: { id: `edp${Date.now()}`, source: sel[0].id(), target: pid, predicate: prop, type: 'objectProperty', attrs: {} } });
+          const edgeAttrs = addCreationMetadata({});
+          ontoState.cy.add({ group: 'edges', data: { id: `edp${Date.now()}`, source: sel[0].id(), target: pid, predicate: prop, type: 'objectProperty', attrs: edgeAttrs } });
           refreshOntologyTree();
         } else if (ontoType === 'note') {
           const nid = `Note${Date.now()}`;
           const text = `Note ${nid.slice(-4)}`;
           
-          // Get current user and date for note annotations
-          const currentUser = getCurrentUser();
-          const currentDate = new Date().toISOString().split('T')[0]; // YYYY-MM-DD format
+          // Add note with proper metadata
+          const attrs = addCreationMetadata({ 
+            noteType: 'Note',
+            author: getCurrentUsername() // Keep legacy field for backward compatibility
+          });
           
           ontoState.cy.add({ 
             group: 'nodes', 
@@ -2723,11 +2757,7 @@
               id: nid, 
               label: text, 
               type: 'note', 
-              attrs: { 
-                noteType: 'Note',
-                author: currentUser,
-                created_date: currentDate
-              } 
+              attrs 
             }, 
             position: pos, 
             classes: 'note' 
@@ -2735,7 +2765,8 @@
           // If exactly one class is selected, auto-link note -> class
           const sel = ontoState.cy.nodes(':selected').filter(n => (n.data('type')||'class') === 'class');
           if (sel && sel.length === 1) {
-            ontoState.cy.add({ group: 'edges', data: { id: `enote${Date.now()}`, source: nid, target: sel[0].id(), predicate: 'note_for', type: 'note', attrs: {} } });
+            const edgeAttrs = addCreationMetadata({});
+            ontoState.cy.add({ group: 'edges', data: { id: `enote${Date.now()}`, source: nid, target: sel[0].id(), predicate: 'note_for', type: 'note', attrs: edgeAttrs } });
           }
           refreshOntologyTree(); persistOntologyToLocalStorage();
         }
@@ -2746,6 +2777,18 @@
         const autosave = debounce(() => { try { if (activeOntologyIri) persistOntologyToLocalStorage(); } catch(_) {} }, 250);
         ontoState.cy.on('add remove data position', autosave);
         ontoState.autosaveBound = true;
+        
+        // Update modification metadata when elements are moved
+        ontoState.cy.on('position', 'node', (evt) => {
+          try {
+            const node = evt.target;
+            if (!node.hasClass('imported')) { // Don't update metadata for imported elements
+              const currentAttrs = node.data('attrs') || {};
+              const updatedAttrs = updateModificationMetadata(currentAttrs);
+              node.data('attrs', updatedAttrs);
+            }
+          } catch(_) {}
+        });
       } catch(_) {}
       
       // Initialize element IRI display
@@ -2758,8 +2801,9 @@
       const x = 100 + Math.random() * 400;
       const y = 100 + Math.random() * 300;
       
-      // Add to Cytoscape graph first
-      ontoState.cy.add({ group: 'nodes', data: { id, label, type: 'class', attrs: {} }, position: { x, y } });
+      // Add to Cytoscape graph first with metadata
+      const attrs = addCreationMetadata({});
+      ontoState.cy.add({ group: 'nodes', data: { id, label, type: 'class', attrs }, position: { x, y } });
       
       // Call backend API to persist to Fuseki with correct graph context
       try {
@@ -2796,8 +2840,9 @@
       ensureOntologyInitialized();
       const id = `Class${ontoState.nextId++}`;
       
-      // Add to Cytoscape graph first
-      ontoState.cy.add({ group: 'nodes', data: { id, label, type: 'class', attrs: {} }, position });
+      // Add to Cytoscape graph first with metadata
+      const attrs = addCreationMetadata({});
+      ontoState.cy.add({ group: 'nodes', data: { id, label, type: 'class', attrs }, position });
       
       // Call backend API to persist to Fuseki with correct graph context
       try {
@@ -6263,6 +6308,13 @@
         subclassOf: { type: 'text', label: 'Subclass of (rdfs:subClassOf)', placeholder: 'Parent class IRI' },
         equivalentClass: { type: 'text', label: 'Equivalent Class (owl:equivalentClass)', placeholder: 'Equivalent class IRI' },
         disjointWith: { type: 'text', label: 'Disjoint With (owl:disjointWith)', placeholder: 'Disjoint class IRI' },
+        // Metadata properties
+        creator: { type: 'text', label: 'Creator (dc:creator)', placeholder: 'Created by', readonly: true },
+        created_date: { type: 'date', label: 'Created Date (dc:created)', placeholder: 'Creation date', readonly: true },
+        created_timestamp: { type: 'text', label: 'Created Timestamp', placeholder: 'ISO timestamp', readonly: true },
+        last_modified_by: { type: 'text', label: 'Last Modified By (dc:contributor)', placeholder: 'Modified by', readonly: true },
+        last_modified_date: { type: 'date', label: 'Last Modified Date (dc:modified)', placeholder: 'Modification date', readonly: true },
+        last_modified_timestamp: { type: 'text', label: 'Last Modified Timestamp', placeholder: 'ISO timestamp', readonly: true },
         // Custom properties
         priority: { type: 'select', label: 'Priority', options: ['High', 'Medium', 'Low'], placeholder: 'Select priority' },
         status: { type: 'select', label: 'Status', options: ['Draft', 'Review', 'Approved', 'Deprecated'], placeholder: 'Select status' }
@@ -6279,6 +6331,13 @@
         subPropertyOf: { type: 'text', label: 'Sub Property Of (rdfs:subPropertyOf)', placeholder: 'Parent property IRI' },
         equivalentProperty: { type: 'text', label: 'Equivalent Property (owl:equivalentProperty)', placeholder: 'Equivalent property IRI' },
         propertyType: { type: 'text', label: 'Property Type (rdf:type)', placeholder: 'Property characteristics (e.g., TransitiveProperty)' },
+        // Metadata properties
+        creator: { type: 'text', label: 'Creator (dc:creator)', placeholder: 'Created by', readonly: true },
+        created_date: { type: 'date', label: 'Created Date (dc:created)', placeholder: 'Creation date', readonly: true },
+        created_timestamp: { type: 'text', label: 'Created Timestamp', placeholder: 'ISO timestamp', readonly: true },
+        last_modified_by: { type: 'text', label: 'Last Modified By (dc:contributor)', placeholder: 'Modified by', readonly: true },
+        last_modified_date: { type: 'date', label: 'Last Modified Date (dc:modified)', placeholder: 'Modification date', readonly: true },
+        last_modified_timestamp: { type: 'text', label: 'Last Modified Timestamp', placeholder: 'ISO timestamp', readonly: true },
         // Custom properties
         functional: { type: 'checkbox', label: 'Functional', placeholder: 'Is this a functional property?' },
         inverse_functional: { type: 'checkbox', label: 'Inverse Functional', placeholder: 'Is this inverse functional?' }
@@ -6293,14 +6352,28 @@
         range: { type: 'select', label: 'Range (rdfs:range)', options: ['xsd:string', 'xsd:integer', 'xsd:float', 'xsd:boolean', 'xsd:dateTime'], placeholder: 'Data type' },
         subPropertyOf: { type: 'text', label: 'Sub Property Of (rdfs:subPropertyOf)', placeholder: 'Parent property IRI' },
         equivalentProperty: { type: 'text', label: 'Equivalent Property (owl:equivalentProperty)', placeholder: 'Equivalent property IRI' },
+        // Metadata properties
+        creator: { type: 'text', label: 'Creator (dc:creator)', placeholder: 'Created by', readonly: true },
+        created_date: { type: 'date', label: 'Created Date (dc:created)', placeholder: 'Creation date', readonly: true },
+        created_timestamp: { type: 'text', label: 'Created Timestamp', placeholder: 'ISO timestamp', readonly: true },
+        last_modified_by: { type: 'text', label: 'Last Modified By (dc:contributor)', placeholder: 'Modified by', readonly: true },
+        last_modified_date: { type: 'date', label: 'Last Modified Date (dc:modified)', placeholder: 'Modification date', readonly: true },
+        last_modified_timestamp: { type: 'text', label: 'Last Modified Timestamp', placeholder: 'ISO timestamp', readonly: true },
         // Custom properties
         functional: { type: 'checkbox', label: 'Functional', placeholder: 'Is this a functional property?' }
       },
       note: {
         noteType: { type: 'select', label: 'Note Type', options: ['Note', 'Warning', 'Issue', 'Todo', 'Info', 'Success', 'Question'], placeholder: 'Select note type' },
         content: { type: 'textarea', label: 'Content', placeholder: 'Note content' },
-        author: { type: 'text', label: 'Author', placeholder: 'Note author' },
-        created_date: { type: 'date', label: 'Created Date', placeholder: 'Creation date' }
+        // Metadata properties
+        creator: { type: 'text', label: 'Creator (dc:creator)', placeholder: 'Created by', readonly: true },
+        created_date: { type: 'date', label: 'Created Date (dc:created)', placeholder: 'Creation date', readonly: true },
+        created_timestamp: { type: 'text', label: 'Created Timestamp', placeholder: 'ISO timestamp', readonly: true },
+        last_modified_by: { type: 'text', label: 'Last Modified By (dc:contributor)', placeholder: 'Modified by', readonly: true },
+        last_modified_date: { type: 'date', label: 'Last Modified Date (dc:modified)', placeholder: 'Modification date', readonly: true },
+        last_modified_timestamp: { type: 'text', label: 'Last Modified Timestamp', placeholder: 'ISO timestamp', readonly: true },
+        // Legacy fields for backward compatibility
+        author: { type: 'text', label: 'Author (Legacy)', placeholder: 'Note author', readonly: true }
       },
       model: {
         // Standard ontological properties
@@ -6312,34 +6385,76 @@
       }
     };
 
-    // Get current user for note annotations
-    function getCurrentUser() {
+    // Get current username synchronously for metadata
+    function getCurrentUsername() {
       try {
-        // Try to get from token payload first (most reliable)
-        const token = localStorage.getItem('odras_token');
-        if (token) {
-          const payload = JSON.parse(atob(token.split('.')[1]));
-          const username = payload.sub || payload.username || payload.email;
-          if (username && typeof username === 'string') {
-            return username;
+        // First try the simple username storage (most reliable)
+        const username = localStorage.getItem('odras_user');
+        if (username && typeof username === 'string' && username.trim() !== '') {
+          return username.trim();
+        }
+        
+        // Try the full user object
+        const userObj = localStorage.getItem('user');
+        if (userObj) {
+          const user = JSON.parse(userObj);
+          if (user.username && typeof user.username === 'string') {
+            return user.username;
           }
         }
         
-        // Try to get user from localStorage
-        const userInfo = localStorage.getItem('odras_user');
-        if (userInfo) {
-          const user = JSON.parse(userInfo);
-          const username = user.username || user.name || user.email;
-          if (username && typeof username === 'string') {
-            return username;
+        // Fallback to parsing the userMenu text
+        const userMenu = document.querySelector('#userMenu');
+        if (userMenu && userMenu.textContent) {
+          const menuText = userMenu.textContent.trim();
+          // Remove " (admin)" suffix if present
+          const cleanUsername = menuText.replace(/\s*\(admin\)\s*$/, '').trim();
+          if (cleanUsername && cleanUsername !== '') {
+            return cleanUsername;
           }
         }
         
-        // Fallback to admin since that's the current user
-        return 'admin';
+        return 'system';
       } catch(e) {
-        return 'admin';
+        console.error('Error getting current username:', e);
+        return 'system';
       }
+    }
+
+    // Ontology metadata management functions
+    function getCurrentTimestamp() {
+      return new Date().toISOString();
+    }
+
+    function getCurrentDate() {
+      return new Date().toISOString().split('T')[0]; // YYYY-MM-DD format
+    }
+
+    function addCreationMetadata(attrs = {}) {
+      const currentUser = getCurrentUsername();
+      const timestamp = getCurrentTimestamp();
+      
+      return {
+        ...attrs,
+        creator: currentUser,
+        created_date: getCurrentDate(),
+        created_timestamp: timestamp,
+        last_modified_by: currentUser,
+        last_modified_date: getCurrentDate(),
+        last_modified_timestamp: timestamp
+      };
+    }
+
+    function updateModificationMetadata(attrs = {}) {
+      const currentUser = getCurrentUsername();
+      const timestamp = getCurrentTimestamp();
+      
+      return {
+        ...attrs,
+        last_modified_by: currentUser,
+        last_modified_date: getCurrentDate(),
+        last_modified_timestamp: timestamp
+      };
     }
 
     // Note type styling configuration
@@ -6596,12 +6711,12 @@
         input.style.fontSize = '12px';
       }
       
-      // Make input read-only for imported elements
-      if (isReadOnly) {
+      // Make input read-only for imported elements or readonly fields
+      if (isReadOnly || config.readonly) {
         input.disabled = true;
         input.style.opacity = '0.6';
         input.style.cursor = 'not-allowed';
-        input.title = 'This field cannot be edited for imported elements';
+        input.title = config.readonly ? 'This field is read-only metadata' : 'This field cannot be edited for imported elements';
       }
       
       input.dataset.attrKey = key;
@@ -7685,7 +7800,10 @@
               const n = sel[0];
               n.data('label', nameEl.value.trim() || n.data('label'));
               // Type is read-only, don't change it
-              n.data('attrs', attrs);
+              
+              // Add modification metadata to attributes
+              const updatedAttrs = updateModificationMetadata(attrs);
+              n.data('attrs', updatedAttrs);
               
               // Force canvas refresh for notes to update styling
               if (n.data('type') === 'note') {
@@ -7697,7 +7815,10 @@
               const ed = sel[0];
               ed.data('predicate', nameEl.value.trim() || ed.data('predicate'));
               // Type is read-only, don't change it
-              ed.data('attrs', attrs);
+              
+              // Add modification metadata to attributes
+              const updatedAttrs = updateModificationMetadata(attrs);
+              ed.data('attrs', updatedAttrs);
             } else {
               const pid = (activeProject && (activeProject.id || activeProject.project_id)) ? (activeProject.id || activeProject.project_id) : 'default';
               localStorage.setItem(`onto_model_name__${pid}`, nameEl.value.trim() || 'Ontology Model');
