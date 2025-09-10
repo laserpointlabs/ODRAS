@@ -10692,8 +10692,8 @@
         if (response.ok) {
           const data = await response.json();
           console.log('🔧 Project namespace data:', data);
-          namespaceElement.textContent = `${data.project_name} → ${data.namespace_path}`;
-          namespaceElement.title = `Project: ${data.project_name} in namespace: ${data.namespace_path}`;
+          namespaceElement.textContent = `${data.name} → ${data.namespace_path}`;
+          namespaceElement.title = `Project: ${data.name} in namespace: ${data.namespace_path}`;
         } else {
           // Fallback: just show project name
           namespaceElement.textContent = `Project → unknown namespace`;
@@ -10731,9 +10731,9 @@
         if (response.ok) {
           const data = await response.json();
           if (data.namespace_path && data.namespace_path !== 'no namespace') {
-            displayElement.textContent = `${data.namespace_path}/${data.project_name}`;
+            displayElement.textContent = `${data.namespace_path}/${data.name}`;
             displayElement.style.color = 'var(--text)';
-            displayElement.title = `Project: ${data.project_name} in namespace: ${data.namespace_path}`;
+            displayElement.title = `Project: ${data.name} in namespace: ${data.namespace_path}`;
           } else {
             displayElement.textContent = 'Project has no namespace - assign one first';
             displayElement.style.color = 'var(--warning)';
