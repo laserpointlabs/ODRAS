@@ -2706,7 +2706,26 @@
         } else if (ontoType === 'note') {
           const nid = `Note${Date.now()}`;
           const text = `Note ${nid.slice(-4)}`;
-          ontoState.cy.add({ group: 'nodes', data: { id: nid, label: text, type: 'note', attrs: { noteType: 'Note' } }, position: pos, classes: 'note' });
+          
+          // Get current user and date for note annotations
+          const currentUser = getCurrentUser();
+          const currentDate = new Date().toISOString().split('T')[0]; // YYYY-MM-DD format
+          
+          ontoState.cy.add({ 
+            group: 'nodes', 
+            data: { 
+              id: nid, 
+              label: text, 
+              type: 'note', 
+              attrs: { 
+                noteType: 'Note',
+                author: currentUser,
+                created_date: currentDate
+              } 
+            }, 
+            position: pos, 
+            classes: 'note' 
+          });
           // If exactly one class is selected, auto-link note -> class
           const sel = ontoState.cy.nodes(':selected').filter(n => (n.data('type')||'class') === 'class');
           if (sel && sel.length === 1) {
@@ -5553,16 +5572,22 @@
       const classes = ontoState.cy.nodes().filter(n => {
         const nodeType = n.data('type') || 'class';
         const isImported = n.hasClass('imported');
-        const isVisible = n.visible();
         
         // Always show classes in tree regardless of visibility state - visibility only affects canvas
         return !isImported && nodeType === 'class';
       });
       
+      const dataProperties = ontoState.cy.nodes().filter(n => {
+        const nodeType = n.data('type') || 'class';
+        const isImported = n.hasClass('imported');
+        
+        // Always show data properties in tree regardless of visibility state
+        return !isImported && nodeType === 'dataProperty';
+      });
+      
       const importedClasses = ontoState.cy.nodes().filter(n => {
         const nodeType = n.data('type') || 'class';
         const isImported = n.hasClass('imported');
-        const isVisible = n.visible();
         
         // Always show imported classes in tree regardless of visibility state
         return isImported && nodeType === 'class';
@@ -5571,7 +5596,6 @@
       const notes = ontoState.cy.nodes().filter(n => {
         const nodeType = n.data('type') || '';
         const isImported = n.hasClass('imported');
-        const isVisible = n.visible();
         
         // Always show notes in tree regardless of visibility state - don't check isVisible
         return !isImported && nodeType === 'note';
@@ -5672,6 +5696,74 @@
         
         items.push(classItem);
       });
+      
+      // Add data properties
+      if (dataProperties.length) {
+        const dataPropertyChildren = dataProperties.map(dp => {
+          const item = makeItem(dp.data('label') || dp.id(), false, []);
+          item.dataset.nodeId = dp.id();
+          item.dataset.nodeType = 'dataProperty';
+          
+          // Add visibility toggle for data properties
+          const row = item.querySelector('.onto-node-row');
+          if (row) {
+            const visibilityBtn = document.createElement('button');
+            visibilityBtn.className = 'class-visibility-toggle';
+            visibilityBtn.title = 'Toggle visibility';
+            visibilityBtn.innerHTML = '👁';
+            visibilityBtn.style.cssText = `
+              background: none;
+              border: none;
+              color: var(--muted);
+              cursor: pointer;
+              padding: 2px 4px;
+              margin-left: 4px;
+              border-radius: 3px;
+              font-size: 12px;
+            `;
+            
+            // Set initial visibility state based on saved element visibility or global state
+            const nodeId = dp.id();
+            let isVisible = dp.visible();
+            if (ontoState.elementVisibility.hasOwnProperty(nodeId)) {
+              isVisible = ontoState.elementVisibility[nodeId];
+            }
+            visibilityBtn.style.opacity = isVisible ? '1' : '0.3';
+            
+            visibilityBtn.addEventListener('click', (e) => {
+              e.stopPropagation();
+              const node = ontoState.cy.$(`#${dp.id()}`);
+              if (node.length > 0) {
+                if (node.visible()) {
+                  node.hide();
+                  visibilityBtn.style.opacity = '0.3';
+                  // Save individual element visibility
+                  if (activeOntologyIri) {
+                    ontoState.elementVisibility[dp.id()] = false;
+                    saveElementVisibility(activeOntologyIri, ontoState.elementVisibility);
+                  }
+                } else {
+                  node.show();
+                  visibilityBtn.style.opacity = '1';
+                  // Save individual element visibility
+                  if (activeOntologyIri) {
+                    ontoState.elementVisibility[dp.id()] = true;
+                    saveElementVisibility(activeOntologyIri, ontoState.elementVisibility);
+                  }
+                }
+                // Update properties panel if this node was selected
+                updatePropertiesPanelFromSelection();
+              }
+            });
+            
+            row.appendChild(visibilityBtn);
+          }
+          
+          return item;
+        });
+        items.push(makeItem('Data Properties', true, dataPropertyChildren));
+      }
+      
       if (importedClasses.length) {
         const importedChildren = importedClasses.map(cls => {
           const item = makeItem((cls.data('label')||cls.id()) + ' (imported)', false, []);
@@ -6179,6 +6271,36 @@
         imports: { type: 'textarea', label: 'Imports (owl:imports)', placeholder: 'Imported ontology URIs' }
       }
     };
+
+    // Get current user for note annotations
+    function getCurrentUser() {
+      try {
+        // Try to get from token payload first (most reliable)
+        const token = localStorage.getItem('odras_token');
+        if (token) {
+          const payload = JSON.parse(atob(token.split('.')[1]));
+          const username = payload.sub || payload.username || payload.email;
+          if (username && typeof username === 'string') {
+            return username;
+          }
+        }
+        
+        // Try to get user from localStorage
+        const userInfo = localStorage.getItem('odras_user');
+        if (userInfo) {
+          const user = JSON.parse(userInfo);
+          const username = user.username || user.name || user.email;
+          if (username && typeof username === 'string') {
+            return username;
+          }
+        }
+        
+        // Fallback to admin since that's the current user
+        return 'admin';
+      } catch(e) {
+        return 'admin';
+      }
+    }
 
     // Note type styling configuration
     function getNoteTypeStyle(noteType) {
