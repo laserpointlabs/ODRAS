@@ -1375,6 +1375,61 @@ async def query_knowledge_base_workflow(request: RAGQueryRequest, user: Dict = D
                                     "provider": "rag_query_process"
                                 }
                         
+                        # Extract metadata from workflow variables (properly extracted by workflows.py)
+                        workflow_variables = status_response.get("variables", {})
+                        sources = []
+                        chunks_found = 0
+                        confidence = "medium"  # Default
+                        
+                        # Get confidence from properly extracted workflow variables
+                        if "llm_confidence" in workflow_variables:
+                            confidence = workflow_variables["llm_confidence"]
+                            print(f"API: Extracted llm_confidence = {confidence}")
+                        elif "confidence" in workflow_variables:
+                            confidence = workflow_variables["confidence"]
+                            print(f"API: Extracted confidence = {confidence}")
+                        else:
+                            print("API: confidence/llm_confidence not found in workflow_variables")
+                            
+                        # Get chunks_found from properly extracted workflow variables  
+                        if "chunks_found" in workflow_variables:
+                            chunks_found = workflow_variables["chunks_found"]
+                            print(f"API: Extracted chunks_found = {chunks_found}")
+                        else:
+                            print("API: chunks_found not found in workflow_variables")
+                            
+                        # Get sources from properly extracted workflow variables
+                        if "sources" in workflow_variables:
+                            sources_data = workflow_variables["sources"]
+                            if isinstance(sources_data, list):
+                                sources = sources_data
+                            
+                        # Fallback: extract from response text if workflow variables don't work
+                        if not chunks_found or not sources:
+                            response_text = None
+                            if isinstance(final_response, dict):
+                                response_text = final_response.get("response") or final_response.get("final_response")
+                            elif isinstance(final_response, str):
+                                response_text = final_response
+                                
+                            if response_text:
+                                # Count contexts as fallback
+                                if not chunks_found:
+                                    chunks_found = response_text.count('[Context ')
+                                
+                                # Extract sources from Sources section as fallback
+                                if not sources and 'Sources:' in response_text:
+                                    import re
+                                    source_matches = re.findall(r'\[(\d+)\] ([^\n]+)', response_text)
+                                    for i, (num, source_name) in enumerate(source_matches):
+                                        sources.append({
+                                            "asset_id": f"workflow_source_{i}",
+                                            "title": source_name.strip(),
+                                            "document_type": "document",
+                                            "chunk_id": None,
+                                            "relevance_score": 0.8,
+                                        })
+                        
                         # Ensure required fields
                         if not final_response.get("success"):
                             final_response["success"] = True
@@ -1382,25 +1437,19 @@ async def query_knowledge_base_workflow(request: RAGQueryRequest, user: Dict = D
                             final_response["query"] = request.question
                         if not final_response.get("generated_at"):
                             final_response["generated_at"] = datetime.utcnow().isoformat()
+                        # Set the extracted metadata
+                        final_response["chunks_found"] = chunks_found
+                        final_response["sources"] = sources
                         
-                        # Convert sources to proper format if needed
-                        sources = final_response.get("sources", [])
-                        if sources and isinstance(sources[0], dict) and "asset_id" in sources[0]:
-                            # Already in correct format
-                            pass
+                        # Only set confidence if we actually got it from LLM, otherwise null
+                        if confidence and confidence != "medium":  # medium is our default fallback
+                            final_response["confidence"] = confidence
                         else:
-                            # Convert to RAGSourceInfo format
-                            formatted_sources = []
-                            for source in sources:
-                                if isinstance(source, dict):
-                                    formatted_sources.append(RAGSourceInfo(
-                                        asset_id=source.get("asset_id", ""),
-                                        title=source.get("title", "Unknown"),
-                                        document_type=source.get("document_type", "unknown"),
-                                        chunk_id=source.get("chunk_id"),
-                                        relevance_score=source.get("relevance_score", 0.0)
-                                    ))
-                            final_response["sources"] = formatted_sources
+                            final_response["confidence"] = None  # Unknown confidence
+                        if not final_response.get("model_used"):
+                            final_response["model_used"] = "workflow"
+                        if not final_response.get("provider"):
+                            final_response["provider"] = "rag_query_process"
                         
                         return RAGQueryResponse(**final_response)
                     else:

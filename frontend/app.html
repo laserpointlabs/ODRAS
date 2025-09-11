@@ -854,6 +854,16 @@
       min-width: 100px;
       border-radius: 6px;
     }
+    
+    /* Spinner animation for RAG queries */
+    @keyframes spin {
+      0% { transform: rotate(0deg); }
+      100% { transform: rotate(360deg); }
+    }
+    
+    .loading-spinner {
+      animation: spin 1s linear infinite;
+    }
   </style>
   <script src="https://unpkg.com/cytoscape@3.28.1/dist/cytoscape.min.js"></script>
   <script src="https://unpkg.com/cytoscape-edgehandles@4.0.1/cytoscape-edgehandles.min.js"></script>
@@ -1429,18 +1439,18 @@
             </div>
           </div>
 
-          <div style="display:grid; grid-template-columns: 2fr 1fr; gap:20px; height:calc(100vh - 200px);">
+          <div style="display:grid; grid-template-columns: 2fr 1fr; gap:20px; height:calc(100vh - 140px); max-height:calc(100vh - 140px);">
             <!-- Main Knowledge Area -->
-            <div style="display:flex; flex-direction:column; gap:16px;">
+            <div style="display:flex; flex-direction:column; gap:16px; min-height:0;">
               <!-- Knowledge Assets List -->
-              <div style="flex:1; background:var(--panel); border:1px solid var(--border); border-radius:8px; padding:16px;">
-                <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:12px;">
+              <div style="flex:1; background:var(--panel); border:1px solid var(--border); border-radius:8px; padding:16px; min-height:0; display:flex; flex-direction:column;">
+                <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:12px; flex-shrink:0;">
                   <h3 style="margin:0;">Knowledge Assets</h3>
                   <div style="display:flex; gap:8px; align-items:center;">
                     <input type="text" id="knowledgeSearchInput" placeholder="Search knowledge..." style="background:#0b1220; color:#e5e7eb; border:1px solid var(--border); border-radius:6px; padding:6px 10px; width:200px;"/>
                   </div>
                 </div>
-                <div id="knowledgeAssetsList" style="height:calc(100% - 60px); overflow-y:auto;">
+                <div id="knowledgeAssetsList" style="flex:1; overflow-y:auto; min-height:0;">
                   <div class="muted" style="padding:20px; text-align:center;">
                     No knowledge assets yet.<br/>
                     <small>Upload and process documents to begin building your knowledge base.</small>
@@ -1449,24 +1459,24 @@
               </div>
 
               <!-- Processing Status -->
-              <div style="background:var(--panel); border:1px solid var(--border); border-radius:8px; padding:16px; height:120px;">
+              <div style="background:var(--panel); border:1px solid var(--border); border-radius:8px; padding:16px; height:120px; flex-shrink:0;">
                 <h4 style="margin:0 0 8px 0;">Processing Status</h4>
-                <div id="knowledgeProcessingStatus">
+                <div id="knowledgeProcessingStatus" style="overflow-y:auto; height:calc(100% - 32px);">
                   <div class="muted">No processing jobs running</div>
                 </div>
               </div>
             </div>
 
             <!-- Knowledge Panel -->
-            <div style="background:var(--panel); border:1px solid var(--border); border-radius:8px; padding:16px; display:flex; flex-direction:column;">
-              <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:12px;">
+            <div style="background:var(--panel); border:1px solid var(--border); border-radius:8px; padding:16px; display:flex; flex-direction:column; min-height:0;">
+              <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:12px; flex-shrink:0;">
                 <h4 style="margin:0;">Knowledge Details</h4>
                 <div style="display:flex; gap:4px;">
                   <button class="btn" id="knowledgeQueryBtn" title="Query Knowledge" style="min-width:auto; padding:4px 8px; font-size:16px;">🔍</button>
                   <button class="btn" id="knowledgeGraphBtn" title="View Graph" style="min-width:auto; padding:4px 8px; font-size:16px;">🕸️</button>
                 </div>
               </div>
-              <div id="knowledgeDetailsContent" style="flex:1; overflow-y:auto;">
+              <div id="knowledgeDetailsContent" style="flex:1; overflow-y:auto; min-height:0;">
                 <div class="muted" style="padding:20px; text-align:center;">
                   Select a knowledge asset to view details
                 </div>
@@ -11109,9 +11119,9 @@
         if (!detailsContent) return;
         
         detailsContent.innerHTML = `
-          <div style="height:100%; display:flex; flex-direction:column;">
+          <div style="height:100%; display:flex; flex-direction:column; min-height:0;">
             <!-- Query Input -->
-            <div style="margin-bottom:16px;">
+            <div style="margin-bottom:16px; flex-shrink:0;">
               <div style="font-size:14px; font-weight:600; margin-bottom:8px;">Ask your knowledge base:</div>
               <div style="display:flex; flex-direction:column; gap:8px;">
                 <textarea id="ragQueryInput" placeholder="What are the main requirements for navigation systems?" 
@@ -11135,12 +11145,12 @@
             </div>
             
             <!-- Query Response -->
-            <div style="flex:1; border:1px solid var(--border); border-radius:6px; background:#0f1419; overflow:hidden; display:flex; flex-direction:column;">
-              <div style="background:var(--accent-subtle); padding:8px 12px; border-bottom:1px solid var(--border); font-size:12px; font-weight:600; color:var(--accent); display:flex; justify-content:space-between; align-items:center;">
+            <div style="flex:1; border:1px solid var(--border); border-radius:6px; background:#0f1419; overflow:hidden; display:flex; flex-direction:column; min-height:0;">
+              <div style="background:var(--accent-subtle); padding:8px 12px; border-bottom:1px solid var(--border); font-size:12px; font-weight:600; color:var(--accent); display:flex; justify-content:space-between; align-items:center; flex-shrink:0;">
                 <span>💬 Response</span>
                 <div id="ragMetadata" class="muted" style="font-size:10px;"></div>
               </div>
-              <div id="ragResponseContent" style="flex:1; padding:16px; overflow-y:auto; line-height:1.5;">
+              <div id="ragResponseContent" style="flex:1; padding:16px; overflow-y:auto; line-height:1.5; min-height:0;">
                 <div class="muted" style="text-align:center; padding:40px 20px;">
                   Enter a question above and click "Ask" to query your knowledge base.<br/>
                   <small>Powered by AI retrieval and generation</small>
@@ -11253,12 +11263,13 @@
       }
       
       // Update metadata
-      const confidence = data.confidence || 'medium';
-      const confidenceIcon = confidence === 'high' ? '🟢' : confidence === 'medium' ? '🟡' : '🟠';
+      const confidence = data.confidence;
+      const confidenceIcon = confidence === 'high' ? '🟢' : confidence === 'medium' ? '🟡' : confidence === 'low' ? '🟠' : '⚪';
+      const confidenceText = confidence || 'n/a';
       const chunksFound = data.chunks_found || 0;
       
       metadataDiv.innerHTML = `
-        ${confidenceIcon} ${confidence} confidence • ${chunksFound} sources • ${data.model_used}
+        ${confidenceIcon} ${confidenceText} confidence • ${chunksFound} sources • ${data.model_used}
       `;
       statusDiv.textContent = `${chunksFound} sources found`;
       

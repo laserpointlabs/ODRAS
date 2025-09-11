@@ -269,6 +269,20 @@ class ExternalTaskWorker:
                     variables[key] = {"value": value, "type": "Double"}
                 else:
                     variables[key] = {"value": str(value), "type": "String"}
+            
+            # Debug logging for key variables
+            if "sources" in result_variables:
+                print(f"COMPLETE_TASK: Setting sources variable with {len(result_variables['sources'])} items")
+                print(f"COMPLETE_TASK: Sources JSON: {json.dumps(result_variables['sources'])[:200]}...")
+            if "chunks_found" in result_variables:
+                print(f"COMPLETE_TASK: Setting chunks_found = {result_variables['chunks_found']}")
+            if "llm_confidence" in result_variables:
+                print(f"COMPLETE_TASK: Setting llm_confidence = {result_variables['llm_confidence']}")
+            if "confidence" in result_variables:
+                print(f"COMPLETE_TASK: Setting confidence = {result_variables['confidence']}")
+            
+            # Debug: Show all variables being set
+            print(f"COMPLETE_TASK: Setting {len(result_variables)} variables: {list(result_variables.keys())}")
 
             payload = {"workerId": self.worker_id, "variables": variables}
 
@@ -674,79 +688,158 @@ Please provide a comprehensive answer based on the context provided. If the cont
 
         context_text = "\n".join(context_lines)
 
-        # Create a context-aware response that works for ANY query with context
-        if context_text and len(context_text) > 20:  # Much lower threshold
-            # Always use the actual context when available
-            mock_response = f"""Based on the information retrieved from the knowledge base:
+        # ACTUALLY CALL THE EXTERNAL LLM - stop using mock responses!
+        try:
+            import asyncio
+            import sys
+            import os
+            
+            # Add proper path for imports
+            backend_path = os.path.join(os.path.dirname(__file__), "..")
+            if backend_path not in sys.path:
+                sys.path.insert(0, backend_path)
+                
+            from services.rag_service import get_rag_service
+            
+            rag_service = get_rag_service()
+            
+            # Create fake chunks from context for the LLM call
+            fake_chunks = []
+            if context_text:
+                fake_chunks.append({
+                    "payload": {
+                        "content": context_text,
+                        "asset_id": "workflow_context",
+                        "source_asset": "workflow_source",
+                        "document_type": "document"
+                    },
+                    "score": 0.8
+                })
+            
+            # Call the ACTUAL LLM generation method from RAG service
+            llm_result = asyncio.run(
+                rag_service._generate_response(
+                    question=user_question,
+                    relevant_chunks=fake_chunks,
+                    response_style="comprehensive"
+                )
+            )
+            
+            print(f"LLM CALL RESULT: {llm_result}")
+            
+            if llm_result and "answer" in llm_result:
+                answer = llm_result["answer"]
+                confidence = llm_result.get("confidence", "medium")
+                print(f"LLM SUCCESS: confidence={confidence}")
+            else:
+                # Fallback if LLM fails
+                answer = context_text.strip() if context_text else "I couldn't find relevant information."
+                confidence = "medium" if context_text else "low"
+                print(f"LLM FALLBACK: confidence={confidence}")
+                
+        except Exception as e:
+            print(f"LLM CALL FAILED: {e}")
+            # Fallback to context text
+            answer = context_text.strip() if context_text else "I couldn't find relevant information."
+            confidence = "medium" if context_text else "low"
 
-{context_text}
-
-This response is based on the relevant documentation found in your knowledge assets."""
-        elif context_text:
-            # Even minimal context is better than none
-            mock_response = f"""Based on the available context:
-
-{context_text}
-
-Note: Limited context available for this query."""
-        else:
-            # Only use fallback when absolutely no context
-            mock_response = """I couldn't find relevant information in the knowledge base to answer your question. You may want to try rephrasing your question or adding more relevant documentation to your knowledge assets."""
-
-        return {
-            "llm_response": mock_response,
+        result = {
+            "llm_response": answer,
+            "llm_confidence": confidence,  # Use specific name to avoid conflicts
             "generation_stats": {
                 "prompt_length": len(prompt),
-                "response_length": len(mock_response),
-                "generation_method": "context_aware_mock",
-                "generation_time": time.time(),
+                "response_length": len(answer),
                 "context_used": len(context_text) > 0,
+                "llm_called": True,
             },
             "processing_status": "success",
             "errors": [],
         }
+        
+        print(f"LLM-GENERATION RETURNING: confidence={confidence}")
+        print(f"LLM-GENERATION RESULT: {result}")
+        
+        return result
 
     def handle_process_response(self, variables: Dict) -> Dict:
         """Handle response processing and formatting."""
         llm_response = variables.get("llm_response", "")
+        llm_confidence = variables.get("llm_confidence", "medium")  # Get confidence from LLM
         context_chunks = variables.get("reranked_context", variables.get("retrieved_chunks", []))
+        
+        print(f"PROCESS-RESPONSE DEBUG: Available variables = {list(variables.keys())}")
+        print(f"PROCESS-RESPONSE DEBUG: llm_confidence variable = {variables.get('llm_confidence')}")
 
         if isinstance(context_chunks, str):
             context_chunks = json.loads(context_chunks)
 
-        # Add citations to response
+        # Get actual asset titles from database for better citations
         citations = []
+        seen_assets = set()  # Avoid duplicate sources
+        
         for i, chunk in enumerate(context_chunks[:3]):
-            citations.append(
-                {
-                    "citation_id": f"[{i+1}]",
-                    "source_document": chunk.get("source_document", "Unknown"),
-                    "similarity_score": chunk.get("similarity_score", 0.0),
-                }
-            )
+            asset_id = chunk.get("asset_id", "unknown")
+            if asset_id in seen_assets:
+                continue
+                
+            # Try to get actual asset title from database
+            asset_title = "Unknown Document"
+            try:
+                from services.db import DatabaseService
+                from services.config import Settings
+                
+                settings = Settings()
+                db_service = DatabaseService(settings)
+                conn = db_service._conn()
+                
+                with conn.cursor() as cur:
+                    cur.execute("SELECT title FROM knowledge_assets WHERE id = %s", (asset_id,))
+                    result = cur.fetchone()
+                    if result:
+                        asset_title = result[0]
+                
+                db_service._return(conn)
+            except Exception as e:
+                # Fallback to cleaned up asset ID if database lookup fails
+                if len(asset_id) == 36 and '-' in asset_id:
+                    asset_title = f"Knowledge Asset {asset_id[:8]}"
+                else:
+                    asset_title = chunk.get("source_document", "Unknown Document")
+            
+            citations.append({
+                "citation_id": f"[{len(citations)+1}]",
+                "source_document": asset_title,
+                "similarity_score": chunk.get("similarity_score", 0.0),
+            })
+            seen_assets.add(asset_id)
 
-        # Format final response
-        final_response = llm_response
+        # Add sources to the response like the direct RAG does
+        final_response = llm_response.strip()
         if citations:
             final_response += "\n\nSources:\n"
             for citation in citations:
                 final_response += f"{citation['citation_id']} {citation['source_document']}\n"
 
-        # Convert context chunks to proper source format for API
+        # Convert citations to proper source format for API
         sources = []
-        for chunk in context_chunks:
-            sources.append({
-                "asset_id": chunk.get("asset_id", "unknown"),
-                "title": chunk.get("source_document", "unknown"),
-                "document_type": "document",
-                "chunk_id": chunk.get("chunk_id"),
-                "relevance_score": chunk.get("similarity_score", 0.0),
-            })
+        for i, citation in enumerate(citations):
+            # Use the corresponding chunk for this citation
+            if i < len(context_chunks):
+                chunk = context_chunks[i]
+                sources.append({
+                    "asset_id": chunk.get("asset_id", "unknown"),
+                    "title": citation["source_document"],  # Use the proper title from citation
+                    "document_type": "document",
+                    "chunk_id": chunk.get("chunk_id"),
+                    "relevance_score": chunk.get("similarity_score", 0.0),
+                })
 
-        return {
+        result = {
             "final_response": final_response,
             "sources": sources,  # Add sources in the format the API expects
             "citations": citations,
+            "chunks_found": len(context_chunks),  # Add explicit chunks count
+            "confidence": llm_confidence,  # Add LLM confidence
             "response_stats": {
                 "original_length": len(llm_response),
                 "final_length": len(final_response),
@@ -755,6 +848,12 @@ Note: Limited context available for this query."""
             "processing_status": "success",
             "errors": [],
         }
+        
+        print(f"PROCESS-RESPONSE INPUT: context_chunks={len(context_chunks)}, llm_confidence={llm_confidence}")
+        print(f"PROCESS-RESPONSE OUTPUT: sources={len(sources)}, chunks_found={len(context_chunks)}")
+        print(f"PROCESS-RESPONSE SOURCES: {sources}")
+        
+        return result
 
     def simple_retrieval_fallback(self, processed_query: Dict, search_parameters: Dict, variables: Dict) -> Dict:
         """Simple synchronous fallback for context retrieval."""

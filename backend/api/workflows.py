@@ -323,7 +323,33 @@ async def get_rag_query_status(
                     history_vars = var_response.json()
                     variables = {}
                     for var in history_vars:
-                        variables[var["name"]] = {"value": var["value"], "type": var.get("type", "String")}
+                        var_name = var["name"]
+                        var_value = var["value"]
+                        var_type = var.get("type", "String")
+                        
+                        # DEBUG: Show raw Camunda data for key variables
+                        if var_name in ["sources", "chunks_found"]:
+                            print(f"CAMUNDA RAW: {var_name} = {var_value} (type: {var_type})")
+                        
+                        # Handle different Camunda variable types correctly
+                        if var_type == "Json" and isinstance(var_value, str):
+                            # JSON variables are stored as strings in history
+                            try:
+                                var_value = json.loads(var_value)
+                                if var_name in ["sources", "chunks_found"]:
+                                    print(f"CAMUNDA PARSED: {var_name} = {var_value}")
+                            except Exception as e:
+                                print(f"Failed to parse JSON variable {var_name}: {e}")
+                                pass
+                        elif isinstance(var_value, str) and var_value.startswith(('[', '{')):
+                            # Try to parse JSON even if not marked as Json type
+                            try:
+                                var_value = json.loads(var_value)
+                            except:
+                                pass
+                        
+                        variables[var_name] = {"value": var_value, "type": var_type}
+                        print(f"WORKFLOWS: Extracted {var_name} = {type(var_value)} ({len(str(var_value))} chars)")
                 else:
                     variables = {}
             else:
@@ -341,17 +367,29 @@ async def get_rag_query_status(
                 "variables": {},
             }
 
-            # Extract important variables
+            # Extract important variables with proper format handling
             important_vars = [
                 "user_query",
                 "final_response",
                 "processed_query",
                 "retrieval_stats",
                 "context_quality_score",
+                "sources",  # Add sources for metadata display
+                "citations",  # Add citations
+                "retrieved_chunks",  # Add retrieved chunks for counting
+                "reranked_context",  # Add reranked context
+                "confidence",  # Add LLM confidence
+                "llm_confidence",  # Add specific LLM confidence
+                "chunks_found",  # Add chunks count
             ]
             for var_name in important_vars:
                 if var_name in variables:
-                    var_value = variables[var_name].get("value")
+                    var_data = variables[var_name]
+                    # Handle both active process format and history format
+                    if isinstance(var_data, dict) and "value" in var_data:
+                        var_value = var_data.get("value")
+                    else:
+                        var_value = var_data  # Direct value
                     result["variables"][var_name] = var_value
 
             # If process completed, get the final response
@@ -359,6 +397,17 @@ async def get_rag_query_status(
                 result["final_response"] = variables["final_response"].get("value")
                 result["query"] = variables.get("user_query", {}).get("value", "")
 
+            # Debug what we're returning
+            print(f"WORKFLOWS RETURN: variables keys = {list(result['variables'].keys())}")
+            if "chunks_found" in result["variables"]:
+                print(f"WORKFLOWS RETURN: chunks_found = {result['variables']['chunks_found']}")
+            if "sources" in result["variables"]:
+                sources_data = result["variables"]["sources"]
+                if isinstance(sources_data, list):
+                    print(f"WORKFLOWS RETURN: sources = list with {len(sources_data)} items")
+                else:
+                    print(f"WORKFLOWS RETURN: sources = {type(sources_data)}")
+            
             return result
 
     except HTTPException:
