@@ -743,9 +743,19 @@ Please provide a comprehensive answer based on the context provided. If the cont
             answer = context_text.strip() if context_text else "I couldn't find relevant information."
             confidence = "medium" if context_text else "low"
 
+        # Embed confidence in the response for reliable transfer
+        structured_response = {
+            "answer": answer,
+            "confidence": confidence,
+            "metadata": {
+                "llm_called": True,
+                "context_used": len(context_text) > 0,
+                "response_length": len(answer)
+            }
+        }
+        
         result = {
-            "llm_response": answer,
-            "llm_confidence": confidence,  # Use specific name to avoid conflicts
+            "llm_response": json.dumps(structured_response),  # Embed confidence in response
             "generation_stats": {
                 "prompt_length": len(prompt),
                 "response_length": len(answer),
@@ -763,12 +773,29 @@ Please provide a comprehensive answer based on the context provided. If the cont
 
     def handle_process_response(self, variables: Dict) -> Dict:
         """Handle response processing and formatting."""
-        llm_response = variables.get("llm_response", "")
-        llm_confidence = variables.get("llm_confidence", "medium")  # Get confidence from LLM
+        llm_response_raw = variables.get("llm_response", "")
         context_chunks = variables.get("reranked_context", variables.get("retrieved_chunks", []))
         
+        # Extract confidence from structured llm_response
+        llm_confidence = None
+        llm_response = ""
+        
+        try:
+            if llm_response_raw:
+                # Try to parse structured response
+                structured_data = json.loads(llm_response_raw)
+                llm_response = structured_data.get("answer", llm_response_raw)
+                llm_confidence = structured_data.get("confidence")
+                print(f"PROCESS-RESPONSE: Extracted confidence={llm_confidence} from structured response")
+            else:
+                llm_response = llm_response_raw
+        except json.JSONDecodeError:
+            # Fallback to raw response if not structured
+            llm_response = llm_response_raw
+            print("PROCESS-RESPONSE: Using raw llm_response (not structured)")
+        
         print(f"PROCESS-RESPONSE DEBUG: Available variables = {list(variables.keys())}")
-        print(f"PROCESS-RESPONSE DEBUG: llm_confidence variable = {variables.get('llm_confidence')}")
+        print(f"PROCESS-RESPONSE DEBUG: extracted confidence = {llm_confidence}")
 
         if isinstance(context_chunks, str):
             context_chunks = json.loads(context_chunks)
@@ -839,7 +866,7 @@ Please provide a comprehensive answer based on the context provided. If the cont
             "sources": sources,  # Add sources in the format the API expects
             "citations": citations,
             "chunks_found": len(context_chunks),  # Add explicit chunks count
-            "confidence": llm_confidence,  # Add LLM confidence
+            "llm_confidence": llm_confidence,  # Use extracted LLM confidence
             "response_stats": {
                 "original_length": len(llm_response),
                 "final_length": len(final_response),

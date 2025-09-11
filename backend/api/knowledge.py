@@ -1416,6 +1416,7 @@ async def query_knowledge_base_workflow(request: RAGQueryRequest, user: Dict = D
                                 # Count contexts as fallback
                                 if not chunks_found:
                                     chunks_found = response_text.count('[Context ')
+                                    print(f"API FALLBACK: Using text parsing for chunks_found={chunks_found}")
                                 
                                 # Extract sources from Sources section as fallback
                                 if not sources and 'Sources:' in response_text:
@@ -1429,6 +1430,7 @@ async def query_knowledge_base_workflow(request: RAGQueryRequest, user: Dict = D
                                             "chunk_id": None,
                                             "relevance_score": 0.8,
                                         })
+                                    print(f"API FALLBACK: Using text parsing for {len(sources)} sources")
                         
                         # Ensure required fields
                         if not final_response.get("success"):
