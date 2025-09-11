@@ -1055,6 +1055,8 @@
                   <button class="menu-item" id="ontoFitBtn">Fit to View</button>
                   <button class="menu-item" id="ontoFullscreenBtn">Fullscreen</button>
                   <button class="menu-item" id="ontoForceRefreshBtn">Refresh</button>
+                  <div class="menu-divider"></div>
+                  <button class="menu-item" id="ontoClearCacheBtn">Clear Cache</button>
                 </div>
               </div>
               
@@ -5921,7 +5923,7 @@
             
             visibilityBtn.addEventListener('click', (e) => {
               e.stopPropagation();
-              const node = ontoState.cy.$(`#${cls.id()}`);
+              const node = ontoState.cy.$(`#${CSS.escape(cls.id())}`);
               if (node.length > 0) {
                 if (node.visible()) {
                   node.hide();
@@ -8033,6 +8035,22 @@
             // Clear local storage and force reload from API
             localStorage.removeItem(storageKeyForGraph(activeOntologyIri));
             loadGraphFromLocalOrAPI(activeOntologyIri);
+          }
+        } else if (e.target === qs('#ontoClearCacheBtn')) {
+          // Clear all ontology localStorage and reload page
+          if (confirm('Clear all cached ontology data? This will reload the page and fetch everything fresh from the server.')) {
+            console.log('🧹 Clearing ontology localStorage cache...');
+            
+            // Clear all ontology-related localStorage
+            Object.keys(localStorage).forEach(key => {
+              if (key.includes('onto_')) {
+                localStorage.removeItem(key);
+                console.log('🧹 Removed:', key);
+              }
+            });
+            
+            console.log('🧹 Cache cleared, reloading page...');
+            location.reload();
           }
         } else if (e.target === qs('#ontoFitBtn')) {
           try { if (ontoState.cy) ontoState.cy.fit(undefined, 20); } catch(_) {}

@@ -55,7 +55,133 @@ Project Ontologies:
 
 ## Post-MVP Development Phases
 
-### Phase 0: Ontology Architecture Enhancement (Immediate Priority)
+### Phase 0: Server-Side State Management (High Priority)
+
+#### 0.1 Named Views Server Storage
+**Current Issue**: Named views stored in localStorage cause synchronization and duplication issues
+**Solution**: Move named views to PostgreSQL for proper persistence and sharing
+
+**Database Schema**:
+```sql
+-- Named views table
+CREATE TABLE IF NOT EXISTS ontology_named_views (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    project_id UUID NOT NULL REFERENCES projects(project_id),
+    ontology_iri VARCHAR(500) NOT NULL,
+    name VARCHAR(255) NOT NULL,
+    creator VARCHAR(255) NOT NULL,
+    created_date TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    
+    -- View configuration
+    zoom DECIMAL(10,6) NOT NULL,
+    pan_x DECIMAL(10,6) NOT NULL,
+    pan_y DECIMAL(10,6) NOT NULL,
+    
+    -- Visibility states (JSON)
+    visibility_state JSONB NOT NULL,
+    element_visibility JSONB NOT NULL,
+    collapsed_imports JSONB NOT NULL,
+    visible_imports JSONB NOT NULL,
+    
+    UNIQUE(project_id, ontology_iri, name)
+);
+
+-- Index for performance
+CREATE INDEX idx_named_views_project_ontology 
+ON ontology_named_views(project_id, ontology_iri);
+```
+
+**API Endpoints**:
+```python
+# New endpoints for named views
+@app.get("/api/ontology/named-views")
+async def get_named_views(project_id: str, ontology_iri: str):
+    """Get all named views for an ontology"""
+
+@app.post("/api/ontology/named-views")  
+async def create_named_view(body: NamedViewRequest):
+    """Create new named view"""
+
+@app.put("/api/ontology/named-views/{view_id}")
+async def update_named_view(view_id: str, body: NamedViewRequest):
+    """Update named view (rename)"""
+
+@app.delete("/api/ontology/named-views/{view_id}")
+async def delete_named_view(view_id: str):
+    """Delete named view"""
+```
+
+#### 0.2 Import Configuration Server Storage  
+**Current Issue**: Import settings stored in localStorage cause duplication and sync issues
+**Solution**: Move import configurations to PostgreSQL
+
+**Database Schema**:
+```sql
+-- Ontology imports configuration table
+CREATE TABLE IF NOT EXISTS ontology_import_configs (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    project_id UUID NOT NULL REFERENCES projects(project_id),
+    base_ontology_iri VARCHAR(500) NOT NULL,
+    import_ontology_iri VARCHAR(500) NOT NULL,
+    
+    -- Import classification
+    import_type VARCHAR(50) NOT NULL CHECK (import_type IN ('core', 'working')),
+    -- core: BFO, foundational (for validation only)
+    -- working: Domain ontologies (for individual creation)
+    
+    -- Import state
+    is_visible BOOLEAN DEFAULT true,
+    is_collapsed BOOLEAN DEFAULT false,
+    
+    -- Layout positions for imported elements (JSON)
+    element_positions JSONB,
+    
+    -- Metadata
+    creator VARCHAR(255) NOT NULL,
+    created_date TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    
+    UNIQUE(project_id, base_ontology_iri, import_ontology_iri)
+);
+
+-- Index for performance  
+CREATE INDEX idx_import_configs_base_ontology
+ON ontology_import_configs(project_id, base_ontology_iri);
+```
+
+**Benefits**:
+- **No Duplication**: Single source of truth for import configurations
+- **Cross-Device Sync**: Import settings sync across different browsers/devices
+- **Team Collaboration**: Shared import configurations for project teams
+- **Audit Trail**: Track who added/removed imports and when
+- **Performance**: Faster loading without localStorage parsing
+
+#### 0.3 Server-Side API Migration
+**Implementation Strategy**:
+```javascript
+// Migrate from localStorage to server API
+async function migrateNamedViewsToServer() {
+  const projects = await getProjects();
+  
+  for (const project of projects) {
+    const ontologies = await getProjectOntologies(project.id);
+    
+    for (const ontology of ontologies) {
+      // Get localStorage named views
+      const localViews = loadNamedViews(ontology.iri);
+      
+      // Upload to server
+      for (const view of localViews) {
+        await createNamedViewOnServer(project.id, ontology.iri, view);
+      }
+      
+      // Clear localStorage after successful migration
+      localStorage.removeItem(namedViewsKey(ontology.iri));
+    }
+  }
+}
+```
+
+### Phase 1: Ontology Architecture Enhancement (Immediate Priority)
 
 #### 0.1 Import Classification System
 **Action**: Classify imports as Core (above) vs Working (below)
