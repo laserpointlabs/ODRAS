@@ -1695,7 +1695,9 @@
          imported: true
        },
        collapsedImports: new Set(), // Track which imports are collapsed
-       elementVisibility: {} // Track individual element visibility {elementId: true/false}
+       elementVisibility: {}, // Track individual element visibility {elementId: true/false}
+       activeNamedView: null, // Track currently active named view
+       beforeViewState: null // Track state before applying any named view
     };
     let activeProject = null;
     let suppressWorkbenchSwitch = false;
@@ -2299,14 +2301,32 @@
           }
         }
       } else if (type === 'namedView') {
-          // Handle named view selection
+          // Handle named view selection with toggle functionality
           const viewId = li.dataset.viewId;
           if (viewId) {
             const views = loadNamedViews(activeOntologyIri);
             const view = views.find(v => v.id === viewId);
             if (view) {
-              console.log('🔍 Restoring named view:', view.name, 'with visible imports:', view.visibleImports);
-              restoreView(view);
+              if (ontoState.activeNamedView === viewId) {
+                // Toggle off - restore original state before any named views
+                console.log('🔍 Toggling off named view:', view.name, 'returning to original state');
+                if (ontoState.beforeViewState) {
+                  restoreOriginalState();
+                } else {
+                  ontoState.activeNamedView = null;
+                  refreshOntologyTree();
+                }
+              } else {
+                // Capture current state as "before state" if this is the first named view applied
+                if (!ontoState.activeNamedView && !ontoState.beforeViewState) {
+                  console.log('🔍 Capturing current state before applying first named view');
+                  ontoState.beforeViewState = captureCurrentView('__original_state__');
+                }
+                
+                // Apply the view
+                console.log('🔍 Applying named view:', view.name, 'with visible imports:', view.visibleImports);
+                restoreView(view);
+              }
             }
           }
         } else if (type === 'edge') {
@@ -6002,9 +6022,20 @@
       const namedViews = loadNamedViews(activeOntologyIri);
       if (namedViews.length > 0 || true) { // Always show section even if empty
         const viewChildren = namedViews.map(view => {
-          const item = makeItem(view.name, false, []);
+          const isActive = ontoState.activeNamedView === view.id;
+          const displayName = isActive ? `● ${view.name}` : view.name;
+          const item = makeItem(displayName, false, []);
           item.dataset.viewId = view.id;
           item.dataset.nodeType = 'namedView';
+          
+          // Style active view differently
+          if (isActive) {
+            const label = item.querySelector('.onto-node-label');
+            if (label) {
+              label.style.color = '#60a5fa';
+              label.style.fontWeight = 'bold';
+            }
+          }
           
           // Add view management buttons with SVG icons
           const row = item.querySelector('.onto-node-row');
@@ -6068,10 +6099,35 @@
           return item;
         });
         
-        // Add the Named Views section with + button
+        // Add the Named Views section with buttons
         const viewsSection = makeItem('Named Views', true, viewChildren);
         const viewsRow = viewsSection.querySelector('.onto-node-row');
         if (viewsRow) {
+          // Add Return button (only visible when a view is active)
+          if (ontoState.activeNamedView) {
+            const returnBtn = document.createElement('button');
+            returnBtn.className = 'btn tree-add-btn';
+            returnBtn.title = 'Return to Original View';
+            returnBtn.innerHTML = `
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" style="width: 12px; height: 12px;">
+                <polyline points="9,14 4,9 9,4"/>
+                <path d="M20,20v-7a4,4 0 0,0-4-4H4"/>
+              </svg>
+            `;
+            returnBtn.style.marginLeft = '8px';
+            returnBtn.style.fontSize = '12px';
+            returnBtn.style.padding = '2px 6px';
+            returnBtn.style.minWidth = '20px';
+            returnBtn.style.height = '20px';
+            returnBtn.style.color = '#60a5fa';
+            returnBtn.onclick = (e) => {
+              e.stopPropagation();
+              restoreOriginalState();
+            };
+            
+            viewsRow.appendChild(returnBtn);
+          }
+          
           // Add + button for creating new views
           const addViewBtn = document.createElement('button');
           addViewBtn.className = 'btn tree-add-btn';
@@ -6648,6 +6704,56 @@
         saveElementVisibility(activeOntologyIri, ontoState.elementVisibility);
         saveCollapsedImports(activeOntologyIri, ontoState.collapsedImports);
       }
+      
+      // Mark this view as active and refresh tree to show indicator
+      ontoState.activeNamedView = view.id;
+      refreshOntologyTree();
+    }
+
+    function restoreOriginalState() {
+      if (!ontoState.beforeViewState) return;
+      
+      // Restore the state from before any named view was applied
+      const beforeState = ontoState.beforeViewState;
+      
+      // Restore visibility states
+      ontoState.visibilityState = { ...beforeState.visibilityState };
+      ontoState.elementVisibility = { ...beforeState.elementVisibility };
+      ontoState.collapsedImports = new Set(beforeState.collapsedImports || []);
+      
+      // Restore import visibility
+      if (beforeState.visibleImports && activeOntologyIri) {
+        const visibleImportsSet = new Set(beforeState.visibleImports);
+        saveVisibleImports(activeOntologyIri, visibleImportsSet);
+      }
+      
+      // Apply visibility to canvas
+      updateCanvasVisibility();
+      
+      // Refresh imports overlay
+      overlayImportsRefresh().then(() => {
+        // Restore canvas position and zoom
+        ontoState.cy.animate({
+          zoom: beforeState.zoom || 1,
+          pan: beforeState.pan || { x: 0, y: 0 }
+        }, {
+          duration: 500
+        });
+      });
+      
+      // Refresh tree
+      refreshOntologyTree();
+      
+      // Save restored states to localStorage
+      if (activeOntologyIri) {
+        saveVisibilityState(activeOntologyIri, ontoState.visibilityState);
+        saveElementVisibility(activeOntologyIri, ontoState.elementVisibility);
+        saveCollapsedImports(activeOntologyIri, ontoState.collapsedImports);
+      }
+      
+      // Clear the active view state
+      ontoState.activeNamedView = null;
+      ontoState.beforeViewState = null;
     }
 
     // Named view management functions
