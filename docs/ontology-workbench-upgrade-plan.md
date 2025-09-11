@@ -19,42 +19,54 @@ This document outlines the comprehensive upgrade plan for the ODRAS ontology wor
 6. **Fuseki Integration**: Proper RDF storage and retrieval
 7. **Admin UI Controls**: Admin badge and workbench properly hidden for non-admin users
 
-### ❌ Current Gaps and Issues
+### ✅ Completed MVP Features (2025-09-10)
 
-#### 1. **URI Generation Inconsistency**
-- **Problem**: Current URI generation uses old patterns (`{base_uri}/{project}/{name}`)
-- **Impact**: Doesn't leverage our new organizational URI structure
-- **Example**: Should be `http://dod/usn/adt/{project-id}/ontologies/{name}` not `http://odras.local/{project}/{name}`
+#### 1. **Visual Ontology Editor**
+- **Completed**: Full Cytoscape-based visual editor with direct manipulation
+- **Features**: Drag-to-create, inline editing, visual connections, multiple layouts
+- **Impact**: Professional ontology development environment
 
-#### 2. **Missing Project Namespace Integration**
-- **Problem**: Ontology creation doesn't use project's actual namespace path
-- **Impact**: URIs don't reflect organizational hierarchy
-- **Missing**: Integration with `namespace_registry` table
+#### 2. **Import Management System**  
+- **Completed**: Complete external ontology import with read-only protection
+- **Features**: URL imports, reference ontology library, proper IRI attribution
+- **Impact**: Enables ontology reuse and collaboration
 
-#### 3. **Ontology Import Management Gaps**
-- **Problem**: Limited ability to import ontologies from same project and reference ontologies
-- **Impact**: Users cannot easily reuse existing ontologies within and across projects
-- **Missing**: Cross-project ontology import, nested import support, import visualization
+#### 3. **Rich Metadata Tracking**
+- **Completed**: Comprehensive metadata with Dublin Core annotations
+- **Features**: Creator tracking, creation/modification dates, automatic metadata updates
+- **Impact**: Full provenance tracking for all ontology objects
 
-#### 4. **Nested Import Support Missing**
-- **Problem**: No support for importing ontologies that have their own imports
-- **Impact**: Complex ontology dependencies cannot be properly managed
-- **Missing**: Nested import resolution, dependency visualization, import hierarchy
+#### 4. **Advanced UI Features**
+- **Completed**: Professional interface with comprehensive controls
+- **Features**: Visibility management, named views, note system, tree-canvas sync
+- **Impact**: Enterprise-grade user experience
 
-#### 5. **Ontology Sharing Between Users**
-- **Problem**: No mechanism for users to share ontologies with each other
-- **Impact**: Limited collaboration and ontology reuse across teams
-- **Missing**: User-to-user ontology sharing, permission management, shared workspace
+#### 5. **Layout and State Persistence**
+- **Completed**: Server-synchronized layout and state management
+- **Features**: Position persistence, view configurations, import state retention
+- **Impact**: Reliable workspace preservation across sessions
 
-#### 6. **Data Object Management Missing**
-- **Problem**: No clear system for managing data objects and their relationships
-- **Impact**: Confusion about how to model and manage data objects in ontologies
-- **Missing**: Data object modeling patterns, relationship management, data object lifecycle
+### 🔄 Remaining Gaps for Post-MVP
 
-#### 7. **Ontology Metadata Incomplete**
-- **Problem**: Missing domain, version, and organizational metadata
-- **Impact**: Poor ontology discoverability and management
-- **Missing**: Domain association, version tracking, proper metadata
+#### 1. **OWL Code Editor Integration**
+- **Gap**: No direct OWL/Turtle code editing capability
+- **Impact**: Advanced users cannot directly edit OWL syntax
+- **Planned**: Dual-mode editor with diagram ↔ code synchronization
+
+#### 2. **SHACL Constraint System**
+- **Gap**: No constraint definition or validation system
+- **Impact**: Cannot validate individuals or enforce data quality
+- **Planned**: Visual SHACL editor with Python validation backend
+
+#### 3. **Individual/Instance Management**
+- **Gap**: No dedicated system for managing ontology individuals
+- **Impact**: Cannot efficiently handle hundreds of extracted requirement individuals
+- **Planned**: Dedicated individuals workbench with filtering and bulk operations
+
+#### 4. **DAS Integration**
+- **Gap**: No API integration for Digital Assistant System
+- **Impact**: DAS cannot create or manage ontology objects
+- **Planned**: API endpoints with knowledge base integration
 
 ## Implementation Plan
 
@@ -209,9 +221,117 @@ This document outlines the comprehensive upgrade plan for the ODRAS ontology wor
   - Import templates and guides
 - **Files**: New reference ontology management system
 
-### Phase 6: Advanced Features (Low Priority)
+### Phase 6: OWL Code Editor Integration (High Priority - Post-MVP)
 
-#### 6.1 Ontology Versioning
+#### 6.1 Dual-Mode Ontology Editor
+- **Action**: Add OWL/Turtle code editor alongside visual diagram
+- **Implementation**:
+  - Monaco Editor or CodeMirror integration
+  - Real-time bidirectional synchronization (diagram ↔ OWL code)
+  - OWL syntax highlighting and validation
+  - Conflict resolution when both modes are edited
+- **Inspiration**: Similar to Camunda's BPMN modeler with XML view
+- **Files**: `frontend/app.html`, new OWL parser/serializer modules
+
+#### 6.2 OWL Format Support
+- **Action**: Support multiple OWL serialization formats
+- **Implementation**:
+  - Turtle, RDF/XML, JSON-LD import/export
+  - Format conversion utilities
+  - Syntax validation for all formats
+- **Files**: Backend OWL processing services
+
+### Phase 7: SHACL Constraints and Validation (High Priority - Post-MVP)
+
+#### 7.1 Visual SHACL Shape Editor
+- **Action**: Create GUI for defining SHACL constraints
+- **Implementation**:
+  - Visual constraint builder for classes and properties
+  - Template-based constraint creation
+  - Unit validation with QUDT integration
+  - Multiplicity and value bounding constraints
+- **Files**: New SHACL editor components
+
+#### 7.2 Python OWL/SHACL Integration
+- **Action**: Integrate Python OWL ecosystem for advanced validation
+- **Implementation**:
+  - **owlready2**: OWL ontology manipulation
+  - **pyshacl**: SHACL validation engine  
+  - **rdflib**: RDF graph operations
+  - **pint**: Unit conversion and validation
+- **Files**: `backend/services/shacl_validator.py`, requirements.txt
+
+#### 7.3 Real-time Validation System
+- **Action**: Validate individuals and constraints in real-time
+- **Implementation**:
+  - Live validation as users create individuals
+  - Batch validation for existing data
+  - Validation reports with error locations and suggestions
+  - Engineering-specific constraints (units, bounds, patterns)
+- **Files**: Backend validation services, frontend validation UI
+
+### Phase 8: Individual/Instance Management (High Priority - Post-MVP)
+
+#### 8.1 Individuals Workbench
+- **Action**: Create dedicated interface for managing ontology individuals
+- **Challenge**: Handle hundreds of requirement-extracted individuals efficiently
+- **Implementation Options**:
+  - **Option A**: Extend ontology tree with grouped individuals
+  - **Option B**: Separate individuals tab with table/search interface (RECOMMENDED)
+  - **Option C**: Hybrid approach with tree summary and detailed table
+- **Files**: New individuals workbench tab
+
+#### 8.2 Individual Management Features
+- **Action**: Comprehensive individual lifecycle management
+- **Implementation**:
+  - Table view with sorting, filtering, pagination
+  - Full-text search across individual properties
+  - Bulk operations (validate, export, classify, delete)
+  - Individual-requirement traceability
+  - Confidence scoring and review workflows
+- **Files**: Individuals management system
+
+#### 8.3 LLM-Generated Individual Processing
+- **Action**: Handle LLM-extracted requirement individuals
+- **Implementation**:
+  - Batch import of LLM-generated individuals
+  - Confidence-based review workflows
+  - Automatic class assignment and validation
+  - Component/Interface/Process/Function generation from requirements
+- **Files**: LLM integration services
+
+### Phase 9: Digital Assistant System (DAS) Integration (Medium Priority - Post-MVP)
+
+#### 9.1 DAS-Ontology API Design
+- **Action**: Create API endpoints for DAS to manage ontology objects
+- **Implementation**:
+  - `POST /api/das/ontology/create-class`
+  - `POST /api/das/ontology/create-individual`
+  - `POST /api/das/ontology/validate`
+  - `GET /api/das/ontology/query`
+- **Files**: `backend/api/das_ontology.py`
+
+#### 9.2 DAS Knowledge Base for API Instructions
+- **Action**: Create comprehensive API knowledge base in Qdrant
+- **Implementation**:
+  - API documentation with examples in Qdrant
+  - Ontology operation patterns and best practices
+  - Error handling and troubleshooting guides
+  - Integration with RAG system for API guidance
+- **Files**: DAS knowledge base population scripts
+
+#### 9.3 RAG Integration for Ontology Operations
+- **Action**: Enable RAG system to detect and handle ontology requests
+- **Implementation**:
+  - Query classification for ontology operations
+  - Context retrieval from API knowledge base
+  - Action guidance with executable code examples
+  - End-to-end requirement-to-individual workflows
+- **Files**: RAG system ontology integration
+
+### Phase 10: Advanced Features (Low Priority)
+
+#### 10.1 Ontology Versioning
 - **Action**: Implement proper ontology versioning
 - **Implementation**:
   - Version IRIs and tracking
@@ -219,7 +339,7 @@ This document outlines the comprehensive upgrade plan for the ODRAS ontology wor
   - Rollback capabilities
 - **Files**: Version management system
 
-#### 6.2 Ontology Dependencies
+#### 10.2 Ontology Dependencies
 - **Action**: Manage ontology import dependencies
 - **Implementation**:
   - Dependency graph visualization
@@ -227,7 +347,7 @@ This document outlines the comprehensive upgrade plan for the ODRAS ontology wor
   - Automatic dependency updates
 - **Files**: Dependency management system
 
-#### 6.3 Ontology Publishing
+#### 10.3 Ontology Publishing
 - **Action**: Publish ontologies to external endpoints
 - **Implementation**:
   - Public ontology endpoints
