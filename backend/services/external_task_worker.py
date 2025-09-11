@@ -520,7 +520,7 @@ class ExternalTaskWorker:
                 "search_parameters": {
                     "primary_terms": query.lower().split()[:3],
                     "max_results": 10,
-                    "min_similarity_threshold": 0.6,
+                    "min_similarity_threshold": float(query_metadata.get("similarity_threshold", 0.5)),
                 },
                 "processing_status": "success",
                 "errors": [],
@@ -543,7 +543,7 @@ class ExternalTaskWorker:
 
         # Use the existing RAG service directly for more reliable results
         print("Using existing RAG service for context retrieval...")
-        result = self.simple_retrieval_fallback(processed_query, search_parameters)
+        result = self.simple_retrieval_fallback(processed_query, search_parameters, variables)
         return result
 
     def handle_rerank_context(self, variables: Dict) -> Dict:
@@ -732,8 +732,20 @@ Note: Limited context available for this query."""
             for citation in citations:
                 final_response += f"{citation['citation_id']} {citation['source_document']}\n"
 
+        # Convert context chunks to proper source format for API
+        sources = []
+        for chunk in context_chunks:
+            sources.append({
+                "asset_id": chunk.get("asset_id", "unknown"),
+                "title": chunk.get("source_document", "unknown"),
+                "document_type": "document",
+                "chunk_id": chunk.get("chunk_id"),
+                "relevance_score": chunk.get("similarity_score", 0.0),
+            })
+
         return {
             "final_response": final_response,
+            "sources": sources,  # Add sources in the format the API expects
             "citations": citations,
             "response_stats": {
                 "original_length": len(llm_response),
@@ -744,7 +756,7 @@ Note: Limited context available for this query."""
             "errors": [],
         }
 
-    def simple_retrieval_fallback(self, processed_query: Dict, search_parameters: Dict) -> Dict:
+    def simple_retrieval_fallback(self, processed_query: Dict, search_parameters: Dict, variables: Dict) -> Dict:
         """Simple synchronous fallback for context retrieval."""
         try:
             # Use the existing RAG service directly
@@ -762,36 +774,42 @@ Note: Limited context available for this query."""
             rag_service = get_rag_service()
             query_text = processed_query.get("cleaned_query", "")
 
-            # Call the existing RAG retrieval method with real user context
-            real_user_id = "d027b062-a6e0-47e6-b193-50fbec328a05"  # jdehart user
-            real_project_id = "8e929f77-e7d0-48ad-9da3-6a4e392c49f3"  # Default Project
+            # Extract user and project from query metadata - exactly like hard-coded query
+            query_metadata = json.loads(variables.get("query_metadata", "{}"))
+            user_id = query_metadata.get("user_id")
+            project_id = query_metadata.get("project_id")
+            similarity_threshold = float(query_metadata.get("similarity_threshold", 0.5))
+            max_chunks = int(query_metadata.get("max_results", 3))
+            
+            print(f"WORKFLOW RAG: Using user_id={user_id}, project_id={project_id}, threshold={similarity_threshold}")
 
-            # Use the same parameters as the original working RAG
+            # Get the raw chunks with content (like the hard-coded query does)
             chunks = asyncio.run(
                 rag_service._retrieve_relevant_chunks(
                     question=query_text,
-                    project_id=real_project_id,
-                    user_id=real_user_id,
-                    max_chunks=search_parameters.get("max_results", 5),
-                    similarity_threshold=0.4,  # Match original RAG threshold
+                    project_id=project_id,
+                    user_id=user_id,
+                    max_chunks=max_chunks,
+                    similarity_threshold=similarity_threshold,
                 )
             )
 
-            print(f"RAG service retrieved {len(chunks)} chunks")
+            print(f"WORKFLOW RAG: Retrieved {len(chunks)} chunks with content")
 
-            # Convert to expected format
+            # Convert raw chunks to expected format - now with actual content!
             retrieved_chunks = []
             for chunk in chunks:
                 chunk_data = chunk.get("payload", {})
-                retrieved_chunks.append(
-                    {
-                        "chunk_id": chunk_data.get("chunk_id", "unknown"),
-                        "content": chunk_data.get("text", ""),
-                        "source_document": chunk_data.get("source_asset", "unknown"),
-                        "similarity_score": chunk.get("score", 0.0),
-                        "chunk_metadata": chunk_data,
-                    }
-                )
+                content = chunk_data.get("content", "")
+                
+                retrieved_chunks.append({
+                    "chunk_id": chunk_data.get("chunk_id", "unknown"),
+                    "content": content,
+                    "similarity_score": chunk.get("score", 0.0),
+                    "source_document": chunk_data.get("source_asset", "unknown"),
+                    "asset_id": chunk_data.get("asset_id", "unknown"),
+                    "project_id": chunk_data.get("project_id", "unknown"),
+                })
 
             return {
                 "retrieved_chunks": retrieved_chunks,

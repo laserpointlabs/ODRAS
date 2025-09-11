@@ -93,9 +93,9 @@ start_app() {
         print_status "Logs: tail -f $LOG_FILE"
         print_status "URL: http://localhost:$APP_PORT"
         
-        # Start external worker for BPMN processing
+        # Start external workers for BPMN processing
         sleep 5  # Give app time to fully start
-        start_external_worker
+        start_external_workers
     else
         print_error "Failed to start application"
         rm -f "$PID_FILE"
@@ -107,8 +107,8 @@ start_app() {
 stop_app() {
     print_status "Stopping ODRAS application..."
     
-    # Stop external worker first
-    stop_external_worker
+    # Stop external workers first
+    stop_external_workers
     
     if [[ -f "$PID_FILE" ]]; then
         local pid=$(cat "$PID_FILE")
@@ -598,37 +598,48 @@ deploy_bpmn_workflows() {
     print_success "✓ Deployed $deployed_count BPMN workflows to Camunda"
     print_status "  🖥️  Monitor workflows at: http://localhost:8080/camunda/app/cockpit/"
     
-    # Start the external worker for BPMN task processing
-    print_status "Starting external worker for BPMN task processing..."
-    start_external_worker
+    # Start the external workers for BPMN task processing
+    print_status "Starting external workers for BPMN task processing..."
+    start_external_workers
 }
 
-# Start external worker for BPMN task processing
-start_external_worker() {
-    print_status "Starting BPMN external worker..."
+# Start external workers for BPMN task processing
+start_external_workers() {
+    print_status "Starting BPMN external workers..."
     
-    local worker_script="scripts/simple_external_worker.py"
-    local worker_log="/tmp/odras_worker.log"
-    local worker_pid_file="/tmp/odras_worker.pid"
+    # Start the complex worker (handles RAG query process and other advanced tasks)
+    start_complex_worker
+    
+    # Start the simple worker (handles file upload processing tasks)
+    start_simple_worker
+}
+
+# Start complex external worker (RAG query process support)
+start_complex_worker() {
+    print_status "Starting complex external worker (RAG query process support)..."
+    
+    local worker_script="scripts/run_external_task_worker.py"
+    local worker_log="/tmp/odras_complex_worker.log"
+    local worker_pid_file="/tmp/odras_complex_worker.pid"
     
     if [[ ! -f "$worker_script" ]]; then
         print_warning "  ⚠ External worker script not found: $worker_script"
         return
     fi
     
-    # Kill existing worker if running
+    # Kill existing complex worker if running
     if [[ -f "$worker_pid_file" ]]; then
         local old_pid=$(cat "$worker_pid_file")
         if kill -0 "$old_pid" 2>/dev/null; then
-            print_status "  Stopping existing worker (PID: $old_pid)..."
+            print_status "  Stopping existing complex worker (PID: $old_pid)..."
             kill "$old_pid" 2>/dev/null
             sleep 2
         fi
         rm -f "$worker_pid_file"
     fi
     
-    # Start new worker in background
-    print_status "  Starting external worker daemon..."
+    # Start new complex worker in background
+    print_status "  Starting complex worker daemon..."
     nohup python3 "$worker_script" > "$worker_log" 2>&1 &
     local worker_pid=$!
     
@@ -638,33 +649,111 @@ start_external_worker() {
     # Verify worker started
     sleep 3
     if kill -0 "$worker_pid" 2>/dev/null; then
-        print_success "  ✓ External worker started (PID: $worker_pid)"
-        print_status "    📋 Worker handles: extract-text, chunk-document, generate-embeddings,"
-        print_status "                      create-knowledge-asset, store-vector-chunks"
+        print_success "  ✓ Complex worker started (PID: $worker_pid)"
+        print_status "    📋 Handles: RAG query process, knowledge management, document ingestion"
         print_status "    📄 Logs: $worker_log"
     else
-        print_warning "  ⚠ External worker may have failed to start"
+        print_warning "  ⚠ Complex worker may have failed to start"
         if [[ -f "$worker_log" ]]; then
             print_status "    Error: $(tail -n 1 "$worker_log")"
         fi
     fi
 }
 
-# Stop external worker
-stop_external_worker() {
-    local worker_pid_file="/tmp/odras_worker.pid"
+# Start simple external worker (file upload processing)
+start_simple_worker() {
+    print_status "Starting simple external worker (file upload processing)..."
+    
+    local worker_script="scripts/simple_external_worker.py"
+    local worker_log="/tmp/odras_simple_worker.log"
+    local worker_pid_file="/tmp/odras_simple_worker.pid"
+    
+    if [[ ! -f "$worker_script" ]]; then
+        print_warning "  ⚠ Simple worker script not found: $worker_script"
+        return
+    fi
+    
+    # Kill existing simple worker if running
+    if [[ -f "$worker_pid_file" ]]; then
+        local old_pid=$(cat "$worker_pid_file")
+        if kill -0 "$old_pid" 2>/dev/null; then
+            print_status "  Stopping existing simple worker (PID: $old_pid)..."
+            kill "$old_pid" 2>/dev/null
+            sleep 2
+        fi
+        rm -f "$worker_pid_file"
+    fi
+    
+    # Start new simple worker in background
+    print_status "  Starting simple worker daemon..."
+    nohup python3 "$worker_script" > "$worker_log" 2>&1 &
+    local worker_pid=$!
+    
+    # Save PID for management
+    echo "$worker_pid" > "$worker_pid_file"
+    
+    # Verify worker started
+    sleep 3
+    if kill -0 "$worker_pid" 2>/dev/null; then
+        print_success "  ✓ Simple worker started (PID: $worker_pid)"
+        print_status "    📋 Handles: extract-text, chunk-document, generate-embeddings,"
+        print_status "               create-knowledge-asset, store-vector-chunks, activate-knowledge-asset"
+        print_status "    📄 Logs: $worker_log"
+    else
+        print_warning "  ⚠ Simple worker may have failed to start"
+        if [[ -f "$worker_log" ]]; then
+            print_status "    Error: $(tail -n 1 "$worker_log")"
+        fi
+    fi
+}
+
+# Stop external workers
+stop_external_workers() {
+    print_status "Stopping external workers..."
+    
+    # Stop complex worker
+    stop_complex_worker
+    
+    # Stop simple worker
+    stop_simple_worker
+}
+
+# Stop complex worker
+stop_complex_worker() {
+    local worker_pid_file="/tmp/odras_complex_worker.pid"
     
     if [[ -f "$worker_pid_file" ]]; then
         local worker_pid=$(cat "$worker_pid_file")
         if kill -0 "$worker_pid" 2>/dev/null; then
-            print_status "Stopping external worker (PID: $worker_pid)..."
+            print_status "Stopping complex worker (PID: $worker_pid)..."
             kill "$worker_pid" 2>/dev/null
             sleep 2
             if ! kill -0 "$worker_pid" 2>/dev/null; then
-                print_success "✓ External worker stopped"
+                print_success "✓ Complex worker stopped"
             else
                 kill -9 "$worker_pid" 2>/dev/null
-                print_success "✓ External worker terminated"
+                print_success "✓ Complex worker terminated"
+            fi
+        fi
+        rm -f "$worker_pid_file"
+    fi
+}
+
+# Stop simple worker
+stop_simple_worker() {
+    local worker_pid_file="/tmp/odras_simple_worker.pid"
+    
+    if [[ -f "$worker_pid_file" ]]; then
+        local worker_pid=$(cat "$worker_pid_file")
+        if kill -0 "$worker_pid" 2>/dev/null; then
+            print_status "Stopping simple worker (PID: $worker_pid)..."
+            kill "$worker_pid" 2>/dev/null
+            sleep 2
+            if ! kill -0 "$worker_pid" 2>/dev/null; then
+                print_success "✓ Simple worker stopped"
+            else
+                kill -9 "$worker_pid" 2>/dev/null
+                print_success "✓ Simple worker terminated"
             fi
         fi
         rm -f "$worker_pid_file"

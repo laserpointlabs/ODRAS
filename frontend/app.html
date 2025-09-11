@@ -11125,6 +11125,10 @@
                     <option value="concise">⚡ Concise</option>
                     <option value="technical">🔧 Technical</option>
                   </select>
+                  <label style="display:flex; align-items:center; gap:4px; font-size:12px; color:#9ca3af;">
+                    <input type="checkbox" id="ragUseWorkflow" style="margin:0;">
+                    <span>🔄 Use Workflow</span>
+                  </label>
                   <div class="muted" style="font-size:11px; margin-left:auto;" id="ragStatus"></div>
                 </div>
               </div>
@@ -11162,6 +11166,7 @@
       try {
         const queryInput = document.getElementById('ragQueryInput');
         const styleSelect = document.getElementById('ragStyleSelect');
+        const useWorkflowCheckbox = document.getElementById('ragUseWorkflow');
         const statusDiv = document.getElementById('ragStatus');
         const responseContent = document.getElementById('ragResponseContent');
         const metadataDiv = document.getElementById('ragMetadata');
@@ -11173,22 +11178,24 @@
         
         const question = queryInput.value.trim();
         const responseStyle = styleSelect?.value || 'comprehensive';
+        const useWorkflow = useWorkflowCheckbox?.checked || false;
         
         // Show loading state
-        statusDiv.textContent = 'Thinking...';
+        statusDiv.textContent = useWorkflow ? 'Processing via workflow...' : 'Thinking...';
         responseContent.innerHTML = `
           <div style="display:flex; align-items:center; justify-content:center; padding:40px;">
             <div style="display:flex; flex-direction:column; align-items:center; gap:16px;">
               <div class="loading-spinner" style="width:24px; height:24px; border:2px solid var(--border); border-top:2px solid var(--accent); border-radius:50%; animation:spin 1s linear infinite;"></div>
-              <div class="muted">Analyzing your knowledge base...</div>
+              <div class="muted">${useWorkflow ? 'Running RAG workflow...' : 'Analyzing your knowledge base...'}</div>
             </div>
           </div>
         `;
         
-        console.log('🔍 Executing RAG query:', { question, responseStyle });
+        console.log('🔍 Executing RAG query:', { question, responseStyle, useWorkflow });
         
-        // Execute RAG query
-        const response = await fetch('/api/knowledge/query', {
+        // Execute RAG query - use workflow endpoint if checkbox is checked
+        const endpoint = useWorkflow ? '/api/knowledge/query-workflow' : '/api/knowledge/query';
+        const response = await fetch(endpoint, {
           method: 'POST',
           headers: {
             ...authHeader(),

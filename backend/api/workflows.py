@@ -294,22 +294,44 @@ async def get_rag_query_status(
 
     try:
         async with httpx.AsyncClient(timeout=10) as client:
-            # Get process instance status
+            # Try to get process instance status (active)
             r = await client.get(f"{camunda_rest}/process-instance/{process_instance_id}")
-
+            
             if r.status_code == 404:
-                raise HTTPException(status_code=404, detail="Process instance not found")
+                # Process not found in active instances, try history
+                r = await client.get(f"{camunda_rest}/history/process-instance/{process_instance_id}")
+                if r.status_code == 404:
+                    raise HTTPException(status_code=404, detail="Process instance not found")
+                elif r.status_code != 200:
+                    raise HTTPException(status_code=500, detail="Failed to get process status from history")
+                process_data = r.json()
+                is_ended = True  # If it's in history, it's completed
             elif r.status_code != 200:
                 raise HTTPException(status_code=500, detail="Failed to get process status")
-
-            process_data = r.json()
-            is_ended = process_data.get("ended", False)
+            else:
+                process_data = r.json()
+                is_ended = process_data.get("ended", False)
 
             # Get process variables
-            var_response = await client.get(
-                f"{camunda_rest}/process-instance/{process_instance_id}/variables"
-            )
-            variables = var_response.json() if var_response.status_code == 200 else {}
+            if is_ended:
+                # If process is completed, get variables from history
+                var_response = await client.get(
+                    f"{camunda_rest}/history/variable-instance?processInstanceId={process_instance_id}"
+                )
+                if var_response.status_code == 200:
+                    # Convert history format to variables format
+                    history_vars = var_response.json()
+                    variables = {}
+                    for var in history_vars:
+                        variables[var["name"]] = {"value": var["value"], "type": var.get("type", "String")}
+                else:
+                    variables = {}
+            else:
+                # Process is still active, get variables normally
+                var_response = await client.get(
+                    f"{camunda_rest}/process-instance/{process_instance_id}/variables"
+                )
+                variables = var_response.json() if var_response.status_code == 200 else {}
 
             # Extract key results
             result = {
