@@ -18,7 +18,13 @@ def get_conn():
             password=s.postgres_password,
         )
     # Fallback to defaults
-    return psycopg2.connect(host="localhost", port=5432, dbname="odras", user="postgres", password="password")
+    return psycopg2.connect(
+        host="localhost",
+        port=5432,
+        dbname="odras",
+        user="postgres",
+        password="password",
+    )
 
 
 def main():
@@ -62,6 +68,5 @@ def main():
 
 if __name__ == "__main__":
     import os
+
     sys.exit(main())
-
-

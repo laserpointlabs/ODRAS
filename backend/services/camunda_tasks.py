@@ -16,7 +16,9 @@ from .llm_team import LLMTeam
 from .persistence import PersistenceLayer
 
 
-def extract_requirements_from_document(document_content: str, document_filename: str) -> Dict[str, Any]:
+def extract_requirements_from_document(
+    document_content: str, document_filename: str
+) -> Dict[str, Any]:
     """
     Extract requirements from document using keyword patterns.
     This function can be called by Camunda as an external task.
@@ -118,7 +120,9 @@ def process_requirements_with_llm(
         for i in range(iterations):
             try:
                 # Call LLM team to analyze the requirement
-                llm_result = llm_team.analyze_requirement(req["text"], {})  # Empty schema for now, will enhance later
+                llm_result = llm_team.analyze_requirement(
+                    req["text"], {}
+                )  # Empty schema for now, will enhance later
 
                 # Add metadata
                 result = {
@@ -156,7 +160,9 @@ def process_requirements_with_llm(
         # Calculate aggregate statistics
         successful_results = [r for r in req_results if r["status"] == "success"]
         avg_confidence = (
-            sum(r["confidence"] for r in successful_results) / len(successful_results) if successful_results else 0.0
+            sum(r["confidence"] for r in successful_results) / len(successful_results)
+            if successful_results
+            else 0.0
         )
 
         processed_requirements.append(
@@ -291,9 +297,21 @@ def store_results_in_graph_db(processed_requirements: List[Dict]) -> Dict[str, A
 
                     # Create iteration node
                     triples.append((f"iter:{iter_id}", "TYPE", "Iteration"))
-                    triples.append((f"iter:{iter_id}", "ITERATION_NUMBER", str(iteration["iteration"])))
+                    triples.append(
+                        (
+                            f"iter:{iter_id}",
+                            "ITERATION_NUMBER",
+                            str(iteration["iteration"]),
+                        )
+                    )
                     triples.append((f"iter:{iter_id}", "USES_MODEL", iteration["model"]))
-                    triples.append((f"iter:{iter_id}", "HAS_CONFIDENCE", str(iteration["confidence"])))
+                    triples.append(
+                        (
+                            f"iter:{iter_id}",
+                            "HAS_CONFIDENCE",
+                            str(iteration["confidence"]),
+                        )
+                    )
 
                     # Link requirement to iteration
                     triples.append((f"req:{req_id}", "HAS_ITERATION", f"iter:{iter_id}"))
@@ -338,7 +356,13 @@ def store_results_in_rdf_db(processed_requirements: List[Dict]) -> Dict[str, Any
     settings = Settings()
     persistence = PersistenceLayer(settings)
 
-    rdf_store_status = {"database": "Fuseki", "triples_created": 0, "graphs_created": 1, "status": "success", "errors": []}
+    rdf_store_status = {
+        "database": "Fuseki",
+        "triples_created": 0,
+        "graphs_created": 1,
+        "status": "success",
+        "errors": [],
+    }
 
     try:
         # Prepare RDF triples in Turtle format

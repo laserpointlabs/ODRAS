@@ -1,0 +1,147 @@
+rule "pre-merge-testing-mandatory" {
+  description = "MANDATORY: Complete testing before any branch merge"
+  when = "preparing to merge branches, create pull requests, or deploy code"
+  then = "REQUIRED: Execute complete pre-merge validation sequence:
+    1. Run: ./scripts/pre_merge_validation.sh --verbose
+    2. Run: python scripts/run_comprehensive_tests.py --verbose
+    3. Run: python scripts/validate_all_endpoints.py --base-url http://localhost:8000
+    4. Verify: ALL tests pass with 0 critical failures
+    5. Verify: Test coverage is 90%+ for new/modified code
+    6. Verify: No security vulnerabilities detected
+    7. Verify: Performance requirements met
+    8. BLOCK MERGE: If any critical test fails or coverage is below 90%"
+}
+
+rule "test-coverage-enforcement" {
+  description = "Enforce minimum test coverage requirements"
+  when = "adding, modifying, or removing code"
+  then = "MANDATORY: Maintain test coverage standards:
+    - Minimum 90% code coverage for new/modified code
+    - Critical functions must have 100% coverage
+    - API endpoints must have comprehensive test coverage
+    - Integration tests required for all workflows
+    - Run: pytest tests/ -v --cov=backend --cov-report=html
+    - Review coverage report and add tests for uncovered code
+    - BLOCK COMMIT: If coverage drops below 90% for new code"
+}
+
+rule "api-endpoint-validation-required" {
+  description = "Every API endpoint must be validated before merge"
+  when = "creating, modifying, or deleting API endpoints"
+  then = "REQUIRED: API endpoint validation:
+    - Add comprehensive tests in tests/api/
+    - Test all HTTP methods and response codes
+    - Validate authentication and authorization
+    - Test input validation and error handling
+    - Verify response schemas and formats
+    - Test performance requirements (response time < 2s)
+    - Update validate_all_endpoints.py for new endpoints
+    - Run: python scripts/validate_all_endpoints.py --verbose
+    - BLOCK MERGE: If any API endpoint validation fails"
+}
+
+rule "integration-testing-mandatory" {
+  description = "Integration tests required for all workflows"
+  when = "implementing or modifying workflows, integrations, or cross-module features"
+  then = "MANDATORY: Create integration tests that verify:
+    - End-to-end workflow execution
+    - Cross-module data consistency
+    - Database integrity and transactions
+    - External service integrations
+    - Error handling and recovery
+    - Performance under load
+    - Security and access control
+    - Run: pytest tests/integration/ -v
+    - BLOCK MERGE: If integration tests fail"
+}
+
+rule "security-testing-required" {
+  description = "Security testing mandatory for security-sensitive code"
+  when = "implementing authentication, authorization, data handling, or user input processing"
+  then = "REQUIRED: Security testing and validation:
+    - Run: bandit -r backend/ -ll
+    - Test authentication bypass attempts
+    - Test authorization escalation scenarios
+    - Validate input sanitization and validation
+    - Test SQL injection prevention
+    - Test XSS attack prevention
+    - Verify CSRF protection
+    - Test data encryption and secure storage
+    - BLOCK MERGE: If security vulnerabilities detected"
+}
+
+rule "performance-testing-required" {
+  description = "Performance testing for performance-critical components"
+  when = "implementing or modifying performance-critical code, APIs, or workflows"
+  then = "REQUIRED: Performance testing and validation:
+    - API endpoints must respond within 2 seconds
+    - File operations must handle large files efficiently
+    - Database queries must be optimized
+    - Workflow execution must meet time requirements
+    - Memory usage must be within acceptable limits
+    - Concurrent operations must work correctly
+    - Run: pytest tests/performance/ -v
+    - BLOCK MERGE: If performance requirements not met"
+}
+
+rule "test-update-mandatory" {
+  description = "Update tests when modifying code"
+  when = "modifying existing code, adding features, or changing behavior"
+  then = "MANDATORY: Update test suite to reflect changes:
+    - Modify existing tests if behavior changes
+    - Add new tests for new functionality
+    - Update test data and fixtures as needed
+    - Update integration tests for workflow changes
+    - Update API validation scripts for endpoint changes
+    - Verify all tests still pass after changes
+    - NEVER commit code changes without updating corresponding tests
+    - BLOCK COMMIT: If tests are not updated to match code changes"
+}
+
+rule "test-execution-sequence" {
+  description = "Follow proper test execution sequence"
+  when = "running tests or validation before merge"
+  then = "EXECUTE: Tests in this specific order (each must pass):
+    1. Code quality checks: flake8, black, bandit
+    2. Unit tests: pytest tests/unit/ -v
+    3. API tests: pytest tests/api/ -v
+    4. Integration tests: pytest tests/integration/ -v
+    5. File management tests: pytest tests/test_file_management.py -v
+    6. API endpoint validation: python scripts/validate_all_endpoints.py
+    7. Comprehensive test suite: python scripts/run_comprehensive_tests.py
+    8. Pre-merge validation: ./scripts/pre_merge_validation.sh
+    STOP: If any step fails, fix issues before proceeding"
+}
+
+rule "test-failure-resolution" {
+  description = "Proper handling and resolution of test failures"
+  when = "tests fail during development or validation"
+  then = "REQUIRED: Follow failure resolution process:
+    1. Analyze failure details and error messages
+    2. Identify root cause (code bug, test issue, environment problem)
+    3. Fix the underlying issue, not just the test
+    4. Re-run the specific failing test suite
+    5. Re-run all tests to ensure no regressions
+    6. Update tests if behavior change was intentional
+    7. Document any test changes in commit message
+    8. NEVER disable or skip tests without justification
+    9. BLOCK MERGE: Until all test failures are resolved"
+}
+
+rule "branch-protection-requirements" {
+  description = "Branch protection and merge requirements"
+  when = "setting up branch protection or merge policies"
+  then = "CONFIGURE: Branch protection rules:
+    - Require status checks to pass before merging
+    - Require up-to-date branches before merging
+    - Require pull request reviews before merging
+    - Require linear history (squash merge only)
+    - Require all CI checks to pass
+    - Block force pushes to protected branches
+    - Require signed commits
+    - Set up required status checks:
+      - pre-merge-validation
+      - comprehensive-tests
+      - api-endpoint-validation
+      - test-coverage-check"
+}

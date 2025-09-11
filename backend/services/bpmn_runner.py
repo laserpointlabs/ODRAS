@@ -71,7 +71,13 @@ class BPMNWorkflowRunner:
             for e in entities:
                 triples.append((f"req:{rid}", "HAS_ENTITY", f"ent:{e.get('id')}"))
             for rel in obj.get("relationships", []):
-                triples.append((f"ent:{rel.get('source')}", rel.get("type", "REL"), f"ent:{rel.get('target')}"))
+                triples.append(
+                    (
+                        f"ent:{rel.get('source')}",
+                        rel.get("type", "REL"),
+                        f"ent:{rel.get('target')}",
+                    )
+                )
         self.persistence.write_graph(triples)
 
         # 5) Push to RDF (sketch TTL via simple triples)

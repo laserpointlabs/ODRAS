@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<bpmn:definitions xmlns:bpmn="http://www.omg.org/spec/BPMN/20100524/MODEL" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" id="Definitions_req" targetNamespace="http://odras.system/bpmn">
-  <bpmn:process id="requirements_extraction" name="ODRAS Requirements Extraction" isExecutable="true">
+<bpmn:definitions xmlns:bpmn="http://www.omg.org/spec/BPMN/20100524/MODEL" xmlns:camunda="http://camunda.org/schema/1.0/bpmn" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" id="Definitions_req" targetNamespace="http://odras.system/bpmn">
+  <bpmn:process id="requirements_extraction" name="ODRAS Requirements Extraction" isExecutable="true" camunda:historyTimeToLive="30">
     <bpmn:startEvent id="StartEvent_REQ" name="Start Requirements Extraction">
       <bpmn:outgoing>Flow_R1</bpmn:outgoing>
     </bpmn:startEvent>

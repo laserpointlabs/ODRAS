@@ -1,0 +1,126 @@
+rule "database-schema-testing-mandatory" {
+  description = "MANDATORY: Database schema testing for all schema changes"
+  when = "creating, modifying, or deleting database schema, tables, indexes, or migrations"
+  then = "REQUIRED: Comprehensive database schema testing:
+    - Create migration files for all schema changes
+    - Update odras.sh init-db with new migrations
+    - Run database schema validation: python scripts/validate_database_schema.py --verbose
+    - Test migration application: python scripts/validate_database_schema.py test
+    - Run database unit tests: pytest tests/database/test_database_schema.py -v
+    - Test complete database initialization: ./odras.sh clean-all -y && ./odras.sh init-db
+    - BLOCK COMMIT: If any database schema test fails"
+}
+
+rule "migration-file-requirements" {
+  description = "Migration file requirements and standards"
+  when = "creating or modifying database migration files"
+  then = "REQUIRED: Migration file standards:
+    - Use sequential numbering: 001, 002, 003, etc.
+    - Use descriptive names: 010_add_user_preferences.sql
+    - Include proper comments and documentation
+    - Specify dependencies with -- DEPENDS ON: comments
+    - Include rollback support where appropriate
+    - Test migration application before committing
+    - Update odras.sh init-db with new migrations
+    - BLOCK COMMIT: If migration file doesn't meet standards"
+}
+
+rule "database-schema-consistency" {
+  description = "Maintain database schema consistency across environments"
+  when = "making any database-related changes"
+  then = "REQUIRED: Database schema consistency:
+    - All migration files must be valid SQL
+    - Migration order must be correct and sequential
+    - Dependencies must be properly specified
+    - odras.sh init-db must reference all migrations
+    - Schema validation must pass: python scripts/validate_database_schema.py
+    - Database tests must pass: pytest tests/database/ -v
+    - BLOCK MERGE: If schema consistency validation fails"
+}
+
+rule "database-testing-workflow" {
+  description = "Database testing workflow for schema changes"
+  when = "making database schema changes"
+  then = "FOLLOW: Database testing workflow:
+    1. Create migration file: python scripts/database_schema_manager.py create 'Description'
+    2. Edit migration file with SQL changes
+    3. Update schema info: python scripts/database_schema_manager.py update-info
+    4. Update odras.sh: python scripts/database_schema_manager.py update-odras
+    5. Validate changes: python scripts/validate_database_schema.py --verbose
+    6. Fix issues: python scripts/validate_database_schema.py --fix
+    7. Run tests: pytest tests/database/test_database_schema.py -v
+    8. Test initialization: ./odras.sh clean-all -y && ./odras.sh init-db
+    9. Run pre-merge validation: ./scripts/pre_merge_validation.sh --verbose"
+}
+
+rule "database-rollback-testing" {
+  description = "Test database rollback scenarios for complex changes"
+  when = "making complex database schema changes or data migrations"
+  then = "REQUIRED: Database rollback testing:
+    - Test migration rollback scenarios
+    - Verify data integrity after rollback
+    - Test partial rollback scenarios
+    - Document rollback procedures
+    - Test rollback performance
+    - BLOCK COMMIT: If rollback testing fails"
+}
+
+rule "database-performance-testing" {
+  description = "Test database performance for schema changes"
+  when = "adding indexes, constraints, or modifying large tables"
+  then = "REQUIRED: Database performance testing:
+    - Test query performance before and after changes
+    - Monitor database size and growth
+    - Test migration performance with large datasets
+    - Verify index effectiveness
+    - Test concurrent access scenarios
+    - BLOCK COMMIT: If performance requirements not met"
+}
+
+rule "database-documentation-requirements" {
+  description = "Documentation requirements for database schema changes"
+  when = "making database schema changes"
+  then = "REQUIRED: Database documentation:
+    - Document all new tables, columns, and relationships
+    - Update schema documentation: python scripts/database_schema_manager.py docs
+    - Comment all migration files with clear descriptions
+    - Document any breaking changes or data migrations
+    - Update API documentation if database changes affect APIs
+    - BLOCK COMMIT: If documentation is incomplete"
+}
+
+rule "database-environment-testing" {
+  description = "Test database schema across all environments"
+  when = "making database schema changes"
+  then = "REQUIRED: Multi-environment database testing:
+    - Test schema changes in development environment
+    - Test migration application in test environment
+    - Verify schema consistency across environments
+    - Test database initialization in clean environments
+    - Test schema validation in CI/CD pipeline
+    - BLOCK DEPLOYMENT: If any environment test fails"
+}
+
+rule "database-security-testing" {
+  description = "Security testing for database schema changes"
+  when = "making database schema changes that affect security"
+  then = "REQUIRED: Database security testing:
+    - Test access control and permissions
+    - Verify data encryption and protection
+    - Test SQL injection prevention
+    - Validate authentication and authorization
+    - Test audit logging and monitoring
+    - BLOCK COMMIT: If security vulnerabilities detected"
+}
+
+rule "database-backup-testing" {
+  description = "Test database backup and recovery with schema changes"
+  when = "making significant database schema changes"
+  then = "REQUIRED: Database backup and recovery testing:
+    - Test backup creation with new schema
+    - Test restore procedures with new schema
+    - Verify data integrity after restore
+    - Test point-in-time recovery scenarios
+    - Test backup performance with new schema
+    - BLOCK COMMIT: If backup/recovery testing fails"
+}

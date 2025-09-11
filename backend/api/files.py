@@ -8,7 +8,16 @@ import logging
 from typing import Any, Dict, List, Optional
 
 import httpx
-from fastapi import APIRouter, Depends, File, Form, HTTPException, Query, UploadFile, Header
+from fastapi import (
+    APIRouter,
+    Depends,
+    File,
+    Form,
+    HTTPException,
+    Query,
+    UploadFile,
+    Header,
+)
 from fastapi.responses import JSONResponse, StreamingResponse
 from pydantic import BaseModel, Field
 
@@ -97,42 +106,39 @@ def get_db_service() -> DatabaseService:
 def _detect_file_type_and_strategy(filename: str, content_type: str = None) -> Dict[str, str]:
     """
     Intelligently detect document type and optimal processing strategy based on file.
-    
+
     Returns:
         Dict with 'document_type' and 'chunking_strategy'
     """
     filename_lower = filename.lower()
-    
+
     # Document type detection
-    if any(filename_lower.endswith(ext) for ext in ['.pdf', '.doc', '.docx']):
-        document_type = 'document'
-        chunking_strategy = 'semantic'  # Better for documents
-    elif any(filename_lower.endswith(ext) for ext in ['.txt', '.md', '.rst']):
-        document_type = 'text'
-        chunking_strategy = 'hybrid'    # Balanced approach
-    elif any(filename_lower.endswith(ext) for ext in ['.json', '.xml', '.yml', '.yaml']):
-        document_type = 'structured'
-        chunking_strategy = 'fixed'     # Preserve structure
-    elif any(filename_lower.endswith(ext) for ext in ['.py', '.js', '.java', '.cpp', '.c']):
-        document_type = 'code'
-        chunking_strategy = 'fixed'     # Preserve code blocks
-    elif any(filename_lower.endswith(ext) for ext in ['.csv', '.xlsx', '.xls']):
-        document_type = 'data'
-        chunking_strategy = 'fixed'     # Preserve tabular structure
-    elif 'requirements' in filename_lower or 'specification' in filename_lower:
-        document_type = 'requirements'
-        chunking_strategy = 'semantic'  # Extract requirement relationships
-    elif any(term in filename_lower for term in ['manual', 'guide', 'procedure']):
-        document_type = 'knowledge'
-        chunking_strategy = 'semantic'  # Extract procedural knowledge
+    if any(filename_lower.endswith(ext) for ext in [".pdf", ".doc", ".docx"]):
+        document_type = "document"
+        chunking_strategy = "semantic"  # Better for documents
+    elif any(filename_lower.endswith(ext) for ext in [".txt", ".md", ".rst"]):
+        document_type = "text"
+        chunking_strategy = "hybrid"  # Balanced approach
+    elif any(filename_lower.endswith(ext) for ext in [".json", ".xml", ".yml", ".yaml"]):
+        document_type = "structured"
+        chunking_strategy = "fixed"  # Preserve structure
+    elif any(filename_lower.endswith(ext) for ext in [".py", ".js", ".java", ".cpp", ".c"]):
+        document_type = "code"
+        chunking_strategy = "fixed"  # Preserve code blocks
+    elif any(filename_lower.endswith(ext) for ext in [".csv", ".xlsx", ".xls"]):
+        document_type = "data"
+        chunking_strategy = "fixed"  # Preserve tabular structure
+    elif "requirements" in filename_lower or "specification" in filename_lower:
+        document_type = "requirements"
+        chunking_strategy = "semantic"  # Extract requirement relationships
+    elif any(term in filename_lower for term in ["manual", "guide", "procedure"]):
+        document_type = "knowledge"
+        chunking_strategy = "semantic"  # Extract procedural knowledge
     else:
-        document_type = 'unknown'
-        chunking_strategy = 'hybrid'    # Safe default
-    
-    return {
-        'document_type': document_type,
-        'chunking_strategy': chunking_strategy
-    }
+        document_type = "unknown"
+        chunking_strategy = "hybrid"  # Safe default
+
+    return {"document_type": document_type, "chunking_strategy": chunking_strategy}
 
 
 @router.post("/upload", response_model=FileUploadResponse)
@@ -141,7 +147,9 @@ async def upload_file(
     project_id: Optional[str] = Form(None),
     tags: Optional[str] = Form(None),  # JSON string of tags
     process_for_knowledge: Optional[bool] = Form(True),  # Auto-process for knowledge (default True)
-    embedding_model: Optional[str] = Form("all-MiniLM-L6-v2"),  # Embedding model for knowledge processing
+    embedding_model: Optional[str] = Form(
+        "all-MiniLM-L6-v2"
+    ),  # Embedding model for knowledge processing
     chunking_strategy: Optional[str] = Form("hybrid"),  # Chunking strategy for knowledge processing
     storage_service: FileStorageService = Depends(get_file_storage_service),
     db: DatabaseService = Depends(get_db_service),
@@ -171,11 +179,14 @@ async def upload_file(
         if not authorization or not authorization.startswith("Bearer "):
             raise HTTPException(status_code=401, detail="Unauthorized")
         token = authorization.split(" ", 1)[1]
-        from ..services.auth import TOKENS as AUTH_TOKENS
-        user = AUTH_TOKENS.get(token)
+        from ..services.auth import get_user
+
+        user = get_user(authorization)
         if not user:
             raise HTTPException(status_code=401, detail="Invalid token")
-        if not db.is_user_member(project_id=project_id, user_id=user["user_id"]):
+        if not user.get("is_admin", False) and not db.is_user_member(
+            project_id=project_id, user_id=user["user_id"]
+        ):
             raise HTTPException(status_code=403, detail="Not a member of project")
 
         # Read file content
@@ -204,77 +215,97 @@ async def upload_file(
         if result["success"]:
             metadata = result["metadata"]
             file_id = result["file_id"]
-            
+
             # Automatic knowledge processing - only if enabled
             knowledge_asset_id = None
             if process_for_knowledge:
                 try:
                     # Use the proven working knowledge transformation service
-                    from ..services.knowledge_transformation import get_knowledge_transformation_service
-                    
+                    from ..services.knowledge_transformation import (
+                        get_knowledge_transformation_service,
+                    )
+
                     # Intelligent file type detection and processing strategy
                     file_detection = _detect_file_type_and_strategy(
-                        file.filename, 
-                        file.content_type
+                        file.filename, file.content_type
                     )
-                    
+
                     # Use detected type or tag override
-                    detected_doc_type = file_detection['document_type']
-                    final_doc_type = file_tags.get('docType', detected_doc_type) if file_tags else detected_doc_type
-                    
+                    detected_doc_type = file_detection["document_type"]
+                    final_doc_type = (
+                        file_tags.get("docType", detected_doc_type)
+                        if file_tags
+                        else detected_doc_type
+                    )
+
                     # Use detected strategy or user preference
-                    detected_chunking = file_detection['chunking_strategy']
+                    detected_chunking = file_detection["chunking_strategy"]
                     final_chunking = chunking_strategy or detected_chunking
-                    
-                    logger.info(f"🤖 Auto-detected: {final_doc_type} document, {final_chunking} chunking")
-                    
+
+                    logger.info(
+                        f"🤖 Auto-detected: {final_doc_type} document, {final_chunking} chunking"
+                    )
+
                     # Prepare processing options
                     processing_options = {
-                        'document_type': final_doc_type,
-                        'embedding_model': embedding_model or 'all-MiniLM-L6-v2',
-                        'chunking_strategy': final_chunking,
-                        'chunk_size': 512,
-                        'chunk_overlap': 50,
-                        'extract_relationships': True
+                        "document_type": final_doc_type,
+                        "embedding_model": embedding_model or "all-MiniLM-L6-v2",
+                        "chunking_strategy": final_chunking,
+                        "chunk_size": 512,
+                        "chunk_overlap": 50,
+                        "extract_relationships": True,
                     }
-                    
+
                     # START BPMN WORKFLOW (use what we built!)
                     import httpx
-                    
+
                     camunda_url = "http://localhost:8080/engine-rest"
-                    start_url = f"{camunda_url}/process-definition/key/automatic_knowledge_processing/start"
-                    
+                    start_url = (
+                        f"{camunda_url}/process-definition/key/automatic_knowledge_processing/start"
+                    )
+
                     payload = {
                         "variables": {
                             "file_id": {"value": file_id, "type": "String"},
-                            "project_id": {"value": project_id, "type": "String"}, 
+                            "project_id": {"value": project_id, "type": "String"},
                             "filename": {"value": file.filename, "type": "String"},
-                            "document_type": {"value": final_doc_type, "type": "String"},
-                            "embedding_model": {"value": embedding_model or 'all-MiniLM-L6-v2', "type": "String"},
-                            "chunking_strategy": {"value": final_chunking, "type": "String"},
-                            "chunk_size": {"value": 512, "type": "Integer"}
+                            "document_type": {
+                                "value": final_doc_type,
+                                "type": "String",
+                            },
+                            "embedding_model": {
+                                "value": embedding_model or "all-MiniLM-L6-v2",
+                                "type": "String",
+                            },
+                            "chunking_strategy": {
+                                "value": final_chunking,
+                                "type": "String",
+                            },
+                            "chunk_size": {"value": 512, "type": "Integer"},
                         }
                     }
-                    
+
                     async with httpx.AsyncClient(timeout=10) as client:  # Shorter timeout
                         response = await client.post(start_url, json=payload)
                         response.raise_for_status()
                         result = response.json()
                         process_instance_id = result.get("id")
-                    
-                    logger.info(f"🔄 Started BPMN knowledge processing workflow: {process_instance_id} for file {file_id}")
-                    
+
+                    logger.info(
+                        f"🔄 Started BPMN knowledge processing workflow: {process_instance_id} for file {file_id}"
+                    )
+
                 except Exception as e:
                     logger.error(f"❌ Knowledge processing failed for file {file_id}: {str(e)}")
                     # Don't fail the upload if processing fails
                     pass
-            
+
             # Build response
             if process_instance_id:
                 response_message = f"File uploaded and BPMN knowledge processing started (workflow: {process_instance_id})"
             else:
                 response_message = "File uploaded successfully (BPMN knowledge processing failed to start - check logs)"
-            
+
             return FileUploadResponse(
                 success=True,
                 file_id=file_id,
@@ -293,7 +324,10 @@ async def upload_file(
 
 
 @router.get("/{file_id}/download")
-async def download_file(file_id: str, storage_service: FileStorageService = Depends(get_file_storage_service)):
+async def download_file(
+    file_id: str,
+    storage_service: FileStorageService = Depends(get_file_storage_service),
+):
     """
     Download a file by ID.
 
@@ -323,7 +357,10 @@ async def download_file(file_id: str, storage_service: FileStorageService = Depe
         return StreamingResponse(
             io.BytesIO(file_content),
             media_type=content_type,
-            headers={"Content-Disposition": f"attachment; filename={filename}", "Content-Length": str(len(file_content))},
+            headers={
+                "Content-Disposition": f"attachment; filename={filename}",
+                "Content-Length": str(len(file_content)),
+            },
         )
 
     except HTTPException:
@@ -355,7 +392,12 @@ async def get_file_url(
         if url is None:
             raise HTTPException(status_code=404, detail="File not found or URL generation failed")
 
-        return {"success": True, "file_id": file_id, "url": url, "expires_in": expires_in}
+        return {
+            "success": True,
+            "file_id": file_id,
+            "url": url,
+            "expires_in": expires_in,
+        }
 
     except HTTPException:
         raise
@@ -366,9 +408,9 @@ async def get_file_url(
 
 @router.delete("/{file_id}")
 async def delete_file(
-    file_id: str, 
+    file_id: str,
     storage_service: FileStorageService = Depends(get_file_storage_service),
-    user: Dict = Depends(get_user)  # Add user authentication
+    user: Dict = Depends(get_user),  # Add user authentication
 ):
     """
     Delete a file by ID (owner or admin only).
@@ -385,13 +427,25 @@ async def delete_file(
         file_metadata = await storage_service.get_file_metadata(file_id)
         if not file_metadata:
             raise HTTPException(status_code=404, detail="File not found")
-            
+
         is_admin = user.get("is_admin", False)
-        is_owner = file_metadata.get("created_by") == user["user_id"]
-        
+        file_created_by = file_metadata.get("created_by")
+        user_id = user["user_id"]
+        is_owner = file_created_by == user_id
+
+        # Debug logging
+        logger.info(
+            f"File deletion auth check: file_id={file_id}, user_id={user_id}, is_admin={is_admin}"
+        )
+        logger.info(
+            f"File metadata created_by: {repr(file_created_by)} (type: {type(file_created_by)})"
+        )
+        logger.info(f"User ID: {repr(user_id)} (type: {type(user_id)})")
+        logger.info(f"Is owner: {is_owner}, Is admin: {is_admin}")
+
         if not (is_admin or is_owner):
             raise HTTPException(status_code=403, detail="Not authorized to delete this file")
-        
+
         success = await storage_service.delete_file(file_id)
 
         if success:
@@ -433,23 +487,26 @@ async def list_files(
         # Check if user is admin
         is_admin = user.get("is_admin", False)
         user_id = user.get("user_id")
-        
+
         # Use the new visibility-aware method with user context
         files = await storage_service.list_files_with_visibility(
-            project_id=project_id, 
-            include_public=include_public, 
-            limit=limit, 
+            project_id=project_id,
+            include_public=include_public,
+            limit=limit,
             offset=offset,
             user_id=user_id,
             is_admin=is_admin,
-            db=db
+            db=db,
         )
 
         # Convert to response format
         file_responses = [FileMetadataResponse(**file_data) for file_data in files]
 
         return FileListResponse(
-            success=True, files=file_responses, total_count=len(file_responses), message="Files retrieved successfully"
+            success=True,
+            files=file_responses,
+            total_count=len(file_responses),
+            message="Files retrieved successfully",
         )
 
     except Exception as e:
@@ -458,7 +515,9 @@ async def list_files(
 
 
 @router.get("/storage/info")
-async def get_storage_info(storage_service: FileStorageService = Depends(get_file_storage_service)):
+async def get_storage_info(
+    storage_service: FileStorageService = Depends(get_file_storage_service),
+):
     """
     Get information about the current storage configuration.
 
@@ -467,7 +526,11 @@ async def get_storage_info(storage_service: FileStorageService = Depends(get_fil
     """
     try:
         info = storage_service.get_storage_info()
-        return {"success": True, "storage_info": info, "message": "Storage information retrieved successfully"}
+        return {
+            "success": True,
+            "storage_info": info,
+            "message": "Storage information retrieved successfully",
+        }
 
     except Exception as e:
         logger.error(f"Failed to get storage info: {e}")
@@ -476,23 +539,23 @@ async def get_storage_info(storage_service: FileStorageService = Depends(get_fil
 
 @router.put("/{file_id}/tags")
 async def update_file_tags(
-    file_id: str, 
-    body: TagsUpdateRequest, 
+    file_id: str,
+    body: TagsUpdateRequest,
     storage_service: FileStorageService = Depends(get_file_storage_service),
-    user: Dict = Depends(get_user)  # Add user authentication
+    user: Dict = Depends(get_user),  # Add user authentication
 ):
     try:
         # Check file ownership
         file_metadata = await storage_service.get_file_metadata(file_id)
         if not file_metadata:
             raise HTTPException(status_code=404, detail="File not found")
-            
+
         is_admin = user.get("is_admin", False)
         is_owner = file_metadata.get("created_by") == user["user_id"]
-        
+
         if not (is_admin or is_owner):
             raise HTTPException(status_code=403, detail="Not authorized to edit this file")
-            
+
         ok = await storage_service.update_file_tags(file_id, body.tags or {})
         if not ok:
             raise HTTPException(status_code=404, detail="File metadata not found")
@@ -517,7 +580,9 @@ async def import_file_by_url(
         if not project_id:
             raise HTTPException(status_code=400, detail="project_id required")
         # Check project membership
-        if not db.is_user_member(project_id=project_id, user_id=user["user_id"]):
+        if not user.get("is_admin", False) and not db.is_user_member(
+            project_id=project_id, user_id=user["user_id"]
+        ):
             raise HTTPException(status_code=403, detail="Not a member of project")
         # Fetch bytes
         async with httpx.AsyncClient(timeout=30) as client:
@@ -526,11 +591,13 @@ async def import_file_by_url(
             content = r.content
             # Derive filename from URL
             import urllib.parse as _up
+
             parsed = _up.urlparse(url)
-            name = (parsed.path.split("/")[-1] or "downloaded_file")
+            name = parsed.path.split("/")[-1] or "downloaded_file"
         file_tags = {}
         if tags:
             import json
+
             try:
                 file_tags = json.loads(tags)
             except json.JSONDecodeError:
@@ -546,7 +613,12 @@ async def import_file_by_url(
         if not result.get("success"):
             raise HTTPException(status_code=500, detail=result.get("error") or "Store failed")
         md = result["metadata"]
-        return {"success": True, "file_id": result["file_id"], "filename": md["filename"], "size": md["size"]}
+        return {
+            "success": True,
+            "file_id": result["file_id"],
+            "filename": md["filename"],
+            "size": md["size"],
+        }
     except HTTPException:
         raise
     except Exception as e:
@@ -576,9 +648,11 @@ async def batch_upload_files(
         if not project_id:
             raise HTTPException(status_code=400, detail="project_id required")
         # Check project membership
-        if not db.is_user_member(project_id=project_id, user_id=user["user_id"]):
+        if not user.get("is_admin", False) and not db.is_user_member(
+            project_id=project_id, user_id=user["user_id"]
+        ):
             raise HTTPException(status_code=403, detail="Not a member of project")
-            
+
         results = []
 
         for file in files:
@@ -586,20 +660,31 @@ async def batch_upload_files(
                 content = await file.read()
 
                 result = await storage_service.store_file(
-                    content=content, 
-                    filename=file.filename or "unknown", 
-                    content_type=file.content_type, 
+                    content=content,
+                    filename=file.filename or "unknown",
+                    content_type=file.content_type,
                     project_id=project_id,
-                    created_by=user["user_id"]  # Track file ownership
+                    created_by=user["user_id"],  # Track file ownership
                 )
 
                 if result["success"]:
                     metadata = result["metadata"]
                     results.append(
-                        {"filename": file.filename, "success": True, "file_id": result["file_id"], "size": metadata["size"]}
+                        {
+                            "filename": file.filename,
+                            "success": True,
+                            "file_id": result["file_id"],
+                            "size": metadata["size"],
+                        }
                     )
                 else:
-                    results.append({"filename": file.filename, "success": False, "error": result["error"]})
+                    results.append(
+                        {
+                            "filename": file.filename,
+                            "success": False,
+                            "error": result["error"],
+                        }
+                    )
 
             except Exception as e:
                 results.append({"filename": file.filename, "success": False, "error": str(e)})
@@ -632,6 +717,7 @@ async def process_uploaded_file(
     llm_model: Optional[str] = Form(None),
     iterations: int = Form(10),
     storage_service: FileStorageService = Depends(get_file_storage_service),
+    user: Dict = Depends(get_user),  # Add user authentication
 ):
     """
     Trigger processing of an uploaded file (e.g., requirements extraction) by starting the Camunda BPMN process.
@@ -647,6 +733,30 @@ async def process_uploaded_file(
         Processing initiation result including Camunda process instance info
     """
     try:
+        # Check file ownership and permissions
+        file_metadata = await storage_service.get_file_metadata(file_id)
+        if not file_metadata:
+            raise HTTPException(status_code=404, detail="File not found")
+
+        is_admin = user.get("is_admin", False)
+        is_owner = file_metadata.get("created_by") == user["user_id"]
+
+        # For project-based files, check project membership
+        project_id = file_metadata.get("project_id")
+        has_project_access = False
+        if project_id:
+            # Import db service to check project membership
+            from ..services.db import DatabaseService
+            from ..services.config import Settings
+
+            db = DatabaseService(Settings())
+            has_project_access = is_admin or db.is_user_member(
+                project_id=project_id, user_id=user["user_id"]
+            )
+
+        if not (is_admin or is_owner or has_project_access):
+            raise HTTPException(status_code=403, detail="Not authorized to process this file")
+
         # Retrieve stored file content
         file_data = await storage_service.retrieve_file(file_id)
         if file_data is None:
@@ -659,16 +769,27 @@ async def process_uploaded_file(
         CAMUNDA_BASE_URL = "http://localhost:8080"
         CAMUNDA_REST_API = f"{CAMUNDA_BASE_URL}/engine-rest"
 
-        # Build variables for starting process instance
+        # Build variables for starting process instance (match upload format)
         variables = {
-            "document_content": {"value": document_content, "type": "String"},
-            "document_filename": {"value": document_filename, "type": "String"},
-            "llm_provider": {"value": (llm_provider or Settings().llm_provider), "type": "String"},
-            "llm_model": {"value": (llm_model or Settings().llm_model), "type": "String"},
-            "iterations": {"value": iterations, "type": "Integer"},
+            "file_id": {"value": file_id, "type": "String"},
+            "project_id": {"value": file_metadata.get("project_id"), "type": "String"},
+            "filename": {"value": file_metadata.get("filename", "unknown"), "type": "String"},
+            "document_type": {"value": "knowledge", "type": "String"},
+            "embedding_model": {"value": "all-MiniLM-L6-v2", "type": "String"},
+            "chunking_strategy": {"value": "smart_default", "type": "String"},
+            "llm_provider": {
+                "value": (llm_provider or Settings().llm_provider),
+                "type": "String",
+            },
+            "llm_model": {
+                "value": (llm_model or Settings().llm_model),
+                "type": "String",
+            },
         }
 
-        start_url = f"{CAMUNDA_REST_API}/process-definition/key/odras_requirements_analysis/start"
+        start_url = (
+            f"{CAMUNDA_REST_API}/process-definition/key/automatic_knowledge_processing/start"
+        )
         async with httpx.AsyncClient(timeout=30) as client:
             response = await client.post(start_url, json={"variables": variables})
             response.raise_for_status()
@@ -708,7 +829,8 @@ async def update_keywords(config: KeywordConfig):
 
 @router.post("/extract/keywords")
 async def extract_requirements_by_keywords(
-    project_id: Optional[str] = Form(None), storage_service: FileStorageService = Depends(get_file_storage_service)
+    project_id: Optional[str] = Form(None),
+    storage_service: FileStorageService = Depends(get_file_storage_service),
 ):
     """
     Scan all stored files (optionally filtered by project) and extract requirement-like
@@ -717,7 +839,12 @@ async def extract_requirements_by_keywords(
     try:
         files = await storage_service.list_files(project_id=project_id, limit=1000, offset=0)
         if not files:
-            return {"success": True, "message": "No files to process", "extracted_count": 0, "triples_written": 0}
+            return {
+                "success": True,
+                "message": "No files to process",
+                "extracted_count": 0,
+                "triples_written": 0,
+            }
 
         keywords = [k.lower() for k in KEYWORD_CONFIG.keywords]
         min_len = KEYWORD_CONFIG.min_text_length
@@ -730,8 +857,13 @@ async def extract_requirements_by_keywords(
             return [p.strip() for p in parts if p.strip()]
 
         # Collect TTL triples
+        from backend.services.config import Settings
+
+        settings = Settings()
+        base_uri = settings.installation_base_uri.rstrip("/")
+
         ttl_lines: List[str] = [
-            "@prefix odras: <http://odras.system/ontology#> .",
+            f"@prefix odras: <{base_uri}/ontology#> .",
             "@prefix rdf: <http://www.w3.org/1999/02/22-rdf-syntax-ns#> .",
             "@prefix rdfs: <http://www.w3.org/2000/01/rdf-schema#> .",
             "@prefix xsd: <http://www.w3.org/2001/XMLSchema#> .",
@@ -793,39 +925,41 @@ async def update_file_visibility(
 ):
     """
     Update file visibility (admin only).
-    
+
     Args:
         file_id: Unique file identifier
         visibility: "private" or "public"
-        
+
     Returns:
         Success response with updated visibility
     """
     try:
-        logger.info(f"Visibility update request: file_id={file_id}, visibility={visibility}, admin_user={admin_user}")
-        
+        logger.info(
+            f"Visibility update request: file_id={file_id}, visibility={visibility}, admin_user={admin_user}"
+        )
+
         # Check if file exists first
         file_metadata = await storage_service.get_file_metadata(file_id)
         if not file_metadata:
             logger.error(f"File not found: {file_id}")
             raise HTTPException(status_code=404, detail="File not found")
-        
+
         logger.info(f"Current file metadata: {file_metadata}")
-        
+
         # Update visibility
         success = await storage_service.update_file_visibility(file_id, visibility)
         logger.info(f"Visibility update result: success={success}")
-        
+
         if success:
             return {
                 "success": True,
                 "file_id": file_id,
                 "visibility": visibility,
-                "message": f"File visibility updated to {visibility}"
+                "message": f"File visibility updated to {visibility}",
             }
         else:
             raise HTTPException(status_code=500, detail="Failed to update file visibility")
-            
+
     except HTTPException:
         raise
     except Exception as e:

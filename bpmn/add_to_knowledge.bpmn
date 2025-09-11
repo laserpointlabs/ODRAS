@@ -1,11 +1,11 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<bpmn:definitions xmlns:bpmn="http://www.omg.org/spec/BPMN/20100524/MODEL" xmlns:bpmndi="http://www.omg.org/spec/BPMN/20100524/DI" xmlns:dc="http://www.omg.org/spec/DD/20100524/DC" xmlns:di="http://www.omg.org/spec/DD/20100524/DI" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" id="Definitions_AddKnowledge" targetNamespace="http://bpmn.io/schema/bpmn" exporter="Camunda Modeler" exporterVersion="5.34.0">
-  <bpmn:process id="add_to_knowledge_process" name="Add to Knowledge Process" isExecutable="true">
+<bpmn:definitions xmlns:bpmn="http://www.omg.org/spec/BPMN/20100524/MODEL" xmlns:bpmndi="http://www.omg.org/spec/BPMN/20100524/DI" xmlns:dc="http://www.omg.org/spec/DD/20100524/DC" xmlns:di="http://www.omg.org/spec/DD/20100524/DI" xmlns:camunda="http://camunda.org/schema/1.0/bpmn" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" id="Definitions_AddKnowledge" targetNamespace="http://bpmn.io/schema/bpmn" exporter="Camunda Modeler" exporterVersion="5.34.0">
+  <bpmn:process id="add_to_knowledge_process" name="Add to Knowledge Process" isExecutable="true" camunda:historyTimeToLive="30">
     <bpmn:startEvent id="StartEvent_KnowledgeRequest" name="Knowledge Addition Request">
       <bpmn:outgoing>Flow_ToKnowledgeValidation</bpmn:outgoing>
     </bpmn:startEvent>
     
-    <bpmn:serviceTask id="Task_ValidateKnowledgeInput" name="Validate Knowledge Input">
+    <bpmn:scriptTask id="Task_ValidateKnowledgeInput" name="Validate Knowledge Input" scriptFormat="python">
       <bpmn:documentation>
         Validate knowledge input format, content quality, and completeness.
         Check for required metadata, source attribution, and content structure.
@@ -17,7 +17,7 @@
         # External script reference
         # Script: scripts/task_validate_knowledge_input.py
       </bpmn:script>
-    </bpmn:serviceTask>
+    </bpmn:scriptTask>
     
     <bpmn:exclusiveGateway id="Gateway_InputValidation" name="Input Valid?">
       <bpmn:incoming>Flow_ToInputValidationGateway</bpmn:incoming>
@@ -35,7 +35,7 @@
       <bpmn:outgoing>Flow_BackToValidation</bpmn:outgoing>
     </bpmn:userTask>
     
-    <bpmn:serviceTask id="Task_CheckDuplicateKnowledge" name="Check for Duplicate Knowledge">
+    <bpmn:scriptTask id="Task_CheckDuplicateKnowledge" name="Check for Duplicate Knowledge" scriptFormat="python">
       <bpmn:documentation>
         Search existing knowledge base for similar or duplicate content.
         Use semantic similarity and keyword matching to identify overlaps.
@@ -47,7 +47,7 @@
         # External script reference
         # Script: scripts/task_check_duplicate_knowledge.py
       </bpmn:script>
-    </bpmn:serviceTask>
+    </bpmn:scriptTask>
     
     <bpmn:exclusiveGateway id="Gateway_DuplicateCheck" name="Duplicates Found?">
       <bpmn:incoming>Flow_ToDuplicateGateway</bpmn:incoming>
@@ -65,7 +65,7 @@
       <bpmn:outgoing>Flow_DuplicatesResolved</bpmn:outgoing>
     </bpmn:userTask>
     
-    <bpmn:serviceTask id="Task_TransformKnowledge" name="Transform Knowledge Format">
+    <bpmn:scriptTask id="Task_TransformKnowledge" name="Transform Knowledge Format" scriptFormat="python">
       <bpmn:documentation>
         Convert knowledge to standard internal format and schema.
         Extract entities, relationships, and semantic structures.
@@ -78,9 +78,9 @@
         # External script reference
         # Script: scripts/task_transform_knowledge.py
       </bpmn:script>
-    </bpmn:serviceTask>
+    </bpmn:scriptTask>
     
-    <bpmn:serviceTask id="Task_EnrichKnowledge" name="Enrich Knowledge with Context">
+    <bpmn:scriptTask id="Task_EnrichKnowledge" name="Enrich Knowledge with Context" scriptFormat="python">
       <bpmn:documentation>
         Add contextual information and metadata to knowledge.
         Link to related concepts, generate cross-references.
@@ -92,9 +92,9 @@
         # External script reference
         # Script: scripts/task_enrich_knowledge.py
       </bpmn:script>
-    </bpmn:serviceTask>
+    </bpmn:scriptTask>
     
-    <bpmn:serviceTask id="Task_QualityAssurance" name="Quality Assurance Check">
+    <bpmn:scriptTask id="Task_QualityAssurance" name="Quality Assurance Check" scriptFormat="python">
       <bpmn:documentation>
         Perform automated quality checks on processed knowledge.
         Validate consistency, completeness, and accuracy.
@@ -106,7 +106,7 @@
         # External script reference
         # Script: scripts/task_quality_assurance.py
       </bpmn:script>
-    </bpmn:serviceTask>
+    </bpmn:scriptTask>
     
     <bpmn:exclusiveGateway id="Gateway_QualityCheck" name="Quality Acceptable?">
       <bpmn:incoming>Flow_ToQualityGateway</bpmn:incoming>
@@ -131,7 +131,7 @@
       <bpmn:outgoing>Flow_ToRDFStorage</bpmn:outgoing>
     </bpmn:parallelGateway>
     
-    <bpmn:serviceTask id="Task_StoreInVectorDB" name="Store in Vector Database">
+    <bpmn:scriptTask id="Task_StoreInVectorDB" name="Store in Vector Database" scriptFormat="python">
       <bpmn:documentation>
         Store knowledge embeddings in vector database for similarity search.
         Create searchable vector representations with metadata.
@@ -143,9 +143,9 @@
         # External script reference
         # Script: scripts/task_store_knowledge_vector.py
       </bpmn:script>
-    </bpmn:serviceTask>
+    </bpmn:scriptTask>
     
-    <bpmn:serviceTask id="Task_StoreInGraphDB" name="Store in Graph Database">
+    <bpmn:scriptTask id="Task_StoreInGraphDB" name="Store in Graph Database" scriptFormat="python">
       <bpmn:documentation>
         Store knowledge entities and relationships in graph database.
         Create nodes for concepts and edges for relationships.
@@ -157,9 +157,9 @@
         # External script reference
         # Script: scripts/task_store_knowledge_graph.py
       </bpmn:script>
-    </bpmn:serviceTask>
+    </bpmn:scriptTask>
     
-    <bpmn:serviceTask id="Task_StoreInRDF" name="Store in RDF Triple Store">
+    <bpmn:scriptTask id="Task_StoreInRDF" name="Store in RDF Triple Store" scriptFormat="python">
       <bpmn:documentation>
         Store knowledge as RDF triples in semantic database.
         Apply ontology mappings and semantic annotations.
@@ -171,7 +171,7 @@
         # External script reference
         # Script: scripts/task_store_knowledge_rdf.py
       </bpmn:script>
-    </bpmn:serviceTask>
+    </bpmn:scriptTask>
     
     <bpmn:parallelGateway id="Gateway_StorageComplete" name="Storage Complete">
       <bpmn:incoming>Flow_VectorStorageComplete</bpmn:incoming>
@@ -180,7 +180,7 @@
       <bpmn:outgoing>Flow_ToIndexing</bpmn:outgoing>
     </bpmn:parallelGateway>
     
-    <bpmn:serviceTask id="Task_UpdateKnowledgeIndex" name="Update Knowledge Indices">
+    <bpmn:scriptTask id="Task_UpdateKnowledgeIndex" name="Update Knowledge Indices" scriptFormat="python">
       <bpmn:documentation>
         Update search indices and knowledge catalogs.
         Refresh recommendation engines and similarity mappings.
@@ -192,9 +192,9 @@
         # External script reference
         # Script: scripts/task_update_knowledge_index.py
       </bpmn:script>
-    </bpmn:serviceTask>
+    </bpmn:scriptTask>
     
-    <bpmn:serviceTask id="Task_NotifyStakeholders" name="Notify Stakeholders">
+    <bpmn:scriptTask id="Task_NotifyStakeholders" name="Notify Stakeholders" scriptFormat="python">
       <bpmn:documentation>
         Send notifications about new knowledge addition.
         Update knowledge subscribers and interested parties.
@@ -206,7 +206,7 @@
         # External script reference
         # Script: scripts/task_notify_stakeholders.py
       </bpmn:script>
-    </bpmn:serviceTask>
+    </bpmn:scriptTask>
     
     <bpmn:endEvent id="EndEvent_KnowledgeAdded" name="Knowledge Successfully Added">
       <bpmn:incoming>Flow_ToCompletion</bpmn:incoming>
@@ -521,7 +521,3 @@
     </bpmndi:BPMNPlane>
   </bpmndi:BPMNDiagram>
 </bpmn:definitions>
-
-
-
-

@@ -36,32 +36,62 @@ class DatabaseService:
             pass
 
     # Users
-    def get_or_create_user(self, username: str, display_name: Optional[str] = None, is_admin: bool = False) -> Dict[str, Any]:
+    def get_or_create_user(
+        self, username: str, display_name: Optional[str] = None, is_admin: bool = False
+    ) -> Dict[str, Any]:
         conn = self._conn()
         try:
             with conn.cursor(cursor_factory=RealDictCursor) as cur:
-                cur.execute("SELECT user_id, username, display_name, COALESCE(is_admin,false) AS is_admin FROM public.users WHERE username=%s", (username,))
+                cur.execute(
+                    "SELECT user_id, username, display_name, COALESCE(is_admin,false) AS is_admin FROM public.users WHERE username=%s",
+                    (username,),
+                )
                 row = cur.fetchone()
                 if row:
-                    return dict(row)
+                    user_dict = dict(row)
+                    # Validate user_id is a proper UUID
+                    import uuid
+
+                    try:
+                        uuid.UUID(str(user_dict["user_id"]))
+                    except ValueError as e:
+                        raise ValueError(
+                            f"Invalid user_id in database: {user_dict['user_id']!r}"
+                        ) from e
+                    return user_dict
                 cur.execute(
                     "INSERT INTO public.users (username, display_name, is_admin) VALUES (%s, %s, %s) RETURNING user_id, username, display_name, COALESCE(is_admin,false) AS is_admin",
                     (username, display_name or username, is_admin),
                 )
                 row = cur.fetchone()
                 conn.commit()
-                return dict(row)
+                user_dict = dict(row)
+                # Validate user_id is a proper UUID
+                import uuid
+
+                try:
+                    uuid.UUID(str(user_dict["user_id"]))
+                except ValueError as e:
+                    raise ValueError(f"Invalid user_id created: {user_dict['user_id']!r}") from e
+                return user_dict
         finally:
             self._return(conn)
 
     # Projects
-    def create_project(self, name: str, owner_user_id: str, description: Optional[str] = None) -> Dict[str, Any]:
+    def create_project(
+        self,
+        name: str,
+        owner_user_id: str,
+        description: Optional[str] = None,
+        namespace_id: Optional[str] = None,
+        domain: Optional[str] = None,
+    ) -> Dict[str, Any]:
         conn = self._conn()
         try:
             with conn.cursor(cursor_factory=RealDictCursor) as cur:
                 cur.execute(
-                    "INSERT INTO public.projects (name, description, created_by) VALUES (%s, %s, %s) RETURNING project_id, name, description, created_at, updated_at, created_by, is_active",
-                    (name, description or None, owner_user_id),
+                    "INSERT INTO public.projects (name, description, created_by, namespace_id, domain) VALUES (%s, %s, %s, %s, %s) RETURNING project_id, name, description, created_at, updated_at, created_by, is_active, namespace_id, domain",
+                    (name, description or None, owner_user_id, namespace_id, domain),
                 )
                 proj = dict(cur.fetchone())
                 # add membership as owner
@@ -74,14 +104,16 @@ class DatabaseService:
         finally:
             self._return(conn)
 
-    def list_projects_for_user(self, user_id: str, active: Optional[bool] = True) -> List[Dict[str, Any]]:
+    def list_projects_for_user(
+        self, user_id: str, active: Optional[bool] = True
+    ) -> List[Dict[str, Any]]:
         conn = self._conn()
         try:
             with conn.cursor(cursor_factory=RealDictCursor) as cur:
                 if active is None:
                     cur.execute(
                         """
-                        SELECT p.project_id, p.name, p.description, p.created_at, p.updated_at, p.is_active, pm.role
+                        SELECT p.project_id, p.name, p.description, p.created_at, p.updated_at, p.is_active, p.namespace_id, p.domain, pm.role
                         FROM public.projects p
                         JOIN public.project_members pm ON pm.project_id = p.project_id
                         WHERE pm.user_id = %s
@@ -92,7 +124,7 @@ class DatabaseService:
                 else:
                     cur.execute(
                         """
-                        SELECT p.project_id, p.name, p.description, p.created_at, p.updated_at, p.is_active, pm.role
+                        SELECT p.project_id, p.name, p.description, p.created_at, p.updated_at, p.is_active, p.namespace_id, p.domain, pm.role
                         FROM public.projects p
                         JOIN public.project_members pm ON pm.project_id = p.project_id
                         WHERE pm.user_id = %s AND p.is_active = %s
@@ -132,7 +164,10 @@ class DatabaseService:
         conn = self._conn()
         try:
             with conn.cursor() as cur:
-                cur.execute("UPDATE public.projects SET is_active = FALSE WHERE project_id = %s", (project_id,))
+                cur.execute(
+                    "UPDATE public.projects SET is_active = FALSE WHERE project_id = %s",
+                    (project_id,),
+                )
                 conn.commit()
         finally:
             self._return(conn)
@@ -141,18 +176,60 @@ class DatabaseService:
         conn = self._conn()
         try:
             with conn.cursor() as cur:
-                cur.execute("UPDATE public.projects SET is_active = TRUE WHERE project_id = %s", (project_id,))
+                cur.execute(
+                    "UPDATE public.projects SET is_active = TRUE WHERE project_id = %s",
+                    (project_id,),
+                )
                 conn.commit()
         finally:
             self._return(conn)
 
-    def rename_project(self, project_id: str, new_name: str) -> Dict[str, Any]:
+    def update_project(
+        self,
+        project_id: str,
+        name: Optional[str] = None,
+        description: Optional[str] = None,
+        domain: Optional[str] = None,
+        namespace_id: Optional[str] = None,
+    ) -> Dict[str, Any]:
+        """Update project fields. Only updates provided fields."""
         conn = self._conn()
         try:
             with conn.cursor(cursor_factory=RealDictCursor) as cur:
+                # Build dynamic update query
+                update_fields = []
+                update_values = []
+
+                if name is not None:
+                    update_fields.append("name = %s")
+                    update_values.append(name)
+
+                if description is not None:
+                    update_fields.append("description = %s")
+                    update_values.append(description)
+
+                if domain is not None:
+                    update_fields.append("domain = %s")
+                    update_values.append(domain)
+
+                if namespace_id is not None:
+                    update_fields.append("namespace_id = %s")
+                    update_values.append(namespace_id)
+
+                if not update_fields:
+                    raise ValueError("No fields to update")
+
+                update_fields.append("updated_at = NOW()")
+                update_values.append(project_id)
+
                 cur.execute(
-                    "UPDATE public.projects SET name = %s, updated_at = NOW() WHERE project_id = %s RETURNING project_id, name, description, created_at, updated_at, created_by, is_active",
-                    (new_name, project_id),
+                    f"""
+                    UPDATE public.projects 
+                    SET {', '.join(update_fields)}
+                    WHERE project_id = %s
+                    RETURNING project_id, name, description, created_at, updated_at, created_by, is_active, namespace_id, domain
+                    """,
+                    update_values,
                 )
                 row = cur.fetchone()
                 if not row:
@@ -163,14 +240,25 @@ class DatabaseService:
         finally:
             self._return(conn)
 
+    def rename_project(self, project_id: str, new_name: str) -> Dict[str, Any]:
+        """Legacy method - use update_project instead."""
+        return self.update_project(project_id, name=new_name)
+
     # Ontologies registry
-    def add_ontology(self, project_id: str, graph_iri: str, label: Optional[str], role: str = "base") -> Dict[str, Any]:
+    def add_ontology(
+        self,
+        project_id: str,
+        graph_iri: str,
+        label: Optional[str],
+        role: str = "base",
+        is_reference: bool = False,
+    ) -> Dict[str, Any]:
         conn = self._conn()
         try:
             with conn.cursor(cursor_factory=RealDictCursor) as cur:
                 cur.execute(
-                    "INSERT INTO public.ontologies_registry (project_id, graph_iri, label, role) VALUES (%s, %s, %s, %s) RETURNING id, project_id, graph_iri, label, role, created_at, updated_at",
-                    (project_id, graph_iri, label, role),
+                    "INSERT INTO public.ontologies_registry (project_id, graph_iri, label, role, is_reference) VALUES (%s, %s, %s, %s, %s) RETURNING id, project_id, graph_iri, label, role, is_reference, created_at, updated_at",
+                    (project_id, graph_iri, label, role, is_reference),
                 )
                 row = cur.fetchone()
                 conn.commit()
@@ -182,7 +270,10 @@ class DatabaseService:
         conn = self._conn()
         try:
             with conn.cursor() as cur:
-                cur.execute("DELETE FROM public.ontologies_registry WHERE graph_iri=%s", (graph_iri,))
+                cur.execute(
+                    "DELETE FROM public.ontologies_registry WHERE graph_iri=%s",
+                    (graph_iri,),
+                )
                 conn.commit()
         finally:
             self._return(conn)
@@ -192,11 +283,36 @@ class DatabaseService:
         try:
             with conn.cursor(cursor_factory=RealDictCursor) as cur:
                 cur.execute(
-                    "SELECT graph_iri, label, role FROM public.ontologies_registry WHERE project_id=%s ORDER BY created_at DESC",
+                    "SELECT graph_iri, label, role, is_reference FROM public.ontologies_registry WHERE project_id=%s ORDER BY created_at DESC",
                     (project_id,),
                 )
                 return [dict(r) for r in cur.fetchall()]
         finally:
             self._return(conn)
 
+    def list_reference_ontologies(self) -> List[Dict[str, Any]]:
+        """List all reference ontologies across all projects."""
+        conn = self._conn()
+        try:
+            with conn.cursor(cursor_factory=RealDictCursor) as cur:
+                cur.execute(
+                    "SELECT o.graph_iri, o.label, o.role, p.name as project_name FROM public.ontologies_registry o JOIN public.projects p ON o.project_id = p.project_id WHERE o.is_reference = TRUE ORDER BY o.created_at DESC"
+                )
+                return [dict(r) for r in cur.fetchall()]
+        finally:
+            self._return(conn)
 
+    def update_ontology_reference_status(self, graph_iri: str, is_reference: bool) -> bool:
+        """Update the reference status of an ontology."""
+        conn = self._conn()
+        try:
+            with conn.cursor() as cur:
+                cur.execute(
+                    "UPDATE public.ontologies_registry SET is_reference = %s, updated_at = NOW() WHERE graph_iri = %s RETURNING id",
+                    (is_reference, graph_iri),
+                )
+                result = cur.fetchone()
+                conn.commit()
+                return result is not None
+        finally:
+            self._return(conn)

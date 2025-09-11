@@ -1,0 +1,172 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Test Export Attributes</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 20px;
+            background: #1a1a1a;
+            color: #e5e7eb;
+        }
+        .test-section {
+            margin: 20px 0;
+            padding: 20px;
+            border: 1px solid #374151;
+            border-radius: 8px;
+            background: #111827;
+        }
+        button {
+            background: #3b82f6;
+            color: white;
+            border: none;
+            border-radius: 4px;
+            padding: 8px 16px;
+            cursor: pointer;
+            margin: 4px;
+        }
+        button:hover {
+            background: #2563eb;
+        }
+        .json-output {
+            background: #0f172a;
+            border: 1px solid #374151;
+            border-radius: 4px;
+            padding: 10px;
+            font-family: monospace;
+            font-size: 12px;
+            white-space: pre-wrap;
+            margin: 10px 0;
+            max-height: 400px;
+            overflow-y: auto;
+        }
+    </style>
+</head>
+<body>
+    <h1>Test Export Attributes</h1>
+    
+    <div class="test-section">
+        <h2>Test Cytoscape Data Export</h2>
+        <p>This test simulates the export functionality to check if attributes are included.</p>
+        
+        <button onclick="createTestData()">Create Test Data with Attributes</button>
+        <button onclick="exportData()">Export Data</button>
+        <button onclick="clearData()">Clear Data</button>
+        
+        <div class="json-output" id="output">Click "Create Test Data" to start</div>
+    </div>
+
+    <script>
+        // Simulate Cytoscape-like data structure
+        let testData = {
+            nodes: [],
+            edges: []
+        };
+
+        function createTestData() {
+            // Create test nodes with attributes
+            testData.nodes = [
+                {
+                    data: {
+                        id: "Class1",
+                        label: "Requirement",
+                        type: "class",
+                        attrs: {
+                            comment: "A system requirement",
+                            priority: "High",
+                            status: "Draft"
+                        }
+                    },
+                    position: { x: 100, y: 100 }
+                },
+                {
+                    data: {
+                        id: "Class2", 
+                        label: "Component",
+                        type: "class",
+                        attrs: {
+                            comment: "A system component",
+                            priority: "Medium",
+                            status: "Review"
+                        }
+                    },
+                    position: { x: 300, y: 100 }
+                }
+            ];
+
+            // Create test edges with attributes
+            testData.edges = [
+                {
+                    data: {
+                        id: "e1",
+                        source: "Class1",
+                        target: "Class2",
+                        predicate: "specifies",
+                        type: "objectProperty",
+                        attrs: {
+                            comment: "A requirement specifies a component",
+                            functional: true,
+                            domain: "Requirement",
+                            range: "Component"
+                        }
+                    }
+                }
+            ];
+
+            document.getElementById('output').textContent = 'Test data created with attributes:\n' + JSON.stringify(testData, null, 2);
+        }
+
+        function exportData() {
+            // Simulate the export function from the main app
+            const nodes = testData.nodes.map(n => ({ data: n.data, position: n.position }));
+            const edges = testData.edges.map(e => ({ data: e.data }));
+            const payload = { nodes, edges };
+            
+            document.getElementById('output').textContent = 'Exported data:\n' + JSON.stringify(payload, null, 2);
+            
+            // Also create a downloadable file
+            const blob = new Blob([JSON.stringify(payload, null, 2)], { type: 'application/json' });
+            const a = document.createElement('a');
+            a.href = URL.createObjectURL(blob);
+            a.download = 'test_ontology_export.json';
+            document.body.appendChild(a);
+            a.click();
+            URL.revokeObjectURL(a.href);
+            a.remove();
+        }
+
+        function clearData() {
+            testData = { nodes: [], edges: [] };
+            document.getElementById('output').textContent = 'Data cleared';
+        }
+    </script>
+</body>
+</html>
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
