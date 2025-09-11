@@ -72,6 +72,7 @@ CREATE TABLE IF NOT EXISTS public.ontologies_registry (
     graph_iri TEXT UNIQUE NOT NULL,
     label TEXT,
     role VARCHAR(20) DEFAULT 'base', -- base | import | unknown
+    is_reference BOOLEAN DEFAULT FALSE, -- TRUE for admin-created reference ontologies
     created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
     updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
 );

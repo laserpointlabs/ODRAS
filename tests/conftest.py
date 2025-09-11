@@ -14,7 +14,7 @@ import pytest
 class InMemoryDB:
     def __init__(self):
         self.projects = {}  # project_id -> {project_id, name, is_active}
-        self.members = {}   # project_id -> set(user_id)
+        self.members = {}  # project_id -> set(user_id)
 
     def _conn(self):
         return None
@@ -23,12 +23,19 @@ class InMemoryDB:
         return None
 
     # Users (not used here)
-    def get_or_create_user(self, username: str, display_name=None, is_admin: bool = False):
+    def get_or_create_user(
+        self, username: str, display_name=None, is_admin: bool = False
+    ):
         # Return a minimal dict compatible with main.login expectations
-        return {"user_id": f"user-{username}", "username": username, "display_name": display_name or username, "is_admin": is_admin}
+        return {
+            "user_id": str(uuid.uuid4()),  # Generate proper UUID
+            "username": username,
+            "display_name": display_name or username,
+            "is_admin": is_admin,
+        }
 
     # Projects
-    def create_project(self, name: str, owner_user_id: str, description=None):
+    def create_project(self, name: str, owner_user_id: str, description=None, namespace_id=None, domain=None):
         pid = str(uuid.uuid4())
         proj = {
             "project_id": pid,
@@ -38,6 +45,8 @@ class InMemoryDB:
             "updated_at": None,
             "created_by": owner_user_id,
             "is_active": True,
+            "namespace_id": namespace_id,
+            "domain": domain,
         }
         self.projects[pid] = proj
         self.members.setdefault(pid, set()).add(owner_user_id)
@@ -73,6 +82,7 @@ class InMemoryDB:
 def monkeypatch_db(monkeypatch):
     # Patch backend.main.db with in-memory DB
     import backend.main as main
+
     main.db = InMemoryDB()
     # Patch files router DB dependency to avoid real Postgres membership checks
     from backend.api import files as files_api
@@ -83,5 +93,3 @@ def monkeypatch_db(monkeypatch):
 
     main.app.dependency_overrides[files_api.get_db_service] = lambda: _FilesDB()
     yield
-
-

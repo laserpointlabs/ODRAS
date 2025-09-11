@@ -20,7 +20,15 @@ REQUIREMENT_SCHEMA = {
                 "required": ["id", "type", "label"],
                 "properties": {
                     "id": {"type": "string"},
-                    "type": {"enum": ["Component", "Interface", "Process", "Function", "Condition"]},
+                    "type": {
+                        "enum": [
+                            "Component",
+                            "Interface",
+                            "Process",
+                            "Function",
+                            "Condition",
+                        ]
+                    },
                     "label": {"type": "string"},
                 },
             },
@@ -30,7 +38,11 @@ REQUIREMENT_SCHEMA = {
             "items": {
                 "type": "object",
                 "required": ["source", "target", "type"],
-                "properties": {"source": {"type": "string"}, "target": {"type": "string"}, "type": {"type": "string"}},
+                "properties": {
+                    "source": {"type": "string"},
+                    "target": {"type": "string"},
+                    "type": {"type": "string"},
+                },
             },
         },
     },

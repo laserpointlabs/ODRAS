@@ -4,6 +4,7 @@ Provides REST API for ontology management operations.
 """
 
 import logging
+from datetime import datetime
 from typing import Any, Dict, List, Optional
 
 from fastapi import APIRouter, Body, Depends, HTTPException
@@ -36,8 +37,12 @@ class OntologyProperty(BaseModel):
 class OntologyUpdate(BaseModel):
     metadata: Optional[Dict[str, Any]] = Field(None, description="Ontology metadata")
     classes: Optional[List[Dict[str, Any]]] = Field(None, description="List of classes")
-    object_properties: Optional[List[Dict[str, Any]]] = Field(None, description="List of object properties")
-    datatype_properties: Optional[List[Dict[str, Any]]] = Field(None, description="List of datatype properties")
+    object_properties: Optional[List[Dict[str, Any]]] = Field(
+        None, description="List of object properties"
+    )
+    datatype_properties: Optional[List[Dict[str, Any]]] = Field(
+        None, description="List of datatype properties"
+    )
 
 
 class OntologyResponse(BaseModel):
@@ -54,7 +59,11 @@ router = APIRouter(prefix="/api/ontology", tags=["ontology"])
 def get_ontology_manager() -> OntologyManager:
     """Dependency to get OntologyManager instance."""
     settings = Settings()
-    return OntologyManager(settings)
+    # Pass db_service to ensure proper ResourceURIService initialization
+    from ..services.db import DatabaseService
+
+    db_service = DatabaseService(settings)
+    return OntologyManager(settings, db_service)
 
 
 def get_db_service() -> DatabaseService:
@@ -62,7 +71,10 @@ def get_db_service() -> DatabaseService:
 
 
 @router.get("/", response_model=Dict[str, Any])
-async def get_ontology(graph: Optional[str] = None, manager: OntologyManager = Depends(get_ontology_manager)):
+async def get_ontology(
+    graph: Optional[str] = None,
+    manager: OntologyManager = Depends(get_ontology_manager),
+):
     """
     Retrieve the current ontology in JSON format.
 
@@ -74,10 +86,21 @@ async def get_ontology(graph: Optional[str] = None, manager: OntologyManager = D
     """
     try:
         if graph:
+            # Extract project ID from graph URI for proper context
+            project_id = (
+                manager.uri_service.parse_project_from_uri(graph)
+                if hasattr(manager, "uri_service")
+                else None
+            )
+            manager.set_graph_context(graph, project_id or "")
             ontology_json = manager.get_ontology_json_by_graph(graph)
         else:
             ontology_json = manager.get_current_ontology_json()
-        return {"success": True, "data": ontology_json, "message": "Ontology retrieved successfully"}
+        return {
+            "success": True,
+            "data": ontology_json,
+            "message": "Ontology retrieved successfully",
+        }
     except Exception as e:
         logger.error(f"Failed to get ontology: {e}")
         raise HTTPException(status_code=500, detail=f"Failed to retrieve ontology: {str(e)}")
@@ -85,7 +108,9 @@ async def get_ontology(graph: Optional[str] = None, manager: OntologyManager = D
 
 @router.put("/", response_model=OntologyResponse)
 async def update_ontology(
-    ontology_data: OntologyUpdate, user_id: str = "api_user", manager: OntologyManager = Depends(get_ontology_manager)
+    ontology_data: OntologyUpdate,
+    user_id: str = "api_user",
+    manager: OntologyManager = Depends(get_ontology_manager),
 ):
     """
     Update the entire ontology from JSON format.
@@ -102,7 +127,15 @@ async def update_ontology(
         ontology_dict = ontology_data.dict(exclude_none=True)
 
         # If this is a partial update, merge with existing ontology
-        if not all(key in ontology_dict for key in ["metadata", "classes", "object_properties", "datatype_properties"]):
+        if not all(
+            key in ontology_dict
+            for key in [
+                "metadata",
+                "classes",
+                "object_properties",
+                "datatype_properties",
+            ]
+        ):
             current_ontology = manager.get_current_ontology_json()
             for key, value in ontology_dict.items():
                 current_ontology[key] = value
@@ -114,7 +147,10 @@ async def update_ontology(
             return OntologyResponse(
                 success=True,
                 message=result["message"],
-                data={"backup_id": result.get("backup_id"), "triples_count": result.get("triples_count")},
+                data={
+                    "backup_id": result.get("backup_id"),
+                    "triples_count": result.get("triples_count"),
+                },
             )
         else:
             raise HTTPException(status_code=400, detail=result["error"])
@@ -125,21 +161,40 @@ async def update_ontology(
 
 
 @router.post("/classes", response_model=OntologyResponse)
-async def add_class(class_data: OntologyClass, manager: OntologyManager = Depends(get_ontology_manager)):
+async def add_class(
+    class_data: OntologyClass,
+    graph: Optional[str] = None,
+    manager: OntologyManager = Depends(get_ontology_manager),
+):
     """
     Add a new class to the ontology.
 
     Args:
         class_data: Class information
+        graph: Optional graph IRI to add class to specific ontology
 
     Returns:
         Operation result
     """
     try:
+        # Set the graph context if provided
+        if graph:
+            # Extract project ID from graph URI to ensure proper entity URI generation
+            project_id = (
+                manager.uri_service.parse_project_from_uri(graph)
+                if hasattr(manager, "uri_service")
+                else None
+            )
+            manager.set_graph_context(graph, project_id or "")
+
         result = manager.add_class(class_data.dict())
 
         if result["success"]:
-            return OntologyResponse(success=True, message=result["message"], data={"class_uri": result.get("class_uri")})
+            return OntologyResponse(
+                success=True,
+                message=result["message"],
+                data={"class_uri": result.get("class_uri")},
+            )
         else:
             raise HTTPException(status_code=400, detail=result["error"])
 
@@ -149,7 +204,10 @@ async def add_class(class_data: OntologyClass, manager: OntologyManager = Depend
 
 
 @router.post("/properties", response_model=OntologyResponse)
-async def add_property(property_data: OntologyProperty, manager: OntologyManager = Depends(get_ontology_manager)):
+async def add_property(
+    property_data: OntologyProperty,
+    manager: OntologyManager = Depends(get_ontology_manager),
+):
     """
     Add a new property to the ontology.
 
@@ -163,7 +221,11 @@ async def add_property(property_data: OntologyProperty, manager: OntologyManager
         result = manager.add_property(property_data.dict())
 
         if result["success"]:
-            return OntologyResponse(success=True, message=result["message"], data={"property_uri": result.get("property_uri")})
+            return OntologyResponse(
+                success=True,
+                message=result["message"],
+                data={"property_uri": result.get("property_uri")},
+            )
         else:
             raise HTTPException(status_code=400, detail=result["error"])
 
@@ -197,7 +259,9 @@ async def delete_class(class_name: str, manager: OntologyManager = Depends(get_o
 
 
 @router.delete("/properties/{property_name}", response_model=OntologyResponse)
-async def delete_property(property_name: str, manager: OntologyManager = Depends(get_ontology_manager)):
+async def delete_property(
+    property_name: str, manager: OntologyManager = Depends(get_ontology_manager)
+):
     """
     Delete a property from the ontology.
 
@@ -221,7 +285,9 @@ async def delete_property(property_name: str, manager: OntologyManager = Depends
 
 
 @router.get("/statistics", response_model=Dict[str, Any])
-async def get_ontology_statistics(manager: OntologyManager = Depends(get_ontology_manager)):
+async def get_ontology_statistics(
+    manager: OntologyManager = Depends(get_ontology_manager),
+):
     """
     Get statistics about the current ontology.
 
@@ -230,7 +296,11 @@ async def get_ontology_statistics(manager: OntologyManager = Depends(get_ontolog
     """
     try:
         stats = manager.get_ontology_statistics()
-        return {"success": True, "data": stats, "message": "Statistics retrieved successfully"}
+        return {
+            "success": True,
+            "data": stats,
+            "message": "Statistics retrieved successfully",
+        }
     except Exception as e:
         logger.error(f"Failed to get ontology statistics: {e}")
         raise HTTPException(status_code=500, detail=f"Failed to get statistics: {str(e)}")
@@ -238,7 +308,8 @@ async def get_ontology_statistics(manager: OntologyManager = Depends(get_ontolog
 
 @router.post("/validate", response_model=OntologyResponse)
 async def validate_ontology(
-    ontology_data: Dict[str, Any] = Body(...), manager: OntologyManager = Depends(get_ontology_manager)
+    ontology_data: Dict[str, Any] = Body(...),
+    manager: OntologyManager = Depends(get_ontology_manager),
 ):
     """
     Validate an ontology JSON structure without saving it.
@@ -254,8 +325,10 @@ async def validate_ontology(
 
         return OntologyResponse(
             success=validation_result["valid"],
-            message="Validation completed" if validation_result["valid"] else "Validation failed",
-            data={"errors": validation_result["errors"]} if not validation_result["valid"] else None,
+            message=("Validation completed" if validation_result["valid"] else "Validation failed"),
+            data=(
+                {"errors": validation_result["errors"]} if not validation_result["valid"] else None
+            ),
         )
 
     except Exception as e:
@@ -293,7 +366,7 @@ async def import_ontology_file(
         ontology_json = {
             "metadata": {
                 "name": "Imported Ontology",
-                "imported_at": manager._get_current_timestamp(),
+                "imported_at": datetime.now().isoformat(),
                 "format": format,
                 "namespace": manager.base_uri,
             },
@@ -347,3 +420,116 @@ async def export_ontology(format: str, manager: OntologyManager = Depends(get_on
     except Exception as e:
         logger.error(f"Failed to export ontology: {e}")
         raise HTTPException(status_code=500, detail=f"Export failed: {str(e)}")
+
+
+@router.get("/layout", response_model=Dict[str, Any])
+async def get_layout(graph: str, manager: OntologyManager = Depends(get_ontology_manager)):
+    """
+    Retrieve layout data for a specific ontology graph.
+
+    Args:
+        graph: Graph IRI to retrieve layout for
+
+    Returns:
+        Layout data including node positions, zoom, and pan
+    """
+    try:
+        layout_data = manager.get_layout_by_graph(graph)
+        return {
+            "success": True,
+            "data": layout_data,
+            "message": "Layout retrieved successfully",
+        }
+    except Exception as e:
+        logger.error(f"Failed to get layout: {e}")
+        raise HTTPException(status_code=500, detail=f"Failed to retrieve layout: {str(e)}")
+
+
+@router.put("/layout", response_model=OntologyResponse)
+async def save_layout(
+    graph: str,
+    layout_data: Dict[str, Any] = Body(...),
+    manager: OntologyManager = Depends(get_ontology_manager),
+):
+    """
+    Save layout data for a specific ontology graph.
+
+    Args:
+        graph: Graph IRI to save layout for
+        layout_data: Layout data including node positions, zoom, and pan
+
+    Returns:
+        Save operation result
+    """
+    try:
+        result = manager.save_layout_by_graph(graph, layout_data)
+
+        if result["success"]:
+            return OntologyResponse(
+                success=True,
+                message=result["message"],
+                data={"layout_id": result.get("layout_id")},
+            )
+        else:
+            raise HTTPException(status_code=400, detail=result["error"])
+
+    except Exception as e:
+        logger.error(f"Failed to save layout: {e}")
+        raise HTTPException(status_code=500, detail=f"Failed to save layout: {str(e)}")
+
+
+@router.post("/mint-iri", response_model=Dict[str, Any])
+async def mint_unique_iri(
+    base_name: str = Body(..., description="Base name for the entity"),
+    entity_type: str = Body(
+        ..., description="Type of entity (class, objectProperty, datatypeProperty)"
+    ),
+    graph: Optional[str] = Body(None, description="Graph IRI to check within"),
+    manager: OntologyManager = Depends(get_ontology_manager),
+):
+    """
+    Mint a unique IRI for a new entity.
+
+    Args:
+        base_name: Base name for the entity
+        entity_type: Type of entity
+        graph: Optional graph IRI to check within
+
+    Returns:
+        Unique IRI string
+    """
+    try:
+        unique_iri = manager.mint_unique_iri(base_name, entity_type, graph or "")
+        return {
+            "success": True,
+            "data": {"iri": unique_iri},
+            "message": f"Unique IRI minted for {entity_type}",
+        }
+    except Exception as e:
+        logger.error(f"Failed to mint IRI: {e}")
+        raise HTTPException(status_code=500, detail=f"Failed to mint IRI: {str(e)}")
+
+
+@router.get("/validate-integrity", response_model=Dict[str, Any])
+async def validate_ontology_integrity(
+    graph: str, manager: OntologyManager = Depends(get_ontology_manager)
+):
+    """
+    Validate IRI integrity for an ontology graph.
+
+    Args:
+        graph: Graph IRI to validate
+
+    Returns:
+        Validation results with warnings and errors
+    """
+    try:
+        validation_result = manager.validate_iri_integrity(graph)
+        return {
+            "success": True,
+            "data": validation_result,
+            "message": "Integrity validation completed",
+        }
+    except Exception as e:
+        logger.error(f"Failed to validate integrity: {e}")
+        raise HTTPException(status_code=500, detail=f"Failed to validate integrity: {str(e)}")

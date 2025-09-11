@@ -17,6 +17,8 @@ from SPARQLWrapper import JSON as SPARQL_JSON
 from SPARQLWrapper import POST, SPARQLWrapper
 
 from .config import Settings
+from .namespace_uri_generator import NamespaceURIGenerator
+from .resource_uri_service import ResourceURIService
 
 logger = logging.getLogger(__name__)
 
@@ -30,21 +32,46 @@ class OntologyManager:
     - Ontology validation
     """
 
-    def __init__(self, settings: Settings):
+    def __init__(self, settings: Settings, db_service=None):
         self.settings = settings
         self.fuseki_url = settings.fuseki_url
         self.fuseki_query_url = f"{self.fuseki_url}/query"
         self.fuseki_update_url = f"{self.fuseki_url}/update"
 
-        # Define ODRAS namespace
-        self.odras_ns = Namespace("http://odras.system/ontology#")
-        self.base_uri = "http://odras.system/ontology"
+        # Initialize namespace URI generator
+        self.namespace_generator = NamespaceURIGenerator(settings)
+
+        # Initialize resource URI service for proper namespace-aware URIs
+        if db_service:
+            self.uri_service = ResourceURIService(settings, db_service)
+        else:
+            from .db import DatabaseService
+
+            self.uri_service = ResourceURIService(settings, DatabaseService(settings))
+
+        # Define ODRAS namespace using installation configuration
+        self.base_uri = settings.installation_base_uri
+        self.odras_ns = Namespace(f"{self.base_uri}/#")
+        self.current_graph_uri = None
+        self.current_project_id = None
 
         # Initialize RDF graph for working copy
         self.graph = Graph()
         self.graph.bind("odras", self.odras_ns)
         self.graph.bind("owl", OWL)
         self.graph.bind("rdfs", RDFS)
+
+    def set_graph_context(self, graph_uri: str, project_id: Optional[str] = None):
+        """Set the current graph context for operations."""
+        self.current_graph_uri = graph_uri
+        self.current_project_id = project_id
+
+        # Update base_uri to use the graph URI as the namespace
+        self.base_uri = graph_uri
+
+        # Extract project ID from URI if not provided
+        if not project_id and self.uri_service:
+            self.current_project_id = self.uri_service.parse_project_from_uri(graph_uri)
 
     def get_current_ontology_json(self) -> Dict[str, Any]:
         """
@@ -55,15 +82,15 @@ class OntologyManager:
         """
         try:
             # Query all classes, properties, and individuals from Fuseki
-            query = """
+            query = f"""
             PREFIX owl: <http://www.w3.org/2002/07/owl#>
             PREFIX rdfs: <http://www.w3.org/2000/01/rdf-schema#>
-            PREFIX odras: <http://odras.system/ontology#>
+            PREFIX odras: <{self.base_uri}/ontology#>
             
-            SELECT ?s ?p ?o WHERE {
+            SELECT ?s ?p ?o WHERE {{
                 ?s ?p ?o .
-                FILTER(STRSTARTS(STR(?s), "http://odras.system/ontology"))
-            }
+                FILTER(STRSTARTS(STR(?s), "{self.base_uri}/ontology"))
+            }}
             """
 
             sparql = SPARQLWrapper(self.fuseki_query_url)
@@ -95,7 +122,7 @@ class OntologyManager:
             query = f"""
             PREFIX owl: <http://www.w3.org/2002/07/owl#>
             PREFIX rdfs: <http://www.w3.org/2000/01/rdf-schema#>
-            PREFIX odras: <http://odras.system/ontology#>
+            PREFIX odras: <{self.base_uri}/ontology#>
             
             SELECT ?s ?p ?o WHERE {{
                 GRAPH <{graph_iri}> {{
@@ -118,7 +145,9 @@ class OntologyManager:
             # Return base ontology structure if query fails
             return self._get_base_ontology_json()
 
-    def update_ontology_from_json(self, ontology_json: Dict[str, Any], user_id: str = "system") -> Dict[str, Any]:
+    def update_ontology_from_json(
+        self, ontology_json: Dict[str, Any], user_id: str = "system"
+    ) -> Dict[str, Any]:
         """
         Update the ontology from JSON format and push to Fuseki.
 
@@ -133,7 +162,11 @@ class OntologyManager:
             # Validate JSON structure
             validation_result = self._validate_ontology_json(ontology_json)
             if not validation_result["valid"]:
-                return {"success": False, "error": "Invalid ontology JSON", "validation_errors": validation_result["errors"]}
+                return {
+                    "success": False,
+                    "error": "Invalid ontology JSON",
+                    "validation_errors": validation_result["errors"],
+                }
 
             # Convert JSON to RDF
             rdf_graph = self._json_to_rdf(ontology_json)
@@ -183,16 +216,38 @@ class OntologyManager:
             Dict containing operation result
         """
         try:
-            class_uri = URIRef(f"{self.base_uri}#{class_data['name']}")
+            # Debug: log the base_uri being used for entity generation
+            logger.info(f"OntologyManager.add_class - base_uri: {self.base_uri}")
+            logger.info(f"OntologyManager.add_class - current_graph_uri: {self.current_graph_uri}")
+            logger.info(
+                f"OntologyManager.add_class - current_project_id: {getattr(self, 'current_project_id', 'None')}"
+            )
+
+            # CRITICAL FIX: Use the current_graph_uri as the base for entity URIs if available
+            if self.current_graph_uri:
+                base_for_entities = self.current_graph_uri
+                logger.info(f"Using current_graph_uri as entity base: {base_for_entities}")
+            else:
+                base_for_entities = self.base_uri
+                logger.info(f"Using fallback base_uri as entity base: {base_for_entities}")
+
+            class_uri = URIRef(f"{base_for_entities}#{class_data['name']}")
 
             # Check if class already exists
             if self._class_exists(class_uri):
-                return {"success": False, "error": f"Class {class_data['name']} already exists"}
+                return {
+                    "success": False,
+                    "error": f"Class {class_data['name']} already exists",
+                }
 
             # Create RDF triples for the new class
             triples = [
                 (class_uri, RDF.type, OWL.Class),
-                (class_uri, RDFS.label, Literal(class_data.get("label", class_data["name"]))),
+                (
+                    class_uri,
+                    RDFS.label,
+                    Literal(class_data.get("label", class_data["name"])),
+                ),
             ]
 
             if class_data.get("comment"):
@@ -233,7 +288,10 @@ class OntologyManager:
 
             # Check if property already exists
             if self._property_exists(prop_uri):
-                return {"success": False, "error": f"Property {property_data['name']} already exists"}
+                return {
+                    "success": False,
+                    "error": f"Property {property_data['name']} already exists",
+                }
 
             # Determine property type
             prop_type = OWL.ObjectProperty
@@ -245,7 +303,11 @@ class OntologyManager:
             # Create RDF triples for the new property
             triples = [
                 (prop_uri, RDF.type, prop_type),
-                (prop_uri, RDFS.label, Literal(property_data.get("label", property_data["name"]))),
+                (
+                    prop_uri,
+                    RDFS.label,
+                    Literal(property_data.get("label", property_data["name"])),
+                ),
             ]
 
             if property_data.get("comment"):
@@ -305,7 +367,10 @@ class OntologyManager:
             result = self._execute_sparql_update(delete_query)
 
             if result["success"]:
-                return {"success": True, "message": f"{entity_type.capitalize()} {entity_name} deleted successfully"}
+                return {
+                    "success": True,
+                    "message": f"{entity_type.capitalize()} {entity_name} deleted successfully",
+                }
             else:
                 return result
 
@@ -348,14 +413,22 @@ class OntologyManager:
             return {
                 "classes": int(bindings.get("classCount", {}).get("value", 0)),
                 "object_properties": int(bindings.get("objectPropertyCount", {}).get("value", 0)),
-                "datatype_properties": int(bindings.get("datatypePropertyCount", {}).get("value", 0)),
+                "datatype_properties": int(
+                    bindings.get("datatypePropertyCount", {}).get("value", 0)
+                ),
                 "individuals": int(bindings.get("individualCount", {}).get("value", 0)),
                 "last_updated": datetime.now(timezone.utc).isoformat(),
             }
 
         except Exception as e:
             logger.error(f"Failed to get ontology statistics: {e}")
-            return {"classes": 0, "object_properties": 0, "datatype_properties": 0, "individuals": 0, "error": str(e)}
+            return {
+                "classes": 0,
+                "object_properties": 0,
+                "datatype_properties": 0,
+                "individuals": 0,
+                "error": str(e),
+            }
 
     # Private helper methods
 
@@ -385,7 +458,11 @@ class OntologyManager:
                     "label": "Component",
                     "comment": "A modular part of a system that encapsulates specific functionality",
                 },
-                {"name": "Interface", "label": "Interface", "comment": "A shared boundary between system components"},
+                {
+                    "name": "Interface",
+                    "label": "Interface",
+                    "comment": "A shared boundary between system components",
+                },
                 {
                     "name": "Function",
                     "label": "Function",
@@ -523,7 +600,7 @@ class OntologyManager:
 
             if subject not in entities:
                 entities[subject] = {}
-            
+
             # Store multiple values for properties like rdfs:domain, rdfs:range
             if predicate not in entities[subject]:
                 entities[subject][predicate] = []
@@ -531,12 +608,21 @@ class OntologyManager:
 
         # Extract name from URI (after # or last /)
         def extract_name(uri):
-            if '#' in uri:
-                return uri.split('#')[-1]
-            return uri.split('/')[-1]
+            if "#" in uri:
+                return uri.split("#")[-1]
+            return uri.split("/")[-1]
 
         # Convert entities to structured JSON
         for uri, props in entities.items():
+            # Skip blank nodes and non-URI entities
+            if uri.startswith("b") and uri[1:].isdigit():
+                continue
+            if uri.startswith("_:"):
+                continue
+            # Skip empty or invalid URIs
+            if not uri or uri.strip() == "":
+                continue
+
             entity_name = extract_name(uri)
             rdf_type = str(RDF.type)
             rdfs_label = str(RDFS.label)
@@ -544,18 +630,18 @@ class OntologyManager:
             rdfs_domain = str(RDFS.domain)
             rdfs_range = str(RDFS.range)
             rdfs_subclass = str(RDFS.subClassOf)
-            
+
             # Get entity type
             types = props.get(rdf_type, [])
-            
+
             # Build common fields
             common_fields = {
                 "name": entity_name,
                 "uri": uri,
                 "label": props.get(rdfs_label, [None])[0],
-                "comment": props.get(rdfs_comment, [None])[0]
+                "comment": props.get(rdfs_comment, [None])[0],
             }
-            
+
             if str(OWL.Class) in types:
                 # Class
                 class_obj = {**common_fields}
@@ -563,7 +649,7 @@ class OntologyManager:
                 if subclass_of_uris:
                     class_obj["subclass_of"] = extract_name(subclass_of_uris[0])
                 ontology_json["classes"].append(class_obj)
-                
+
             elif str(OWL.ObjectProperty) in types:
                 # Object Property
                 prop_obj = {**common_fields}
@@ -574,7 +660,7 @@ class OntologyManager:
                 if range_uris:
                     prop_obj["range"] = extract_name(range_uris[0])
                 ontology_json["object_properties"].append(prop_obj)
-                
+
             elif str(OWL.DatatypeProperty) in types:
                 # Datatype Property
                 prop_obj = {**common_fields}
@@ -585,8 +671,8 @@ class OntologyManager:
                 if range_uris:
                     # Keep full XSD datatype URIs
                     range_uri = range_uris[0]
-                    if 'XMLSchema#' in range_uri:
-                        prop_obj["range"] = 'xsd:' + extract_name(range_uri)
+                    if "XMLSchema#" in range_uri:
+                        prop_obj["range"] = "xsd:" + extract_name(range_uri)
                     else:
                         prop_obj["range"] = extract_name(range_uri)
                 ontology_json["datatype_properties"].append(prop_obj)
@@ -598,7 +684,12 @@ class OntologyManager:
         errors = []
 
         # Check required top-level keys
-        required_keys = ["metadata", "classes", "object_properties", "datatype_properties"]
+        required_keys = [
+            "metadata",
+            "classes",
+            "object_properties",
+            "datatype_properties",
+        ]
         for key in required_keys:
             if key not in ontology_json:
                 errors.append(f"Missing required key: {key}")
@@ -679,7 +770,13 @@ class OntologyManager:
                 graph.add((prop_uri, RDFS.domain, domain_uri))
 
             if "range" in prop:
-                if prop["range"] in ["string", "integer", "float", "boolean", "dateTime"]:
+                if prop["range"] in [
+                    "string",
+                    "integer",
+                    "float",
+                    "boolean",
+                    "dateTime",
+                ]:
                     range_uri = XSD[prop["range"]]
                 else:
                     range_uri = URIRef(f"{self.base_uri}#{prop['range']}")
@@ -700,16 +797,44 @@ class OntologyManager:
     def _upload_rdf_to_fuseki(self, turtle_content: str) -> Dict[str, Any]:
         """Upload RDF content to Fuseki."""
         try:
-            sparql = SPARQLWrapper(self.fuseki_update_url)
-            sparql.setMethod(POST)
+            # Parse the turtle content into an RDF graph
+            graph = Graph()
+            graph.parse(data=turtle_content, format="turtle")
 
-            # Insert data using SPARQL UPDATE
+            # Convert to SPARQL INSERT DATA format
+            insert_data = []
+            for s, p, o in graph:
+                if isinstance(o, Literal):
+                    # Handle literals with proper escaping
+                    if o.datatype:
+                        insert_data.append(f'<{s}> <{p}> "{o}"^^<{o.datatype}> .')
+                    elif o.language:
+                        insert_data.append(f'<{s}> <{p}> "{o}"@{o.language} .')
+                    else:
+                        insert_data.append(f'<{s}> <{p}> "{o}" .')
+                else:
+                    insert_data.append(f"<{s}> <{p}> <{o}> .")
+
+            if not insert_data:
+                return {"success": True, "message": "No data to insert"}
+
+            # Build SPARQL query with proper prefixes
+            prefixes = []
+            for prefix, namespace in graph.namespaces():
+                prefixes.append(f"PREFIX {prefix}: <{namespace}>")
+
+            prefixes_block = "\n".join(prefixes)
+            data_block = "\n                ".join(insert_data)
+
             query = f"""
+            {prefixes_block}
             INSERT DATA {{
-                {turtle_content}
+                {data_block}
             }}
             """
 
+            sparql = SPARQLWrapper(self.fuseki_update_url)
+            sparql.setMethod(POST)
             sparql.setQuery(query)
             sparql.query()
 
@@ -730,11 +855,21 @@ class OntologyManager:
                 else:
                     insert_data.append(f"<{s}> <{p}> <{o}> .")
 
-            query = f"""
-            INSERT DATA {{
-                {' '.join(insert_data)}
-            }}
-            """
+            # Use current graph context if available
+            if self.current_graph_uri:
+                query = f"""
+                INSERT DATA {{
+                    GRAPH <{self.current_graph_uri}> {{
+                        {' '.join(insert_data)}
+                    }}
+                }}
+                """
+            else:
+                query = f"""
+                INSERT DATA {{
+                    {' '.join(insert_data)}
+                }}
+                """
 
             return self._execute_sparql_update(query)
 
@@ -745,15 +880,18 @@ class OntologyManager:
     def _execute_sparql_update(self, query: str) -> Dict[str, Any]:
         """Execute a SPARQL UPDATE query."""
         try:
+            logger.debug(f"Executing SPARQL UPDATE: {query}")
             sparql = SPARQLWrapper(self.fuseki_update_url)
             sparql.setMethod(POST)
             sparql.setQuery(query)
-            sparql.query()
+            result = sparql.query()
+            logger.debug(f"SPARQL UPDATE result: {result}")
 
             return {"success": True}
 
         except Exception as e:
             logger.error(f"SPARQL UPDATE failed: {e}")
+            logger.error(f"Query was: {query}")
             return {"success": False, "error": str(e)}
 
     def _class_exists(self, class_uri: URIRef) -> bool:
@@ -791,3 +929,316 @@ class OntologyManager:
         """Log ontology changes for audit trail."""
         # Implementation would log to database
         pass
+
+    def get_layout_by_graph(self, graph_iri: str) -> Dict[str, Any]:
+        """
+        Retrieve layout data for a specific ontology graph.
+
+        Args:
+            graph_iri: The IRI of the named graph to retrieve layout for
+
+        Returns:
+            Dict containing layout data (nodes, edges, zoom, pan)
+        """
+        try:
+            # Query for layout data in a separate layout graph
+            layout_graph_iri = f"{graph_iri}#layout"
+            query = f"""
+            PREFIX layout: <{self.base_uri}/layout#>
+            
+            SELECT ?nodes ?edges ?zoom ?pan WHERE {{
+                GRAPH <{layout_graph_iri}> {{
+                    ?layout layout:nodes ?nodes ;
+                            layout:edges ?edges ;
+                            layout:zoom ?zoom ;
+                            layout:pan ?pan .
+                }}
+            }}
+            """
+
+            sparql = SPARQLWrapper(self.fuseki_query_url)
+            sparql.setQuery(query)
+            sparql.setReturnFormat(SPARQL_JSON)
+            results = sparql.query().convert()
+
+            if results["results"]["bindings"]:
+                binding = results["results"]["bindings"][0]
+                return {
+                    "graphIri": graph_iri,
+                    "nodes": json.loads(binding.get("nodes", {}).get("value", "[]")),
+                    "edges": json.loads(binding.get("edges", {}).get("value", "[]")),
+                    "zoom": float(binding.get("zoom", {}).get("value", 1.0)),
+                    "pan": json.loads(binding.get("pan", {}).get("value", '{"x": 0, "y": 0}')),
+                }
+            else:
+                # Return default layout if none exists
+                return {
+                    "graphIri": graph_iri,
+                    "nodes": [],
+                    "edges": [],
+                    "zoom": 1.0,
+                    "pan": {"x": 0, "y": 0},
+                }
+
+        except Exception as e:
+            logger.error(f"Failed to retrieve layout for {graph_iri}: {e}")
+            # Return default layout on error
+            return {
+                "graphIri": graph_iri,
+                "nodes": [],
+                "edges": [],
+                "zoom": 1.0,
+                "pan": {"x": 0, "y": 0},
+            }
+
+    def save_layout_by_graph(self, graph_iri: str, layout_data: Dict[str, Any]) -> Dict[str, Any]:
+        """
+        Save layout data for a specific ontology graph.
+
+        Args:
+            graph_iri: The IRI of the named graph to save layout for
+            layout_data: Layout data including node positions, zoom, and pan
+
+        Returns:
+            Dict containing save operation result
+        """
+        try:
+            layout_graph_iri = f"{graph_iri}#layout"
+            layout_id = str(uuid.uuid4())
+
+            # Clear existing layout data
+            clear_query = f"""
+            DELETE WHERE {{
+                GRAPH <{layout_graph_iri}> {{
+                    ?s ?p ?o .
+                }}
+            }}
+            """
+
+            # Insert new layout data
+            nodes_json = json.dumps(layout_data.get("nodes", [])).replace('"', '\\"')
+            edges_json = json.dumps(layout_data.get("edges", [])).replace('"', '\\"')
+            zoom_value = layout_data.get("zoom", 1.0)
+            pan_json = json.dumps(layout_data.get("pan", {"x": 0, "y": 0})).replace('"', '\\"')
+
+            insert_query = f"""
+            INSERT DATA {{
+                GRAPH <{layout_graph_iri}> {{
+                    <{layout_graph_iri}#{layout_id}> <{self.base_uri}/layout#nodes> "{nodes_json}" ;
+                                                    <{self.base_uri}/layout#edges> "{edges_json}" ;
+                                                    <{self.base_uri}/layout#zoom> "{zoom_value}"^^<http://www.w3.org/2001/XMLSchema#float> ;
+                                                    <{self.base_uri}/layout#pan> "{pan_json}" .
+                }}
+            }}
+            """
+
+            # Execute clear and insert
+            clear_result = self._execute_sparql_update(clear_query)
+            if not clear_result["success"]:
+                return {"success": False, "error": "Failed to clear existing layout"}
+
+            insert_result = self._execute_sparql_update(insert_query)
+            if insert_result["success"]:
+                return {
+                    "success": True,
+                    "message": f"Layout saved successfully for {graph_iri}",
+                    "layout_id": layout_id,
+                    "timestamp": datetime.now(timezone.utc).isoformat(),
+                }
+            else:
+                return {"success": False, "error": "Failed to save layout data"}
+
+        except Exception as e:
+            logger.error(f"Failed to save layout for {graph_iri}: {e}")
+            return {"success": False, "error": f"Save failed: {str(e)}"}
+
+    def mint_unique_iri(self, base_name: str, entity_type: str, graph_iri: str = None) -> str:
+        """
+        Mint a unique IRI for a new entity, ensuring no conflicts exist.
+
+        Args:
+            base_name: Base name for the entity
+            entity_type: Type of entity ('class', 'objectProperty', 'datatypeProperty')
+            graph_iri: Optional graph IRI to check within
+
+        Returns:
+            Unique IRI string
+        """
+        # Clean the base name to be IRI-safe
+        safe_name = self._sanitize_iri_name(base_name)
+
+        # Use the graph IRI as base if provided, otherwise use default
+        if graph_iri:
+            base_uri = graph_iri
+        else:
+            base_uri = self.base_uri
+
+        # Try the base name first
+        candidate_iri = f"{base_uri}#{safe_name}"
+        if not self._iri_exists(candidate_iri, entity_type, graph_iri):
+            return candidate_iri
+
+        # If base name exists, try with numbers
+        counter = 1
+        while counter < 1000:  # Prevent infinite loop
+            candidate_iri = f"{base_uri}#{safe_name}_{counter}"
+            if not self._iri_exists(candidate_iri, entity_type, graph_iri):
+                return candidate_iri
+            counter += 1
+
+        # Fallback to UUID if all else fails
+        unique_id = str(uuid.uuid4())[:8]
+        return f"{base_uri}#{safe_name}_{unique_id}"
+
+    def _sanitize_iri_name(self, name: str) -> str:
+        """
+        Sanitize a name to be safe for use in IRIs.
+
+        Args:
+            name: Raw name to sanitize
+
+        Returns:
+            Sanitized name safe for IRI use
+        """
+        # Remove or replace problematic characters
+        import re
+
+        # Replace spaces and special chars with underscores
+        sanitized = re.sub(r"[^\w\-]", "_", name)
+        # Remove multiple consecutive underscores
+        sanitized = re.sub(r"_+", "_", sanitized)
+        # Remove leading/trailing underscores
+        sanitized = sanitized.strip("_")
+        # Ensure it starts with a letter or underscore
+        if sanitized and not re.match(r"^[a-zA-Z_]", sanitized):
+            sanitized = f"_{sanitized}"
+        # Ensure it's not empty
+        if not sanitized:
+            sanitized = "entity"
+        return sanitized
+
+    def _iri_exists(self, iri: str, entity_type: str, graph_iri: str = None) -> bool:
+        """
+        Check if an IRI already exists in the ontology.
+
+        Args:
+            iri: IRI to check
+            entity_type: Type of entity to check for
+            graph_iri: Optional graph IRI to check within
+
+        Returns:
+            True if IRI exists, False otherwise
+        """
+        try:
+            # Map entity types to RDF types
+            type_mapping = {
+                "class": str(OWL.Class),
+                "objectProperty": str(OWL.ObjectProperty),
+                "datatypeProperty": str(OWL.DatatypeProperty),
+                "annotationProperty": str(OWL.AnnotationProperty),
+            }
+
+            rdf_type = type_mapping.get(entity_type, str(OWL.Class))
+
+            # Build query
+            if graph_iri:
+                query = f"""
+                ASK {{
+                    GRAPH <{graph_iri}> {{
+                        <{iri}> a <{rdf_type}> .
+                    }}
+                }}
+                """
+            else:
+                query = f"""
+                ASK {{
+                    <{iri}> a <{rdf_type}> .
+                }}
+                """
+
+            sparql = SPARQLWrapper(self.fuseki_query_url)
+            sparql.setQuery(query)
+            sparql.setReturnFormat(SPARQL_JSON)
+            result = sparql.query().convert()
+
+            return result.get("boolean", False)
+
+        except Exception as e:
+            logger.warn(f"Error checking if IRI exists: {e}")
+            return False  # Assume it doesn't exist if we can't check
+
+    def validate_iri_integrity(self, graph_iri: str) -> Dict[str, Any]:
+        """
+        Validate IRI integrity for an ontology graph.
+
+        Args:
+            graph_iri: Graph IRI to validate
+
+        Returns:
+            Validation results with warnings and errors
+        """
+        try:
+            query = f"""
+            PREFIX owl: <http://www.w3.org/2002/07/owl#>
+            PREFIX rdfs: <http://www.w3.org/2000/01/rdf-schema#>
+            
+            SELECT ?s ?p ?o WHERE {{
+                GRAPH <{graph_iri}> {{
+                    ?s ?p ?o .
+                }}
+            }}
+            """
+
+            sparql = SPARQLWrapper(self.fuseki_query_url)
+            sparql.setQuery(query)
+            sparql.setReturnFormat(SPARQL_JSON)
+            results = sparql.query().convert()
+
+            warnings = []
+            errors = []
+
+            # Check for duplicate labels
+            labels = {}
+            for binding in results["results"]["bindings"]:
+                if binding["p"]["value"] == str(RDFS.label):
+                    label = binding["o"]["value"]
+                    subject = binding["s"]["value"]
+                    if label in labels:
+                        warnings.append(
+                            f"Duplicate label '{label}' found for {subject} and {labels[label]}"
+                        )
+                    else:
+                        labels[label] = subject
+
+            # Check for missing labels
+            entities_without_labels = set()
+            for binding in results["results"]["bindings"]:
+                subject = binding["s"]["value"]
+                if binding["p"]["value"] == str(RDF.type):
+                    entities_without_labels.add(subject)
+
+            for binding in results["results"]["bindings"]:
+                if binding["p"]["value"] == str(RDFS.label):
+                    subject = binding["s"]["value"]
+                    entities_without_labels.discard(subject)
+
+            for entity in entities_without_labels:
+                warnings.append(f"Entity {entity} has no rdfs:label")
+
+            return {
+                "valid": len(errors) == 0,
+                "warnings": warnings,
+                "errors": errors,
+                "entity_count": len(
+                    set(binding["s"]["value"] for binding in results["results"]["bindings"])
+                ),
+            }
+
+        except Exception as e:
+            logger.error(f"Error validating IRI integrity: {e}")
+            return {
+                "valid": False,
+                "warnings": [],
+                "errors": [f"Validation failed: {str(e)}"],
+                "entity_count": 0,
+            }

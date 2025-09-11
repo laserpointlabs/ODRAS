@@ -1,0 +1,329 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Attribute Editor Test</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 20px;
+            background: #1a1a1a;
+            color: #e5e7eb;
+        }
+        .test-section {
+            margin: 20px 0;
+            padding: 20px;
+            border: 1px solid #374151;
+            border-radius: 8px;
+            background: #111827;
+        }
+        .attribute-container {
+            display: grid;
+            gap: 8px;
+            margin: 10px 0;
+        }
+        .attribute-field {
+            display: grid;
+            grid-template-columns: 1fr auto;
+            gap: 8px;
+            align-items: center;
+        }
+        label {
+            font-size: 12px;
+            color: #9ca3af;
+        }
+        input, select, textarea {
+            width: 100%;
+            background: #0b1220;
+            color: #e5e7eb;
+            border: 1px solid #374151;
+            border-radius: 4px;
+            padding: 4px;
+            font-size: 12px;
+        }
+        button {
+            background: #3b82f6;
+            color: white;
+            border: none;
+            border-radius: 4px;
+            padding: 8px 16px;
+            cursor: pointer;
+            margin: 4px;
+        }
+        button:hover {
+            background: #2563eb;
+        }
+        .delete-btn {
+            background: #dc2626;
+            width: 24px;
+            height: 24px;
+            padding: 0;
+            font-size: 14px;
+        }
+        .delete-btn:hover {
+            background: #b91c1c;
+        }
+        .json-output {
+            background: #0f172a;
+            border: 1px solid #374151;
+            border-radius: 4px;
+            padding: 10px;
+            font-family: monospace;
+            font-size: 12px;
+            white-space: pre-wrap;
+            margin: 10px 0;
+        }
+    </style>
+</head>
+<body>
+    <h1>Attribute Editor Test</h1>
+    
+    <div class="test-section">
+        <h2>Test Attribute Templates</h2>
+        <label for="objectType">Object Type:</label>
+        <select id="objectType">
+            <option value="class">Class</option>
+            <option value="objectProperty">Object Property</option>
+            <option value="dataProperty">Data Property</option>
+            <option value="note">Note</option>
+            <option value="model">Model</option>
+        </select>
+        
+        <div class="attribute-container" id="attributeContainer">
+            <!-- Dynamic attribute fields will be inserted here -->
+        </div>
+        
+        <div>
+            <button id="addAttrBtn">+ Add Attribute</button>
+            <button id="resetAttrsBtn">Reset to Template</button>
+            <button id="getAttrsBtn">Get Attributes JSON</button>
+        </div>
+        
+        <div class="json-output" id="jsonOutput">Click "Get Attributes JSON" to see the current attributes</div>
+    </div>
+
+    <script>
+        // Attribute templates for different object types
+        const attributeTemplates = {
+            class: {
+                comment: { type: 'text', label: 'Comment', placeholder: 'Description of the class' },
+                subclass_of: { type: 'text', label: 'Subclass of', placeholder: 'Parent class name' },
+                priority: { type: 'select', label: 'Priority', options: ['High', 'Medium', 'Low'], placeholder: 'Select priority' },
+                status: { type: 'select', label: 'Status', options: ['Draft', 'Review', 'Approved', 'Deprecated'], placeholder: 'Select status' }
+            },
+            objectProperty: {
+                comment: { type: 'text', label: 'Comment', placeholder: 'Description of the property' },
+                domain: { type: 'text', label: 'Domain', placeholder: 'Source class' },
+                range: { type: 'text', label: 'Range', placeholder: 'Target class' },
+                functional: { type: 'checkbox', label: 'Functional', placeholder: 'Is this a functional property?' },
+                inverse_functional: { type: 'checkbox', label: 'Inverse Functional', placeholder: 'Is this inverse functional?' }
+            },
+            dataProperty: {
+                comment: { type: 'text', label: 'Comment', placeholder: 'Description of the property' },
+                domain: { type: 'text', label: 'Domain', placeholder: 'Source class' },
+                range: { type: 'select', label: 'Range', options: ['xsd:string', 'xsd:integer', 'xsd:float', 'xsd:boolean', 'xsd:dateTime'], placeholder: 'Data type' },
+                functional: { type: 'checkbox', label: 'Functional', placeholder: 'Is this a functional property?' }
+            },
+            note: {
+                content: { type: 'textarea', label: 'Content', placeholder: 'Note content' },
+                author: { type: 'text', label: 'Author', placeholder: 'Note author' },
+                created_date: { type: 'date', label: 'Created Date', placeholder: 'Creation date' }
+            },
+            model: {
+                description: { type: 'textarea', label: 'Description', placeholder: 'Model description' },
+                version: { type: 'text', label: 'Version', placeholder: 'Model version' },
+                namespace: { type: 'text', label: 'Namespace', placeholder: 'Model namespace' }
+            }
+        };
+
+        function updateAttributeEditor(objectType, currentAttrs = {}) {
+            const container = document.getElementById('attributeContainer');
+            if (!container) return;
+            
+            container.innerHTML = '';
+            
+            const template = attributeTemplates[objectType] || {};
+            
+            // Add template attributes
+            Object.entries(template).forEach(([key, config]) => {
+                const attrDiv = createAttributeField(key, config, currentAttrs[key] || '');
+                container.appendChild(attrDiv);
+            });
+            
+            // Add any custom attributes not in template
+            Object.entries(currentAttrs).forEach(([key, value]) => {
+                if (!template[key]) {
+                    const attrDiv = createAttributeField(key, { type: 'text', label: key }, value);
+                    container.appendChild(attrDiv);
+                }
+            });
+        }
+
+        function createAttributeField(key, config, value) {
+            const div = document.createElement('div');
+            div.className = 'attribute-field';
+            
+            const label = document.createElement('label');
+            label.textContent = config.label || key;
+            
+            const inputContainer = document.createElement('div');
+            inputContainer.style.display = 'flex';
+            inputContainer.style.gap = '4px';
+            
+            let input;
+            if (config.type === 'select') {
+                input = document.createElement('select');
+                
+                const defaultOption = document.createElement('option');
+                defaultOption.value = '';
+                defaultOption.textContent = config.placeholder || 'Select...';
+                input.appendChild(defaultOption);
+                
+                if (config.options) {
+                    config.options.forEach(option => {
+                        const opt = document.createElement('option');
+                        opt.value = option;
+                        opt.textContent = option;
+                        if (value === option) opt.selected = true;
+                        input.appendChild(opt);
+                    });
+                }
+            } else if (config.type === 'checkbox') {
+                input = document.createElement('input');
+                input.type = 'checkbox';
+                input.checked = value === true || value === 'true';
+            } else if (config.type === 'textarea') {
+                input = document.createElement('textarea');
+                input.rows = 3;
+                input.value = value || '';
+                input.style.resize = 'vertical';
+            } else if (config.type === 'date') {
+                input = document.createElement('input');
+                input.type = 'date';
+                input.value = value || '';
+            } else {
+                input = document.createElement('input');
+                input.type = config.type || 'text';
+                input.value = value || '';
+                input.placeholder = config.placeholder || '';
+            }
+            
+            input.dataset.attrKey = key;
+            input.dataset.attrType = config.type || 'text';
+            
+            const deleteBtn = document.createElement('button');
+            deleteBtn.type = 'button';
+            deleteBtn.textContent = '×';
+            deleteBtn.className = 'delete-btn';
+            deleteBtn.title = 'Remove attribute';
+            
+            // Only show delete button for custom attributes (not in template)
+            const template = attributeTemplates[document.getElementById('objectType').value] || {};
+            if (template[key]) {
+                deleteBtn.style.display = 'none';
+            }
+            
+            deleteBtn.onclick = () => {
+                div.remove();
+            };
+            
+            inputContainer.appendChild(input);
+            inputContainer.appendChild(deleteBtn);
+            
+            div.appendChild(label);
+            div.appendChild(inputContainer);
+            
+            return div;
+        }
+
+        function getCurrentAttributes() {
+            const container = document.getElementById('attributeContainer');
+            if (!container) return {};
+            
+            const attrs = {};
+            const inputs = container.querySelectorAll('input, select, textarea');
+            
+            inputs.forEach(input => {
+                const key = input.dataset.attrKey;
+                const type = input.dataset.attrType;
+                
+                if (key) {
+                    let value;
+                    if (type === 'checkbox') {
+                        value = input.checked;
+                    } else if (type === 'select' && input.value === '') {
+                        value = null; // Don't include empty selects
+                    } else {
+                        value = input.value.trim();
+                        if (value === '') value = null; // Don't include empty strings
+                    }
+                    
+                    if (value !== null) {
+                        attrs[key] = value;
+                    }
+                }
+            });
+            
+            return attrs;
+        }
+
+        // Event listeners
+        document.getElementById('objectType').addEventListener('change', () => {
+            const objectType = document.getElementById('objectType').value;
+            const currentAttrs = getCurrentAttributes();
+            updateAttributeEditor(objectType, currentAttrs);
+        });
+
+        document.getElementById('addAttrBtn').addEventListener('click', () => {
+            const key = prompt('Enter attribute name:');
+            if (key && key.trim()) {
+                const container = document.getElementById('attributeContainer');
+                if (container) {
+                    const attrDiv = createAttributeField(key.trim(), { type: 'text', label: key.trim() }, '');
+                    container.appendChild(attrDiv);
+                }
+            }
+        });
+
+        document.getElementById('resetAttrsBtn').addEventListener('click', () => {
+            const objectType = document.getElementById('objectType').value;
+            updateAttributeEditor(objectType, {});
+        });
+
+        document.getElementById('getAttrsBtn').addEventListener('click', () => {
+            const attrs = getCurrentAttributes();
+            document.getElementById('jsonOutput').textContent = JSON.stringify(attrs, null, 2);
+        });
+
+        // Initialize with class template
+        updateAttributeEditor('class');
+    </script>
+</body>
+</html>
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+

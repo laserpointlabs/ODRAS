@@ -366,6 +366,9 @@ clean_databases() {
         # Clean local storage
         clean_local_storage
         
+        # Clean browser local storage data
+        clean_browser_storage
+        
         print_success "All databases cleaned successfully!"
         
         # DO NOT create users here - that's what init-db is for!
@@ -672,21 +675,30 @@ stop_external_worker() {
 clean_fuseki() {
     print_status "Cleaning Fuseki RDF store..."
     
-    # Get all datasets and clear them
-    local datasets=$(curl -s http://localhost:3030/$/datasets 2>/dev/null | jq -r '.datasets[].name' 2>/dev/null)
+    # Get all datasets and delete them completely
+    local datasets=$(curl -s http://localhost:3030/$/datasets 2>/dev/null | jq -r '.datasets[]."ds.name"' 2>/dev/null)
     
     if [[ $? -eq 0 ]] && [[ -n "$datasets" ]]; then
         for dataset in $datasets; do
             if [[ "$dataset" != "null" ]] && [[ -n "$dataset" ]]; then
-                print_status "  Clearing dataset: $dataset"
-                curl -s -X POST "http://localhost:3030/$dataset/update" \
-                     -H "Content-Type: application/sparql-update" \
-                     -d "DELETE WHERE { ?s ?p ?o }" >/dev/null 2>&1
+                # Remove leading slash from dataset name
+                local clean_dataset=$(echo "$dataset" | sed 's|^/||')
+                print_status "  Deleting dataset: $clean_dataset"
+                # Delete the entire dataset (not just clear data)
+                curl -s -X DELETE "http://localhost:3030/$/datasets/$clean_dataset" >/dev/null 2>&1
             fi
         done
-        print_success "✓ Fuseki cleaned"
+        print_success "✓ Fuseki datasets deleted"
     else
         print_warning "⚠ Could not connect to Fuseki or no datasets found"
+    fi
+    
+    # Also clear any persistent data in the volume
+    print_status "Clearing Fuseki persistent volume data..."
+    if docker exec odras_fuseki rm -rf /fuseki/databases/* 2>/dev/null; then
+        print_success "✓ Fuseki persistent data cleared"
+    else
+        print_warning "⚠ Could not clear Fuseki persistent data (container may not be running)"
     fi
 }
 
@@ -742,6 +754,57 @@ clean_local_storage() {
     print_success "✓ Local storage cleaned"
 }
 
+# Clean browser local storage data
+clean_browser_storage() {
+    print_status "Cleaning browser local storage data..."
+    
+    # Create a simple HTML file that clears localStorage when opened
+    local clear_script="
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Clear ODRAS Local Storage</title>
+</head>
+<body>
+    <h1>Clearing ODRAS Local Storage...</h1>
+    <script>
+        // Clear all localStorage data
+        localStorage.clear();
+        sessionStorage.clear();
+        
+        // Clear specific ODRAS keys
+        const odrasKeys = [
+            'odras_token',
+            'odras_user',
+            'activeOntologyIri',
+            'visibleImports',
+            'ontologyLayouts',
+            'projectData',
+            'knowledgeAssets'
+        ];
+        
+        odrasKeys.forEach(key => {
+            localStorage.removeItem(key);
+            sessionStorage.removeItem(key);
+        });
+        
+        document.body.innerHTML = '<h1>✅ ODRAS Local Storage Cleared!</h1><p>You can close this tab now.</p>';
+    </script>
+</body>
+</html>"
+    
+    # Write the script to a temporary file
+    echo "$clear_script" > /tmp/clear_odras_storage.html
+    
+    print_status "  Created browser storage clearing script: /tmp/clear_odras_storage.html"
+    print_status "  💡 To clear browser storage:"
+    print_status "     1. Open: file:///tmp/clear_odras_storage.html in your browser"
+    print_status "     2. Or manually clear localStorage in browser dev tools"
+    print_status "     3. Or restart your browser"
+    
+    print_success "✓ Browser storage clearing instructions provided"
+}
+
 # Clean everything (containers + volumes)
 clean_all() {
     # Check if -y flag was passed
@@ -770,8 +833,11 @@ clean_all() {
         # Stop and remove containers with volumes
         docker-compose -f "$DOCKER_COMPOSE_FILE" down -v --remove-orphans
         
-        # Remove any remaining volumes
+        # Remove any remaining volumes (including Fuseki data)
         docker volume rm $(docker volume ls -q | grep odras) 2>/dev/null || true
+        
+        # Ensure Fuseki volume is completely removed
+        docker volume rm odras_fuseki_data 2>/dev/null || true
         
         # Clean up PID and log files (only if application is not running)
         if [[ -f "$PID_FILE" ]]; then
@@ -789,6 +855,9 @@ clean_all() {
         
         # Clean local storage
         clean_local_storage
+        
+        # Clean browser local storage data
+        clean_browser_storage
         
         print_success "Complete cleanup completed"
         print_status "Run './odras.sh up' to start fresh containers"
@@ -900,8 +969,18 @@ init_databases() {
         # Run migrations in specific order to ensure dependencies
         local migrations=(
             "000_files_table.sql"
-            "001_knowledge_management.sql" 
+            "001_knowledge_management.sql"
             "002_knowledge_public_assets.sql"
+            "003_auth_tokens.sql"
+            "004_users_table.sql"
+            "005_prefix_management.sql"
+            "006_update_prefix_constraint.sql"
+            "007_revert_prefix_constraint.sql"
+            "008_create_projects_table.sql"
+            "009_create_domains_table.sql"
+            "010_namespace_management.sql"
+            "011_add_service_namespace_type.sql"
+            "012_migrate_auth_system.sql"
         )
         
         for migration in "${migrations[@]}"; do
@@ -920,9 +999,6 @@ init_databases() {
     else
         print_warning "No migrations directory found"
     fi
-    
-    # Create default users and project
-    create_default_users
     
     # Initialize Neo4j schema
     print_status "Initializing Neo4j schema..."
@@ -964,17 +1040,20 @@ init_databases() {
         print_warning "⚠ Could not connect to Qdrant to create collections"
     fi
     
-    # Create demo content for the Default Project
-    create_demo_content
-    
-    # Create default ontology for the Default Project
-    create_default_ontology
+    # Create default users
+    print_status "Creating default users..."
+    docker exec odras_postgres psql -U postgres -d odras -c "
+    INSERT INTO users (username, display_name, is_admin) 
+    VALUES ('admin', 'Administrator', TRUE), ('jdehart', 'J DeHart', FALSE)
+    ON CONFLICT (username) DO UPDATE SET 
+        display_name = EXCLUDED.display_name, 
+        is_admin = EXCLUDED.is_admin,
+        updated_at = NOW();
+    " >/dev/null 2>&1 && print_success "✓ Created default users: admin, jdehart"
     
     print_success "🎉 Database initialization completed!"
-    print_status "📊 Created: Default Project with demo content and ontology"
-    print_status "🔐 Login credentials:"
-    print_status "   👤 jdehart / jdehart (member)"
-    print_status "   👑 admin / admin (administrator)"
+    print_status "📊 Database schema and collections are ready"
+    print_status "👤 Default users created: admin/admin, jdehart/jdehart"
     print_status "🌐 URL: http://localhost:8000/app"
 }
 

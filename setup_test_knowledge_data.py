@@ -4,7 +4,7 @@ Complete test data setup script for ODRAS Knowledge Management.
 
 This script creates:
 1. A test project for jdehart
-2. Meaningful test documents 
+2. Meaningful test documents
 3. Knowledge assets from those documents
 4. Tests RAG functionality
 
@@ -64,7 +64,6 @@ TEST_DOCUMENTS = {
 - Vibration resistance: MIL-STD-810G
 - Water resistance: IP65 rating required
 """,
-
     "safety_protocols.md": """# Safety Protocols and Procedures
 
 ## 1. Pre-Operation Safety Checks
@@ -156,7 +155,6 @@ TEST_DOCUMENTS = {
 - Medical fitness assessment annually
 - Background security clearance for sensitive operations
 """,
-
     "technical_specifications.md": """# Technical Specifications
 
 ## 1. System Architecture
@@ -239,8 +237,9 @@ TEST_DOCUMENTS = {
 - **Vulnerability Management**: Automated security scanning and patch management
 - **Incident Response**: 24/7 security monitoring and response procedures
 - **Data Backup**: Encrypted backup with 3-2-1 backup strategy implementation
-"""
+""",
 }
+
 
 class TestDataSetup:
     def __init__(self):
@@ -248,176 +247,207 @@ class TestDataSetup:
         self.jdehart_token = None
         self.admin_token = None
         self.test_project_id = None
-        
+
     async def authenticate_users(self):
         """Authenticate both admin and jdehart users"""
         print("🔐 Step 1: Authenticating users...")
-        
+
         async with httpx.AsyncClient(timeout=30) as client:
             # Authenticate jdehart
             jdehart_response = await client.post(
                 f"{self.base_url}/api/auth/login",
-                json={"username": "jdehart", "password": "jdehart"}
+                json={"username": "jdehart", "password": "jdehart"},
             )
-            
+
             if jdehart_response.status_code != 200:
-                raise Exception(f"jdehart authentication failed: {jdehart_response.status_code}")
-            
+                raise Exception(
+                    f"jdehart authentication failed: {jdehart_response.status_code}"
+                )
+
             self.jdehart_token = jdehart_response.json()["token"]
             print("✅ jdehart authenticated")
-            
+
             # Authenticate admin
             admin_response = await client.post(
-                f"{self.base_url}/api/auth/login", 
-                json={"username": "admin", "password": "admin"}
+                f"{self.base_url}/api/auth/login",
+                json={"username": "admin", "password": "admin"},
             )
-            
+
             if admin_response.status_code != 200:
-                raise Exception(f"Admin authentication failed: {admin_response.status_code}")
-            
+                raise Exception(
+                    f"Admin authentication failed: {admin_response.status_code}"
+                )
+
             self.admin_token = admin_response.json()["token"]
             print("✅ admin authenticated")
-    
+
     async def get_default_project(self):
         """Get the Default Project instead of creating a new one"""
         print("\n📁 Step 2: Getting Default Project...")
-        
+
         async with httpx.AsyncClient(timeout=30) as client:
             # Get all projects for the user
             response = await client.get(
                 f"{self.base_url}/api/projects",
-                headers={"Authorization": f"Bearer {self.jdehart_token}"}
+                headers={"Authorization": f"Bearer {self.jdehart_token}"},
             )
-            
+
             if response.status_code == 200:
                 data = response.json()
                 projects = data.get("projects", [])
-                
+
                 # Find the Default Project
                 for project in projects:
                     if project.get("name") == "Default Project":
                         self.test_project_id = project["project_id"]
                         print(f"✅ Using Default Project (ID: {self.test_project_id})")
                         return True
-                
+
                 print("❌ Default Project not found")
                 return False
             else:
-                print(f"❌ Failed to get projects: {response.status_code} - {response.text}")
+                print(
+                    f"❌ Failed to get projects: {response.status_code} - {response.text}"
+                )
                 return False
-    
+
     async def upload_test_documents(self):
         """Upload test documents to the project"""
         print(f"\n📄 Step 3: Uploading test documents...")
-        
+
         uploaded_files = []
-        
+
         async with httpx.AsyncClient(timeout=60) as client:
             for filename, content in TEST_DOCUMENTS.items():
                 print(f"   📤 Uploading {filename}...")
-                
+
                 # Determine document type from filename
-                doc_type = "requirements" if "requirements" in filename else \
-                          "safety" if "safety" in filename else \
-                          "specifications" if "spec" in filename else "documentation"
-                
+                doc_type = (
+                    "requirements"
+                    if "requirements" in filename
+                    else (
+                        "safety"
+                        if "safety" in filename
+                        else "specifications" if "spec" in filename else "documentation"
+                    )
+                )
+
                 # Prepare form data
-                files = {
-                    "file": (filename, content.encode('utf-8'), "text/markdown")
-                }
-                
+                files = {"file": (filename, content.encode("utf-8"), "text/markdown")}
+
                 data = {
                     "project_id": self.test_project_id,
-                    "tags": json.dumps({
-                        "docType": doc_type,
-                        "status": "active",
-                        "testDocument": True,
-                        "domain": "navigation" if "navigation" in filename else "safety" if "safety" in filename else "technical"
-                    }),
+                    "tags": json.dumps(
+                        {
+                            "docType": doc_type,
+                            "status": "active",
+                            "testDocument": True,
+                            "domain": (
+                                "navigation"
+                                if "navigation" in filename
+                                else "safety" if "safety" in filename else "technical"
+                            ),
+                        }
+                    ),
                     "process_for_knowledge": "true",
                     "embedding_model": "all-MiniLM-L6-v2",
-                    "chunking_strategy": "hybrid"
+                    "chunking_strategy": "hybrid",
                 }
-                
+
                 response = await client.post(
                     f"{self.base_url}/api/files/upload",
                     headers={"Authorization": f"Bearer {self.jdehart_token}"},
                     files=files,
-                    data=data
+                    data=data,
                 )
-                
+
                 if response.status_code == 200:
                     result = response.json()
                     file_id = result.get("file_id")
                     message = result.get("message", "")
-                    
+
                     print(f"   ✅ {filename} uploaded successfully (ID: {file_id})")
                     if "knowledge asset" in message:
                         print(f"      🧠 Knowledge processing initiated!")
-                        
-                    uploaded_files.append({
-                        "filename": filename,
-                        "file_id": file_id,
-                        "doc_type": doc_type
-                    })
+
+                    uploaded_files.append(
+                        {"filename": filename, "file_id": file_id, "doc_type": doc_type}
+                    )
                 else:
-                    print(f"   ❌ Failed to upload {filename}: {response.status_code} - {response.text}")
-        
+                    print(
+                        f"   ❌ Failed to upload {filename}: {response.status_code} - {response.text}"
+                    )
+
         return uploaded_files
-    
+
     async def wait_for_processing(self, max_wait_seconds=120):
         """Wait for knowledge processing to complete"""
-        print(f"\n⏳ Step 4: Waiting for knowledge processing (max {max_wait_seconds}s)...")
-        
+        print(
+            f"\n⏳ Step 4: Waiting for knowledge processing (max {max_wait_seconds}s)..."
+        )
+
         start_time = time.time()
-        
+
         async with httpx.AsyncClient(timeout=30) as client:
             while (time.time() - start_time) < max_wait_seconds:
                 # Check knowledge assets
                 response = await client.get(
                     f"{self.base_url}/api/knowledge/assets",
-                    headers={"Authorization": f"Bearer {self.jdehart_token}"}
+                    headers={"Authorization": f"Bearer {self.jdehart_token}"},
                 )
-                
+
                 if response.status_code == 200:
                     data = response.json()
                     assets = data.get("assets", [])
-                    
+
                     if assets:
-                        completed_assets = [a for a in assets if a.get("status") == "active"]
-                        processing_assets = [a for a in assets if a.get("status") in ["processing", "pending"]]
-                        
-                        print(f"   📊 Assets: {len(completed_assets)} completed, {len(processing_assets)} processing")
-                        
-                        if len(completed_assets) >= len(TEST_DOCUMENTS) and len(processing_assets) == 0:
-                            print(f"   ✅ All {len(completed_assets)} knowledge assets processed successfully!")
+                        completed_assets = [
+                            a for a in assets if a.get("status") == "active"
+                        ]
+                        processing_assets = [
+                            a
+                            for a in assets
+                            if a.get("status") in ["processing", "pending"]
+                        ]
+
+                        print(
+                            f"   📊 Assets: {len(completed_assets)} completed, {len(processing_assets)} processing"
+                        )
+
+                        if (
+                            len(completed_assets) >= len(TEST_DOCUMENTS)
+                            and len(processing_assets) == 0
+                        ):
+                            print(
+                                f"   ✅ All {len(completed_assets)} knowledge assets processed successfully!"
+                            )
                             return True
                     else:
                         print("   ⏳ No knowledge assets found yet...")
                 else:
                     print(f"   ⚠️ Failed to check assets: {response.status_code}")
-                
+
                 await asyncio.sleep(5)
-            
+
             print(f"   ⚠️ Timeout waiting for processing completion")
             return False
-    
+
     async def test_rag_functionality(self):
         """Test RAG functionality with the created knowledge base"""
         print(f"\n🧠 Step 5: Testing RAG functionality...")
-        
+
         test_queries = [
             "What are the navigation system requirements?",
-            "What safety procedures should be followed?", 
+            "What safety procedures should be followed?",
             "What are the technical specifications for the processor?",
             "What is the required position accuracy?",
-            "Describe the emergency procedures"
+            "Describe the emergency procedures",
         ]
-        
+
         async with httpx.AsyncClient(timeout=60) as client:
             for i, question in enumerate(test_queries):
                 print(f"\n   🔍 Test Query {i+1}: '{question}'")
-                
+
                 response = await client.post(
                     f"{self.base_url}/api/knowledge/query",
                     headers={"Authorization": f"Bearer {self.jdehart_token}"},
@@ -427,23 +457,29 @@ class TestDataSetup:
                         "response_style": "comprehensive",
                         "max_chunks": 3,
                         "similarity_threshold": 0.4,
-                        "include_metadata": True
-                    }
+                        "include_metadata": True,
+                    },
                 )
-                
+
                 if response.status_code == 200:
                     data = response.json()
                     success = data.get("success", False)
                     chunks_found = data.get("chunks_found", 0)
                     confidence = data.get("confidence", "unknown")
-                    
+
                     if success and chunks_found > 0:
                         response_text = data.get("response", "")
-                        preview = response_text[:150] + "..." if len(response_text) > 150 else response_text
-                        
-                        print(f"   ✅ SUCCESS: {chunks_found} sources, {confidence} confidence")
+                        preview = (
+                            response_text[:150] + "..."
+                            if len(response_text) > 150
+                            else response_text
+                        )
+
+                        print(
+                            f"   ✅ SUCCESS: {chunks_found} sources, {confidence} confidence"
+                        )
                         print(f"      Response: {preview}")
-                        
+
                         # Show sources
                         sources = data.get("sources", [])
                         if sources:
@@ -452,35 +488,39 @@ class TestDataSetup:
                                 title = source.get("title", "Unknown")
                                 doc_type = source.get("document_type", "unknown")
                                 relevance = int(source.get("relevance_score", 0) * 100)
-                                print(f"         {j+1}. {title} ({doc_type}) - {relevance}% relevant")
+                                print(
+                                    f"         {j+1}. {title} ({doc_type}) - {relevance}% relevant"
+                                )
                     else:
                         print(f"   ❌ FAILED: {chunks_found} chunks found")
                         if "error" in data:
                             print(f"      Error: {data['error']}")
                 else:
-                    print(f"   ❌ Query failed: {response.status_code} - {response.text}")
-                
+                    print(
+                        f"   ❌ Query failed: {response.status_code} - {response.text}"
+                    )
+
                 # Small delay between queries
                 await asyncio.sleep(1)
-        
+
         print(f"\n🎉 RAG testing completed!")
-    
+
     async def show_final_summary(self):
         """Show final summary of created test data"""
         print(f"\n📊 Final Summary:")
         print(f"=" * 60)
-        
+
         async with httpx.AsyncClient(timeout=30) as client:
             # Get knowledge assets
             response = await client.get(
                 f"{self.base_url}/api/knowledge/assets",
-                headers={"Authorization": f"Bearer {self.jdehart_token}"}
+                headers={"Authorization": f"Bearer {self.jdehart_token}"},
             )
-            
+
             if response.status_code == 200:
                 data = response.json()
                 assets = data.get("assets", [])
-                
+
                 print(f"🧠 Knowledge Assets Created: {len(assets)}")
                 total_chunks = 0
                 for asset in assets:
@@ -489,12 +529,14 @@ class TestDataSetup:
                     tokens = stats.get("token_count", 0)
                     title = asset.get("title", "Unknown")
                     doc_type = asset.get("document_type", "unknown")
-                    
-                    print(f"   • {title} ({doc_type}): {chunks} chunks, {tokens} tokens")
+
+                    print(
+                        f"   • {title} ({doc_type}): {chunks} chunks, {tokens} tokens"
+                    )
                     total_chunks += chunks
-                
+
                 print(f"📊 Total Chunks: {total_chunks}")
-        
+
         print(f"\n🎯 Test Environment Ready!")
         print(f"   Project: Default Project ({self.test_project_id})")
         print(f"   User: jdehart (password: jdehart)")
@@ -502,8 +544,9 @@ class TestDataSetup:
         print(f"   URL: http://localhost:8000/app#wb=knowledge")
         print(f"\n💡 Try asking questions like:")
         print(f"   • 'What are the navigation system requirements?'")
-        print(f"   • 'What safety procedures should be followed?'") 
+        print(f"   • 'What safety procedures should be followed?'")
         print(f"   • 'What are the technical specifications?'")
+
 
 async def main():
     """Main setup function"""
@@ -515,40 +558,42 @@ async def main():
     print("• Knowledge assets with vector embeddings")
     print("• RAG functionality testing")
     print()
-    
+
     setup = TestDataSetup()
-    
+
     try:
         # Step 1: Authenticate users
         await setup.authenticate_users()
-        
-        # Step 2: Get Default Project  
+
+        # Step 2: Get Default Project
         if not await setup.get_default_project():
             return False
-        
+
         # Step 3: Upload test documents
         uploaded_files = await setup.upload_test_documents()
         if not uploaded_files:
             print("❌ No files uploaded successfully")
             return False
-        
+
         # Step 4: Wait for processing
         if not await setup.wait_for_processing():
             print("⚠️ Processing may not be complete, but continuing with tests...")
-        
+
         # Step 5: Test RAG functionality
         await setup.test_rag_functionality()
-        
+
         # Step 6: Show summary
         await setup.show_final_summary()
-        
+
         return True
-        
+
     except Exception as e:
         print(f"❌ Setup failed: {str(e)}")
         import traceback
+
         traceback.print_exc()
         return False
+
 
 if __name__ == "__main__":
     success = asyncio.run(main())

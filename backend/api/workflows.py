@@ -79,14 +79,19 @@ async def _ensure_bpmn_deployed(process_key: str, settings: Settings) -> None:
         async with httpx.AsyncClient(timeout=120) as client:  # Much longer timeout
             with open(bpmn_path, "rb") as f:
                 files = {"file": (filename, f, "application/xml")}
-                data = {"deployment-name": process_key, "enable-duplicate-filtering": "true"}
+                data = {
+                    "deployment-name": process_key,
+                    "enable-duplicate-filtering": "true",
+                }
                 r = await client.post(f"{camunda_rest}/deployment/create", files=files, data=data)
                 r.raise_for_status()
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Failed to deploy BPMN: {str(e)}")
 
 
-def _to_camunda_variables(body: StartWorkflowRequest, user: Dict[str, Any]) -> Dict[str, Dict[str, Any]]:
+def _to_camunda_variables(
+    body: StartWorkflowRequest, user: Dict[str, Any]
+) -> Dict[str, Dict[str, Any]]:
     """Convert request body to Camunda variables map.
     Use simple String types for JSON payloads for portability in Camunda 7.
     """
@@ -159,7 +164,9 @@ async def start_workflow(
                     async def _bg():
                         worker = IngestionWorker()
                         await worker.ingest_files(body.fileIds or [], body.params or {})
+
                     import asyncio
+
                     asyncio.create_task(_bg())
             except Exception:
                 pass
@@ -208,7 +215,7 @@ async def start_rag_query(
 
     settings = Settings()
     process_key = "rag_query_process"
-    
+
     # Ensure the RAG query workflow is deployed
     await _ensure_bpmn_deployed(process_key, settings)
 
@@ -218,30 +225,30 @@ async def start_rag_query(
         "username": (user or {}).get("username", "anonymous"),
         "max_results": body.max_results,
         "similarity_threshold": body.similarity_threshold,
-        "timestamp": time.time()
+        "timestamp": time.time(),
     }
-    
+
     if body.user_context:
         query_metadata.update(body.user_context)
 
     # Prepare Camunda variables
     variables = {
         "user_query": {"value": body.query, "type": "String"},
-        "query_metadata": {"value": json.dumps(query_metadata), "type": "String"}
+        "query_metadata": {"value": json.dumps(query_metadata), "type": "String"},
     }
 
     camunda_rest = f"{settings.camunda_base_url.rstrip('/')}/engine-rest"
-    
+
     try:
         async with httpx.AsyncClient(timeout=120) as client:  # Longer timeout
             r = await client.post(
                 f"{camunda_rest}/process-definition/key/{process_key}/start",
-                json={"variables": variables}
+                json={"variables": variables},
             )
             r.raise_for_status()
             data = r.json()
             instance_id = data.get("id")
-            
+
             # Record in run registry
             try:
                 RUNS[str(instance_id)] = {
@@ -252,18 +259,18 @@ async def start_rag_query(
                     "user_query": body.query,
                     "camunda_url": f"{settings.camunda_base_url.rstrip('/')}/cockpit/default/#/process-instance/{instance_id}",
                     "user_id": (user or {}).get("user_id"),
-                    "start_time": time.time()
+                    "start_time": time.time(),
                 }
             except Exception:
                 pass
-            
+
             return RAGQueryResponse(
                 success=True,
                 process_instance_id=instance_id,
                 query=body.query,
-                camunda_url=f"{settings.camunda_base_url.rstrip('/')}/cockpit/default/#/process-instance/{instance_id}"
+                camunda_url=f"{settings.camunda_base_url.rstrip('/')}/cockpit/default/#/process-instance/{instance_id}",
             )
-            
+
     except httpx.HTTPStatusError as he:
         detail = he.response.json() if he.response is not None else {"error": str(he)}
         raise HTTPException(status_code=500, detail=f"Camunda start error: {detail}")
@@ -284,49 +291,55 @@ async def get_rag_query_status(
 
     settings = Settings()
     camunda_rest = f"{settings.camunda_base_url.rstrip('/')}/engine-rest"
-    
+
     try:
         async with httpx.AsyncClient(timeout=10) as client:
             # Get process instance status
             r = await client.get(f"{camunda_rest}/process-instance/{process_instance_id}")
-            
+
             if r.status_code == 404:
                 raise HTTPException(status_code=404, detail="Process instance not found")
             elif r.status_code != 200:
                 raise HTTPException(status_code=500, detail="Failed to get process status")
-            
+
             process_data = r.json()
-            is_ended = process_data.get('ended', False)
-            
+            is_ended = process_data.get("ended", False)
+
             # Get process variables
-            var_response = await client.get(f"{camunda_rest}/process-instance/{process_instance_id}/variables")
+            var_response = await client.get(
+                f"{camunda_rest}/process-instance/{process_instance_id}/variables"
+            )
             variables = var_response.json() if var_response.status_code == 200 else {}
-            
+
             # Extract key results
             result = {
                 "process_instance_id": process_instance_id,
                 "status": "completed" if is_ended else "running",
                 "process_ended": is_ended,
-                "variables": {}
+                "variables": {},
             }
-            
+
             # Extract important variables
-            important_vars = ['user_query', 'final_response', 'processed_query', 'retrieval_stats', 'context_quality_score']
+            important_vars = [
+                "user_query",
+                "final_response",
+                "processed_query",
+                "retrieval_stats",
+                "context_quality_score",
+            ]
             for var_name in important_vars:
                 if var_name in variables:
-                    var_value = variables[var_name].get('value')
-                    result['variables'][var_name] = var_value
-            
+                    var_value = variables[var_name].get("value")
+                    result["variables"][var_name] = var_value
+
             # If process completed, get the final response
-            if is_ended and 'final_response' in variables:
-                result['final_response'] = variables['final_response'].get('value')
-                result['query'] = variables.get('user_query', {}).get('value', '')
-            
+            if is_ended and "final_response" in variables:
+                result["final_response"] = variables["final_response"].get("value")
+                result["query"] = variables.get("user_query", {}).get("value", "")
+
             return result
-            
+
     except HTTPException:
         raise
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Failed to get RAG query status: {str(e)}")
-
-

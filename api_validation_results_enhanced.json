@@ -1,0 +1,5206 @@
+{
+  "timestamp": "2025-09-09T13:36:36.872382",
+  "total_endpoints": 133,
+  "test_results": [
+    {
+      "path": "/",
+      "methods": [
+        "GET"
+      ],
+      "requires_auth": false,
+      "is_admin_only": false,
+      "test_results": {
+        "GET": {
+          "status": "success",
+          "status_code": 200,
+          "response_type": "success",
+          "json": null
+        }
+      },
+      "overall_status": "success"
+    },
+    {
+      "path": "/api/admin/domains/",
+      "methods": [
+        "POST"
+      ],
+      "requires_auth": true,
+      "is_admin_only": true,
+      "test_results": {
+        "POST": {
+          "admin_access": {
+            "status": "auth_required",
+            "status_code": 401,
+            "response_type": "authentication_required"
+          },
+          "user_access": {
+            "status": "auth_required",
+            "status_code": 401,
+            "response_type": "authentication_required"
+          },
+          "status": "error",
+          "authorization_correct": false
+        }
+      },
+      "overall_status": "error"
+    },
+    {
+      "path": "/api/admin/domains/",
+      "methods": [
+        "GET"
+      ],
+      "requires_auth": true,
+      "is_admin_only": true,
+      "test_results": {
+        "GET": {
+          "admin_access": {
+            "status": "auth_required",
+            "status_code": 401,
+            "response_type": "authentication_required"
+          },
+          "user_access": {
+            "status": "auth_required",
+            "status_code": 401,
+            "response_type": "authentication_required"
+          },
+          "status": "error",
+          "authorization_correct": false
+        }
+      },
+      "overall_status": "error"
+    },
+    {
+      "path": "/api/admin/domains/{domain_id}",
+      "methods": [
+        "GET"
+      ],
+      "requires_auth": true,
+      "is_admin_only": true,
+      "test_results": {
+        "GET": {
+          "admin_access": {
+            "status": "auth_required",
+            "status_code": 401,
+            "response_type": "authentication_required"
+          },
+          "user_access": {
+            "status": "auth_required",
+            "status_code": 401,
+            "response_type": "authentication_required"
+          },
+          "status": "error",
+          "authorization_correct": false
+        }
+      },
+      "overall_status": "error"
+    },
+    {
+      "path": "/api/admin/domains/{domain_id}",
+      "methods": [
+        "PUT"
+      ],
+      "requires_auth": true,
+      "is_admin_only": true,
+      "test_results": {
+        "PUT": {
+          "admin_access": {
+            "status": "auth_required",
+            "status_code": 401,
+            "response_type": "authentication_required"
+          },
+          "user_access": {
+            "status": "auth_required",
+            "status_code": 401,
+            "response_type": "authentication_required"
+          },
+          "status": "error",
+          "authorization_correct": false
+        }
+      },
+      "overall_status": "error"
+    },
+    {
+      "path": "/api/admin/domains/{domain_id}",
+      "methods": [
+        "DELETE"
+      ],
+      "requires_auth": true,
+      "is_admin_only": true,
+      "test_results": {
+        "DELETE": {
+          "admin_access": {
+            "status": "auth_required",
+            "status_code": 401,
+            "response_type": "authentication_required"
+          },
+          "user_access": {
+            "status": "auth_required",
+            "status_code": 401,
+            "response_type": "authentication_required"
+          },
+          "status": "error",
+          "authorization_correct": false
+        }
+      },
+      "overall_status": "error"
+    },
+    {
+      "path": "/api/admin/namespaces/",
+      "methods": [
+        "POST"
+      ],
+      "requires_auth": true,
+      "is_admin_only": true,
+      "test_results": {
+        "POST": {
+          "admin_access": {
+            "status": "auth_required",
+            "status_code": 401,
+            "response_type": "authentication_required"
+          },
+          "user_access": {
+            "status": "auth_required",
+            "status_code": 401,
+            "response_type": "authentication_required"
+          },
+          "status": "error",
+          "authorization_correct": false
+        }
+      },
+      "overall_status": "error"
+    },
+    {
+      "path": "/api/admin/namespaces/",
+      "methods": [
+        "GET"
+      ],
+      "requires_auth": true,
+      "is_admin_only": true,
+      "test_results": {
+        "GET": {
+          "admin_access": {
+            "status": "auth_required",
+            "status_code": 401,
+            "response_type": "authentication_required"
+          },
+          "user_access": {
+            "status": "auth_required",
+            "status_code": 401,
+            "response_type": "authentication_required"
+          },
+          "status": "error",
+          "authorization_correct": false
+        }
+      },
+      "overall_status": "error"
+    },
+    {
+      "path": "/api/admin/namespaces/{namespace_id}",
+      "methods": [
+        "GET"
+      ],
+      "requires_auth": true,
+      "is_admin_only": true,
+      "test_results": {
+        "GET": {
+          "admin_access": {
+            "status": "auth_required",
+            "status_code": 401,
+            "response_type": "authentication_required"
+          },
+          "user_access": {
+            "status": "auth_required",
+            "status_code": 401,
+            "response_type": "authentication_required"
+          },
+          "status": "error",
+          "authorization_correct": false
+        }
+      },
+      "overall_status": "error"
+    },
+    {
+      "path": "/api/admin/namespaces/{namespace_id}",
+      "methods": [
+        "PUT"
+      ],
+      "requires_auth": true,
+      "is_admin_only": true,
+      "test_results": {
+        "PUT": {
+          "admin_access": {
+            "status": "auth_required",
+            "status_code": 401,
+            "response_type": "authentication_required"
+          },
+          "user_access": {
+            "status": "auth_required",
+            "status_code": 401,
+            "response_type": "authentication_required"
+          },
+          "status": "error",
+          "authorization_correct": false
+        }
+      },
+      "overall_status": "error"
+    },
+    {
+      "path": "/api/admin/namespaces/{namespace_id}",
+      "methods": [
+        "DELETE"
+      ],
+      "requires_auth": true,
+      "is_admin_only": true,
+      "test_results": {
+        "DELETE": {
+          "admin_access": {
+            "status": "auth_required",
+            "status_code": 401,
+            "response_type": "authentication_required"
+          },
+          "user_access": {
+            "status": "auth_required",
+            "status_code": 401,
+            "response_type": "authentication_required"
+          },
+          "status": "error",
+          "authorization_correct": false
+        }
+      },
+      "overall_status": "error"
+    },
+    {
+      "path": "/api/admin/prefixes/",
+      "methods": [
+        "POST"
+      ],
+      "requires_auth": false,
+      "is_admin_only": false,
+      "test_results": {
+        "POST": {
+          "status": "auth_required",
+          "status_code": 401,
+          "response_type": "authentication_required"
+        }
+      },
+      "overall_status": "skipped"
+    },
+    {
+      "path": "/api/admin/prefixes/",
+      "methods": [
+        "GET"
+      ],
+      "requires_auth": false,
+      "is_admin_only": false,
+      "test_results": {
+        "GET": {
+          "status": "success",
+          "status_code": 200,
+          "response_type": "success",
+          "json": [
+            {
+              "id": "bc133c24-1f6e-4f4e-91d9-9d7f827ef04f",
+              "prefix": "army",
+              "description": "US Army",
+              "owner": "admin@odras.local",
+              "status": "active",
+              "created_at": "2025-09-05T17:48:55.866294",
+              "updated_at": "2025-09-05T18:39:19.200424",
+              "created_by": "admin@odras.local"
+            },
+            {
+              "id": "c3212e8c-84fc-497d-94b2-bd7bd564d1fe",
+              "prefix": "dod",
+              "description": "Department of Defense",
+              "owner": "admin@odras.local",
+              "status": "active",
+              "created_at": "2025-09-05T17:48:55.866294",
+              "updated_at": "2025-09-05T17:48:55.866294",
+              "created_by": "admin@odras.local"
+            },
+            {
+              "id": "297521e1-d8c8-4e2d-a82b-221ce13fc514",
+              "prefix": "gov",
+              "description": "Government",
+              "owner": "admin@odras.local",
+              "status": "active",
+              "created_at": "2025-09-05T17:48:55.866294",
+              "updated_at": "2025-09-05T17:48:55.866294",
+              "created_by": "admin@odras.local"
+            },
+            {
+              "id": "8580fa72-2b05-42a4-b9f1-1c7104099a82",
+              "prefix": "industry",
+              "description": "Industry",
+              "owner": "admin@odras.local",
+              "status": "active",
+              "created_at": "2025-09-05T18:42:55.271990",
+              "updated_at": "2025-09-05T18:42:55.271990",
+              "created_by": "admin"
+            },
+            {
+              "id": "943039e4-6f5d-476e-8955-fd37a18694b4",
+              "prefix": "lockheed",
+              "description": "Lockheed Martin",
+              "owner": "admin@odras.local",
+              "status": "active",
+              "created_at": "2025-09-05T17:48:55.866294",
+              "updated_at": "2025-09-05T17:48:55.866294",
+              "created_by": "admin@odras.local"
+            },
+            {
+              "id": "44db628b-2262-416d-b6f1-f483333675e0",
+              "prefix": "nasa",
+              "description": "NASA",
+              "owner": "admin@odras.local",
+              "status": "active",
+              "created_at": "2025-09-05T17:48:55.866294",
+              "updated_at": "2025-09-05T17:48:55.866294",
+              "created_by": "admin@odras.local"
+            },
+            {
+              "id": "59ab7cd7-4d5b-4487-8a35-39ec68214554",
+              "prefix": "prime",
+              "description": "Prime airframe vendors",
+              "owner": "admin@odras.local",
+              "status": "active",
+              "created_at": "2025-09-05T19:02:08.350798",
+              "updated_at": "2025-09-05T19:02:08.350798",
+              "created_by": "admin"
+            },
+            {
+              "id": "4d2c0a98-c939-417d-9d41-b106720cec90",
+              "prefix": "usaf",
+              "description": "US Air Force",
+              "owner": "admin@odras.local",
+              "status": "active",
+              "created_at": "2025-09-05T17:48:55.866294",
+              "updated_at": "2025-09-05T17:48:55.866294",
+              "created_by": "admin@odras.local"
+            },
+            {
+              "id": "bd9f1714-1e5c-4ccd-8fdf-1082035165ae",
+              "prefix": "usn",
+              "description": "US Navy",
+              "owner": "admin@odras.local",
+              "status": "active",
+              "created_at": "2025-09-05T17:48:55.866294",
+              "updated_at": "2025-09-05T17:48:55.866294",
+              "created_by": "admin@odras.local"
+            }
+          ]
+        }
+      },
+      "overall_status": "success"
+    },
+    {
+      "path": "/api/admin/prefixes/{prefix_id}",
+      "methods": [
+        "PUT"
+      ],
+      "requires_auth": false,
+      "is_admin_only": true,
+      "test_results": {
+        "PUT": {
+          "status": "auth_required",
+          "status_code": 401,
+          "response_type": "authentication_required"
+        }
+      },
+      "overall_status": "skipped"
+    },
+    {
+      "path": "/api/admin/prefixes/{prefix_id}",
+      "methods": [
+        "DELETE"
+      ],
+      "requires_auth": false,
+      "is_admin_only": true,
+      "test_results": {
+        "DELETE": {
+          "status": "auth_required",
+          "status_code": 401,
+          "response_type": "authentication_required"
+        }
+      },
+      "overall_status": "skipped"
+    },
+    {
+      "path": "/api/auth/login",
+      "methods": [
+        "POST"
+      ],
+      "requires_auth": false,
+      "is_admin_only": false,
+      "test_results": {
+        "POST": {
+          "status": "error",
+          "status_code": 400,
+          "response_type": "client_error",
+          "error_detail": "{\"detail\":\"Username required\"}"
+        }
+      },
+      "overall_status": "error"
+    },
+    {
+      "path": "/api/auth/logout",
+      "methods": [
+        "POST"
+      ],
+      "requires_auth": false,
+      "is_admin_only": false,
+      "test_results": {
+        "POST": {
+          "status": "error",
+          "status_code": 400,
+          "response_type": "client_error",
+          "error_detail": "{\"detail\":\"No token provided\"}"
+        }
+      },
+      "overall_status": "error"
+    },
+    {
+      "path": "/api/auth/me",
+      "methods": [
+        "GET"
+      ],
+      "requires_auth": true,
+      "is_admin_only": false,
+      "test_results": {
+        "GET": {
+          "admin_access": {
+            "status": "auth_required",
+            "status_code": 401,
+            "response_type": "authentication_required"
+          },
+          "user_access": {
+            "status": "auth_required",
+            "status_code": 401,
+            "response_type": "authentication_required"
+          },
+          "status": "error",
+          "both_have_access": false
+        }
+      },
+      "overall_status": "error"
+    },
+    {
+      "path": "/api/camunda/deployments",
+      "methods": [
+        "GET"
+      ],
+      "requires_auth": true,
+      "is_admin_only": false,
+      "test_results": {
+        "GET": {
+          "admin_access": {
+            "status": "success",
+            "status_code": 200,
+            "response_type": "success",
+            "json": {
+              "deployments": [
+                {
+                  "links": [],
+                  "id": "152a13ba-89cf-11f0-ab82-0242ac190002",
+                  "name": "ODRAS Automatic Knowledge Processing",
+                  "source": "ODRAS Init-DB",
+                  "deploymentTime": "2025-09-04T20:38:15.480+0000",
+                  "tenantId": null
+                },
+                {
+                  "links": [],
+                  "id": "152f91fd-89cf-11f0-ab82-0242ac190002",
+                  "name": "ODRAS RAG Query Pipeline",
+                  "source": "ODRAS Init-DB",
+                  "deploymentTime": "2025-09-04T20:38:15.516+0000",
+                  "tenantId": null
+                },
+                {
+                  "links": [],
+                  "id": "2172daf2-898b-11f0-ab82-0242ac190002",
+                  "name": "ODRAS Automatic Knowledge Processing",
+                  "source": "ODRAS Init-DB",
+                  "deploymentTime": "2025-09-04T12:31:50.311+0000",
+                  "tenantId": null
+                },
+                {
+                  "links": [],
+                  "id": "21785935-898b-11f0-ab82-0242ac190002",
+                  "name": "ODRAS RAG Query Pipeline",
+                  "source": "ODRAS Init-DB",
+                  "deploymentTime": "2025-09-04T12:31:50.348+0000",
+                  "tenantId": null
+                },
+                {
+                  "links": [],
+                  "id": "2375b772-89d2-11f0-ab82-0242ac190002",
+                  "name": "ODRAS Automatic Knowledge Processing",
+                  "source": "ODRAS Init-DB",
+                  "deploymentTime": "2025-09-04T21:00:07.954+0000",
+                  "tenantId": null
+                },
+                {
+                  "links": [],
+                  "id": "237bd1f5-89d2-11f0-ab82-0242ac190002",
+                  "name": "ODRAS RAG Query Pipeline",
+                  "source": "ODRAS Init-DB",
+                  "deploymentTime": "2025-09-04T21:00:07.994+0000",
+                  "tenantId": null
+                },
+                {
+                  "links": [],
+                  "id": "3044df1e-8989-11f0-ab82-0242ac190002",
+                  "name": null,
+                  "source": "process application",
+                  "deploymentTime": "2025-09-04T12:17:56.182+0000",
+                  "tenantId": null
+                },
+                {
+                  "links": [],
+                  "id": "31bab648-8989-11f0-ab82-0242ac190002",
+                  "name": "invoiceProcessApplicationSpringBoot",
+                  "source": "process application",
+                  "deploymentTime": "2025-09-04T12:17:58.616+0000",
+                  "tenantId": null
+                },
+                {
+                  "links": [],
+                  "id": "3d158d46-89af-11f0-ab82-0242ac190002",
+                  "name": "ODRAS Automatic Knowledge Processing",
+                  "source": "ODRAS Init-DB",
+                  "deploymentTime": "2025-09-04T16:50:18.559+0000",
+                  "tenantId": null
+                },
+                {
+                  "links": [],
+                  "id": "3d1a4839-89af-11f0-ab82-0242ac190002",
+                  "name": "ODRAS RAG Query Pipeline",
+                  "source": "ODRAS Init-DB",
+                  "deploymentTime": "2025-09-04T16:50:18.590+0000",
+                  "tenantId": null
+                },
+                {
+                  "links": [],
+                  "id": "4b46734a-89cb-11f0-ab82-0242ac190002",
+                  "name": "ODRAS Automatic Knowledge Processing",
+                  "source": "ODRAS Init-DB",
+                  "deploymentTime": "2025-09-04T20:11:08.276+0000",
+                  "tenantId": null
+                },
+                {
+                  "links": [],
+                  "id": "4b4bf18d-89cb-11f0-ab82-0242ac190002",
+                  "name": "ODRAS RAG Query Pipeline",
+                  "source": "ODRAS Init-DB",
+                  "deploymentTime": "2025-09-04T20:11:08.312+0000",
+                  "tenantId": null
+                },
+                {
+                  "links": [],
+                  "id": "54342ec4-898f-11f0-ab82-0242ac190002",
+                  "name": "ODRAS Automatic Knowledge Processing",
+                  "source": "ODRAS Init-DB",
+                  "deploymentTime": "2025-09-04T13:01:53.452+0000",
+                  "tenantId": null
+                },
+                {
+                  "links": [],
+                  "id": "54395ee7-898f-11f0-ab82-0242ac190002",
+                  "name": "ODRAS RAG Query Pipeline",
+                  "source": "ODRAS Init-DB",
+                  "deploymentTime": "2025-09-04T13:01:53.486+0000",
+                  "tenantId": null
+                },
+                {
+                  "links": [],
+                  "id": "57f87c61-898a-11f0-ab82-0242ac190002",
+                  "name": "ingestion_pipeline",
+                  "source": null,
+                  "deploymentTime": "2025-09-04T12:26:12.286+0000",
+                  "tenantId": null
+                },
+                {
+                  "links": [],
+                  "id": "7bc7e302-8a96-11f0-ab82-0242ac190002",
+                  "name": "ODRAS Automatic Knowledge Processing",
+                  "source": "ODRAS Init-DB",
+                  "deploymentTime": "2025-09-05T20:25:37.491+0000",
+                  "tenantId": null
+                },
+                {
+                  "links": [],
+                  "id": "7bcc9df5-8a96-11f0-ab82-0242ac190002",
+                  "name": "ODRAS RAG Query Pipeline",
+                  "source": "ODRAS Init-DB",
+                  "deploymentTime": "2025-09-05T20:25:37.522+0000",
+                  "tenantId": null
+                },
+                {
+                  "links": [],
+                  "id": "8f82484a-8a97-11f0-ab82-0242ac190002",
+                  "name": "ODRAS Automatic Knowledge Processing",
+                  "source": "ODRAS Init-DB",
+                  "deploymentTime": "2025-09-05T20:33:20.086+0000",
+                  "tenantId": null
+                },
+                {
+                  "links": [],
+                  "id": "8f86dc2d-8a97-11f0-ab82-0242ac190002",
+                  "name": "ODRAS RAG Query Pipeline",
+                  "source": "ODRAS Init-DB",
+                  "deploymentTime": "2025-09-05T20:33:20.116+0000",
+                  "tenantId": null
+                },
+                {
+                  "links": [],
+                  "id": "a27fa42e-89c2-11f0-ab82-0242ac190002",
+                  "name": "ODRAS Automatic Knowledge Processing",
+                  "source": "ODRAS Init-DB",
+                  "deploymentTime": "2025-09-04T19:09:09.142+0000",
+                  "tenantId": null
+                },
+                {
+                  "links": [],
+                  "id": "a2848631-89c2-11f0-ab82-0242ac190002",
+                  "name": "ODRAS RAG Query Pipeline",
+                  "source": "ODRAS Init-DB",
+                  "deploymentTime": "2025-09-04T19:09:09.174+0000",
+                  "tenantId": null
+                },
+                {
+                  "links": [],
+                  "id": "b18a9b52-89cc-11f0-ab82-0242ac190002",
+                  "name": "ODRAS Automatic Knowledge Processing",
+                  "source": "ODRAS Init-DB",
+                  "deploymentTime": "2025-09-04T20:21:09.347+0000",
+                  "tenantId": null
+                },
+                {
+                  "links": [],
+                  "id": "b194ad75-89cc-11f0-ab82-0242ac190002",
+                  "name": "ODRAS RAG Query Pipeline",
+                  "source": "ODRAS Init-DB",
+                  "deploymentTime": "2025-09-04T20:21:09.413+0000",
+                  "tenantId": null
+                },
+                {
+                  "links": [],
+                  "id": "e399af1e-89ae-11f0-ab82-0242ac190002",
+                  "name": "ODRAS Automatic Knowledge Processing",
+                  "source": "ODRAS Init-DB",
+                  "deploymentTime": "2025-09-04T16:47:48.430+0000",
+                  "tenantId": null
+                },
+                {
+                  "links": [],
+                  "id": "e39f0651-89ae-11f0-ab82-0242ac190002",
+                  "name": "ODRAS RAG Query Pipeline",
+                  "source": "ODRAS Init-DB",
+                  "deploymentTime": "2025-09-04T16:47:48.465+0000",
+                  "tenantId": null
+                },
+                {
+                  "links": [],
+                  "id": "e6c92d2a-8a61-11f0-ab82-0242ac190002",
+                  "name": "ODRAS Automatic Knowledge Processing",
+                  "source": "ODRAS Init-DB",
+                  "deploymentTime": "2025-09-05T14:09:13.689+0000",
+                  "tenantId": null
+                },
+                {
+                  "links": [],
+                  "id": "e6cdc10d-8a61-11f0-ab82-0242ac190002",
+                  "name": "ODRAS RAG Query Pipeline",
+                  "source": "ODRAS Init-DB",
+                  "deploymentTime": "2025-09-05T14:09:13.719+0000",
+                  "tenantId": null
+                },
+                {
+                  "links": [],
+                  "id": "fed5fe62-89ad-11f0-ab82-0242ac190002",
+                  "name": "ODRAS Automatic Knowledge Processing",
+                  "source": "ODRAS Init-DB",
+                  "deploymentTime": "2025-09-04T16:41:24.627+0000",
+                  "tenantId": null
+                },
+                {
+                  "links": [],
+                  "id": "fedc18e5-89ad-11f0-ab82-0242ac190002",
+                  "name": "ODRAS RAG Query Pipeline",
+                  "source": "ODRAS Init-DB",
+                  "deploymentTime": "2025-09-04T16:41:24.667+0000",
+                  "tenantId": null
+                }
+              ]
+            }
+          },
+          "user_access": {
+            "status": "success",
+            "status_code": 200,
+            "response_type": "success",
+            "json": {
+              "deployments": [
+                {
+                  "links": [],
+                  "id": "152a13ba-89cf-11f0-ab82-0242ac190002",
+                  "name": "ODRAS Automatic Knowledge Processing",
+                  "source": "ODRAS Init-DB",
+                  "deploymentTime": "2025-09-04T20:38:15.480+0000",
+                  "tenantId": null
+                },
+                {
+                  "links": [],
+                  "id": "152f91fd-89cf-11f0-ab82-0242ac190002",
+                  "name": "ODRAS RAG Query Pipeline",
+                  "source": "ODRAS Init-DB",
+                  "deploymentTime": "2025-09-04T20:38:15.516+0000",
+                  "tenantId": null
+                },
+                {
+                  "links": [],
+                  "id": "2172daf2-898b-11f0-ab82-0242ac190002",
+                  "name": "ODRAS Automatic Knowledge Processing",
+                  "source": "ODRAS Init-DB",
+                  "deploymentTime": "2025-09-04T12:31:50.311+0000",
+                  "tenantId": null
+                },
+                {
+                  "links": [],
+                  "id": "21785935-898b-11f0-ab82-0242ac190002",
+                  "name": "ODRAS RAG Query Pipeline",
+                  "source": "ODRAS Init-DB",
+                  "deploymentTime": "2025-09-04T12:31:50.348+0000",
+                  "tenantId": null
+                },
+                {
+                  "links": [],
+                  "id": "2375b772-89d2-11f0-ab82-0242ac190002",
+                  "name": "ODRAS Automatic Knowledge Processing",
+                  "source": "ODRAS Init-DB",
+                  "deploymentTime": "2025-09-04T21:00:07.954+0000",
+                  "tenantId": null
+                },
+                {
+                  "links": [],
+                  "id": "237bd1f5-89d2-11f0-ab82-0242ac190002",
+                  "name": "ODRAS RAG Query Pipeline",
+                  "source": "ODRAS Init-DB",
+                  "deploymentTime": "2025-09-04T21:00:07.994+0000",
+                  "tenantId": null
+                },
+                {
+                  "links": [],
+                  "id": "3044df1e-8989-11f0-ab82-0242ac190002",
+                  "name": null,
+                  "source": "process application",
+                  "deploymentTime": "2025-09-04T12:17:56.182+0000",
+                  "tenantId": null
+                },
+                {
+                  "links": [],
+                  "id": "31bab648-8989-11f0-ab82-0242ac190002",
+                  "name": "invoiceProcessApplicationSpringBoot",
+                  "source": "process application",
+                  "deploymentTime": "2025-09-04T12:17:58.616+0000",
+                  "tenantId": null
+                },
+                {
+                  "links": [],
+                  "id": "3d158d46-89af-11f0-ab82-0242ac190002",
+                  "name": "ODRAS Automatic Knowledge Processing",
+                  "source": "ODRAS Init-DB",
+                  "deploymentTime": "2025-09-04T16:50:18.559+0000",
+                  "tenantId": null
+                },
+                {
+                  "links": [],
+                  "id": "3d1a4839-89af-11f0-ab82-0242ac190002",
+                  "name": "ODRAS RAG Query Pipeline",
+                  "source": "ODRAS Init-DB",
+                  "deploymentTime": "2025-09-04T16:50:18.590+0000",
+                  "tenantId": null
+                },
+                {
+                  "links": [],
+                  "id": "4b46734a-89cb-11f0-ab82-0242ac190002",
+                  "name": "ODRAS Automatic Knowledge Processing",
+                  "source": "ODRAS Init-DB",
+                  "deploymentTime": "2025-09-04T20:11:08.276+0000",
+                  "tenantId": null
+                },
+                {
+                  "links": [],
+                  "id": "4b4bf18d-89cb-11f0-ab82-0242ac190002",
+                  "name": "ODRAS RAG Query Pipeline",
+                  "source": "ODRAS Init-DB",
+                  "deploymentTime": "2025-09-04T20:11:08.312+0000",
+                  "tenantId": null
+                },
+                {
+                  "links": [],
+                  "id": "54342ec4-898f-11f0-ab82-0242ac190002",
+                  "name": "ODRAS Automatic Knowledge Processing",
+                  "source": "ODRAS Init-DB",
+                  "deploymentTime": "2025-09-04T13:01:53.452+0000",
+                  "tenantId": null
+                },
+                {
+                  "links": [],
+                  "id": "54395ee7-898f-11f0-ab82-0242ac190002",
+                  "name": "ODRAS RAG Query Pipeline",
+                  "source": "ODRAS Init-DB",
+                  "deploymentTime": "2025-09-04T13:01:53.486+0000",
+                  "tenantId": null
+                },
+                {
+                  "links": [],
+                  "id": "57f87c61-898a-11f0-ab82-0242ac190002",
+                  "name": "ingestion_pipeline",
+                  "source": null,
+                  "deploymentTime": "2025-09-04T12:26:12.286+0000",
+                  "tenantId": null
+                },
+                {
+                  "links": [],
+                  "id": "7bc7e302-8a96-11f0-ab82-0242ac190002",
+                  "name": "ODRAS Automatic Knowledge Processing",
+                  "source": "ODRAS Init-DB",
+                  "deploymentTime": "2025-09-05T20:25:37.491+0000",
+                  "tenantId": null
+                },
+                {
+                  "links": [],
+                  "id": "7bcc9df5-8a96-11f0-ab82-0242ac190002",
+                  "name": "ODRAS RAG Query Pipeline",
+                  "source": "ODRAS Init-DB",
+                  "deploymentTime": "2025-09-05T20:25:37.522+0000",
+                  "tenantId": null
+                },
+                {
+                  "links": [],
+                  "id": "8f82484a-8a97-11f0-ab82-0242ac190002",
+                  "name": "ODRAS Automatic Knowledge Processing",
+                  "source": "ODRAS Init-DB",
+                  "deploymentTime": "2025-09-05T20:33:20.086+0000",
+                  "tenantId": null
+                },
+                {
+                  "links": [],
+                  "id": "8f86dc2d-8a97-11f0-ab82-0242ac190002",
+                  "name": "ODRAS RAG Query Pipeline",
+                  "source": "ODRAS Init-DB",
+                  "deploymentTime": "2025-09-05T20:33:20.116+0000",
+                  "tenantId": null
+                },
+                {
+                  "links": [],
+                  "id": "a27fa42e-89c2-11f0-ab82-0242ac190002",
+                  "name": "ODRAS Automatic Knowledge Processing",
+                  "source": "ODRAS Init-DB",
+                  "deploymentTime": "2025-09-04T19:09:09.142+0000",
+                  "tenantId": null
+                },
+                {
+                  "links": [],
+                  "id": "a2848631-89c2-11f0-ab82-0242ac190002",
+                  "name": "ODRAS RAG Query Pipeline",
+                  "source": "ODRAS Init-DB",
+                  "deploymentTime": "2025-09-04T19:09:09.174+0000",
+                  "tenantId": null
+                },
+                {
+                  "links": [],
+                  "id": "b18a9b52-89cc-11f0-ab82-0242ac190002",
+                  "name": "ODRAS Automatic Knowledge Processing",
+                  "source": "ODRAS Init-DB",
+                  "deploymentTime": "2025-09-04T20:21:09.347+0000",
+                  "tenantId": null
+                },
+                {
+                  "links": [],
+                  "id": "b194ad75-89cc-11f0-ab82-0242ac190002",
+                  "name": "ODRAS RAG Query Pipeline",
+                  "source": "ODRAS Init-DB",
+                  "deploymentTime": "2025-09-04T20:21:09.413+0000",
+                  "tenantId": null
+                },
+                {
+                  "links": [],
+                  "id": "e399af1e-89ae-11f0-ab82-0242ac190002",
+                  "name": "ODRAS Automatic Knowledge Processing",
+                  "source": "ODRAS Init-DB",
+                  "deploymentTime": "2025-09-04T16:47:48.430+0000",
+                  "tenantId": null
+                },
+                {
+                  "links": [],
+                  "id": "e39f0651-89ae-11f0-ab82-0242ac190002",
+                  "name": "ODRAS RAG Query Pipeline",
+                  "source": "ODRAS Init-DB",
+                  "deploymentTime": "2025-09-04T16:47:48.465+0000",
+                  "tenantId": null
+                },
+                {
+                  "links": [],
+                  "id": "e6c92d2a-8a61-11f0-ab82-0242ac190002",
+                  "name": "ODRAS Automatic Knowledge Processing",
+                  "source": "ODRAS Init-DB",
+                  "deploymentTime": "2025-09-05T14:09:13.689+0000",
+                  "tenantId": null
+                },
+                {
+                  "links": [],
+                  "id": "e6cdc10d-8a61-11f0-ab82-0242ac190002",
+                  "name": "ODRAS RAG Query Pipeline",
+                  "source": "ODRAS Init-DB",
+                  "deploymentTime": "2025-09-05T14:09:13.719+0000",
+                  "tenantId": null
+                },
+                {
+                  "links": [],
+                  "id": "fed5fe62-89ad-11f0-ab82-0242ac190002",
+                  "name": "ODRAS Automatic Knowledge Processing",
+                  "source": "ODRAS Init-DB",
+                  "deploymentTime": "2025-09-04T16:41:24.627+0000",
+                  "tenantId": null
+                },
+                {
+                  "links": [],
+                  "id": "fedc18e5-89ad-11f0-ab82-0242ac190002",
+                  "name": "ODRAS RAG Query Pipeline",
+                  "source": "ODRAS Init-DB",
+                  "deploymentTime": "2025-09-04T16:41:24.667+0000",
+                  "tenantId": null
+                }
+              ]
+            }
+          },
+          "status": "success",
+          "both_have_access": true
+        }
+      },
+      "overall_status": "success"
+    },
+    {
+      "path": "/api/camunda/status",
+      "methods": [
+        "GET"
+      ],
+      "requires_auth": false,
+      "is_admin_only": false,
+      "test_results": {
+        "GET": {
+          "status": "success",
+          "status_code": 200,
+          "response_type": "success",
+          "json": {
+            "status": "running",
+            "url": "http://localhost:8080",
+            "api_url": "http://localhost:8080/engine-rest"
+          }
+        }
+      },
+      "overall_status": "success"
+    },
+    {
+      "path": "/api/domains/active",
+      "methods": [
+        "GET"
+      ],
+      "requires_auth": true,
+      "is_admin_only": false,
+      "test_results": {
+        "GET": {
+          "admin_access": {
+            "status": "success",
+            "status_code": 200,
+            "response_type": "success",
+            "json": [
+              {
+                "id": "79afeea2-03ac-474b-a4bb-01e3b580687c",
+                "domain": "avionics",
+                "description": "Aircraft electronics and flight systems",
+                "owner": "admin@odras.local",
+                "status": "active",
+                "created_at": "2025-09-08T15:11:23.103375+00:00",
+                "updated_at": "2025-09-08T15:11:23.103375+00:00",
+                "created_by": "admin"
+              },
+              {
+                "id": "0a230d02-f38e-45c7-9d8d-d55038b42ec2",
+                "domain": "communications",
+                "description": "Communication systems and protocols",
+                "owner": "admin@odras.local",
+                "status": "active",
+                "created_at": "2025-09-08T15:11:23.103375+00:00",
+                "updated_at": "2025-09-08T15:11:23.103375+00:00",
+                "created_by": "admin"
+              },
+              {
+                "id": "9cad9a1b-3744-415e-8850-e543ac2d57f6",
+                "domain": "cybersecurity",
+                "description": "Cybersecurity and information assurance",
+                "owner": "admin@odras.local",
+                "status": "active",
+                "created_at": "2025-09-08T15:11:23.103375+00:00",
+                "updated_at": "2025-09-08T15:11:23.103375+00:00",
+                "created_by": "admin"
+              },
+              {
+                "id": "c9cfb818-b160-4d80-9c05-20808d561352",
+                "domain": "logistics",
+                "description": "Supply chain and logistics management",
+                "owner": "admin@odras.local",
+                "status": "active",
+                "created_at": "2025-09-08T15:11:23.103375+00:00",
+                "updated_at": "2025-09-08T15:11:23.103375+00:00",
+                "created_by": "admin"
+              },
+              {
+                "id": "df6c8abd-4406-4a2a-acdb-654eac62c527",
+                "domain": "mission-planning",
+                "description": "Mission planning and execution systems",
+                "owner": "admin@odras.local",
+                "status": "active",
+                "created_at": "2025-09-08T15:11:23.103375+00:00",
+                "updated_at": "2025-09-08T15:11:23.103375+00:00",
+                "created_by": "admin"
+              },
+              {
+                "id": "4da14f7a-29a2-458c-acf8-935eecf774ef",
+                "domain": "radar-systems",
+                "description": "Radar and sensor technologies",
+                "owner": "admin@odras.local",
+                "status": "active",
+                "created_at": "2025-09-08T15:11:23.103375+00:00",
+                "updated_at": "2025-09-08T15:11:23.103375+00:00",
+                "created_by": "admin"
+              },
+              {
+                "id": "d31a50db-f59b-44be-ac7e-68e4e2a35b4a",
+                "domain": "systems-engineering",
+                "description": "Systems engineering processes and methodologies",
+                "owner": "admin@odras.local",
+                "status": "active",
+                "created_at": "2025-09-08T15:11:23.103375+00:00",
+                "updated_at": "2025-09-08T15:11:23.103375+00:00",
+                "created_by": "admin"
+              },
+              {
+                "id": "8bcdda6f-cf90-45f6-bd1f-12b1fd97a665",
+                "domain": "testdomain1757439101",
+                "description": "Test domain description",
+                "owner": "owner@example.com",
+                "status": "active",
+                "created_at": "2025-09-09T17:31:41.311758+00:00",
+                "updated_at": "2025-09-09T17:31:41.311758+00:00",
+                "created_by": "admin"
+              },
+              {
+                "id": "08f0f370-75c2-47f2-9575-a7de8f069dc9",
+                "domain": "weapons-systems",
+                "description": "Weapons and armament systems",
+                "owner": "admin@odras.local",
+                "status": "active",
+                "created_at": "2025-09-08T15:11:23.103375+00:00",
+                "updated_at": "2025-09-08T16:33:19.927544+00:00",
+                "created_by": "admin"
+              }
+            ]
+          },
+          "user_access": {
+            "status": "success",
+            "status_code": 200,
+            "response_type": "success",
+            "json": [
+              {
+                "id": "79afeea2-03ac-474b-a4bb-01e3b580687c",
+                "domain": "avionics",
+                "description": "Aircraft electronics and flight systems",
+                "owner": "admin@odras.local",
+                "status": "active",
+                "created_at": "2025-09-08T15:11:23.103375+00:00",
+                "updated_at": "2025-09-08T15:11:23.103375+00:00",
+                "created_by": "admin"
+              },
+              {
+                "id": "0a230d02-f38e-45c7-9d8d-d55038b42ec2",
+                "domain": "communications",
+                "description": "Communication systems and protocols",
+                "owner": "admin@odras.local",
+                "status": "active",
+                "created_at": "2025-09-08T15:11:23.103375+00:00",
+                "updated_at": "2025-09-08T15:11:23.103375+00:00",
+                "created_by": "admin"
+              },
+              {
+                "id": "9cad9a1b-3744-415e-8850-e543ac2d57f6",
+                "domain": "cybersecurity",
+                "description": "Cybersecurity and information assurance",
+                "owner": "admin@odras.local",
+                "status": "active",
+                "created_at": "2025-09-08T15:11:23.103375+00:00",
+                "updated_at": "2025-09-08T15:11:23.103375+00:00",
+                "created_by": "admin"
+              },
+              {
+                "id": "c9cfb818-b160-4d80-9c05-20808d561352",
+                "domain": "logistics",
+                "description": "Supply chain and logistics management",
+                "owner": "admin@odras.local",
+                "status": "active",
+                "created_at": "2025-09-08T15:11:23.103375+00:00",
+                "updated_at": "2025-09-08T15:11:23.103375+00:00",
+                "created_by": "admin"
+              },
+              {
+                "id": "df6c8abd-4406-4a2a-acdb-654eac62c527",
+                "domain": "mission-planning",
+                "description": "Mission planning and execution systems",
+                "owner": "admin@odras.local",
+                "status": "active",
+                "created_at": "2025-09-08T15:11:23.103375+00:00",
+                "updated_at": "2025-09-08T15:11:23.103375+00:00",
+                "created_by": "admin"
+              },
+              {
+                "id": "4da14f7a-29a2-458c-acf8-935eecf774ef",
+                "domain": "radar-systems",
+                "description": "Radar and sensor technologies",
+                "owner": "admin@odras.local",
+                "status": "active",
+                "created_at": "2025-09-08T15:11:23.103375+00:00",
+                "updated_at": "2025-09-08T15:11:23.103375+00:00",
+                "created_by": "admin"
+              },
+              {
+                "id": "d31a50db-f59b-44be-ac7e-68e4e2a35b4a",
+                "domain": "systems-engineering",
+                "description": "Systems engineering processes and methodologies",
+                "owner": "admin@odras.local",
+                "status": "active",
+                "created_at": "2025-09-08T15:11:23.103375+00:00",
+                "updated_at": "2025-09-08T15:11:23.103375+00:00",
+                "created_by": "admin"
+              },
+              {
+                "id": "8bcdda6f-cf90-45f6-bd1f-12b1fd97a665",
+                "domain": "testdomain1757439101",
+                "description": "Test domain description",
+                "owner": "owner@example.com",
+                "status": "active",
+                "created_at": "2025-09-09T17:31:41.311758+00:00",
+                "updated_at": "2025-09-09T17:31:41.311758+00:00",
+                "created_by": "admin"
+              },
+              {
+                "id": "08f0f370-75c2-47f2-9575-a7de8f069dc9",
+                "domain": "weapons-systems",
+                "description": "Weapons and armament systems",
+                "owner": "admin@odras.local",
+                "status": "active",
+                "created_at": "2025-09-08T15:11:23.103375+00:00",
+                "updated_at": "2025-09-08T16:33:19.927544+00:00",
+                "created_by": "admin"
+              }
+            ]
+          },
+          "status": "success",
+          "both_have_access": true
+        }
+      },
+      "overall_status": "success"
+    },
+    {
+      "path": "/api/embedding-models/",
+      "methods": [
+        "GET"
+      ],
+      "requires_auth": false,
+      "is_admin_only": false,
+      "test_results": {
+        "GET": {
+          "status": "success",
+          "status_code": 200,
+          "response_type": "success",
+          "json": {
+            "success": true,
+            "models": [
+              {
+                "id": "simple-hasher",
+                "provider": "simple_hasher",
+                "name": "Simple Hasher",
+                "version": "1.0",
+                "dimensions": 384,
+                "max_input_tokens": 8192,
+                "normalize_default": true,
+                "status": "active",
+                "config": null
+              },
+              {
+                "id": "all-MiniLM-L6-v2",
+                "provider": "sentence_transformers",
+                "name": "sentence-transformers/all-MiniLM-L6-v2",
+                "version": "1.0",
+                "dimensions": 384,
+                "max_input_tokens": 256,
+                "normalize_default": true,
+                "status": "active",
+                "config": null
+              },
+              {
+                "id": "all-mpnet-base-v2",
+                "provider": "sentence_transformers",
+                "name": "sentence-transformers/all-mpnet-base-v2",
+                "version": "1.0",
+                "dimensions": 768,
+                "max_input_tokens": 384,
+                "normalize_default": true,
+                "status": "active",
+                "config": null
+              },
+              {
+                "id": "text-embedding-3-small",
+                "provider": "openai",
+                "name": "text-embedding-3-small",
+                "version": "1.0",
+                "dimensions": 1536,
+                "max_input_tokens": 8191,
+                "normalize_default": true,
+                "status": "active",
+                "config": null
+              },
+              {
+                "id": "text-embedding-3-large",
+                "provider": "openai",
+                "name": "text-embedding-3-large",
+                "version": "1.0",
+                "dimensions": 3072,
+                "max_input_tokens": 8191,
+                "normalize_default": true,
+                "status": "active",
+                "config": null
+              }
+            ],
+            "total_count": 5
+          }
+        }
+      },
+      "overall_status": "success"
+    },
+    {
+      "path": "/api/embedding-models/",
+      "methods": [
+        "POST"
+      ],
+      "requires_auth": false,
+      "is_admin_only": false,
+      "test_results": {
+        "POST": {
+          "status": "auth_required",
+          "status_code": 401,
+          "response_type": "authentication_required"
+        }
+      },
+      "overall_status": "skipped"
+    },
+    {
+      "path": "/api/embedding-models/test",
+      "methods": [
+        "POST"
+      ],
+      "requires_auth": false,
+      "is_admin_only": false,
+      "test_results": {
+        "POST": {
+          "status": "success",
+          "status_code": 200,
+          "response_type": "success",
+          "json": {
+            "success": false,
+            "model_id": "text-embedding-ada-002",
+            "embeddings_count": 0,
+            "dimensions": 0,
+            "processing_time_ms": 0.0,
+            "error": "Model text-embedding-ada-002 not found"
+          }
+        }
+      },
+      "overall_status": "success"
+    },
+    {
+      "path": "/api/embedding-models/{model_id}",
+      "methods": [
+        "GET"
+      ],
+      "requires_auth": false,
+      "is_admin_only": false,
+      "test_results": {
+        "GET": {
+          "status": "not_found",
+          "status_code": 404,
+          "response_type": "endpoint_not_found"
+        }
+      },
+      "overall_status": "skipped"
+    },
+    {
+      "path": "/api/embedding-models/{model_id}",
+      "methods": [
+        "PUT"
+      ],
+      "requires_auth": false,
+      "is_admin_only": false,
+      "test_results": {
+        "PUT": {
+          "status": "auth_required",
+          "status_code": 401,
+          "response_type": "authentication_required"
+        }
+      },
+      "overall_status": "skipped"
+    },
+    {
+      "path": "/api/embedding-models/{model_id}",
+      "methods": [
+        "DELETE"
+      ],
+      "requires_auth": false,
+      "is_admin_only": false,
+      "test_results": {
+        "DELETE": {
+          "status": "auth_required",
+          "status_code": 401,
+          "response_type": "authentication_required"
+        }
+      },
+      "overall_status": "skipped"
+    },
+    {
+      "path": "/api/embedding-models/{model_id}/info",
+      "methods": [
+        "GET"
+      ],
+      "requires_auth": false,
+      "is_admin_only": false,
+      "test_results": {
+        "GET": {
+          "status": "error",
+          "status_code": 500,
+          "response_type": "client_error",
+          "error_detail": "{\"detail\":\"Failed to get model info: Model text-embedding-ada-002 not found\"}"
+        }
+      },
+      "overall_status": "error"
+    },
+    {
+      "path": "/api/files/",
+      "methods": [
+        "GET"
+      ],
+      "requires_auth": true,
+      "is_admin_only": false,
+      "test_results": {
+        "GET": {
+          "admin_access": {
+            "status": "auth_required",
+            "status_code": 401,
+            "response_type": "authentication_required"
+          },
+          "user_access": {
+            "status": "auth_required",
+            "status_code": 401,
+            "response_type": "authentication_required"
+          },
+          "status": "error",
+          "both_have_access": false
+        }
+      },
+      "overall_status": "error"
+    },
+    {
+      "path": "/api/files/batch/upload",
+      "methods": [
+        "POST"
+      ],
+      "requires_auth": true,
+      "is_admin_only": false,
+      "test_results": {
+        "POST": {
+          "admin_access": {
+            "status": "auth_required",
+            "status_code": 401,
+            "response_type": "authentication_required"
+          },
+          "user_access": {
+            "status": "auth_required",
+            "status_code": 401,
+            "response_type": "authentication_required"
+          },
+          "status": "error",
+          "both_have_access": false
+        }
+      },
+      "overall_status": "error"
+    },
+    {
+      "path": "/api/files/extract/keywords",
+      "methods": [
+        "POST"
+      ],
+      "requires_auth": true,
+      "is_admin_only": false,
+      "test_results": {
+        "POST": {
+          "admin_access": {
+            "status": "error",
+            "status_code": 500,
+            "response_type": "client_error",
+            "error_detail": "{\"detail\":\"Extraction failed: Failed to write RDF to Fuseki: at line 7 of <>:\\nBad syntax (newline found in string literal) at ^ in:\\n\\\"...b'410f-b722-8aae0d4bddd6_1 odras:text \\\"**Power Systems Check"
+          },
+          "user_access": {
+            "status": "error",
+            "status_code": 500,
+            "response_type": "client_error",
+            "error_detail": "{\"detail\":\"Extraction failed: Failed to write RDF to Fuseki: at line 7 of <>:\\nBad syntax (newline found in string literal) at ^ in:\\n\\\"...b'410f-b722-8aae0d4bddd6_1 odras:text \\\"**Power Systems Check"
+          },
+          "status": "error",
+          "both_have_access": false
+        }
+      },
+      "overall_status": "error"
+    },
+    {
+      "path": "/api/files/import-url",
+      "methods": [
+        "POST"
+      ],
+      "requires_auth": true,
+      "is_admin_only": false,
+      "test_results": {
+        "POST": {
+          "admin_access": {
+            "status": "auth_required",
+            "status_code": 401,
+            "response_type": "authentication_required"
+          },
+          "user_access": {
+            "status": "auth_required",
+            "status_code": 401,
+            "response_type": "authentication_required"
+          },
+          "status": "error",
+          "both_have_access": false
+        }
+      },
+      "overall_status": "error"
+    },
+    {
+      "path": "/api/files/keywords",
+      "methods": [
+        "GET"
+      ],
+      "requires_auth": false,
+      "is_admin_only": false,
+      "test_results": {
+        "GET": {
+          "status": "success",
+          "status_code": 200,
+          "response_type": "success",
+          "json": {
+            "keywords": [
+              "shall",
+              "must",
+              "should",
+              "will",
+              "capability",
+              "performance",
+              "latency",
+              "throughput",
+              "reliability",
+              "interface",
+              "function"
+            ],
+            "min_text_length": 15,
+            "context_window": 160
+          }
+        }
+      },
+      "overall_status": "success"
+    },
+    {
+      "path": "/api/files/keywords",
+      "methods": [
+        "PUT"
+      ],
+      "requires_auth": false,
+      "is_admin_only": false,
+      "test_results": {
+        "PUT": {
+          "status": "success",
+          "status_code": 200,
+          "response_type": "success",
+          "json": {
+            "keywords": [
+              "shall",
+              "must",
+              "should",
+              "will",
+              "capability",
+              "performance",
+              "latency",
+              "throughput",
+              "reliability",
+              "interface",
+              "function"
+            ],
+            "min_text_length": 15,
+            "context_window": 160
+          }
+        }
+      },
+      "overall_status": "success"
+    },
+    {
+      "path": "/api/files/storage/info",
+      "methods": [
+        "GET"
+      ],
+      "requires_auth": false,
+      "is_admin_only": false,
+      "test_results": {
+        "GET": {
+          "status": "success",
+          "status_code": 200,
+          "response_type": "success",
+          "json": {
+            "success": true,
+            "storage_info": {
+              "backend_type": "minio",
+              "backend_available": true,
+              "features": {
+                "presigned_urls": true,
+                "metadata_storage": true,
+                "deduplication": true
+              }
+            },
+            "message": "Storage information retrieved successfully"
+          }
+        }
+      },
+      "overall_status": "success"
+    },
+    {
+      "path": "/api/files/upload",
+      "methods": [
+        "POST"
+      ],
+      "requires_auth": true,
+      "is_admin_only": false,
+      "test_results": {
+        "POST": {
+          "admin_access": {
+            "status": "success",
+            "status_code": 200,
+            "response_type": "success",
+            "json": {
+              "success": false,
+              "file_id": null,
+              "filename": null,
+              "size": null,
+              "content_type": null,
+              "knowledge_asset_id": null,
+              "message": null,
+              "error": "Upload failed: 400: project_id required"
+            }
+          },
+          "user_access": {
+            "status": "success",
+            "status_code": 200,
+            "response_type": "success",
+            "json": {
+              "success": false,
+              "file_id": null,
+              "filename": null,
+              "size": null,
+              "content_type": null,
+              "knowledge_asset_id": null,
+              "message": null,
+              "error": "Upload failed: 400: project_id required"
+            }
+          },
+          "status": "success",
+          "both_have_access": true
+        }
+      },
+      "overall_status": "success"
+    },
+    {
+      "path": "/api/files/{file_id}",
+      "methods": [
+        "DELETE"
+      ],
+      "requires_auth": true,
+      "is_admin_only": false,
+      "test_results": {
+        "DELETE": {
+          "admin_access": {
+            "status": "auth_required",
+            "status_code": 401,
+            "response_type": "authentication_required"
+          },
+          "user_access": {
+            "status": "auth_required",
+            "status_code": 401,
+            "response_type": "authentication_required"
+          },
+          "status": "error",
+          "both_have_access": false
+        }
+      },
+      "overall_status": "error"
+    },
+    {
+      "path": "/api/files/{file_id}/download",
+      "methods": [
+        "GET"
+      ],
+      "requires_auth": false,
+      "is_admin_only": false,
+      "test_results": {
+        "GET": {
+          "status": "not_found",
+          "status_code": 404,
+          "response_type": "endpoint_not_found"
+        }
+      },
+      "overall_status": "skipped"
+    },
+    {
+      "path": "/api/files/{file_id}/process",
+      "methods": [
+        "POST"
+      ],
+      "requires_auth": false,
+      "is_admin_only": false,
+      "test_results": {
+        "POST": {
+          "status": "not_found",
+          "status_code": 404,
+          "response_type": "endpoint_not_found"
+        }
+      },
+      "overall_status": "skipped"
+    },
+    {
+      "path": "/api/files/{file_id}/tags",
+      "methods": [
+        "PUT"
+      ],
+      "requires_auth": true,
+      "is_admin_only": false,
+      "test_results": {
+        "PUT": {
+          "admin_access": {
+            "status": "auth_required",
+            "status_code": 401,
+            "response_type": "authentication_required"
+          },
+          "user_access": {
+            "status": "auth_required",
+            "status_code": 401,
+            "response_type": "authentication_required"
+          },
+          "status": "error",
+          "both_have_access": false
+        }
+      },
+      "overall_status": "error"
+    },
+    {
+      "path": "/api/files/{file_id}/url",
+      "methods": [
+        "GET"
+      ],
+      "requires_auth": false,
+      "is_admin_only": false,
+      "test_results": {
+        "GET": {
+          "status": "success",
+          "status_code": 200,
+          "response_type": "success",
+          "json": {
+            "success": true,
+            "file_id": "550e8400-e29b-41d4-a716-446655440000",
+            "url": "http://localhost:9000/odras-files/files/550e8400-e29b-41d4-a716-446655440000?X-Amz-Algorithm=AWS4-HMAC-SHA256&X-Amz-Credential=minioadmin%2F20250909%2Fus-east-1%2Fs3%2Faws4_request&X-Amz-Date=20250909T173630Z&X-Amz-Expires=3600&X-Amz-SignedHeaders=host&X-Amz-Signature=7aa8284f969b4c5ebccb28d0136c6a88a4d77078af58c588df1ccaa5f2035e0a",
+            "expires_in": 3600
+          }
+        }
+      },
+      "overall_status": "success"
+    },
+    {
+      "path": "/api/files/{file_id}/visibility",
+      "methods": [
+        "PUT"
+      ],
+      "requires_auth": true,
+      "is_admin_only": true,
+      "test_results": {
+        "PUT": {
+          "admin_access": {
+            "status": "auth_required",
+            "status_code": 401,
+            "response_type": "authentication_required"
+          },
+          "user_access": {
+            "status": "auth_required",
+            "status_code": 401,
+            "response_type": "authentication_required"
+          },
+          "status": "error",
+          "authorization_correct": false
+        }
+      },
+      "overall_status": "error"
+    },
+    {
+      "path": "/api/health",
+      "methods": [
+        "GET"
+      ],
+      "requires_auth": true,
+      "is_admin_only": false,
+      "test_results": {
+        "GET": {
+          "admin_access": {
+            "status": "success",
+            "status_code": 200,
+            "response_type": "success",
+            "json": {
+              "status": "healthy",
+              "timestamp": "2025-09-09T17:36:30.354581",
+              "version": "1.0.0",
+              "services": {
+                "database": "connected",
+                "api": "running"
+              }
+            }
+          },
+          "user_access": {
+            "status": "success",
+            "status_code": 200,
+            "response_type": "success",
+            "json": {
+              "status": "healthy",
+              "timestamp": "2025-09-09T17:36:30.378316",
+              "version": "1.0.0",
+              "services": {
+                "database": "connected",
+                "api": "running"
+              }
+            }
+          },
+          "status": "success",
+          "both_have_access": true
+        }
+      },
+      "overall_status": "success"
+    },
+    {
+      "path": "/api/installation/config",
+      "methods": [
+        "GET"
+      ],
+      "requires_auth": false,
+      "is_admin_only": false,
+      "test_results": {
+        "GET": {
+          "status": "success",
+          "status_code": 200,
+          "response_type": "success",
+          "json": {
+            "organization": "US Navy XMA-ADT",
+            "baseUri": "https://ontology.navy.mil/xma-adt",
+            "prefix": "xma-adt",
+            "type": "navy",
+            "programOffice": "Expeditionary Maritime Aviation - Advanced Development Team"
+          }
+        }
+      },
+      "overall_status": "success"
+    },
+    {
+      "path": "/api/knowledge/assets",
+      "methods": [
+        "GET"
+      ],
+      "requires_auth": true,
+      "is_admin_only": false,
+      "test_results": {
+        "GET": {
+          "admin_access": {
+            "status": "auth_required",
+            "status_code": 401,
+            "response_type": "authentication_required"
+          },
+          "user_access": {
+            "status": "auth_required",
+            "status_code": 401,
+            "response_type": "authentication_required"
+          },
+          "status": "error",
+          "both_have_access": false
+        }
+      },
+      "overall_status": "error"
+    },
+    {
+      "path": "/api/knowledge/assets",
+      "methods": [
+        "POST"
+      ],
+      "requires_auth": true,
+      "is_admin_only": false,
+      "test_results": {
+        "POST": {
+          "admin_access": {
+            "status": "auth_required",
+            "status_code": 401,
+            "response_type": "authentication_required"
+          },
+          "user_access": {
+            "status": "auth_required",
+            "status_code": 401,
+            "response_type": "authentication_required"
+          },
+          "status": "error",
+          "both_have_access": false
+        }
+      },
+      "overall_status": "error"
+    },
+    {
+      "path": "/api/knowledge/assets/{asset_id}",
+      "methods": [
+        "GET"
+      ],
+      "requires_auth": true,
+      "is_admin_only": false,
+      "test_results": {
+        "GET": {
+          "admin_access": {
+            "status": "auth_required",
+            "status_code": 401,
+            "response_type": "authentication_required"
+          },
+          "user_access": {
+            "status": "auth_required",
+            "status_code": 401,
+            "response_type": "authentication_required"
+          },
+          "status": "error",
+          "both_have_access": false
+        }
+      },
+      "overall_status": "error"
+    },
+    {
+      "path": "/api/knowledge/assets/{asset_id}",
+      "methods": [
+        "PUT"
+      ],
+      "requires_auth": true,
+      "is_admin_only": false,
+      "test_results": {
+        "PUT": {
+          "admin_access": {
+            "status": "auth_required",
+            "status_code": 401,
+            "response_type": "authentication_required"
+          },
+          "user_access": {
+            "status": "auth_required",
+            "status_code": 401,
+            "response_type": "authentication_required"
+          },
+          "status": "error",
+          "both_have_access": false
+        }
+      },
+      "overall_status": "error"
+    },
+    {
+      "path": "/api/knowledge/assets/{asset_id}",
+      "methods": [
+        "DELETE"
+      ],
+      "requires_auth": true,
+      "is_admin_only": false,
+      "test_results": {
+        "DELETE": {
+          "admin_access": {
+            "status": "auth_required",
+            "status_code": 401,
+            "response_type": "authentication_required"
+          },
+          "user_access": {
+            "status": "auth_required",
+            "status_code": 401,
+            "response_type": "authentication_required"
+          },
+          "status": "error",
+          "both_have_access": false
+        }
+      },
+      "overall_status": "error"
+    },
+    {
+      "path": "/api/knowledge/assets/{asset_id}/content",
+      "methods": [
+        "GET"
+      ],
+      "requires_auth": true,
+      "is_admin_only": false,
+      "test_results": {
+        "GET": {
+          "admin_access": {
+            "status": "auth_required",
+            "status_code": 401,
+            "response_type": "authentication_required"
+          },
+          "user_access": {
+            "status": "auth_required",
+            "status_code": 401,
+            "response_type": "authentication_required"
+          },
+          "status": "error",
+          "both_have_access": false
+        }
+      },
+      "overall_status": "error"
+    },
+    {
+      "path": "/api/knowledge/assets/{asset_id}/force",
+      "methods": [
+        "DELETE"
+      ],
+      "requires_auth": true,
+      "is_admin_only": true,
+      "test_results": {
+        "DELETE": {
+          "admin_access": {
+            "status": "auth_required",
+            "status_code": 401,
+            "response_type": "authentication_required"
+          },
+          "user_access": {
+            "status": "auth_required",
+            "status_code": 401,
+            "response_type": "authentication_required"
+          },
+          "status": "error",
+          "authorization_correct": false
+        }
+      },
+      "overall_status": "error"
+    },
+    {
+      "path": "/api/knowledge/assets/{asset_id}/public",
+      "methods": [
+        "PUT"
+      ],
+      "requires_auth": true,
+      "is_admin_only": true,
+      "test_results": {
+        "PUT": {
+          "admin_access": {
+            "status": "auth_required",
+            "status_code": 401,
+            "response_type": "authentication_required"
+          },
+          "user_access": {
+            "status": "auth_required",
+            "status_code": 401,
+            "response_type": "authentication_required"
+          },
+          "status": "error",
+          "authorization_correct": false
+        }
+      },
+      "overall_status": "error"
+    },
+    {
+      "path": "/api/knowledge/health",
+      "methods": [
+        "GET"
+      ],
+      "requires_auth": false,
+      "is_admin_only": false,
+      "test_results": {
+        "GET": {
+          "status": "success",
+          "status_code": 200,
+          "response_type": "success",
+          "json": {
+            "status": "healthy",
+            "service": "knowledge-management-api",
+            "version": "1.0.0",
+            "timestamp": "2025-09-09T17:36:31.098938+00:00"
+          }
+        }
+      },
+      "overall_status": "success"
+    },
+    {
+      "path": "/api/knowledge/jobs",
+      "methods": [
+        "GET"
+      ],
+      "requires_auth": true,
+      "is_admin_only": false,
+      "test_results": {
+        "GET": {
+          "admin_access": {
+            "status": "auth_required",
+            "status_code": 401,
+            "response_type": "authentication_required"
+          },
+          "user_access": {
+            "status": "auth_required",
+            "status_code": 401,
+            "response_type": "authentication_required"
+          },
+          "status": "error",
+          "both_have_access": false
+        }
+      },
+      "overall_status": "error"
+    },
+    {
+      "path": "/api/knowledge/query",
+      "methods": [
+        "POST"
+      ],
+      "requires_auth": true,
+      "is_admin_only": false,
+      "test_results": {
+        "POST": {
+          "admin_access": {
+            "status": "auth_required",
+            "status_code": 401,
+            "response_type": "authentication_required"
+          },
+          "user_access": {
+            "status": "auth_required",
+            "status_code": 401,
+            "response_type": "authentication_required"
+          },
+          "status": "error",
+          "both_have_access": false
+        }
+      },
+      "overall_status": "error"
+    },
+    {
+      "path": "/api/knowledge/query/suggestions",
+      "methods": [
+        "GET"
+      ],
+      "requires_auth": true,
+      "is_admin_only": false,
+      "test_results": {
+        "GET": {
+          "admin_access": {
+            "status": "auth_required",
+            "status_code": 401,
+            "response_type": "authentication_required"
+          },
+          "user_access": {
+            "status": "auth_required",
+            "status_code": 401,
+            "response_type": "authentication_required"
+          },
+          "status": "error",
+          "both_have_access": false
+        }
+      },
+      "overall_status": "error"
+    },
+    {
+      "path": "/api/knowledge/search",
+      "methods": [
+        "POST"
+      ],
+      "requires_auth": true,
+      "is_admin_only": false,
+      "test_results": {
+        "POST": {
+          "admin_access": {
+            "status": "auth_required",
+            "status_code": 401,
+            "response_type": "authentication_required"
+          },
+          "user_access": {
+            "status": "auth_required",
+            "status_code": 401,
+            "response_type": "authentication_required"
+          },
+          "status": "error",
+          "both_have_access": false
+        }
+      },
+      "overall_status": "error"
+    },
+    {
+      "path": "/api/knowledge/search/semantic",
+      "methods": [
+        "POST"
+      ],
+      "requires_auth": true,
+      "is_admin_only": false,
+      "test_results": {
+        "POST": {
+          "admin_access": {
+            "status": "auth_required",
+            "status_code": 401,
+            "response_type": "authentication_required"
+          },
+          "user_access": {
+            "status": "auth_required",
+            "status_code": 401,
+            "response_type": "authentication_required"
+          },
+          "status": "error",
+          "both_have_access": false
+        }
+      },
+      "overall_status": "error"
+    },
+    {
+      "path": "/api/models/ollama",
+      "methods": [
+        "GET"
+      ],
+      "requires_auth": false,
+      "is_admin_only": false,
+      "test_results": {
+        "GET": {
+          "status": "success",
+          "status_code": 200,
+          "response_type": "success",
+          "json": {
+            "provider": "ollama",
+            "models": []
+          }
+        }
+      },
+      "overall_status": "success"
+    },
+    {
+      "path": "/api/models/openai",
+      "methods": [
+        "GET"
+      ],
+      "requires_auth": false,
+      "is_admin_only": false,
+      "test_results": {
+        "GET": {
+          "status": "success",
+          "status_code": 200,
+          "response_type": "success",
+          "json": {
+            "provider": "openai",
+            "models": [
+              {
+                "id": "gpt-4-0613",
+                "object": "model",
+                "created": 1686588896,
+                "owned_by": "openai"
+              },
+              {
+                "id": "gpt-4",
+                "object": "model",
+                "created": 1687882411,
+                "owned_by": "openai"
+              },
+              {
+                "id": "gpt-3.5-turbo",
+                "object": "model",
+                "created": 1677610602,
+                "owned_by": "openai"
+              },
+              {
+                "id": "gpt-audio",
+                "object": "model",
+                "created": 1756339249,
+                "owned_by": "system"
+              },
+              {
+                "id": "gpt-5-nano",
+                "object": "model",
+                "created": 1754426384,
+                "owned_by": "system"
+              },
+              {
+                "id": "gpt-audio-2025-08-28",
+                "object": "model",
+                "created": 1756256146,
+                "owned_by": "system"
+              },
+              {
+                "id": "gpt-realtime",
+                "object": "model",
+                "created": 1756271701,
+                "owned_by": "system"
+              },
+              {
+                "id": "gpt-realtime-2025-08-28",
+                "object": "model",
+                "created": 1756271773,
+                "owned_by": "system"
+              },
+              {
+                "id": "davinci-002",
+                "object": "model",
+                "created": 1692634301,
+                "owned_by": "system"
+              },
+              {
+                "id": "babbage-002",
+                "object": "model",
+                "created": 1692634615,
+                "owned_by": "system"
+              },
+              {
+                "id": "gpt-3.5-turbo-instruct",
+                "object": "model",
+                "created": 1692901427,
+                "owned_by": "system"
+              },
+              {
+                "id": "gpt-3.5-turbo-instruct-0914",
+                "object": "model",
+                "created": 1694122472,
+                "owned_by": "system"
+              },
+              {
+                "id": "dall-e-3",
+                "object": "model",
+                "created": 1698785189,
+                "owned_by": "system"
+              },
+              {
+                "id": "dall-e-2",
+                "object": "model",
+                "created": 1698798177,
+                "owned_by": "system"
+              },
+              {
+                "id": "gpt-4-1106-preview",
+                "object": "model",
+                "created": 1698957206,
+                "owned_by": "system"
+              },
+              {
+                "id": "gpt-3.5-turbo-1106",
+                "object": "model",
+                "created": 1698959748,
+                "owned_by": "system"
+              },
+              {
+                "id": "tts-1-hd",
+                "object": "model",
+                "created": 1699046015,
+                "owned_by": "system"
+              },
+              {
+                "id": "tts-1-1106",
+                "object": "model",
+                "created": 1699053241,
+                "owned_by": "system"
+              },
+              {
+                "id": "tts-1-hd-1106",
+                "object": "model",
+                "created": 1699053533,
+                "owned_by": "system"
+              },
+              {
+                "id": "text-embedding-3-small",
+                "object": "model",
+                "created": 1705948997,
+                "owned_by": "system"
+              },
+              {
+                "id": "text-embedding-3-large",
+                "object": "model",
+                "created": 1705953180,
+                "owned_by": "system"
+              },
+              {
+                "id": "gpt-4-0125-preview",
+                "object": "model",
+                "created": 1706037612,
+                "owned_by": "system"
+              },
+              {
+                "id": "gpt-4-turbo-preview",
+                "object": "model",
+                "created": 1706037777,
+                "owned_by": "system"
+              },
+              {
+                "id": "gpt-3.5-turbo-0125",
+                "object": "model",
+                "created": 1706048358,
+                "owned_by": "system"
+              },
+              {
+                "id": "gpt-4-turbo",
+                "object": "model",
+                "created": 1712361441,
+                "owned_by": "system"
+              },
+              {
+                "id": "gpt-4-turbo-2024-04-09",
+                "object": "model",
+                "created": 1712601677,
+                "owned_by": "system"
+              },
+              {
+                "id": "gpt-4o",
+                "object": "model",
+                "created": 1715367049,
+                "owned_by": "system"
+              },
+              {
+                "id": "gpt-4o-2024-05-13",
+                "object": "model",
+                "created": 1715368132,
+                "owned_by": "system"
+              },
+              {
+                "id": "gpt-4o-mini-2024-07-18",
+                "object": "model",
+                "created": 1721172717,
+                "owned_by": "system"
+              },
+              {
+                "id": "gpt-4o-mini",
+                "object": "model",
+                "created": 1721172741,
+                "owned_by": "system"
+              },
+              {
+                "id": "gpt-4o-2024-08-06",
+                "object": "model",
+                "created": 1722814719,
+                "owned_by": "system"
+              },
+              {
+                "id": "chatgpt-4o-latest",
+                "object": "model",
+                "created": 1723515131,
+                "owned_by": "system"
+              },
+              {
+                "id": "o1-mini-2024-09-12",
+                "object": "model",
+                "created": 1725648979,
+                "owned_by": "system"
+              },
+              {
+                "id": "o1-mini",
+                "object": "model",
+                "created": 1725649008,
+                "owned_by": "system"
+              },
+              {
+                "id": "gpt-4o-realtime-preview-2024-10-01",
+                "object": "model",
+                "created": 1727131766,
+                "owned_by": "system"
+              },
+              {
+                "id": "gpt-4o-audio-preview-2024-10-01",
+                "object": "model",
+                "created": 1727389042,
+                "owned_by": "system"
+              },
+              {
+                "id": "gpt-4o-audio-preview",
+                "object": "model",
+                "created": 1727460443,
+                "owned_by": "system"
+              },
+              {
+                "id": "gpt-4o-realtime-preview",
+                "object": "model",
+                "created": 1727659998,
+                "owned_by": "system"
+              },
+              {
+                "id": "omni-moderation-latest",
+                "object": "model",
+                "created": 1731689265,
+                "owned_by": "system"
+              },
+              {
+                "id": "omni-moderation-2024-09-26",
+                "object": "model",
+                "created": 1732734466,
+                "owned_by": "system"
+              },
+              {
+                "id": "gpt-4o-realtime-preview-2024-12-17",
+                "object": "model",
+                "created": 1733945430,
+                "owned_by": "system"
+              },
+              {
+                "id": "gpt-4o-audio-preview-2024-12-17",
+                "object": "model",
+                "created": 1734034239,
+                "owned_by": "system"
+              },
+              {
+                "id": "gpt-4o-mini-realtime-preview-2024-12-17",
+                "object": "model",
+                "created": 1734112601,
+                "owned_by": "system"
+              },
+              {
+                "id": "gpt-4o-mini-audio-preview-2024-12-17",
+                "object": "model",
+                "created": 1734115920,
+                "owned_by": "system"
+              },
+              {
+                "id": "o1-2024-12-17",
+                "object": "model",
+                "created": 1734326976,
+                "owned_by": "system"
+              },
+              {
+                "id": "o1",
+                "object": "model",
+                "created": 1734375816,
+                "owned_by": "system"
+              },
+              {
+                "id": "gpt-4o-mini-realtime-preview",
+                "object": "model",
+                "created": 1734387380,
+                "owned_by": "system"
+              },
+              {
+                "id": "gpt-4o-mini-audio-preview",
+                "object": "model",
+                "created": 1734387424,
+                "owned_by": "system"
+              },
+              {
+                "id": "computer-use-preview",
+                "object": "model",
+                "created": 1734655677,
+                "owned_by": "system"
+              },
+              {
+                "id": "o3-mini",
+                "object": "model",
+                "created": 1737146383,
+                "owned_by": "system"
+              },
+              {
+                "id": "o3-mini-2025-01-31",
+                "object": "model",
+                "created": 1738010200,
+                "owned_by": "system"
+              },
+              {
+                "id": "gpt-4o-2024-11-20",
+                "object": "model",
+                "created": 1739331543,
+                "owned_by": "system"
+              },
+              {
+                "id": "computer-use-preview-2025-03-11",
+                "object": "model",
+                "created": 1741377021,
+                "owned_by": "system"
+              },
+              {
+                "id": "gpt-4o-search-preview-2025-03-11",
+                "object": "model",
+                "created": 1741388170,
+                "owned_by": "system"
+              },
+              {
+                "id": "gpt-4o-search-preview",
+                "object": "model",
+                "created": 1741388720,
+                "owned_by": "system"
+              },
+              {
+                "id": "gpt-4o-mini-search-preview-2025-03-11",
+                "object": "model",
+                "created": 1741390858,
+                "owned_by": "system"
+              },
+              {
+                "id": "gpt-4o-mini-search-preview",
+                "object": "model",
+                "created": 1741391161,
+                "owned_by": "system"
+              },
+              {
+                "id": "gpt-4o-transcribe",
+                "object": "model",
+                "created": 1742068463,
+                "owned_by": "system"
+              },
+              {
+                "id": "gpt-4o-mini-transcribe",
+                "object": "model",
+                "created": 1742068596,
+                "owned_by": "system"
+              },
+              {
+                "id": "o1-pro-2025-03-19",
+                "object": "model",
+                "created": 1742251504,
+                "owned_by": "system"
+              },
+              {
+                "id": "o1-pro",
+                "object": "model",
+                "created": 1742251791,
+                "owned_by": "system"
+              },
+              {
+                "id": "gpt-4o-mini-tts",
+                "object": "model",
+                "created": 1742403959,
+                "owned_by": "system"
+              },
+              {
+                "id": "o3-2025-04-16",
+                "object": "model",
+                "created": 1744133301,
+                "owned_by": "system"
+              },
+              {
+                "id": "o4-mini-2025-04-16",
+                "object": "model",
+                "created": 1744133506,
+                "owned_by": "system"
+              },
+              {
+                "id": "o3",
+                "object": "model",
+                "created": 1744225308,
+                "owned_by": "system"
+              },
+              {
+                "id": "o4-mini",
+                "object": "model",
+                "created": 1744225351,
+                "owned_by": "system"
+              },
+              {
+                "id": "gpt-4.1-2025-04-14",
+                "object": "model",
+                "created": 1744315746,
+                "owned_by": "system"
+              },
+              {
+                "id": "gpt-4.1",
+                "object": "model",
+                "created": 1744316542,
+                "owned_by": "system"
+              },
+              {
+                "id": "gpt-4.1-mini-2025-04-14",
+                "object": "model",
+                "created": 1744317547,
+                "owned_by": "system"
+              },
+              {
+                "id": "gpt-4.1-mini",
+                "object": "model",
+                "created": 1744318173,
+                "owned_by": "system"
+              },
+              {
+                "id": "gpt-4.1-nano-2025-04-14",
+                "object": "model",
+                "created": 1744321025,
+                "owned_by": "system"
+              },
+              {
+                "id": "gpt-4.1-nano",
+                "object": "model",
+                "created": 1744321707,
+                "owned_by": "system"
+              },
+              {
+                "id": "gpt-image-1",
+                "object": "model",
+                "created": 1745517030,
+                "owned_by": "system"
+              },
+              {
+                "id": "codex-mini-latest",
+                "object": "model",
+                "created": 1746673257,
+                "owned_by": "system"
+              },
+              {
+                "id": "o3-pro",
+                "object": "model",
+                "created": 1748475349,
+                "owned_by": "system"
+              },
+              {
+                "id": "gpt-4o-realtime-preview-2025-06-03",
+                "object": "model",
+                "created": 1748907838,
+                "owned_by": "system"
+              },
+              {
+                "id": "gpt-4o-audio-preview-2025-06-03",
+                "object": "model",
+                "created": 1748908498,
+                "owned_by": "system"
+              },
+              {
+                "id": "o3-pro-2025-06-10",
+                "object": "model",
+                "created": 1749166761,
+                "owned_by": "system"
+              },
+              {
+                "id": "o4-mini-deep-research",
+                "object": "model",
+                "created": 1749685485,
+                "owned_by": "system"
+              },
+              {
+                "id": "o3-deep-research",
+                "object": "model",
+                "created": 1749840121,
+                "owned_by": "system"
+              },
+              {
+                "id": "o3-deep-research-2025-06-26",
+                "object": "model",
+                "created": 1750865219,
+                "owned_by": "system"
+              },
+              {
+                "id": "o4-mini-deep-research-2025-06-26",
+                "object": "model",
+                "created": 1750866121,
+                "owned_by": "system"
+              },
+              {
+                "id": "gpt-5-chat-latest",
+                "object": "model",
+                "created": 1754073306,
+                "owned_by": "system"
+              },
+              {
+                "id": "gpt-5-2025-08-07",
+                "object": "model",
+                "created": 1754075360,
+                "owned_by": "system"
+              },
+              {
+                "id": "gpt-5",
+                "object": "model",
+                "created": 1754425777,
+                "owned_by": "system"
+              },
+              {
+                "id": "gpt-5-mini-2025-08-07",
+                "object": "model",
+                "created": 1754425867,
+                "owned_by": "system"
+              },
+              {
+                "id": "gpt-5-mini",
+                "object": "model",
+                "created": 1754425928,
+                "owned_by": "system"
+              },
+              {
+                "id": "gpt-5-nano-2025-08-07",
+                "object": "model",
+                "created": 1754426303,
+                "owned_by": "system"
+              },
+              {
+                "id": "gpt-3.5-turbo-16k",
+                "object": "model",
+                "created": 1683758102,
+                "owned_by": "openai-internal"
+              },
+              {
+                "id": "tts-1",
+                "object": "model",
+                "created": 1681940951,
+                "owned_by": "openai-internal"
+              },
+              {
+                "id": "whisper-1",
+                "object": "model",
+                "created": 1677532384,
+                "owned_by": "openai-internal"
+              },
+              {
+                "id": "text-embedding-ada-002",
+                "object": "model",
+                "created": 1671217299,
+                "owned_by": "openai-internal"
+              }
+            ]
+          }
+        }
+      },
+      "overall_status": "success"
+    },
+    {
+      "path": "/api/namespaces/available/namespaces",
+      "methods": [
+        "GET"
+      ],
+      "requires_auth": true,
+      "is_admin_only": false,
+      "test_results": {
+        "GET": {
+          "admin_access": {
+            "status": "success",
+            "status_code": 200,
+            "response_type": "success",
+            "json": [
+              {
+                "id": "64a8b4ed-000d-4a32-ad5a-733121364743",
+                "name": "usn-core",
+                "type": "core",
+                "path": "usn/core",
+                "prefix": "usn",
+                "status": "released",
+                "owners": [
+                  "navy-ontology@domain.mil",
+                  "admin@odras.local"
+                ],
+                "description": "US Navy Core Ontology - Navy-specific concepts and capabilities",
+                "version": "2025-09-05T14:25:50.887293",
+                "version_iri": "2025-09-09T15:00:07.724773",
+                "version_status": null
+              },
+              {
+                "id": "cd21e9e3-c411-4c8a-85f4-152f3e950836",
+                "name": "gov-core",
+                "type": "core",
+                "path": "gov/core",
+                "prefix": "gov",
+                "status": "released",
+                "owners": [
+                  "admin@odras.local",
+                  "gov-ontology@domain.mil"
+                ],
+                "description": "Government Core Ontology - foundational concepts for all government entities (Updated)",
+                "version": "2025-09-05T14:25:44.588433",
+                "version_iri": "2025-09-05T14:38:17.646549",
+                "version_status": null
+              },
+              {
+                "id": "bd73cf08-5d49-438f-8926-2be49e5aa67d",
+                "name": "odras-core",
+                "type": "core",
+                "path": "odras/core",
+                "prefix": "odras",
+                "status": "released",
+                "owners": [
+                  "admin@odras.local"
+                ],
+                "description": "ODRAS Core Ontology",
+                "version": "2025-09-05T14:09:27.125287",
+                "version_iri": "2025-09-05T14:09:27.125287",
+                "version_status": "2025-01-01"
+              },
+              {
+                "id": "0de7619e-0324-41e7-9f06-3754583c092a",
+                "name": "odras-admin",
+                "type": "core",
+                "path": "odras/admin",
+                "prefix": "admin",
+                "status": "released",
+                "owners": [
+                  "admin@odras.local"
+                ],
+                "description": "ODRAS Admin Reference Ontologies",
+                "version": "2025-09-05T14:09:27.125287",
+                "version_iri": "2025-09-05T14:09:27.125287",
+                "version_status": "2025-01-01"
+              },
+              {
+                "id": "b1a3f8f1-c818-47a2-a997-053fb255143e",
+                "name": "ns1757439102",
+                "type": "domain",
+                "path": "ns/1757439102",
+                "prefix": "ns1757439102",
+                "status": "draft",
+                "owners": [
+                  "owner@example.com"
+                ],
+                "description": "Test namespace",
+                "version": "2025-09-09T17:31:42.073303",
+                "version_iri": "2025-09-09T17:31:42.073303",
+                "version_status": null
+              },
+              {
+                "id": "07750fb3-4bc1-4149-b89a-08e69ff01f32",
+                "name": "usaf-core",
+                "type": "service",
+                "path": "usaf/core",
+                "prefix": "usaf",
+                "status": "draft",
+                "owners": [
+                  "airforce-ontology@domain.mil",
+                  "admin@odras.local"
+                ],
+                "description": "US Air Force Service Ontology - Air Force-specific concepts and capabilities",
+                "version": "2025-09-05T15:17:37.891204",
+                "version_iri": "2025-09-05T15:17:37.891204",
+                "version_status": null
+              },
+              {
+                "id": "db9f8673-6bd2-4a8d-b389-5cbcdbb8045a",
+                "name": "industry-boeing",
+                "type": "industry",
+                "path": "industry/prime/boeing",
+                "prefix": "boeing",
+                "status": "draft",
+                "owners": [
+                  "boeing-ontology@boeing.com",
+                  "admin@odras.local"
+                ],
+                "description": "Boeing Industry Ontology - Boeing-specific products and capabilities",
+                "version": "2025-09-05T14:26:18.047180",
+                "version_iri": "2025-09-05T14:26:18.047180",
+                "version_status": null
+              },
+              {
+                "id": "2d338bd6-6aa4-4028-a4b0-8389110bd461",
+                "name": "voc-mission",
+                "type": "vocab",
+                "path": "vocab/mission",
+                "prefix": "voc-mission",
+                "status": "draft",
+                "owners": [
+                  "ontology-board@domain.mil",
+                  "admin@odras.local"
+                ],
+                "description": "Mission Vocabulary - controlled terms for mission types and classifications",
+                "version": "2025-09-05T14:26:11.141708",
+                "version_iri": "2025-09-05T14:26:11.141708",
+                "version_status": null
+              },
+              {
+                "id": "e481b338-c51c-40ee-aab3-996efd8b95cc",
+                "name": "pg-avp",
+                "type": "program",
+                "path": "program/AVP/core",
+                "prefix": "pg-avp",
+                "status": "draft",
+                "owners": [
+                  "avp-pmo@domain.mil",
+                  "admin@odras.local"
+                ],
+                "description": "Air Vehicle Program Core Ontology - AVP-specific concepts and requirements",
+                "version": "2025-09-05T14:26:04.135842",
+                "version_iri": "2025-09-05T14:26:04.135842",
+                "version_status": null
+              },
+              {
+                "id": "ff56b229-48d2-46c3-9640-c4f9521c6503",
+                "name": "dod-core",
+                "type": "core",
+                "path": "dod/core",
+                "prefix": "dod",
+                "status": "draft",
+                "owners": [
+                  "admin@odras.local"
+                ],
+                "description": "DoD Core Ontology",
+                "version": "2025-09-05T14:20:24.076253",
+                "version_iri": "2025-09-05T14:20:24.076253",
+                "version_status": null
+              }
+            ]
+          },
+          "user_access": {
+            "status": "success",
+            "status_code": 200,
+            "response_type": "success",
+            "json": [
+              {
+                "id": "64a8b4ed-000d-4a32-ad5a-733121364743",
+                "name": "usn-core",
+                "type": "core",
+                "path": "usn/core",
+                "prefix": "usn",
+                "status": "released",
+                "owners": [
+                  "navy-ontology@domain.mil",
+                  "admin@odras.local"
+                ],
+                "description": "US Navy Core Ontology - Navy-specific concepts and capabilities",
+                "version": "2025-09-05T14:25:50.887293",
+                "version_iri": "2025-09-09T15:00:07.724773",
+                "version_status": null
+              },
+              {
+                "id": "cd21e9e3-c411-4c8a-85f4-152f3e950836",
+                "name": "gov-core",
+                "type": "core",
+                "path": "gov/core",
+                "prefix": "gov",
+                "status": "released",
+                "owners": [
+                  "admin@odras.local",
+                  "gov-ontology@domain.mil"
+                ],
+                "description": "Government Core Ontology - foundational concepts for all government entities (Updated)",
+                "version": "2025-09-05T14:25:44.588433",
+                "version_iri": "2025-09-05T14:38:17.646549",
+                "version_status": null
+              },
+              {
+                "id": "bd73cf08-5d49-438f-8926-2be49e5aa67d",
+                "name": "odras-core",
+                "type": "core",
+                "path": "odras/core",
+                "prefix": "odras",
+                "status": "released",
+                "owners": [
+                  "admin@odras.local"
+                ],
+                "description": "ODRAS Core Ontology",
+                "version": "2025-09-05T14:09:27.125287",
+                "version_iri": "2025-09-05T14:09:27.125287",
+                "version_status": "2025-01-01"
+              },
+              {
+                "id": "0de7619e-0324-41e7-9f06-3754583c092a",
+                "name": "odras-admin",
+                "type": "core",
+                "path": "odras/admin",
+                "prefix": "admin",
+                "status": "released",
+                "owners": [
+                  "admin@odras.local"
+                ],
+                "description": "ODRAS Admin Reference Ontologies",
+                "version": "2025-09-05T14:09:27.125287",
+                "version_iri": "2025-09-05T14:09:27.125287",
+                "version_status": "2025-01-01"
+              },
+              {
+                "id": "b1a3f8f1-c818-47a2-a997-053fb255143e",
+                "name": "ns1757439102",
+                "type": "domain",
+                "path": "ns/1757439102",
+                "prefix": "ns1757439102",
+                "status": "draft",
+                "owners": [
+                  "owner@example.com"
+                ],
+                "description": "Test namespace",
+                "version": "2025-09-09T17:31:42.073303",
+                "version_iri": "2025-09-09T17:31:42.073303",
+                "version_status": null
+              },
+              {
+                "id": "07750fb3-4bc1-4149-b89a-08e69ff01f32",
+                "name": "usaf-core",
+                "type": "service",
+                "path": "usaf/core",
+                "prefix": "usaf",
+                "status": "draft",
+                "owners": [
+                  "airforce-ontology@domain.mil",
+                  "admin@odras.local"
+                ],
+                "description": "US Air Force Service Ontology - Air Force-specific concepts and capabilities",
+                "version": "2025-09-05T15:17:37.891204",
+                "version_iri": "2025-09-05T15:17:37.891204",
+                "version_status": null
+              },
+              {
+                "id": "db9f8673-6bd2-4a8d-b389-5cbcdbb8045a",
+                "name": "industry-boeing",
+                "type": "industry",
+                "path": "industry/prime/boeing",
+                "prefix": "boeing",
+                "status": "draft",
+                "owners": [
+                  "boeing-ontology@boeing.com",
+                  "admin@odras.local"
+                ],
+                "description": "Boeing Industry Ontology - Boeing-specific products and capabilities",
+                "version": "2025-09-05T14:26:18.047180",
+                "version_iri": "2025-09-05T14:26:18.047180",
+                "version_status": null
+              },
+              {
+                "id": "2d338bd6-6aa4-4028-a4b0-8389110bd461",
+                "name": "voc-mission",
+                "type": "vocab",
+                "path": "vocab/mission",
+                "prefix": "voc-mission",
+                "status": "draft",
+                "owners": [
+                  "ontology-board@domain.mil",
+                  "admin@odras.local"
+                ],
+                "description": "Mission Vocabulary - controlled terms for mission types and classifications",
+                "version": "2025-09-05T14:26:11.141708",
+                "version_iri": "2025-09-05T14:26:11.141708",
+                "version_status": null
+              },
+              {
+                "id": "e481b338-c51c-40ee-aab3-996efd8b95cc",
+                "name": "pg-avp",
+                "type": "program",
+                "path": "program/AVP/core",
+                "prefix": "pg-avp",
+                "status": "draft",
+                "owners": [
+                  "avp-pmo@domain.mil",
+                  "admin@odras.local"
+                ],
+                "description": "Air Vehicle Program Core Ontology - AVP-specific concepts and requirements",
+                "version": "2025-09-05T14:26:04.135842",
+                "version_iri": "2025-09-05T14:26:04.135842",
+                "version_status": null
+              },
+              {
+                "id": "ff56b229-48d2-46c3-9640-c4f9521c6503",
+                "name": "dod-core",
+                "type": "core",
+                "path": "dod/core",
+                "prefix": "dod",
+                "status": "draft",
+                "owners": [
+                  "admin@odras.local"
+                ],
+                "description": "DoD Core Ontology",
+                "version": "2025-09-05T14:20:24.076253",
+                "version_iri": "2025-09-05T14:20:24.076253",
+                "version_status": null
+              }
+            ]
+          },
+          "status": "success",
+          "both_have_access": true
+        }
+      },
+      "overall_status": "success"
+    },
+    {
+      "path": "/api/namespaces/public/namespaces",
+      "methods": [
+        "GET"
+      ],
+      "requires_auth": false,
+      "is_admin_only": false,
+      "test_results": {
+        "GET": {
+          "status": "success",
+          "status_code": 200,
+          "response_type": "success",
+          "json": [
+            {
+              "id": "64a8b4ed-000d-4a32-ad5a-733121364743",
+              "name": "usn-core",
+              "type": "core",
+              "path": "usn/core",
+              "prefix": "usn",
+              "description": "US Navy Core Ontology - Navy-specific concepts and capabilities",
+              "version": null,
+              "version_iri": null,
+              "version_status": null
+            },
+            {
+              "id": "cd21e9e3-c411-4c8a-85f4-152f3e950836",
+              "name": "gov-core",
+              "type": "core",
+              "path": "gov/core",
+              "prefix": "gov",
+              "description": "Government Core Ontology - foundational concepts for all government entities (Updated)",
+              "version": null,
+              "version_iri": null,
+              "version_status": null
+            },
+            {
+              "id": "bd73cf08-5d49-438f-8926-2be49e5aa67d",
+              "name": "odras-core",
+              "type": "core",
+              "path": "odras/core",
+              "prefix": "odras",
+              "description": "ODRAS Core Ontology",
+              "version": "2025-01-01",
+              "version_iri": "https://w3id.org/defense/odras/core/odras-core/2025-01-01",
+              "version_status": "released"
+            },
+            {
+              "id": "0de7619e-0324-41e7-9f06-3754583c092a",
+              "name": "odras-admin",
+              "type": "core",
+              "path": "odras/admin",
+              "prefix": "admin",
+              "description": "ODRAS Admin Reference Ontologies",
+              "version": "2025-01-01",
+              "version_iri": "https://w3id.org/defense/odras/core/odras-admin/2025-01-01",
+              "version_status": "released"
+            }
+          ]
+        }
+      },
+      "overall_status": "success"
+    },
+    {
+      "path": "/api/namespaces/released",
+      "methods": [
+        "GET"
+      ],
+      "requires_auth": false,
+      "is_admin_only": false,
+      "test_results": {
+        "GET": {
+          "status": "success",
+          "status_code": 200,
+          "response_type": "success",
+          "json": [
+            {
+              "id": "cd21e9e3-c411-4c8a-85f4-152f3e950836",
+              "name": "gov-core",
+              "type": "core",
+              "path": "gov/core",
+              "prefix": "gov",
+              "status": "released",
+              "owners": [
+                "admin@odras.local",
+                "gov-ontology@domain.mil"
+              ],
+              "description": "Government Core Ontology - foundational concepts for all government entities (Updated)",
+              "created_at": "2025-09-05T14:25:44.588433",
+              "updated_at": "2025-09-05T14:38:17.646549"
+            },
+            {
+              "id": "0de7619e-0324-41e7-9f06-3754583c092a",
+              "name": "odras-admin",
+              "type": "core",
+              "path": "odras/admin",
+              "prefix": "admin",
+              "status": "released",
+              "owners": [
+                "admin@odras.local"
+              ],
+              "description": "ODRAS Admin Reference Ontologies",
+              "created_at": "2025-09-05T14:09:27.125287",
+              "updated_at": "2025-09-05T14:09:27.125287"
+            },
+            {
+              "id": "bd73cf08-5d49-438f-8926-2be49e5aa67d",
+              "name": "odras-core",
+              "type": "core",
+              "path": "odras/core",
+              "prefix": "odras",
+              "status": "released",
+              "owners": [
+                "admin@odras.local"
+              ],
+              "description": "ODRAS Core Ontology",
+              "created_at": "2025-09-05T14:09:27.125287",
+              "updated_at": "2025-09-05T14:09:27.125287"
+            },
+            {
+              "id": "64a8b4ed-000d-4a32-ad5a-733121364743",
+              "name": "usn-core",
+              "type": "core",
+              "path": "usn/core",
+              "prefix": "usn",
+              "status": "released",
+              "owners": [
+                "navy-ontology@domain.mil",
+                "admin@odras.local"
+              ],
+              "description": "US Navy Core Ontology - Navy-specific concepts and capabilities",
+              "created_at": "2025-09-05T14:25:50.887293",
+              "updated_at": "2025-09-09T15:00:07.724773"
+            }
+          ]
+        }
+      },
+      "overall_status": "success"
+    },
+    {
+      "path": "/api/ollama/status",
+      "methods": [
+        "GET"
+      ],
+      "requires_auth": false,
+      "is_admin_only": false,
+      "test_results": {
+        "GET": {
+          "status": "success",
+          "status_code": 200,
+          "response_type": "success",
+          "json": {
+            "status": "running",
+            "url": "http://localhost:11434",
+            "model_count": 0
+          }
+        }
+      },
+      "overall_status": "success"
+    },
+    {
+      "path": "/api/ontologies",
+      "methods": [
+        "GET"
+      ],
+      "requires_auth": false,
+      "is_admin_only": false,
+      "test_results": {
+        "GET": {
+          "status": "success",
+          "status_code": 200,
+          "response_type": "success",
+          "json": {
+            "ontologies": [
+              {
+                "graphIri": "http://odras.local/27e647a6-cabe-4c41-88f3-a9210ee9ae9c/bseo-v1",
+                "label": "bseo-v1"
+              },
+              {
+                "graphIri": "https://ontology.navy.mil/adt/27e647a6-cabe-4c41-88f3-a9210ee9ae9c/demo",
+                "label": "Demo"
+              }
+            ]
+          }
+        }
+      },
+      "overall_status": "success"
+    },
+    {
+      "path": "/api/ontologies",
+      "methods": [
+        "POST"
+      ],
+      "requires_auth": false,
+      "is_admin_only": false,
+      "test_results": {
+        "POST": {
+          "status": "auth_required",
+          "status_code": 401,
+          "response_type": "authentication_required"
+        }
+      },
+      "overall_status": "skipped"
+    },
+    {
+      "path": "/api/ontologies",
+      "methods": [
+        "DELETE"
+      ],
+      "requires_auth": false,
+      "is_admin_only": false,
+      "test_results": {
+        "DELETE": {
+          "status": "auth_required",
+          "status_code": 401,
+          "response_type": "authentication_required"
+        }
+      },
+      "overall_status": "skipped"
+    },
+    {
+      "path": "/api/ontologies/import-url",
+      "methods": [
+        "POST"
+      ],
+      "requires_auth": false,
+      "is_admin_only": false,
+      "test_results": {
+        "POST": {
+          "status": "auth_required",
+          "status_code": 401,
+          "response_type": "authentication_required"
+        }
+      },
+      "overall_status": "skipped"
+    },
+    {
+      "path": "/api/ontologies/label",
+      "methods": [
+        "PUT"
+      ],
+      "requires_auth": false,
+      "is_admin_only": false,
+      "test_results": {
+        "PUT": {
+          "status": "success",
+          "status_code": 200,
+          "response_type": "success",
+          "json": {
+            "graphIri": "http://example.com/test",
+            "label": "Test Label"
+          }
+        }
+      },
+      "overall_status": "success"
+    },
+    {
+      "path": "/api/ontologies/reference",
+      "methods": [
+        "GET"
+      ],
+      "requires_auth": false,
+      "is_admin_only": true,
+      "test_results": {
+        "GET": {
+          "status": "auth_required",
+          "status_code": 401,
+          "response_type": "authentication_required"
+        }
+      },
+      "overall_status": "skipped"
+    },
+    {
+      "path": "/api/ontologies/reference",
+      "methods": [
+        "PUT"
+      ],
+      "requires_auth": false,
+      "is_admin_only": true,
+      "test_results": {
+        "PUT": {
+          "status": "auth_required",
+          "status_code": 401,
+          "response_type": "authentication_required"
+        }
+      },
+      "overall_status": "skipped"
+    },
+    {
+      "path": "/api/ontology/",
+      "methods": [
+        "GET"
+      ],
+      "requires_auth": false,
+      "is_admin_only": false,
+      "test_results": {
+        "GET": {
+          "status": "success",
+          "status_code": 200,
+          "response_type": "success",
+          "json": {
+            "success": true,
+            "data": {
+              "metadata": {
+                "name": "ODRAS Ontology",
+                "namespace": "https://ontology.navy.mil/xma-adt",
+                "retrieved": "2025-09-09T17:36:32.556061+00:00"
+              },
+              "classes": [],
+              "object_properties": [],
+              "datatype_properties": [],
+              "individuals": []
+            },
+            "message": "Ontology retrieved successfully"
+          }
+        }
+      },
+      "overall_status": "success"
+    },
+    {
+      "path": "/api/ontology/",
+      "methods": [
+        "PUT"
+      ],
+      "requires_auth": false,
+      "is_admin_only": false,
+      "test_results": {
+        "PUT": {
+          "status": "success",
+          "status_code": 200,
+          "response_type": "success",
+          "json": {
+            "success": true,
+            "message": "Ontology updated successfully",
+            "data": {
+              "backup_id": "7dc89dcf-941c-42fe-8ac1-6d23c85fc6e2",
+              "triples_count": 2
+            },
+            "error": null
+          }
+        }
+      },
+      "overall_status": "success"
+    },
+    {
+      "path": "/api/ontology/classes",
+      "methods": [
+        "POST"
+      ],
+      "requires_auth": false,
+      "is_admin_only": false,
+      "test_results": {
+        "POST": {
+          "status": "success",
+          "status_code": 200,
+          "response_type": "success",
+          "json": {
+            "success": true,
+            "message": "Class TestClass added successfully",
+            "data": {
+              "class_uri": "https://ontology.navy.mil/xma-adt#TestClass"
+            },
+            "error": null
+          }
+        }
+      },
+      "overall_status": "success"
+    },
+    {
+      "path": "/api/ontology/classes/{class_name}",
+      "methods": [
+        "DELETE"
+      ],
+      "requires_auth": false,
+      "is_admin_only": false,
+      "test_results": {
+        "DELETE": {
+          "status": "success",
+          "status_code": 200,
+          "response_type": "success",
+          "json": {
+            "success": true,
+            "message": "Class TestClass deleted successfully",
+            "data": null,
+            "error": null
+          }
+        }
+      },
+      "overall_status": "success"
+    },
+    {
+      "path": "/api/ontology/export/{format}",
+      "methods": [
+        "GET"
+      ],
+      "requires_auth": false,
+      "is_admin_only": false,
+      "test_results": {
+        "GET": {
+          "status": "success",
+          "status_code": 200,
+          "response_type": "success",
+          "json": {
+            "success": true,
+            "data": "@prefix owl: <http://www.w3.org/2002/07/owl#> .\n@prefix rdfs: <http://www.w3.org/2000/01/rdf-schema#> .\n\n<https://ontology.navy.mil/xma-adt> a owl:Ontology ;\n    rdfs:label \"ODRAS Ontology\" .\n\n",
+            "format": "turtle"
+          }
+        }
+      },
+      "overall_status": "success"
+    },
+    {
+      "path": "/api/ontology/import",
+      "methods": [
+        "POST"
+      ],
+      "requires_auth": false,
+      "is_admin_only": false,
+      "test_results": {
+        "POST": {
+          "status": "error",
+          "status_code": 500,
+          "response_type": "client_error",
+          "error_detail": "{\"detail\":\"Import failed: 'OntologyManager' object has no attribute '_get_current_timestamp'\"}"
+        }
+      },
+      "overall_status": "error"
+    },
+    {
+      "path": "/api/ontology/layout",
+      "methods": [
+        "GET"
+      ],
+      "requires_auth": false,
+      "is_admin_only": false,
+      "test_results": {
+        "GET": {
+          "status": "success",
+          "status_code": 200,
+          "response_type": "success",
+          "json": {
+            "success": true,
+            "data": {
+              "graphIri": "http://example.com/test",
+              "nodes": [],
+              "edges": [],
+              "zoom": 1.0,
+              "pan": {
+                "x": 0,
+                "y": 0
+              }
+            },
+            "message": "Layout retrieved successfully"
+          }
+        }
+      },
+      "overall_status": "success"
+    },
+    {
+      "path": "/api/ontology/layout",
+      "methods": [
+        "PUT"
+      ],
+      "requires_auth": false,
+      "is_admin_only": false,
+      "test_results": {
+        "PUT": {
+          "status": "success",
+          "status_code": 200,
+          "response_type": "success",
+          "json": {
+            "success": true,
+            "message": "Layout saved successfully for http://example.com/test",
+            "data": {
+              "layout_id": "50968fe6-6ebb-48f9-8b58-3db0ee0bd833"
+            },
+            "error": null
+          }
+        }
+      },
+      "overall_status": "success"
+    },
+    {
+      "path": "/api/ontology/mint-iri",
+      "methods": [
+        "POST"
+      ],
+      "requires_auth": false,
+      "is_admin_only": false,
+      "test_results": {
+        "POST": {
+          "status": "success",
+          "status_code": 200,
+          "response_type": "success",
+          "json": {
+            "success": true,
+            "data": {
+              "iri": "https://ontology.navy.mil/xma-adt#TestConcept"
+            },
+            "message": "Unique IRI minted for class"
+          }
+        }
+      },
+      "overall_status": "success"
+    },
+    {
+      "path": "/api/ontology/properties",
+      "methods": [
+        "POST"
+      ],
+      "requires_auth": false,
+      "is_admin_only": false,
+      "test_results": {
+        "POST": {
+          "status": "success",
+          "status_code": 200,
+          "response_type": "success",
+          "json": {
+            "success": true,
+            "message": "Property testProperty added successfully",
+            "data": {
+              "property_uri": "https://ontology.navy.mil/xma-adt#testProperty"
+            },
+            "error": null
+          }
+        }
+      },
+      "overall_status": "success"
+    },
+    {
+      "path": "/api/ontology/properties/{property_name}",
+      "methods": [
+        "DELETE"
+      ],
+      "requires_auth": false,
+      "is_admin_only": false,
+      "test_results": {
+        "DELETE": {
+          "status": "success",
+          "status_code": 200,
+          "response_type": "success",
+          "json": {
+            "success": true,
+            "message": "Property testProperty deleted successfully",
+            "data": null,
+            "error": null
+          }
+        }
+      },
+      "overall_status": "success"
+    },
+    {
+      "path": "/api/ontology/push-turtle",
+      "methods": [
+        "POST"
+      ],
+      "requires_auth": false,
+      "is_admin_only": false,
+      "test_results": {
+        "POST": {
+          "status": "success",
+          "status_code": 200,
+          "response_type": "success",
+          "json": {
+            "success": false,
+            "error": "Fuseki returned 400: [line: 2, col: 18] Undefined prefix: owl\n"
+          }
+        }
+      },
+      "overall_status": "success"
+    },
+    {
+      "path": "/api/ontology/save",
+      "methods": [
+        "POST"
+      ],
+      "requires_auth": false,
+      "is_admin_only": false,
+      "test_results": {
+        "POST": {
+          "status": "error",
+          "status_code": 500,
+          "response_type": "client_error",
+          "error_detail": "{\"detail\":\"Fuseki returned 400: [line: 1, col: 1 ] Not implemented (formulae, graph literals)\\n\"}"
+        }
+      },
+      "overall_status": "error"
+    },
+    {
+      "path": "/api/ontology/sparql",
+      "methods": [
+        "POST"
+      ],
+      "requires_auth": false,
+      "is_admin_only": false,
+      "test_results": {
+        "POST": {
+          "status": "success",
+          "status_code": 200,
+          "response_type": "success",
+          "json": {
+            "head": {
+              "vars": [
+                "s",
+                "p",
+                "o"
+              ]
+            },
+            "results": {
+              "bindings": [
+                {
+                  "s": {
+                    "type": "uri",
+                    "value": "http://odras.local#e1755706831510"
+                  },
+                  "p": {
+                    "type": "uri",
+                    "value": "http://www.w3.org/1999/02/22-rdf-syntax-ns#type"
+                  },
+                  "o": {
+                    "type": "uri",
+                    "value": "http://www.w3.org/2002/07/owl#ObjectProperty"
+                  }
+                },
+                {
+                  "s": {
+                    "type": "uri",
+                    "value": "http://odras.local#e1755706831510"
+                  },
+                  "p": {
+                    "type": "uri",
+                    "value": "http://www.w3.org/2000/01/rdf-schema#comment"
+                  },
+                  "o": {
+                    "type": "literal",
+                    "value": ""
+                  }
+                },
+                {
+                  "s": {
+                    "type": "uri",
+                    "value": "http://odras.local#e1755706831510"
+                  },
+                  "p": {
+                    "type": "uri",
+                    "value": "http://www.w3.org/2000/01/rdf-schema#label"
+                  },
+                  "o": {
+                    "type": "literal",
+                    "value": "specifies"
+                  }
+                },
+                {
+                  "s": {
+                    "type": "uri",
+                    "value": "http://odras.local#e1755706831510"
+                  },
+                  "p": {
+                    "type": "uri",
+                    "value": "http://www.w3.org/2000/01/rdf-schema#range"
+                  },
+                  "o": {
+                    "type": "uri",
+                    "value": "http://odras.local#Class3"
+                  }
+                },
+                {
+                  "s": {
+                    "type": "uri",
+                    "value": "http://odras.local#e1755706831510"
+                  },
+                  "p": {
+                    "type": "uri",
+                    "value": "http://www.w3.org/2000/01/rdf-schema#domain"
+                  },
+                  "o": {
+                    "type": "uri",
+                    "value": "http://odras.local#Class2"
+                  }
+                },
+                {
+                  "s": {
+                    "type": "uri",
+                    "value": "http://odras.local#Class6"
+                  },
+                  "p": {
+                    "type": "uri",
+                    "value": "http://www.w3.org/1999/02/22-rdf-syntax-ns#type"
+                  },
+                  "o": {
+                    "type": "uri",
+                    "value": "http://www.w3.org/2002/07/owl#Class"
+                  }
+                },
+                {
+                  "s": {
+                    "type": "uri",
+                    "value": "http://odras.local#Class6"
+                  },
+                  "p": {
+                    "type": "uri",
+                    "value": "http://www.w3.org/2000/01/rdf-schema#comment"
+                  },
+                  "o": {
+                    "type": "literal",
+                    "value": ""
+                  }
+                },
+                {
+                  "s": {
+                    "type": "uri",
+                    "value": "http://odras.local#Class6"
+                  },
+                  "p": {
+                    "type": "uri",
+                    "value": "http://www.w3.org/2000/01/rdf-schema#label"
+                  },
+                  "o": {
+                    "type": "literal",
+                    "value": "Interface"
+                  }
+                },
+                {
+                  "s": {
+                    "type": "uri",
+                    "value": "http://odras.local#e1755706954416"
+                  },
+                  "p": {
+                    "type": "uri",
+                    "value": "http://www.w3.org/1999/02/22-rdf-syntax-ns#type"
+                  },
+                  "o": {
+                    "type": "uri",
+                    "value": "http://www.w3.org/2002/07/owl#ObjectProperty"
+                  }
+                },
+                {
+                  "s": {
+                    "type": "uri",
+                    "value": "http://odras.local#e1755706954416"
+                  },
+                  "p": {
+                    "type": "uri",
+                    "value": "http://www.w3.org/2000/01/rdf-schema#comment"
+                  },
+                  "o": {
+                    "type": "literal",
+                    "value": ""
+                  }
+                }
+              ]
+            }
+          }
+        }
+      },
+      "overall_status": "success"
+    },
+    {
+      "path": "/api/ontology/statistics",
+      "methods": [
+        "GET"
+      ],
+      "requires_auth": false,
+      "is_admin_only": false,
+      "test_results": {
+        "GET": {
+          "status": "success",
+          "status_code": 200,
+          "response_type": "success",
+          "json": {
+            "success": true,
+            "data": {
+              "classes": 42,
+              "object_properties": 35,
+              "datatype_properties": 0,
+              "individuals": 0,
+              "last_updated": "2025-09-09T17:36:33.870141+00:00"
+            },
+            "message": "Statistics retrieved successfully"
+          }
+        }
+      },
+      "overall_status": "success"
+    },
+    {
+      "path": "/api/ontology/summary",
+      "methods": [
+        "GET"
+      ],
+      "requires_auth": false,
+      "is_admin_only": false,
+      "test_results": {
+        "GET": {
+          "status": "success",
+          "status_code": 200,
+          "response_type": "success",
+          "json": {
+            "rows": [
+              {
+                "type": "http://www.w3.org/2002/07/owl#Class",
+                "count": 42
+              },
+              {
+                "type": "http://www.w3.org/2002/07/owl#ObjectProperty",
+                "count": 35
+              },
+              {
+                "type": "http://www.w3.org/2002/07/owl#Ontology",
+                "count": 3
+              }
+            ],
+            "vars": [
+              "type",
+              "count"
+            ]
+          }
+        }
+      },
+      "overall_status": "success"
+    },
+    {
+      "path": "/api/ontology/validate",
+      "methods": [
+        "POST"
+      ],
+      "requires_auth": false,
+      "is_admin_only": false,
+      "test_results": {
+        "POST": {
+          "status": "success",
+          "status_code": 200,
+          "response_type": "success",
+          "json": {
+            "success": false,
+            "message": "Validation failed",
+            "data": {
+              "errors": [
+                "Missing required key: metadata",
+                "Missing required key: classes",
+                "Missing required key: object_properties",
+                "Missing required key: datatype_properties"
+              ]
+            },
+            "error": null
+          }
+        }
+      },
+      "overall_status": "success"
+    },
+    {
+      "path": "/api/ontology/validate-integrity",
+      "methods": [
+        "GET"
+      ],
+      "requires_auth": false,
+      "is_admin_only": false,
+      "test_results": {
+        "GET": {
+          "status": "success",
+          "status_code": 200,
+          "response_type": "success",
+          "json": {
+            "success": true,
+            "data": {
+              "valid": true,
+              "warnings": [],
+              "errors": [],
+              "entity_count": 0
+            },
+            "message": "Integrity validation completed"
+          }
+        }
+      },
+      "overall_status": "success"
+    },
+    {
+      "path": "/api/openai/status",
+      "methods": [
+        "GET"
+      ],
+      "requires_auth": false,
+      "is_admin_only": false,
+      "test_results": {
+        "GET": {
+          "status": "success",
+          "status_code": 200,
+          "response_type": "success",
+          "json": {
+            "status": "running",
+            "url": "https://api.openai.com",
+            "model_count": 92
+          }
+        }
+      },
+      "overall_status": "success"
+    },
+    {
+      "path": "/api/personas",
+      "methods": [
+        "GET"
+      ],
+      "requires_auth": false,
+      "is_admin_only": false,
+      "test_results": {
+        "GET": {
+          "status": "success",
+          "status_code": 200,
+          "response_type": "success",
+          "json": {
+            "personas": [
+              {
+                "id": "extractor",
+                "name": "Extractor",
+                "description": "You extract ontology-grounded entities from requirements.",
+                "system_prompt": "You are an expert requirements analyst. Your role is to extract ontology-grounded entities from requirements text. Return ONLY JSON conforming to the provided schema.",
+                "is_active": true
+              },
+              {
+                "id": "reviewer",
+                "name": "Reviewer",
+                "description": "You validate and correct extracted JSON to fit the schema strictly.",
+                "system_prompt": "You are a quality assurance specialist. Your role is to validate and correct extracted JSON to ensure it strictly conforms to the provided schema. Return ONLY JSON conforming to the schema.",
+                "is_active": true
+              }
+            ]
+          }
+        }
+      },
+      "overall_status": "success"
+    },
+    {
+      "path": "/api/personas",
+      "methods": [
+        "POST"
+      ],
+      "requires_auth": false,
+      "is_admin_only": false,
+      "test_results": {
+        "POST": {
+          "status": "success",
+          "status_code": 200,
+          "response_type": "success",
+          "json": {
+            "persona": {
+              "id": "persona_1757439394896",
+              "name": "Test Persona",
+              "description": "Test persona description",
+              "system_prompt": "",
+              "is_active": true
+            },
+            "message": "Persona created successfully"
+          }
+        }
+      },
+      "overall_status": "success"
+    },
+    {
+      "path": "/api/personas/{persona_id}",
+      "methods": [
+        "PUT"
+      ],
+      "requires_auth": false,
+      "is_admin_only": false,
+      "test_results": {
+        "PUT": {
+          "status": "not_found",
+          "status_code": 404,
+          "response_type": "endpoint_not_found"
+        }
+      },
+      "overall_status": "skipped"
+    },
+    {
+      "path": "/api/personas/{persona_id}",
+      "methods": [
+        "DELETE"
+      ],
+      "requires_auth": false,
+      "is_admin_only": false,
+      "test_results": {
+        "DELETE": {
+          "status": "success",
+          "status_code": 200,
+          "response_type": "success",
+          "json": {
+            "message": "Persona deleted successfully"
+          }
+        }
+      },
+      "overall_status": "success"
+    },
+    {
+      "path": "/api/projects",
+      "methods": [
+        "GET"
+      ],
+      "requires_auth": true,
+      "is_admin_only": false,
+      "test_results": {
+        "GET": {
+          "admin_access": {
+            "status": "auth_required",
+            "status_code": 401,
+            "response_type": "authentication_required"
+          },
+          "user_access": {
+            "status": "auth_required",
+            "status_code": 401,
+            "response_type": "authentication_required"
+          },
+          "status": "error",
+          "both_have_access": false
+        }
+      },
+      "overall_status": "error"
+    },
+    {
+      "path": "/api/projects",
+      "methods": [
+        "POST"
+      ],
+      "requires_auth": true,
+      "is_admin_only": false,
+      "test_results": {
+        "POST": {
+          "admin_access": {
+            "status": "auth_required",
+            "status_code": 401,
+            "response_type": "authentication_required"
+          },
+          "user_access": {
+            "status": "auth_required",
+            "status_code": 401,
+            "response_type": "authentication_required"
+          },
+          "status": "error",
+          "both_have_access": false
+        }
+      },
+      "overall_status": "error"
+    },
+    {
+      "path": "/api/projects/{project_id}",
+      "methods": [
+        "GET"
+      ],
+      "requires_auth": true,
+      "is_admin_only": false,
+      "test_results": {
+        "GET": {
+          "admin_access": {
+            "status": "auth_required",
+            "status_code": 401,
+            "response_type": "authentication_required"
+          },
+          "user_access": {
+            "status": "auth_required",
+            "status_code": 401,
+            "response_type": "authentication_required"
+          },
+          "status": "error",
+          "both_have_access": false
+        }
+      },
+      "overall_status": "error"
+    },
+    {
+      "path": "/api/projects/{project_id}",
+      "methods": [
+        "PUT"
+      ],
+      "requires_auth": true,
+      "is_admin_only": false,
+      "test_results": {
+        "PUT": {
+          "admin_access": {
+            "status": "auth_required",
+            "status_code": 401,
+            "response_type": "authentication_required"
+          },
+          "user_access": {
+            "status": "auth_required",
+            "status_code": 401,
+            "response_type": "authentication_required"
+          },
+          "status": "error",
+          "both_have_access": false
+        }
+      },
+      "overall_status": "error"
+    },
+    {
+      "path": "/api/projects/{project_id}",
+      "methods": [
+        "DELETE"
+      ],
+      "requires_auth": true,
+      "is_admin_only": false,
+      "test_results": {
+        "DELETE": {
+          "admin_access": {
+            "status": "auth_required",
+            "status_code": 401,
+            "response_type": "authentication_required"
+          },
+          "user_access": {
+            "status": "auth_required",
+            "status_code": 401,
+            "response_type": "authentication_required"
+          },
+          "status": "error",
+          "both_have_access": false
+        }
+      },
+      "overall_status": "error"
+    },
+    {
+      "path": "/api/projects/{project_id}/archive",
+      "methods": [
+        "POST"
+      ],
+      "requires_auth": true,
+      "is_admin_only": false,
+      "test_results": {
+        "POST": {
+          "admin_access": {
+            "status": "auth_required",
+            "status_code": 401,
+            "response_type": "authentication_required"
+          },
+          "user_access": {
+            "status": "auth_required",
+            "status_code": 401,
+            "response_type": "authentication_required"
+          },
+          "status": "error",
+          "both_have_access": false
+        }
+      },
+      "overall_status": "error"
+    },
+    {
+      "path": "/api/projects/{project_id}/namespace",
+      "methods": [
+        "GET"
+      ],
+      "requires_auth": true,
+      "is_admin_only": false,
+      "test_results": {
+        "GET": {
+          "admin_access": {
+            "status": "auth_required",
+            "status_code": 401,
+            "response_type": "authentication_required"
+          },
+          "user_access": {
+            "status": "auth_required",
+            "status_code": 401,
+            "response_type": "authentication_required"
+          },
+          "status": "error",
+          "both_have_access": false
+        }
+      },
+      "overall_status": "error"
+    },
+    {
+      "path": "/api/projects/{project_id}/restore",
+      "methods": [
+        "POST"
+      ],
+      "requires_auth": true,
+      "is_admin_only": false,
+      "test_results": {
+        "POST": {
+          "admin_access": {
+            "status": "auth_required",
+            "status_code": 401,
+            "response_type": "authentication_required"
+          },
+          "user_access": {
+            "status": "auth_required",
+            "status_code": 401,
+            "response_type": "authentication_required"
+          },
+          "status": "error",
+          "both_have_access": false
+        }
+      },
+      "overall_status": "error"
+    },
+    {
+      "path": "/api/prompts",
+      "methods": [
+        "GET"
+      ],
+      "requires_auth": false,
+      "is_admin_only": false,
+      "test_results": {
+        "GET": {
+          "status": "success",
+          "status_code": 200,
+          "response_type": "success",
+          "json": {
+            "prompts": [
+              {
+                "id": "default_analysis",
+                "name": "Default Analysis",
+                "description": "Default prompt for requirement analysis",
+                "prompt_template": "Analyze the following requirement and extract key information:\n\nRequirement: {requirement_text}\nCategory: {category}\nSource: {source_file}\nIteration: {iteration}\n\nPlease provide:\n1. Extracted entities (Components, Interfaces, Functions, Processes, Conditions)\n2. Constraints and dependencies\n3. Performance requirements\n4. Quality attributes\n5. Confidence level (0.0-1.0)\n\nFormat your response as JSON.",
+                "variables": [
+                  "requirement_text",
+                  "category",
+                  "source_file",
+                  "iteration"
+                ],
+                "is_active": true
+              }
+            ]
+          }
+        }
+      },
+      "overall_status": "success"
+    },
+    {
+      "path": "/api/prompts",
+      "methods": [
+        "POST"
+      ],
+      "requires_auth": false,
+      "is_admin_only": false,
+      "test_results": {
+        "POST": {
+          "status": "success",
+          "status_code": 200,
+          "response_type": "success",
+          "json": {
+            "prompt": {
+              "id": "prompt_1757439395399",
+              "name": "Test Prompt",
+              "description": "Test prompt description",
+              "prompt_template": "",
+              "variables": [],
+              "is_active": true
+            },
+            "message": "Prompt created successfully"
+          }
+        }
+      },
+      "overall_status": "success"
+    },
+    {
+      "path": "/api/prompts/{prompt_id}",
+      "methods": [
+        "PUT"
+      ],
+      "requires_auth": false,
+      "is_admin_only": false,
+      "test_results": {
+        "PUT": {
+          "status": "not_found",
+          "status_code": 404,
+          "response_type": "endpoint_not_found"
+        }
+      },
+      "overall_status": "skipped"
+    },
+    {
+      "path": "/api/prompts/{prompt_id}",
+      "methods": [
+        "DELETE"
+      ],
+      "requires_auth": false,
+      "is_admin_only": false,
+      "test_results": {
+        "DELETE": {
+          "status": "success",
+          "status_code": 200,
+          "response_type": "success",
+          "json": {
+            "message": "Prompt deleted successfully"
+          }
+        }
+      },
+      "overall_status": "success"
+    },
+    {
+      "path": "/api/prompts/{prompt_id}/test",
+      "methods": [
+        "POST"
+      ],
+      "requires_auth": false,
+      "is_admin_only": false,
+      "test_results": {
+        "POST": {
+          "status": "not_found",
+          "status_code": 404,
+          "response_type": "endpoint_not_found"
+        }
+      },
+      "overall_status": "skipped"
+    },
+    {
+      "path": "/api/runs",
+      "methods": [
+        "GET"
+      ],
+      "requires_auth": false,
+      "is_admin_only": false,
+      "test_results": {
+        "GET": {
+          "status": "success",
+          "status_code": 200,
+          "response_type": "success",
+          "json": {
+            "runs": []
+          }
+        }
+      },
+      "overall_status": "success"
+    },
+    {
+      "path": "/api/runs/{run_id}",
+      "methods": [
+        "GET"
+      ],
+      "requires_auth": false,
+      "is_admin_only": false,
+      "test_results": {
+        "GET": {
+          "status": "not_found",
+          "status_code": 404,
+          "response_type": "endpoint_not_found"
+        }
+      },
+      "overall_status": "skipped"
+    },
+    {
+      "path": "/api/test/create-review-task",
+      "methods": [
+        "GET"
+      ],
+      "requires_auth": false,
+      "is_admin_only": false,
+      "test_results": {
+        "GET": {
+          "status": "success",
+          "status_code": 200,
+          "response_type": "success",
+          "json": {
+            "success": true,
+            "message": "Test review task created successfully",
+            "process_instance_id": "test-process-537f8919",
+            "task_id": "test-task-9e9d0b9d",
+            "review_url": "/user-review?taskId=test-task-9e9d0b9d&process_instance_id=test-process-537f8919",
+            "instructions": "Go to http://localhost:8000/user-review?taskId=test-task-9e9d0b9d&process_instance_id=test-process-537f8919 to test the review interface"
+          }
+        }
+      },
+      "overall_status": "success"
+    },
+    {
+      "path": "/api/test/status",
+      "methods": [
+        "GET"
+      ],
+      "requires_auth": false,
+      "is_admin_only": false,
+      "test_results": {
+        "GET": {
+          "status": "success",
+          "status_code": 200,
+          "response_type": "success",
+          "json": {
+            "test_processes": {
+              "test-process-537f8919": {
+                "process_instance_id": "test-process-537f8919",
+                "task_id": "test-task-9e9d0b9d",
+                "requirements": [
+                  {
+                    "requirement_text": "The system shall provide user authentication using OAuth 2.0 standards",
+                    "text": "The system shall provide user authentication using OAuth 2.0 standards",
+                    "category": "Security",
+                    "confidence": 0.95,
+                    "source": "requirements.docx",
+                    "priority": "High",
+                    "id": "REQ-001"
+                  },
+                  {
+                    "requirement_text": "The system must support at least 1000 concurrent users",
+                    "text": "The system must support at least 1000 concurrent users",
+                    "category": "Performance",
+                    "confidence": 0.88,
+                    "source": "requirements.docx",
+                    "priority": "High",
+                    "id": "REQ-002"
+                  },
+                  {
+                    "requirement_text": "All data shall be encrypted at rest using AES-256 encryption",
+                    "text": "All data shall be encrypted at rest using AES-256 encryption",
+                    "category": "Security",
+                    "confidence": 0.92,
+                    "source": "requirements.docx",
+                    "priority": "Critical",
+                    "id": "REQ-003"
+                  },
+                  {
+                    "requirement_text": "The user interface should be responsive and work on mobile devices",
+                    "text": "The user interface should be responsive and work on mobile devices",
+                    "category": "User Interface",
+                    "confidence": 0.75,
+                    "source": "requirements.docx",
+                    "priority": "Medium",
+                    "id": "REQ-004"
+                  },
+                  {
+                    "requirement_text": "System backups must be performed daily at 2:00 AM UTC",
+                    "text": "System backups must be performed daily at 2:00 AM UTC",
+                    "category": "Operations",
+                    "confidence": 0.82,
+                    "source": "requirements.docx",
+                    "priority": "High",
+                    "id": "REQ-005"
+                  },
+                  {
+                    "requirement_text": "The API response time should not exceed 200ms for 95% of requests",
+                    "text": "The API response time should not exceed 200ms for 95% of requests",
+                    "category": "Performance",
+                    "confidence": 0.68,
+                    "source": "requirements.docx",
+                    "priority": "Medium",
+                    "id": "REQ-006"
+                  },
+                  {
+                    "requirement_text": "Users can export their data in CSV, JSON, or XML formats",
+                    "text": "Users can export their data in CSV, JSON, or XML formats",
+                    "category": "Functional",
+                    "confidence": 0.45,
+                    "source": "requirements.docx",
+                    "priority": "Low",
+                    "id": "REQ-007"
+                  },
+                  {
+                    "requirement_text": "The system must comply with GDPR regulations for data privacy",
+                    "text": "The system must comply with GDPR regulations for data privacy",
+                    "category": "Compliance",
+                    "confidence": 0.91,
+                    "source": "requirements.docx",
+                    "priority": "Critical",
+                    "id": "REQ-008"
+                  }
+                ],
+                "document_filename": "test_requirements.docx",
+                "document_content": "This is a test document with various requirements for testing the review interface.",
+                "created": "2025-09-09T13:36:35.521303",
+                "status": "pending_review"
+              }
+            },
+            "total_processes": 1,
+            "pending_review": 1,
+            "completed": 0
+          }
+        }
+      },
+      "overall_status": "success"
+    },
+    {
+      "path": "/api/test/user-tasks",
+      "methods": [
+        "GET"
+      ],
+      "requires_auth": false,
+      "is_admin_only": false,
+      "test_results": {
+        "GET": {
+          "status": "success",
+          "status_code": 200,
+          "response_type": "success",
+          "json": {
+            "tasks": [
+              {
+                "id": "test-task-9e9d0b9d",
+                "name": "Review Requirements (TEST)",
+                "description": "Test task for reviewing extracted requirements",
+                "taskDefinitionKey": "Task_UserReview",
+                "processInstanceId": "test-process-537f8919",
+                "created": "2025-09-09T13:36:35.521303",
+                "priority": 50
+              }
+            ]
+          }
+        }
+      },
+      "overall_status": "success"
+    },
+    {
+      "path": "/api/test/user-tasks/{process_instance_id}/complete",
+      "methods": [
+        "POST"
+      ],
+      "requires_auth": false,
+      "is_admin_only": false,
+      "test_results": {
+        "POST": {
+          "status": "success",
+          "status_code": 200,
+          "response_type": "success",
+          "json": {
+            "task_id": "unknown",
+            "process_instance_id": "test-process-id",
+            "decision": "approve",
+            "status": "completed",
+            "message": "TEST: User task completed with decision: approve",
+            "test_mode": true,
+            "next_step": "Would proceed to LLM processing"
+          }
+        }
+      },
+      "overall_status": "success"
+    },
+    {
+      "path": "/api/test/user-tasks/{process_instance_id}/requirements",
+      "methods": [
+        "GET"
+      ],
+      "requires_auth": false,
+      "is_admin_only": false,
+      "test_results": {
+        "GET": {
+          "status": "success",
+          "status_code": 200,
+          "response_type": "success",
+          "json": {
+            "process_instance_id": "test-process-id",
+            "requirements": [
+              {
+                "requirement_text": "The system shall provide user authentication using OAuth 2.0 standards",
+                "text": "The system shall provide user authentication using OAuth 2.0 standards",
+                "category": "Security",
+                "confidence": 0.95,
+                "source": "requirements.docx",
+                "priority": "High",
+                "id": "REQ-001"
+              },
+              {
+                "requirement_text": "The system must support at least 1000 concurrent users",
+                "text": "The system must support at least 1000 concurrent users",
+                "category": "Performance",
+                "confidence": 0.88,
+                "source": "requirements.docx",
+                "priority": "High",
+                "id": "REQ-002"
+              },
+              {
+                "requirement_text": "All data shall be encrypted at rest using AES-256 encryption",
+                "text": "All data shall be encrypted at rest using AES-256 encryption",
+                "category": "Security",
+                "confidence": 0.92,
+                "source": "requirements.docx",
+                "priority": "Critical",
+                "id": "REQ-003"
+              },
+              {
+                "requirement_text": "The user interface should be responsive and work on mobile devices",
+                "text": "The user interface should be responsive and work on mobile devices",
+                "category": "User Interface",
+                "confidence": 0.75,
+                "source": "requirements.docx",
+                "priority": "Medium",
+                "id": "REQ-004"
+              },
+              {
+                "requirement_text": "System backups must be performed daily at 2:00 AM UTC",
+                "text": "System backups must be performed daily at 2:00 AM UTC",
+                "category": "Operations",
+                "confidence": 0.82,
+                "source": "requirements.docx",
+                "priority": "High",
+                "id": "REQ-005"
+              },
+              {
+                "requirement_text": "The API response time should not exceed 200ms for 95% of requests",
+                "text": "The API response time should not exceed 200ms for 95% of requests",
+                "category": "Performance",
+                "confidence": 0.68,
+                "source": "requirements.docx",
+                "priority": "Medium",
+                "id": "REQ-006"
+              },
+              {
+                "requirement_text": "Users can export their data in CSV, JSON, or XML formats",
+                "text": "Users can export their data in CSV, JSON, or XML formats",
+                "category": "Functional",
+                "confidence": 0.45,
+                "source": "requirements.docx",
+                "priority": "Low",
+                "id": "REQ-007"
+              },
+              {
+                "requirement_text": "The system must comply with GDPR regulations for data privacy",
+                "text": "The system must comply with GDPR regulations for data privacy",
+                "category": "Compliance",
+                "confidence": 0.91,
+                "source": "requirements.docx",
+                "priority": "Critical",
+                "id": "REQ-008"
+              }
+            ],
+            "document_content": "This is a test document with various requirements.",
+            "document_filename": "test_document.docx",
+            "total_requirements": 8
+          }
+        }
+      },
+      "overall_status": "success"
+    },
+    {
+      "path": "/api/upload",
+      "methods": [
+        "POST"
+      ],
+      "requires_auth": true,
+      "is_admin_only": false,
+      "test_results": {
+        "POST": {
+          "admin_access": {
+            "status": "auth_required",
+            "status_code": 401,
+            "response_type": "authentication_required"
+          },
+          "user_access": {
+            "status": "auth_required",
+            "status_code": 401,
+            "response_type": "authentication_required"
+          },
+          "status": "error",
+          "both_have_access": false
+        }
+      },
+      "overall_status": "error"
+    },
+    {
+      "path": "/api/user-tasks",
+      "methods": [
+        "GET"
+      ],
+      "requires_auth": false,
+      "is_admin_only": false,
+      "test_results": {
+        "GET": {
+          "status": "success",
+          "status_code": 200,
+          "response_type": "success",
+          "json": {
+            "tasks": []
+          }
+        }
+      },
+      "overall_status": "success"
+    },
+    {
+      "path": "/api/user-tasks/{process_instance_id}",
+      "methods": [
+        "GET"
+      ],
+      "requires_auth": false,
+      "is_admin_only": false,
+      "test_results": {
+        "GET": {
+          "status": "success",
+          "status_code": 200,
+          "response_type": "success",
+          "json": {
+            "process_instance_id": "test-process-id",
+            "user_tasks": [],
+            "total_tasks": 0
+          }
+        }
+      },
+      "overall_status": "success"
+    },
+    {
+      "path": "/api/user-tasks/{process_instance_id}/complete",
+      "methods": [
+        "POST"
+      ],
+      "requires_auth": false,
+      "is_admin_only": false,
+      "test_results": {
+        "POST": {
+          "status": "error",
+          "status_code": 500,
+          "response_type": "client_error",
+          "error_detail": "{\"detail\":\"Error completing user task: 404: User review task not found\"}"
+        }
+      },
+      "overall_status": "error"
+    },
+    {
+      "path": "/api/user-tasks/{process_instance_id}/requirements",
+      "methods": [
+        "GET"
+      ],
+      "requires_auth": false,
+      "is_admin_only": false,
+      "test_results": {
+        "GET": {
+          "status": "error",
+          "status_code": 500,
+          "response_type": "client_error",
+          "error_detail": "{\"detail\":\"Error fetching requirements: Server error '500 ' for url 'http://localhost:8080/engine-rest/process-instance/test-process-id/variables'\\nFor more information check: https://developer.mozill"
+        }
+      },
+      "overall_status": "error"
+    },
+    {
+      "path": "/api/user-tasks/{process_instance_id}/status",
+      "methods": [
+        "GET"
+      ],
+      "requires_auth": false,
+      "is_admin_only": false,
+      "test_results": {
+        "GET": {
+          "status": "error",
+          "status_code": 500,
+          "response_type": "client_error",
+          "error_detail": "{\"detail\":\"Error fetching task status: Client error '404 ' for url 'http://localhost:8080/engine-rest/process-instance/test-process-id'\\nFor more information check: https://developer.mozilla.org/en-US"
+        }
+      },
+      "overall_status": "error"
+    },
+    {
+      "path": "/api/users/",
+      "methods": [
+        "POST"
+      ],
+      "requires_auth": true,
+      "is_admin_only": true,
+      "test_results": {
+        "POST": {
+          "admin_access": {
+            "status": "auth_required",
+            "status_code": 401,
+            "response_type": "authentication_required"
+          },
+          "user_access": {
+            "status": "auth_required",
+            "status_code": 401,
+            "response_type": "authentication_required"
+          },
+          "status": "error",
+          "authorization_correct": false
+        }
+      },
+      "overall_status": "error"
+    },
+    {
+      "path": "/api/users/",
+      "methods": [
+        "GET"
+      ],
+      "requires_auth": true,
+      "is_admin_only": true,
+      "test_results": {
+        "GET": {
+          "admin_access": {
+            "status": "auth_required",
+            "status_code": 401,
+            "response_type": "authentication_required"
+          },
+          "user_access": {
+            "status": "auth_required",
+            "status_code": 401,
+            "response_type": "authentication_required"
+          },
+          "status": "error",
+          "authorization_correct": false
+        }
+      },
+      "overall_status": "error"
+    },
+    {
+      "path": "/api/users/me",
+      "methods": [
+        "GET"
+      ],
+      "requires_auth": true,
+      "is_admin_only": false,
+      "test_results": {
+        "GET": {
+          "admin_access": {
+            "status": "auth_required",
+            "status_code": 401,
+            "response_type": "authentication_required"
+          },
+          "user_access": {
+            "status": "auth_required",
+            "status_code": 401,
+            "response_type": "authentication_required"
+          },
+          "status": "error",
+          "both_have_access": false
+        }
+      },
+      "overall_status": "error"
+    },
+    {
+      "path": "/api/users/me/password",
+      "methods": [
+        "PUT"
+      ],
+      "requires_auth": true,
+      "is_admin_only": false,
+      "test_results": {
+        "PUT": {
+          "admin_access": {
+            "status": "auth_required",
+            "status_code": 401,
+            "response_type": "authentication_required"
+          },
+          "user_access": {
+            "status": "auth_required",
+            "status_code": 401,
+            "response_type": "authentication_required"
+          },
+          "status": "error",
+          "both_have_access": false
+        }
+      },
+      "overall_status": "error"
+    },
+    {
+      "path": "/api/users/{user_id}",
+      "methods": [
+        "PUT"
+      ],
+      "requires_auth": true,
+      "is_admin_only": true,
+      "test_results": {
+        "PUT": {
+          "admin_access": {
+            "status": "auth_required",
+            "status_code": 401,
+            "response_type": "authentication_required"
+          },
+          "user_access": {
+            "status": "auth_required",
+            "status_code": 401,
+            "response_type": "authentication_required"
+          },
+          "status": "error",
+          "authorization_correct": false
+        }
+      },
+      "overall_status": "error"
+    },
+    {
+      "path": "/api/users/{user_id}",
+      "methods": [
+        "DELETE"
+      ],
+      "requires_auth": true,
+      "is_admin_only": true,
+      "test_results": {
+        "DELETE": {
+          "admin_access": {
+            "status": "auth_required",
+            "status_code": 401,
+            "response_type": "authentication_required"
+          },
+          "user_access": {
+            "status": "auth_required",
+            "status_code": 401,
+            "response_type": "authentication_required"
+          },
+          "status": "error",
+          "authorization_correct": false
+        }
+      },
+      "overall_status": "error"
+    },
+    {
+      "path": "/api/users/{user_id}/activate",
+      "methods": [
+        "POST"
+      ],
+      "requires_auth": true,
+      "is_admin_only": true,
+      "test_results": {
+        "POST": {
+          "admin_access": {
+            "status": "auth_required",
+            "status_code": 401,
+            "response_type": "authentication_required"
+          },
+          "user_access": {
+            "status": "auth_required",
+            "status_code": 401,
+            "response_type": "authentication_required"
+          },
+          "status": "error",
+          "authorization_correct": false
+        }
+      },
+      "overall_status": "error"
+    },
+    {
+      "path": "/api/workflows/rag-query",
+      "methods": [
+        "POST"
+      ],
+      "requires_auth": true,
+      "is_admin_only": false,
+      "test_results": {
+        "POST": {
+          "admin_access": {
+            "status": "success",
+            "status_code": 200,
+            "response_type": "success",
+            "json": {
+              "success": true,
+              "process_instance_id": "88f72858-8da3-11f0-865f-0242ac190004",
+              "query": "test workflow query",
+              "camunda_url": "http://localhost:8080/cockpit/default/#/process-instance/88f72858-8da3-11f0-865f-0242ac190004",
+              "error": null
+            }
+          },
+          "user_access": {
+            "status": "success",
+            "status_code": 200,
+            "response_type": "success",
+            "json": {
+              "success": true,
+              "process_instance_id": "89038472-8da3-11f0-865f-0242ac190004",
+              "query": "test workflow query",
+              "camunda_url": "http://localhost:8080/cockpit/default/#/process-instance/89038472-8da3-11f0-865f-0242ac190004",
+              "error": null
+            }
+          },
+          "status": "success",
+          "both_have_access": true
+        }
+      },
+      "overall_status": "success"
+    },
+    {
+      "path": "/api/workflows/rag-query/{process_instance_id}/status",
+      "methods": [
+        "GET"
+      ],
+      "requires_auth": true,
+      "is_admin_only": false,
+      "test_results": {
+        "GET": {
+          "admin_access": {
+            "status": "not_found",
+            "status_code": 404,
+            "response_type": "endpoint_not_found"
+          },
+          "user_access": {
+            "status": "not_found",
+            "status_code": 404,
+            "response_type": "endpoint_not_found"
+          },
+          "status": "error",
+          "both_have_access": false
+        }
+      },
+      "overall_status": "error"
+    },
+    {
+      "path": "/api/workflows/start",
+      "methods": [
+        "POST"
+      ],
+      "requires_auth": true,
+      "is_admin_only": true,
+      "test_results": {
+        "POST": {
+          "admin_access": {
+            "status": "auth_required",
+            "status_code": 401,
+            "response_type": "authentication_required"
+          },
+          "user_access": {
+            "status": "auth_required",
+            "status_code": 401,
+            "response_type": "authentication_required"
+          },
+          "status": "error",
+          "authorization_correct": false
+        }
+      },
+      "overall_status": "error"
+    },
+    {
+      "path": "/app",
+      "methods": [
+        "GET"
+      ],
+      "requires_auth": false,
+      "is_admin_only": false,
+      "test_results": {
+        "GET": {
+          "status": "success",
+          "status_code": 200,
+          "response_type": "success",
+          "json": null
+        }
+      },
+      "overall_status": "success"
+    },
+    {
+      "path": "/ontology-editor",
+      "methods": [
+        "GET"
+      ],
+      "requires_auth": false,
+      "is_admin_only": false,
+      "test_results": {
+        "GET": {
+          "status": "success",
+          "status_code": 200,
+          "response_type": "success",
+          "json": null
+        }
+      },
+      "overall_status": "success"
+    },
+    {
+      "path": "/user-review",
+      "methods": [
+        "GET"
+      ],
+      "requires_auth": false,
+      "is_admin_only": false,
+      "test_results": {
+        "GET": {
+          "status": "success",
+          "status_code": 200,
+          "response_type": "success",
+          "json": null
+        }
+      },
+      "overall_status": "success"
+    }
+  ],
+  "summary": {
+    "total_endpoints": 133,
+    "successful_endpoints": 58,
+    "error_endpoints": 57,
+    "skipped_endpoints": 18,
+    "success_rate": "43.6%",
+    "auth_required_endpoints": 55,
+    "public_endpoints": 78,
+    "authorization_stats": {
+      "correct": 0,
+      "incorrect": 0,
+      "admin_only_endpoints": 23,
+      "regular_endpoints": 36
+    },
+    "method_breakdown": {
+      "GET": {
+        "success": 38,
+        "error": 24,
+        "skipped": 0,
+        "auth_correct": 0,
+        "auth_incorrect": 0
+      },
+      "POST": {
+        "success": 12,
+        "error": 27,
+        "skipped": 0,
+        "auth_correct": 0,
+        "auth_incorrect": 0
+      },
+      "PUT": {
+        "success": 4,
+        "error": 14,
+        "skipped": 0,
+        "auth_correct": 0,
+        "auth_incorrect": 0
+      },
+      "DELETE": {
+        "success": 4,
+        "error": 10,
+        "skipped": 0,
+        "auth_correct": 0,
+        "auth_incorrect": 0
+      }
+    }
+  }
+}
