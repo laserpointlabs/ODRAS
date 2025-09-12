@@ -24,12 +24,12 @@ from psycopg2.extras import RealDictCursor
 
 logger = logging.getLogger(__name__)
 
-# Import services using relative imports
-from .services.config import Settings
-from .services.db import DatabaseService
-from .services.namespace_uri_generator import NamespaceURIGenerator
-from .services.resource_uri_service import get_resource_uri_service
-from .services.auth import (
+# Import services using absolute imports
+from backend.services.config import Settings
+from backend.services.db import DatabaseService
+from backend.services.namespace_uri_generator import NamespaceURIGenerator
+from backend.services.resource_uri_service import get_resource_uri_service
+from backend.services.auth import (
     get_user as auth_get_user,
     get_admin_user,
     create_token,
@@ -45,6 +45,7 @@ from backend.api.ontology import router as ontology_router
 from backend.api.workflows import router as workflows_router
 from backend.api.embedding_models import router as embedding_models_router
 from backend.api.knowledge import router as knowledge_router
+from backend.api.das import router as das_router
 from backend.api.namespace_simple import (
     router as namespace_router,
     public_router as namespace_public_router,
@@ -66,6 +67,7 @@ app.include_router(files_router)
 app.include_router(workflows_router)
 app.include_router(embedding_models_router)
 app.include_router(knowledge_router)
+app.include_router(das_router)
 app.include_router(namespace_router)
 app.include_router(namespace_public_router)
 app.include_router(prefix_router)
@@ -166,7 +168,7 @@ def login(body: Dict):
 
     # Use new authentication service
     try:
-        from .services.auth_service import AuthService
+        from backend.services.auth_service import AuthService
 
         auth_service = AuthService(db)
 
@@ -509,6 +511,24 @@ def restore_project(project_id: str, user=Depends(get_user)):
 async def on_startup():
     # Ensure services are initialized lazily via Settings
     Settings()  # loads env
+    
+    # Initialize DAS engine
+    try:
+        from backend.api.das import initialize_das_engine
+        from backend.services.rag_service import RAGService
+        
+        settings = Settings()
+        rag_service = RAGService(settings)
+        await initialize_das_engine(settings, rag_service, db)
+        
+        # Initialize the DAS engine
+        from backend.services.das_core_engine import DASCoreEngine
+        das_engine = DASCoreEngine(settings, rag_service, db)
+        await das_engine.initialize()
+        logger.info("DAS engine initialized successfully")
+    except Exception as e:
+        logger.error(f"Failed to initialize DAS engine: {e}")
+        # Don't fail startup if DAS initialization fails
 
 
 @app.get("/ontology-editor", response_class=HTMLResponse)

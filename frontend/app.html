@@ -692,6 +692,57 @@
     .das-dock-right .das-resizer-x { left: -3px; }
     .das-dock-left .das-resizer-x { right: -3px; }
     .das-dock-bottom .das-resizer-y { top: -3px; }
+    
+    /* DAS suggestions styling */
+    .das-suggestions {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 4px;
+      margin-top: 8px;
+    }
+    
+    .das-suggestions .btn {
+      font-size: 12px;
+      padding: 4px 8px;
+      margin: 2px;
+      background: var(--panel-2);
+      border: 1px solid var(--border);
+      color: var(--text);
+      cursor: pointer;
+      border-radius: 4px;
+    }
+    
+    .das-suggestions .btn:hover {
+      background: var(--panel);
+      border-color: var(--accent);
+    }
+    
+    /* LLM Status Indicator */
+    .llm-status-indicator {
+      font-size: 12px;
+      margin-right: 8px;
+      cursor: help;
+      transition: all 0.3s ease;
+    }
+    
+    .llm-status-indicator.healthy {
+      color: #22c55e;
+    }
+    
+    .llm-status-indicator.unhealthy {
+      color: #ef4444;
+    }
+    
+    .llm-status-indicator.checking {
+      color: #f59e0b;
+    }
+    
+    /* DAS Progress Indicator */
+    .das-progress {
+      color: var(--muted);
+      font-style: italic;
+    }
+    
     .das-toolbar .spacer { flex: 1; }
     .das-help { font-size: 12px; color: var(--muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 60%; }
     /* When DAS is open, shift the app layout to avoid overlap */
@@ -873,6 +924,9 @@
     <div class="topbar">
       <div class="brand">AVIAN-ODRAS</div>
       <div class="spacer"></div>
+      
+      <!-- LLM Status Indicator (always visible) -->
+      <span id="llmStatus" class="llm-status-indicator" title="LLM Status: Checking...">🟡</span>
       
       <!-- Installation Configuration Display -->
       <div id="installationInfo" class="installation-info">
@@ -1663,6 +1717,7 @@
       <strong>DAS</strong>
       <span class="muted" id="dasStatus" style="margin-left:8px;">Idle</span>
       <div class="spacer"></div>
+      <span id="llmStatusDock" class="llm-status-indicator" title="LLM Status: Checking...">🟡</span>
       <span class="das-help">Ctrl+Alt+D (or Alt+Shift+D) to toggle; <br>Alt+Shift+←/→/↓ to dock</span>
     </div>
     <div class="das-body" id="dasBody">
@@ -1671,7 +1726,7 @@
           <input type="text" id="dasPrompt" placeholder="Type a prompt..." />
           <button class="btn" id="dasSendBtn" type="button">Send</button>
         </div>
-        <div class="muted">Scaffold only — integration pending.</div>
+        <div class="muted">DAS is ready to assist you with ODRAS tasks.</div>
       </div>
       <div id="dasTranscript" style="display:grid; gap:8px;"></div>
     </div>
@@ -10551,15 +10606,346 @@
         if (resizerX) resizerX.addEventListener('mousedown', startDragX);
         if (resizerY) resizerY.addEventListener('mousedown', startDragY);
       })();
-      // Minimal scaffold behavior
+      // DAS functionality
+      let currentSessionId = null;
+      let isProcessing = false;
+      let llmStatusInterval = null;
+      
+      // Check LLM health status
+      async function checkLLMHealth() {
+        const statusElement = document.getElementById('llmStatus');
+        const dockStatusElement = document.getElementById('llmStatusDock');
+        
+        // Update both indicators if they exist
+        const elements = [statusElement, dockStatusElement].filter(el => el);
+        
+        if (elements.length === 0) {
+          console.warn('No LLM status elements found');
+          return;
+        }
+        
+        try {
+          // Set checking state
+          elements.forEach(el => {
+            el.textContent = '🟡';
+            el.className = 'llm-status-indicator checking';
+            el.title = 'LLM Status: Checking...';
+          });
+          
+          const response = await fetch('/api/das/llm/health');
+          
+          if (!response.ok) {
+            throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+          }
+          
+          const data = await response.json();
+          
+          if (data.status === 'healthy') {
+            elements.forEach(el => {
+              el.textContent = '🟢';
+              el.className = 'llm-status-indicator healthy';
+              el.title = `LLM Status: Healthy (${data.provider}/${data.model})`;
+            });
+            console.log('LLM health check: Healthy');
+          } else {
+            elements.forEach(el => {
+              el.textContent = '🔴';
+              el.className = 'llm-status-indicator unhealthy';
+              el.title = `LLM Status: Unhealthy - ${data.error || 'Unknown error'}`;
+            });
+            console.warn('LLM health check: Unhealthy', data);
+          }
+        } catch (error) {
+          elements.forEach(el => {
+            el.textContent = '🔴';
+            el.className = 'llm-status-indicator unhealthy';
+            el.title = `LLM Status: Error - ${error.message}`;
+          });
+          console.error('LLM health check failed:', error);
+        }
+      }
+      
+      // Start LLM health monitoring
+      function startLLMHealthMonitoring() {
+        // Check immediately
+        checkLLMHealth();
+        
+        // Check every 30 seconds
+        llmStatusInterval = setInterval(checkLLMHealth, 30000);
+      }
+      
+      // Stop LLM health monitoring
+      function stopLLMHealthMonitoring() {
+        if (llmStatusInterval) {
+          clearInterval(llmStatusInterval);
+          llmStatusInterval = null;
+        }
+      }
+      
+      // Initialize DAS session
+      async function initializeDASSession() {
+        try {
+          const response = await fetch('/api/das/session/start', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json', ...authHeader() },
+            body: JSON.stringify({ project_id: getCurrentProjectId() })
+          });
+          
+          if (response.ok) {
+            const data = await response.json();
+            currentSessionId = data.session_id;
+            updateDASStatus('Ready');
+            addMessageToTranscript('system', 'DAS session started. How can I help you today?');
+          } else {
+            updateDASStatus('Error');
+            addMessageToTranscript('error', 'Failed to start DAS session');
+          }
+        } catch (error) {
+          updateDASStatus('Error');
+          addMessageToTranscript('error', 'Error connecting to DAS: ' + error.message);
+        }
+      }
+      
+      // Send message to DAS
+      async function sendDASMessage(message) {
+        if (isProcessing || !message.trim()) return;
+        
+        isProcessing = true;
+        updateDASStatus('Processing...');
+        sendBtn.disabled = true;
+        
+        // Add user message to transcript
+        addMessageToTranscript('user', message);
+        
+        // Add progress indicator with animated ellipsis
+        const progressId = 'das-progress-' + Date.now();
+        addMessageToTranscript('das', '<span id="' + progressId + '" class="das-progress">Thinking<span class="ellipsis-dots">...</span></span>');
+        
+        // Start ellipsis animation
+        let ellipsisCount = 0;
+        const ellipsisInterval = setInterval(() => {
+          const ellipsisElement = document.querySelector('#' + progressId + ' .ellipsis-dots');
+          if (ellipsisElement) {
+            ellipsisCount = (ellipsisCount + 1) % 4;
+            ellipsisElement.textContent = '.'.repeat(ellipsisCount);
+          }
+        }, 500);
+        
+        try {
+          const response = await fetch('/api/das/chat/send', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json', ...authHeader() },
+            body: JSON.stringify({ 
+              message: message,
+              session_id: currentSessionId 
+            })
+          });
+          
+          if (response.ok) {
+            const data = await response.json();
+            
+            // Stop ellipsis animation and remove progress indicator
+            clearInterval(ellipsisInterval);
+            const progressElement = document.getElementById(progressId);
+            if (progressElement && progressElement.parentElement) {
+              progressElement.parentElement.remove();
+            }
+            
+            // Add DAS response to transcript
+            addMessageToTranscript('das', data.message, {
+              confidence: data.confidence,
+              intent: data.intent,
+              suggestions: data.suggestions,
+              commands: data.commands
+            });
+            
+            updateDASStatus('Ready');
+          } else {
+            // Stop ellipsis animation and remove progress indicator
+            clearInterval(ellipsisInterval);
+            const progressElement = document.getElementById(progressId);
+            if (progressElement && progressElement.parentElement) {
+              progressElement.parentElement.remove();
+            }
+            
+            const error = await response.json().catch(() => ({ detail: 'Unknown error' }));
+            addMessageToTranscript('error', 'Error: ' + (error.detail || 'Failed to get response'));
+            updateDASStatus('Error');
+          }
+        } catch (error) {
+          // Stop ellipsis animation and remove progress indicator
+          clearInterval(ellipsisInterval);
+          const progressElement = document.getElementById(progressId);
+          if (progressElement && progressElement.parentElement) {
+            progressElement.parentElement.remove();
+          }
+          
+          addMessageToTranscript('error', 'Network error: ' + error.message);
+          updateDASStatus('Error');
+        } finally {
+          isProcessing = false;
+          sendBtn.disabled = false;
+          promptInput.focus();
+        }
+      }
+      
+      // Add message to transcript
+      function addMessageToTranscript(type, message, metadata = {}) {
+        const div = document.createElement('div');
+        div.className = 'card';
+        
+        let content = '';
+        if (type === 'user') {
+          content = `<strong>You:</strong> ${message}`;
+        } else if (type === 'das') {
+          content = `<strong>DAS:</strong> ${message}`;
+          if (metadata.confidence) {
+            content += ` <span class="muted">(${metadata.confidence} confidence)</span>`;
+          }
+        } else if (type === 'system') {
+          content = `<em class="muted">${message}</em>`;
+        } else if (type === 'error') {
+          content = `<span style="color: #ef4444;">Error: ${message}</span>`;
+        }
+        
+        div.innerHTML = content;
+        
+        // Add suggestions if available
+        if (metadata.suggestions && metadata.suggestions.length > 0) {
+          const suggestionsDiv = document.createElement('div');
+          suggestionsDiv.className = 'das-suggestions';
+          suggestionsDiv.style.marginTop = '8px';
+          
+          metadata.suggestions.forEach(suggestion => {
+            const btn = document.createElement('button');
+            btn.className = 'btn';
+            btn.style.margin = '2px';
+            btn.style.fontSize = '12px';
+            btn.textContent = suggestion.title;
+            btn.title = suggestion.description;
+            btn.onclick = () => sendDASMessage(suggestion.description);
+            suggestionsDiv.appendChild(btn);
+          });
+          
+          div.appendChild(suggestionsDiv);
+        }
+        
+        transcript.appendChild(div);
+        transcript.scrollTop = transcript.scrollHeight;
+      }
+      
+      // Update DAS status
+      function updateDASStatus(status) {
+        const statusEl = document.getElementById('dasStatus');
+        if (statusEl) {
+          statusEl.textContent = status;
+        }
+      }
+      
+      // Get current project ID (placeholder - integrate with your project system)
+      function getCurrentProjectId() {
+        // This should integrate with your existing project selection system
+        return null; // or return the current project ID
+      }
+      
+      // Start LLM health monitoring when DOM is ready
+      function initializeLLMMonitoring() {
+        console.log('Initializing LLM monitoring...');
+        const statusElement = document.getElementById('llmStatus');
+        if (!statusElement) {
+          console.warn('LLM status element not found, retrying in 1 second...');
+          setTimeout(initializeLLMMonitoring, 1000);
+          return;
+        }
+        console.log('LLM status element found, starting monitoring...');
+        try {
+          startLLMHealthMonitoring();
+        } catch (error) {
+          console.error('Error starting LLM monitoring:', error);
+        }
+      }
+      
+      // Try multiple initialization methods
+      function tryInitializeLLM() {
+        console.log('Attempting to initialize LLM monitoring...');
+        try {
+          initializeLLMMonitoring();
+        } catch (error) {
+          console.error('Error in LLM initialization:', error);
+          // Retry after a delay
+          setTimeout(tryInitializeLLM, 2000);
+        }
+      }
+      
+      // Multiple initialization attempts
+      if (document.readyState === 'loading') {
+        document.addEventListener('DOMContentLoaded', tryInitializeLLM);
+      } else {
+        tryInitializeLLM();
+      }
+      
+      // Also try after a delay as backup
+      setTimeout(tryInitializeLLM, 1000);
+      
+      // Manual test function for debugging
+      window.testLLMStatus = function() {
+        console.log('Manual LLM status test...');
+        const element = document.getElementById('llmStatus');
+        const dockElement = document.getElementById('llmStatusDock');
+        
+        [element, dockElement].forEach((el, index) => {
+          if (el) {
+            console.log(`Element ${index + 1} found:`, el);
+            console.log(`Element ${index + 1} position:`, el.getBoundingClientRect());
+            console.log(`Element ${index + 1} visibility:`, window.getComputedStyle(el).visibility);
+            console.log(`Element ${index + 1} display:`, window.getComputedStyle(el).display);
+            el.textContent = '🟢';
+            el.className = 'llm-status-indicator healthy';
+            el.title = 'Manual test - LLM Status: Healthy';
+            console.log(`Element ${index + 1} updated successfully`);
+          } else {
+            console.error(`Element ${index + 1} not found!`);
+          }
+        });
+      };
+      
+      // Test after 3 seconds
+      setTimeout(() => {
+        console.log('Running manual test...');
+        window.testLLMStatus();
+      }, 3000);
+      
+      // Initialize DAS when panel opens
       if (sendBtn && promptInput && transcript) {
+        // Initialize session when DAS panel is first opened
+        let sessionInitialized = false;
+        
+        const originalToggleOpen = toggleOpen;
+        toggleOpen = function() {
+          originalToggleOpen();
+          if (state.open) {
+            // Initialize DAS session if not already done
+            if (!sessionInitialized) {
+              initializeDASSession();
+              sessionInitialized = true;
+            }
+          }
+          // Note: LLM health monitoring continues running regardless of dock state
+        };
+        
         sendBtn.addEventListener('click', () => {
-          const text = (promptInput.value || '').trim(); if (!text) return;
-          const div = document.createElement('div'); div.className='card'; div.textContent = 'You: ' + text;
-          transcript.appendChild(div);
+          const text = (promptInput.value || '').trim();
+          if (!text) return;
+          sendDASMessage(text);
           promptInput.value = '';
         });
-        promptInput.addEventListener('keydown', (e)=>{ if (e.key === 'Enter') { e.preventDefault(); sendBtn.click(); } });
+        
+        promptInput.addEventListener('keydown', (e) => {
+          if (e.key === 'Enter') {
+            e.preventDefault();
+            sendBtn.click();
+          }
+        });
       }
       // Keyboard shortcuts: Alt+Shift+K toggle; Alt+Shift+Arrows to dock
       const onKey = (e) => {
