@@ -10732,6 +10732,7 @@
         }, 500);
         
         try {
+          console.log('Sending DAS message:', message);
           const response = await fetch('/api/das/chat/send', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json', ...authHeader() },
@@ -10740,6 +10741,8 @@
               session_id: currentSessionId 
             })
           });
+          
+          console.log('DAS Response received, status:', response.status);
           
           if (response.ok) {
             const data = await response.json();
@@ -10752,15 +10755,22 @@
             }
             
             // Add DAS response to transcript
+            console.log('DAS Response Data:', data);
+            console.log('DAS Metadata:', data.metadata);
+            console.log('DAS Sources:', data.metadata ? data.metadata.sources : 'No metadata');
+            
             addMessageToTranscript('das', data.message, {
               confidence: data.confidence,
               intent: data.intent,
               suggestions: data.suggestions,
-              commands: data.commands
+              commands: data.commands,
+              sources: data.metadata ? data.metadata.sources : []
             });
             
             updateDASStatus('Ready');
           } else {
+            console.log('DAS Response error, status:', response.status);
+            
             // Stop ellipsis animation and remove progress indicator
             clearInterval(ellipsisInterval);
             const progressElement = document.getElementById(progressId);
@@ -10769,10 +10779,13 @@
             }
             
             const error = await response.json().catch(() => ({ detail: 'Unknown error' }));
+            console.log('DAS Error response:', error);
             addMessageToTranscript('error', 'Error: ' + (error.detail || 'Failed to get response'));
             updateDASStatus('Error');
           }
         } catch (error) {
+          console.log('DAS Network error:', error);
+          
           // Stop ellipsis animation and remove progress indicator
           clearInterval(ellipsisInterval);
           const progressElement = document.getElementById(progressId);
@@ -10810,7 +10823,40 @@
         
         div.innerHTML = content;
         
-        // Add suggestions if available
+        // Add sources if available (for DAS responses)
+        if (type === 'das' && metadata.sources && metadata.sources.length > 0) {
+          const sourcesDiv = document.createElement('div');
+          sourcesDiv.className = 'das-sources';
+          sourcesDiv.style.marginTop = '8px';
+          sourcesDiv.style.fontSize = '11px';
+          sourcesDiv.style.color = 'var(--muted)';
+          
+          const sourcesTitle = document.createElement('div');
+          sourcesTitle.textContent = 'Sources:';
+          sourcesTitle.style.fontWeight = 'bold';
+          sourcesTitle.style.marginBottom = '4px';
+          sourcesDiv.appendChild(sourcesTitle);
+          
+          metadata.sources.forEach((source, index) => {
+            const sourceItem = document.createElement('div');
+            sourceItem.style.marginBottom = '2px';
+            sourceItem.style.paddingLeft = '8px';
+            
+            if (source.type === 'instruction') {
+              sourceItem.innerHTML = `• <strong>${source.title}</strong> (${source.category})`;
+            } else {
+              const sourceTitle = source.source_asset || source.title || 'Knowledge Base';
+              const docType = source.document_type || 'document';
+              sourceItem.innerHTML = `• ${sourceTitle} (${docType})`;
+            }
+            
+            sourcesDiv.appendChild(sourceItem);
+          });
+          
+          div.appendChild(sourcesDiv);
+        }
+        
+        // Add suggestions if available (for other types of responses)
         if (metadata.suggestions && metadata.suggestions.length > 0) {
           const suggestionsDiv = document.createElement('div');
           suggestionsDiv.className = 'das-suggestions';

@@ -296,8 +296,10 @@ class ConversationManager:
             response.intent = intent
             response.confidence = self._determine_confidence_level(intent_confidence)
             
-            # Add metadata
+            # Add metadata (merge with existing metadata from handlers)
+            existing_metadata = response.metadata or {}
             response.metadata = {
+                **existing_metadata,  # Preserve sources and other metadata from handlers
                 "intent_confidence": intent_confidence,
                 "processing_time": datetime.now().isoformat(),
                 "session_id": session.session_id,
@@ -327,23 +329,10 @@ class ConversationManager:
                 include_general_knowledge=True
             )
             
-            # Add suggestions based on instruction results
-            suggestions = []
-            if rag_response.get("instruction_results"):
-                for instruction in rag_response["instruction_results"][:3]:  # Top 3 instructions
-                    suggestions.append({
-                        "title": f"Learn: {instruction['title']}",
-                        "description": instruction['description'],
-                        "action": f"explain_{instruction['instruction_id']}",
-                        "confidence": "high" if instruction.get('score', 0) > 0.8 else "medium",
-                        "category": instruction.get('category', 'guidance')
-                    })
-            
             return DASResponse(
                 message=rag_response.get("answer", "I couldn't find relevant information to answer your question."),
                 confidence=self._convert_confidence_level(rag_response.get("confidence", 0)),
                 intent=IntentType.QUESTION,
-                suggestions=suggestions,
                 metadata={
                     "sources": rag_response.get("sources", []),
                     "rag_confidence": rag_response.get("confidence", 0),
