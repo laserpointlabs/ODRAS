@@ -4,6 +4,7 @@ Knowledge Management API endpoints.
 Provides CRUD operations for knowledge assets, chunks, and processing jobs.
 """
 
+import asyncio
 import json
 import logging
 from datetime import datetime, timezone
@@ -1290,6 +1291,191 @@ async def query_knowledge_base(request: RAGQueryRequest, user: Dict = Depends(ge
     except Exception as e:
         logger.error(f"RAG query failed: {str(e)}")
         raise HTTPException(status_code=500, detail=f"Failed to process query: {str(e)}")
+
+
+@router.post("/query-workflow", response_model=RAGQueryResponse)
+async def query_knowledge_base_workflow(request: RAGQueryRequest, user: Dict = Depends(get_user)):
+    """
+    Query the knowledge base using RAG workflow (rag_query_process).
+    
+    This endpoint uses the Camunda workflow engine to process RAG queries through
+    the complete pipeline: Query Processing → Context Retrieval → LLM Generation → Response.
+    
+    Args:
+        request: RAG query request with question and parameters
+        
+    Returns:
+        Generated response with sources and metadata
+    """
+    import httpx
+    import time
+    
+    try:
+        logger.info(f"Processing RAG workflow query from user {user.get('user_id')}: '{request.question}'")
+        
+        # Get settings
+        from ..services.config import Settings
+        settings = Settings()
+        
+        # Prepare workflow request
+        from ..api.workflows import RAGQueryRequest as WorkflowRAGRequest
+        
+        workflow_request = WorkflowRAGRequest(
+            query=request.question,
+            max_results=request.max_chunks,
+            similarity_threshold=request.similarity_threshold,
+            user_context={
+                "project_id": request.project_id,
+                "response_style": request.response_style,
+                "include_metadata": request.include_metadata,
+                "user_id": user["user_id"]
+            }
+        )
+        
+        # Start the workflow
+        from ..api.workflows import start_rag_query
+        workflow_response = await start_rag_query(workflow_request, authorization="Bearer dummy")
+        
+        if not workflow_response.success:
+            raise HTTPException(status_code=500, detail="Failed to start RAG workflow")
+        
+        process_instance_id = workflow_response.process_instance_id
+        
+        # Poll for completion with timeout
+        max_wait_time = 120  # 120 seconds timeout
+        poll_interval = 1   # Poll every second
+        start_time = time.time()
+        
+        while time.time() - start_time < max_wait_time:
+            try:
+                # Get workflow status
+                from ..api.workflows import get_rag_query_status
+                status_response = await get_rag_query_status(process_instance_id, authorization="Bearer dummy")
+                
+                if status_response.get("status") == "completed":
+                    # Extract final response
+                    final_response = status_response.get("final_response")
+                    if final_response:
+                        # Parse the workflow response
+                        if isinstance(final_response, str):
+                            try:
+                                final_response = json.loads(final_response)
+                            except json.JSONDecodeError:
+                                # If it's not JSON, treat as plain text response
+                                final_response = {
+                                    "success": True,
+                                    "response": final_response,
+                                    "confidence": "medium",
+                                    "sources": [],
+                                    "query": request.question,
+                                    "chunks_found": 0,
+                                    "response_style": request.response_style,
+                                    "generated_at": datetime.utcnow().isoformat(),
+                                    "model_used": "workflow",
+                                    "provider": "rag_query_process"
+                                }
+                        
+                        # Extract metadata from workflow variables (properly extracted by workflows.py)
+                        workflow_variables = status_response.get("variables", {})
+                        sources = []
+                        chunks_found = 0
+                        confidence = "medium"  # Default
+                        
+                        # Get confidence from properly extracted workflow variables
+                        if "llm_confidence" in workflow_variables:
+                            confidence = workflow_variables["llm_confidence"]
+                            print(f"API: Extracted llm_confidence = {confidence}")
+                        elif "confidence" in workflow_variables:
+                            confidence = workflow_variables["confidence"]
+                            print(f"API: Extracted confidence = {confidence}")
+                        else:
+                            print("API: confidence/llm_confidence not found in workflow_variables")
+                            
+                        # Get chunks_found from properly extracted workflow variables  
+                        if "chunks_found" in workflow_variables:
+                            chunks_found = workflow_variables["chunks_found"]
+                            print(f"API: Extracted chunks_found = {chunks_found}")
+                        else:
+                            print("API: chunks_found not found in workflow_variables")
+                            
+                        # Get sources from properly extracted workflow variables
+                        if "sources" in workflow_variables:
+                            sources_data = workflow_variables["sources"]
+                            if isinstance(sources_data, list):
+                                sources = sources_data
+                            
+                        # Fallback: extract from response text if workflow variables don't work
+                        if not chunks_found or not sources:
+                            response_text = None
+                            if isinstance(final_response, dict):
+                                response_text = final_response.get("response") or final_response.get("final_response")
+                            elif isinstance(final_response, str):
+                                response_text = final_response
+                                
+                            if response_text:
+                                # Count contexts as fallback
+                                if not chunks_found:
+                                    chunks_found = response_text.count('[Context ')
+                                    print(f"API FALLBACK: Using text parsing for chunks_found={chunks_found}")
+                                
+                                # Extract sources from Sources section as fallback
+                                if not sources and 'Sources:' in response_text:
+                                    import re
+                                    source_matches = re.findall(r'\[(\d+)\] ([^\n]+)', response_text)
+                                    for i, (num, source_name) in enumerate(source_matches):
+                                        sources.append({
+                                            "asset_id": f"workflow_source_{i}",
+                                            "title": source_name.strip(),
+                                            "document_type": "document",
+                                            "chunk_id": None,
+                                            "relevance_score": 0.8,
+                                        })
+                                    print(f"API FALLBACK: Using text parsing for {len(sources)} sources")
+                        
+                        # Ensure required fields
+                        if not final_response.get("success"):
+                            final_response["success"] = True
+                        if not final_response.get("query"):
+                            final_response["query"] = request.question
+                        if not final_response.get("generated_at"):
+                            final_response["generated_at"] = datetime.utcnow().isoformat()
+                        # Set the extracted metadata
+                        final_response["chunks_found"] = chunks_found
+                        final_response["sources"] = sources
+                        
+                        # Only set confidence if we actually got it from LLM, otherwise null
+                        if confidence and confidence != "medium":  # medium is our default fallback
+                            final_response["confidence"] = confidence
+                        else:
+                            final_response["confidence"] = None  # Unknown confidence
+                        if not final_response.get("model_used"):
+                            final_response["model_used"] = "workflow"
+                        if not final_response.get("provider"):
+                            final_response["provider"] = "rag_query_process"
+                        
+                        return RAGQueryResponse(**final_response)
+                    else:
+                        raise HTTPException(status_code=500, detail="Workflow completed but no response generated")
+                
+                elif status_response.get("status") == "failed":
+                    error_msg = status_response.get("error", "Workflow failed")
+                    raise HTTPException(status_code=500, detail=f"RAG workflow failed: {error_msg}")
+                
+                # Still running, wait and poll again
+                await asyncio.sleep(poll_interval)
+                
+            except Exception as e:
+                logger.warning(f"Error polling workflow status: {str(e)}")
+                await asyncio.sleep(poll_interval)
+        
+        # Timeout reached
+        raise HTTPException(status_code=408, detail="RAG workflow timed out")
+        
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"RAG workflow query failed: {str(e)}")
+        raise HTTPException(status_code=500, detail=f"Failed to process workflow query: {str(e)}")
 
 
 @router.get("/query/suggestions", response_model=QuerySuggestionsResponse)
