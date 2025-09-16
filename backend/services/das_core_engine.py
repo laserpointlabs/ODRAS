@@ -676,9 +676,33 @@ class DASCoreEngine:
         Handle conversation memory queries by sending conversation context to LLM
         """
         try:
-            conversation_history = project_thread.conversation_history
+            # Get FULL conversation context from both conversation_history AND project_events
+            all_conversations = []
             
-            if not conversation_history:
+            # Add conversations from project_events (where most conversations are stored)
+            for event in project_thread.project_events:
+                if event.get("event_type") == "das_question":
+                    event_data = event.get("key_data", {})
+                    user_msg = event_data.get("user_message")
+                    das_response = event_data.get("das_response")
+                    timestamp = event.get("timestamp")
+                    
+                    if user_msg and das_response:
+                        all_conversations.append({
+                            "timestamp": timestamp,
+                            "user_message": user_msg,
+                            "das_response": das_response,
+                            "source": "project_event"
+                        })
+            
+            # Add conversations from conversation_history
+            for conv in project_thread.conversation_history:
+                all_conversations.append(conv)
+            
+            # Sort by timestamp
+            all_conversations.sort(key=lambda x: x.get("timestamp", ""))
+            
+            if not all_conversations:
                 # No conversation history - send to LLM with context
                 llm_query = f"""
                 User asks: "{message}"
@@ -688,8 +712,8 @@ class DASCoreEngine:
                 Please respond naturally to the user's question about conversation history.
                 """
             else:
-                # Build conversation context for LLM
-                recent_conversations = conversation_history[-5:]  # Last 5 exchanges
+                # Build conversation context for LLM using FULL conversation data
+                recent_conversations = all_conversations[-5:]  # Last 5 exchanges
                 context_lines = []
                 
                 for conv in recent_conversations:
@@ -733,8 +757,8 @@ class DASCoreEngine:
                 response_message = llm_response
             else:
                 # If LLM fails, provide a helpful response based on conversation history
-                if conversation_history:
-                    last_interaction = conversation_history[-1]
+                if all_conversations:
+                    last_interaction = all_conversations[-1]
                     last_question = last_interaction.get("user_message", "")
                     response_message = f'You just asked: "{last_question}"'
                 else:
@@ -763,7 +787,7 @@ class DASCoreEngine:
                 session_id=project_thread.project_thread_id,
                 metadata={
                     "source": "conversation_memory_llm",
-                    "conversation_length": len(conversation_history),
+                    "conversation_length": len(all_conversations),
                     "processing_time": datetime.now().isoformat()
                 }
             )
