@@ -15,6 +15,7 @@ from dataclasses import asdict
 
 from .config import Settings
 from .db import DatabaseService
+from .installation_iri_service import get_installation_iri_service
 from .file_storage import get_file_storage_service
 from .qdrant_service import get_qdrant_service
 from .neo4j_service import get_neo4j_service
@@ -115,6 +116,15 @@ class KnowledgeTransformationService:
         asset_id = str(uuid4())
         now = datetime.now(timezone.utc)
 
+        # Generate installation-specific IRI
+        asset_iri = None
+        try:
+            iri_service = get_installation_iri_service(self.settings)
+            asset_iri = iri_service.generate_knowledge_iri(project_id, title, asset_id)
+            logger.info(f"Generated IRI for knowledge asset {asset_id}: {asset_iri}")
+        except Exception as e:
+            logger.warning(f"Failed to generate IRI for knowledge asset {asset_id}: {e}")
+
         conn = self.db_service._conn()
         try:
             with conn.cursor() as cur:
@@ -122,8 +132,8 @@ class KnowledgeTransformationService:
                     """
                     INSERT INTO knowledge_assets 
                     (id, source_file_id, project_id, title, document_type, status, 
-                     created_at, updated_at, metadata)
-                    VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s)
+                     created_at, updated_at, metadata, iri)
+                    VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
                 """,
                     (
                         asset_id,
@@ -135,6 +145,7 @@ class KnowledgeTransformationService:
                         now,
                         now,
                         json.dumps(processing_options or {}),
+                        asset_iri,
                     ),
                 )
                 conn.commit()
@@ -214,6 +225,25 @@ class KnowledgeTransformationService:
                 # Plain text or binary treated as text
                 try:
                     extracted_text = content.decode("utf-8")
+                except UnicodeDecodeError:
+                    extracted_text = content.decode("utf-8", errors="ignore")
+                    logger.warning(
+                        f"Unicode decode errors in file {file_id}, some characters ignored"
+                    )
+
+            elif content_type in ["application/json", "application/xml", "application/yaml", "application/x-yaml", "text/yaml", "text/x-yaml"]:
+                # Structured data formats - treat as text
+                try:
+                    extracted_text = content.decode("utf-8")
+                    # For JSON, we can pretty-print it for better readability
+                    if content_type == "application/json":
+                        import json
+                        try:
+                            parsed_json = json.loads(extracted_text)
+                            extracted_text = json.dumps(parsed_json, indent=2, ensure_ascii=False)
+                        except json.JSONDecodeError:
+                            # If JSON is invalid, keep original text
+                            pass
                 except UnicodeDecodeError:
                     extracted_text = content.decode("utf-8", errors="ignore")
                     logger.warning(

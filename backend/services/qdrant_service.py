@@ -337,7 +337,7 @@ class QdrantService:
                 "points_count": info.points_count,
                 "segments_count": info.segments_count,
                 "status": info.status.name if info.status else "unknown",
-                "optimizer_status": (info.optimizer_status.ok if info.optimizer_status else True),
+                "optimizer_status": (getattr(info.optimizer_status, 'ok', True) if info.optimizer_status else True),
                 "disk_data_size": getattr(info, "disk_data_size", 0),
                 "ram_data_size": getattr(info, "ram_data_size", 0),
             }

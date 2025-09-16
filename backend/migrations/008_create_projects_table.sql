@@ -2,7 +2,8 @@
 -- Projects are created within namespaces and contain ontologies
 
 -- Add missing columns to existing projects table
-ALTER TABLE public.projects ADD COLUMN IF NOT EXISTS namespace_id UUID REFERENCES namespace_registry(id) ON DELETE CASCADE;
+-- Note: namespace_id foreign key will be added in migration 010 after namespace_registry is created
+ALTER TABLE public.projects ADD COLUMN IF NOT EXISTS namespace_id UUID;
 ALTER TABLE public.projects ADD COLUMN IF NOT EXISTS domain VARCHAR(255);
 ALTER TABLE public.projects ADD COLUMN IF NOT EXISTS status VARCHAR(50) DEFAULT 'active' CHECK (status IN ('active', 'archived', 'deprecated'));
 
