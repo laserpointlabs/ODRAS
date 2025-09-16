@@ -425,30 +425,36 @@ class ProjectIntelligenceService:
         user_query: str
     ) -> str:
         """
-        Enhance user query with project context for better RAG results
+        Enhance user query with project context ONLY when it helps
         """
         try:
+            # For specific knowledge queries, don't add extra context that confuses search
+            query_lower = user_query.lower()
+            
+            # If asking about specific entities, keep query clean
+            if any(term in query_lower for term in [
+                "quadcopter", "trivector", "vtol", "specifications", "platform",
+                "hovercruise", "skyeagle", "octicopter", "falcon"
+            ]):
+                # Keep the query clean for precise matching
+                return user_query
+            
+            # Only enhance general/ambiguous queries
             enhanced_parts = [user_query]
             
-            # Add project context
-            if project_thread_context.project_goals:
-                enhanced_parts.append(f"Project goals: {project_thread_context.project_goals}")
-            
-            # Add ontology context
-            if project_thread_context.active_ontologies:
+            # Add minimal helpful context for general queries
+            if "ontology" in query_lower and project_thread_context.active_ontologies:
                 active_ontology = project_thread_context.active_ontologies[-1]
-                enhanced_parts.append(f"Working with ontology: {active_ontology}")
+                enhanced_parts.append(f"ontology: {active_ontology}")
             
-            # Add workbench context
-            enhanced_parts.append(f"Current workbench: {project_thread_context.current_workbench}")
+            if "goal" in query_lower and project_thread_context.project_goals:
+                enhanced_parts.append(f"goals: {project_thread_context.project_goals}")
             
-            # Add recent activity context
-            if project_thread_context.project_events:
-                recent_events = project_thread_context.project_events[-3:]
-                recent_activities = [e.get("summary", "") for e in recent_events]
-                enhanced_parts.append(f"Recent activities: {', '.join(recent_activities)}")
-            
-            return " | ".join(enhanced_parts)
+            # Only join if we actually added context
+            if len(enhanced_parts) > 1:
+                return " | ".join(enhanced_parts)
+            else:
+                return user_query
             
         except Exception as e:
             logger.error(f"Failed to enhance query with context: {e}")

@@ -1008,6 +1008,58 @@ async def capture_analysis_completed_event(
         )
 
 
+@router.delete("/project/{project_id}/thread/last-message")
+async def remove_last_message_from_thread(
+    project_id: str,
+    current_user: dict = Depends(get_current_user),
+    engine: DASCoreEngine = Depends(get_das_engine)
+):
+    """
+    Remove the last message pair (user + DAS) from project thread for edit & retry
+    """
+    try:
+        user_id = current_user.get("user_id")
+        if not user_id:
+            raise HTTPException(
+                status_code=status.HTTP_401_UNAUTHORIZED,
+                detail="User not authenticated"
+            )
+        
+        # Get the project thread
+        if hasattr(engine, 'project_manager') and engine.project_manager:
+            project_thread = await engine.project_manager.get_or_create_project_thread(project_id, user_id)
+            
+            # Remove last conversation entry if it exists
+            if project_thread.conversation_history:
+                removed_entry = project_thread.conversation_history.pop()
+                
+                # Persist the updated thread
+                await engine.project_manager._persist_project_thread(project_thread)
+                
+                return {
+                    "success": True,
+                    "removed_message": removed_entry.get("user_message", ""),
+                    "remaining_entries": len(project_thread.conversation_history)
+                }
+            else:
+                return {
+                    "success": False,
+                    "message": "No conversation history to remove"
+                }
+        else:
+            raise HTTPException(
+                status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+                detail="Project intelligence not available"
+            )
+        
+    except Exception as e:
+        logger.error(f"Error removing last message from project thread: {e}")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Error removing message: {str(e)}"
+        )
+
+
 # Initialize DAS engine function
 async def initialize_das_engine(settings: Settings, rag_service: RAGService, db_service: DatabaseService, redis_client):
     """

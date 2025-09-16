@@ -216,8 +216,8 @@ class DASCoreEngine:
                 question=enhanced_query,
                 project_id=project_id,
                 user_id=user_id,
-                max_chunks=5,
-                similarity_threshold=0.4,  # Slightly lower for better coverage
+                max_chunks=3,  # Fewer chunks for more focused responses
+                similarity_threshold=0.5,  # Higher threshold for precision
                 include_metadata=True,
                 response_style="comprehensive"
             )
@@ -802,22 +802,35 @@ class DASCoreEngine:
         
         # Check for high-quality matches (high similarity scores)
         high_quality_match = False
+        very_high_quality_match = False
         if sources:
-            # If any source has high relevance score (>50%), it's a high-quality match
+            max_relevance = 0
             for source in sources:
                 relevance_score = source.get("relevance_score", 0)
-                if relevance_score > 0.5:  # 50% relevance threshold
-                    high_quality_match = True
-                    break
+                max_relevance = max(max_relevance, relevance_score)
+                
+            # Very high quality: >60% relevance
+            if max_relevance > 0.6:
+                very_high_quality_match = True
+                high_quality_match = True
+            # High quality: >50% relevance  
+            elif max_relevance > 0.5:
+                high_quality_match = True
         
         # High confidence conditions
-        if high_quality_match and rag_confidence in ["high", "medium"]:
+        if very_high_quality_match and rag_confidence in ["high", "medium"]:
             return DASConfidence.HIGH
+            
+        if high_quality_match and rag_confidence == "high" and chunks_count == 1:
+            return DASConfidence.HIGH  # Perfect single match
         
-        if chunks_count >= 3 and rag_confidence in ["high", "medium"]:
+        if chunks_count >= 3 and rag_confidence == "high":
             return DASConfidence.HIGH
         
         # Medium confidence conditions  
+        if high_quality_match and rag_confidence in ["medium"]:
+            return DASConfidence.MEDIUM
+            
         if chunks_count >= 1 and rag_confidence != "low":
             return DASConfidence.MEDIUM
         

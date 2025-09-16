@@ -853,6 +853,68 @@
       margin-bottom: 0;
     }
     
+    /* Edit button styling */
+    .das-user-message-container {
+      display: flex;
+      justify-content: space-between;
+      align-items: flex-start;
+      gap: 8px;
+    }
+    
+    .das-edit-btn {
+      background: var(--muted);
+      border: 1px solid var(--border);
+      border-radius: 4px;
+      padding: 2px 6px;
+      font-size: 0.8em;
+      cursor: pointer;
+      color: var(--text);
+      opacity: 0.7;
+      transition: opacity 0.2s;
+      flex-shrink: 0;
+    }
+    
+    .das-edit-btn:hover {
+      opacity: 1;
+      background: var(--accent);
+      color: white;
+    }
+    
+    .das-edit-input {
+      width: 100%;
+      padding: 8px;
+      border: 1px solid var(--accent);
+      border-radius: 4px;
+      font-family: inherit;
+      font-size: 0.9em;
+      margin: 4px 0;
+    }
+    
+    .das-edit-controls {
+      display: flex;
+      gap: 8px;
+      margin-top: 4px;
+    }
+    
+    .das-edit-controls button {
+      padding: 4px 8px;
+      border: 1px solid var(--border);
+      border-radius: 4px;
+      background: var(--bg);
+      cursor: pointer;
+      font-size: 0.8em;
+    }
+    
+    .das-edit-controls .save-btn {
+      background: var(--accent);
+      color: white;
+      border-color: var(--accent);
+    }
+    
+    .das-edit-controls .cancel-btn {
+      background: var(--muted);
+    }
+    
     /* LLM Status Indicator */
     .llm-status-indicator {
       font-size: 12px;
@@ -11250,6 +11312,149 @@
         }
       }
       
+      // Edit and retry functionality (global scope)
+      window.editLastMessage = function(originalMessage, messageElement) {
+        console.log('🔧 Edit button clicked for message:', originalMessage);
+        
+        // If messageElement not provided, find it by the button that was clicked
+        if (!messageElement) {
+          // Find the message element by looking for the button that was clicked
+          const clickedButton = event.target.closest('.das-edit-btn');
+          console.log('🔍 Found clicked button:', clickedButton);
+          
+          if (clickedButton) {
+            messageElement = clickedButton.closest('.das-user-message');
+            console.log('🔍 Found message element:', messageElement);
+          }
+        }
+        
+        if (!messageElement) {
+          console.error('❌ Could not find message element');
+          return;
+        }
+        
+        const messageContainer = messageElement.querySelector('.das-user-message-container');
+        console.log('🔍 Found message container:', messageContainer);
+        
+        if (!messageContainer) {
+          console.error('❌ Could not find message container');
+          return;
+        }
+        
+        // Store reference to the message element for later cleanup
+        messageContainer.setAttribute('data-original-message', originalMessage);
+        messageElement.setAttribute('data-editing', 'true');
+        
+        // Replace with edit interface
+        messageContainer.innerHTML = `
+          <div><strong>You:</strong> <em>(editing)</em></div>
+          <textarea class="das-edit-input" rows="2">${originalMessage}</textarea>
+          <div class="das-edit-controls">
+            <button class="save-btn" onclick="window.saveEditedMessage(this)">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" width="14" height="14">
+                <path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"/>
+                <polyline points="17,21 17,13 7,13 7,21"/>
+                <polyline points="7,3 7,8 15,8"/>
+              </svg>
+              Save & Retry
+            </button>
+            <button class="cancel-btn" onclick="window.cancelEdit(this)">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" width="14" height="14">
+                <line x1="18" y1="6" x2="6" y2="18"/>
+                <line x1="6" y1="6" x2="18" y2="18"/>
+              </svg>
+              Cancel
+            </button>
+          </div>
+        `;
+        
+        // Focus the textarea
+        const textarea = messageContainer.querySelector('.das-edit-input');
+        if (textarea) {
+          textarea.focus();
+          textarea.select();
+        }
+      }
+      
+      window.saveEditedMessage = async function(button) {
+        console.log('💾 Save & Retry clicked');
+        const messageContainer = button.closest('.das-user-message-container');
+        const textarea = messageContainer.querySelector('.das-edit-input');
+        const newMessage = textarea.value.trim();
+        
+        console.log('📝 New message:', newMessage);
+        if (!newMessage) return;
+        
+        try {
+          // Find the message being edited
+          const editedMessageElement = button.closest('.das-user-message');
+          const transcript = document.getElementById('dasTranscript');
+          const allMessages = Array.from(transcript.querySelectorAll('.card'));
+          
+          // Find the index of the message being edited
+          const editedIndex = allMessages.indexOf(editedMessageElement);
+          console.log(`🔍 Editing message at index ${editedIndex}, removing ${allMessages.length - editedIndex} messages`);
+          
+          // Remove ALL messages from the edited point onward (including the edited message)
+          for (let i = allMessages.length - 1; i >= editedIndex; i--) {
+            allMessages[i].remove();
+            console.log(`🗑️ Removed message at index ${i}`);
+          }
+          
+          // Calculate how many conversation entries to remove from the project thread
+          // Each user message + DAS response = 1 conversation entry
+          const conversationsToRemove = Math.ceil((allMessages.length - editedIndex) / 2);
+          
+          // Remove conversation entries from the project thread
+          const projectId = getCurrentProjectId();
+          if (projectId && conversationsToRemove > 0) {
+            for (let i = 0; i < conversationsToRemove; i++) {
+              const response = await fetch(`/api/das/project/${projectId}/thread/last-message`, {
+                method: 'DELETE',
+                headers: { ...authHeader() }
+              });
+              
+              if (response.ok) {
+                console.log(`✅ Removed conversation entry ${i + 1}/${conversationsToRemove} from project thread`);
+              } else {
+                console.warn(`⚠️ Could not remove conversation entry ${i + 1} from thread`);
+              }
+            }
+          }
+          
+          // Send the edited message as a fresh start
+          await sendDASMessage(newMessage);
+          
+        } catch (error) {
+          console.error('Error during edit and retry:', error);
+          // Still try to send the new message even if cleanup failed
+          await sendDASMessage(newMessage);
+        }
+      }
+      
+      window.cancelEdit = function(button) {
+        console.log('❌ Cancel edit clicked');
+        const messageContainer = button.closest('.das-user-message-container');
+        const messageElement = button.closest('.das-user-message');
+        
+        // Get original message from data attribute
+        const originalMessage = messageContainer.getAttribute('data-original-message') || 'Message';
+        
+        // Restore original message with edit button
+        messageContainer.innerHTML = `
+          <div><strong>You:</strong> ${originalMessage}</div>
+          <button class="das-edit-btn" onclick="window.editLastMessage('${originalMessage.replace(/'/g, "\\'")}')">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" width="14" height="14">
+              <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/>
+              <path d="m18.5 2.5 3 3L12 15l-4 1 1-4 9.5-9.5z"/>
+            </svg>
+          </button>
+        `;
+        
+        // Remove editing flag
+        messageElement.removeAttribute('data-editing');
+      }
+      
       // Send message to DAS
       async function sendDASMessage(message) {
         if (isProcessing || !message.trim()) return;
@@ -11366,7 +11571,18 @@
         let useMarkdown = false;
         
         if (type === 'user') {
-          content = `<strong>You:</strong> ${escapeHtml(message)}`;
+          div.className = 'card das-user-message';  // Add specific class for user messages
+          content = `
+            <div class="das-user-message-container">
+              <strong>You:</strong> ${escapeHtml(message)}
+              <button class="das-edit-btn" onclick="window.editLastMessage('${escapeHtml(message).replace(/'/g, "\\'")}')">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" width="14" height="14">
+                  <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/>
+                  <path d="m18.5 2.5 3 3L12 15l-4 1 1-4 9.5-9.5z"/>
+                </svg>
+              </button>
+            </div>
+          `;
         } else if (type === 'das') {
           content = `<strong>DAS:</strong> `;
           if (metadata.confidence) {
