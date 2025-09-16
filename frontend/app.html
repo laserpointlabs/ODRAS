@@ -4565,6 +4565,11 @@
       authCheckInProgress = true;
       isAuthenticated = false;
       
+      // Close and clean DAS dock when session expires
+      if (typeof window.closeDASAndClean === 'function') {
+        window.closeDASAndClean();
+      }
+      
       // Clear stored auth data
       localStorage.removeItem(tokenKey);
         localStorage.removeItem(userKey);
@@ -4786,6 +4791,11 @@
           console.warn('Logout API call failed:', error);
           // Continue with local logout even if API call fails
         }
+      }
+      
+      // Close and clean DAS dock
+      if (typeof window.closeDASAndClean === 'function') {
+        window.closeDASAndClean();
       }
       
       // Clear user-specific data from localStorage but preserve URL state
@@ -11089,6 +11099,55 @@
       function persist() { try { localStorage.setItem(storageKey, JSON.stringify(state)); } catch(_) {} }
       function toggleOpen() { state.open = !state.open; applyState(); persist(); }
       function setDock(pos) { state.dock = pos; applyState(); persist(); }
+      
+      // Function to close and clean DAS dock (for logout/session expiry)
+      function closeDASAndClean() {
+        console.log('🔒 Closing and cleaning DAS dock due to logout/session expiry');
+        
+        // Close the dock
+        state.open = false;
+        applyState();
+        persist();
+        
+        // Clear DAS-related state
+        currentProjectThreadId = null;
+        isProcessing = false;
+        
+        // Clear transcript
+        if (transcript) {
+          transcript.innerHTML = '';
+        }
+        
+        // Clear prompt input
+        if (promptInput) {
+          promptInput.value = '';
+        }
+        
+        // Update status
+        updateDASStatus('Disconnected');
+        
+        // Stop LLM health monitoring
+        stopLLMHealthMonitoring();
+        
+        // Clear any DAS-related localStorage entries for the current session
+        try {
+          // Note: We don't clear the dock state (position, size) as that's user preference
+          // Only clear session-specific data
+          const keysToCheck = Object.keys(localStorage);
+          keysToCheck.forEach(key => {
+            if (key.startsWith('das_session_') || key.startsWith('das_thread_')) {
+              localStorage.removeItem(key);
+            }
+          });
+        } catch (e) {
+          console.warn('Failed to clear DAS session data:', e);
+        }
+        
+        console.log('✅ DAS dock closed and cleaned');
+      }
+      
+      // Make closeDASAndClean available globally for logout functions
+      window.closeDASAndClean = closeDASAndClean;
       // Resize handlers
       (function(){
         let dragging = false; let startX = 0; let startY = 0; let startW = 0; let startH = 0;
@@ -11643,9 +11702,42 @@
             btn.className = 'btn';
             btn.style.margin = '2px';
             btn.style.fontSize = '12px';
-            btn.textContent = suggestion.title;
-            btn.title = suggestion.description;
-            btn.onclick = () => sendDASMessage(suggestion.description);
+            
+            // Handle different suggestion formats
+            let buttonText, tooltipText, messageToSend;
+            
+            if (typeof suggestion === 'string') {
+              // Simple string format
+              buttonText = suggestion;
+              tooltipText = suggestion;
+              messageToSend = suggestion;
+            } else if (suggestion.title) {
+              // Object format with title/description
+              buttonText = suggestion.title || 'Suggestion';
+              tooltipText = suggestion.description || suggestion.title || 'Click to use this suggestion';
+              // Use title as the message, or action if available, or description as fallback
+              messageToSend = suggestion.action || suggestion.title || suggestion.description || suggestion.text;
+            } else if (suggestion.text) {
+              // Alternative object format with text field
+              buttonText = suggestion.text;
+              tooltipText = suggestion.text;
+              messageToSend = suggestion.text;
+            } else {
+              // Fallback for unknown format
+              buttonText = 'Suggestion';
+              tooltipText = 'Click to use this suggestion';
+              messageToSend = JSON.stringify(suggestion);
+            }
+            
+            btn.textContent = buttonText;
+            btn.title = tooltipText;
+            btn.onclick = () => {
+              if (messageToSend && typeof messageToSend === 'string' && messageToSend.trim()) {
+                sendDASMessage(messageToSend);
+              } else {
+                console.warn('Invalid suggestion message:', messageToSend);
+              }
+            };
             suggestionsDiv.appendChild(btn);
           });
           
