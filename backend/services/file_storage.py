@@ -33,6 +33,7 @@ except ImportError:
     POSTGRES_AVAILABLE = False
 
 from .config import Settings
+from .installation_iri_service import get_installation_iri_service
 
 logger = logging.getLogger(__name__)
 
@@ -55,6 +56,7 @@ class FileMetadata:
         tags: Optional[Dict] = None,
         visibility: str = "private",  # "private" or "public"
         created_by: Optional[str] = None,  # User ID of file owner
+        iri: Optional[str] = None,  # Installation-specific IRI
     ):
         self.file_id = file_id
         self.filename = filename
@@ -69,6 +71,7 @@ class FileMetadata:
         self.tags = tags or {}
         self.visibility = visibility
         self.created_by = created_by
+        self.iri = iri
 
     def to_dict(self) -> Dict[str, Any]:
         return {
@@ -85,6 +88,7 @@ class FileMetadata:
             "tags": self.tags,
             "visibility": self.visibility,
             "created_by": self.created_by,
+            "iri": self.iri,
         }
 
 
@@ -493,8 +497,8 @@ class PostgreSQLBackend(StorageBackend):
                     """
                     INSERT INTO files 
                     (id, filename, content_type, file_size, hash_md5, hash_sha256, 
-                     storage_path, project_id, tags, created_at, updated_at, created_by)
-                    VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
+                     storage_path, project_id, tags, created_at, updated_at, created_by, iri)
+                    VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
                     ON CONFLICT (id) DO UPDATE SET
                         filename = EXCLUDED.filename,
                         content_type = EXCLUDED.content_type,
@@ -516,6 +520,7 @@ class PostgreSQLBackend(StorageBackend):
                         metadata.created_at,
                         metadata.updated_at,
                         metadata.created_by,
+                        metadata.iri,
                     ),
                 )
 
@@ -687,7 +692,7 @@ class PostgreSQLBackend(StorageBackend):
                 query = (
                     """
                     SELECT id as file_id, filename, content_type, file_size as size, hash_md5, hash_sha256,
-                           storage_path, created_at, updated_at, metadata
+                           storage_path, created_at, updated_at, metadata, iri
                     FROM files 
                     """
                     + where_clause  # nosec B608
@@ -719,6 +724,8 @@ class PostgreSQLBackend(StorageBackend):
                         "project_id": metadata.get("project_id"),
                         "tags": metadata.get("tags", {}),
                         "visibility": metadata.get("visibility", "private"),
+                        "created_by": metadata.get("created_by"),
+                        "iri": row.get("iri"),
                     }
                     results.append(result)
 
@@ -989,6 +996,16 @@ class FileStorageService:
             # Generate unique file ID
             file_id = str(uuid.uuid4())
 
+            # Generate installation-specific IRI
+            file_iri = None
+            if project_id:
+                try:
+                    iri_service = get_installation_iri_service(self.settings)
+                    file_iri = iri_service.generate_file_iri(project_id, filename, file_id)
+                    logger.info(f"Generated IRI for file {file_id}: {file_iri}")
+                except Exception as e:
+                    logger.warning(f"Failed to generate IRI for file {file_id}: {e}")
+
             # Auto-detect content type if not provided
             if not content_type:
                 content_type, _ = mimetypes.guess_type(filename)
@@ -1013,6 +1030,7 @@ class FileStorageService:
                 tags=tags or {},
                 visibility="private",  # All files are private by default
                 created_by=created_by,
+                iri=file_iri,
             )
 
             # Store file using backend
@@ -1086,7 +1104,25 @@ class FileStorageService:
             True if successful, False otherwise
         """
         try:
-            return await self.backend.delete_file(file_id)
+            # Delete from storage backend (MinIO, local, etc.)
+            backend_success = await self.backend.delete_file(file_id)
+            
+            if not backend_success:
+                return False
+            
+            # For non-PostgreSQL backends, also delete the database record
+            # This triggers the CASCADE/SET NULL behavior for knowledge assets
+            if self.settings.storage_backend != "postgresql" and self.metadata_backend:
+                try:
+                    # Use the metadata backend to delete the database record
+                    await self.metadata_backend.delete_file(file_id)
+                    logger.info(f"Deleted file record from database: {file_id}")
+                except Exception as e:
+                    logger.error(f"Failed to delete file record from database: {e}")
+                    # Don't fail the whole operation if database deletion fails
+                    pass
+            
+            return True
 
         except Exception as e:
             logger.error(f"Failed to delete file {file_id}: {e}")

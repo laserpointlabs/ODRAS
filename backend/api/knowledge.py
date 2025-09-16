@@ -231,6 +231,116 @@ def format_asset_response(asset_row: Dict) -> KnowledgeAssetResponse:
 # ========================================
 
 
+@router.get("/admin/assets", response_model=KnowledgeListResponse)
+async def list_all_knowledge_assets_admin(
+    project_id: Optional[str] = Query(None, description="Filter by project ID"),
+    document_type: Optional[str] = Query(None, description="Filter by document type"),
+    status: Optional[str] = Query("active", description="Filter by status"),
+    user_id: Optional[str] = Query(None, description="Filter by user ID"),
+    title_contains: Optional[str] = Query(None, description="Filter by title containing text"),
+    traceability_status: Optional[str] = Query(None, description="Filter by traceability status (linked, orphaned, archived)"),
+    limit: int = Query(100, ge=1, le=1000, description="Maximum number of results"),
+    offset: int = Query(0, ge=0, description="Result offset for pagination"),
+    db: DatabaseService = Depends(get_knowledge_service),
+    admin_user: Dict = Depends(get_admin_user),
+):
+    """
+    List ALL knowledge assets across all users (Admin only).
+    
+    This endpoint allows admins to view and manage all knowledge assets
+    in the system regardless of project ownership.
+    """
+    try:
+        logger.info(f"Admin {admin_user.get('user_id')} listing all knowledge assets")
+
+        # Build query with filters - no project restrictions for admin
+        where_clauses = ["1=1"]  # Base condition
+        params = []
+
+        if project_id:
+            where_clauses.append("ka.project_id = %s")
+            params.append(project_id)
+            
+        if document_type:
+            where_clauses.append("ka.document_type = %s")
+            params.append(document_type)
+            
+        if status:
+            where_clauses.append("ka.status = %s")
+            params.append(status)
+            
+        if user_id:
+            where_clauses.append("f.created_by = %s")
+            params.append(user_id)
+            
+        if title_contains:
+            where_clauses.append("ka.title ILIKE %s")
+            params.append(f"%{title_contains}%")
+            
+        if traceability_status:
+            where_clauses.append("ka.traceability_status = %s")
+            params.append(traceability_status)
+
+        where_sql = " AND ".join(where_clauses)
+
+        # Execute query
+        conn = db._conn()
+        try:
+            with conn.cursor() as cur:
+                # Get total count
+                count_sql = f"""
+                    SELECT COUNT(*) 
+                    FROM knowledge_assets ka
+                    LEFT JOIN files f ON ka.source_file_id = f.id
+                    LEFT JOIN public.users u ON f.created_by = u.user_id::text
+                    WHERE {where_sql}
+                """
+                cur.execute(count_sql, params)
+                total_count = cur.fetchone()[0]
+
+                # Get assets with pagination and user info
+                assets_sql = f"""
+                    SELECT ka.*, f.filename as source_filename, f.created_by as file_owner,
+                           u.username as owner_username, u.display_name as owner_display_name
+                    FROM knowledge_assets ka
+                    LEFT JOIN files f ON ka.source_file_id = f.id
+                    LEFT JOIN public.users u ON f.created_by = u.user_id::text
+                    WHERE {where_sql}
+                    ORDER BY ka.created_at DESC
+                    LIMIT %s OFFSET %s
+                """
+                cur.execute(assets_sql, params + [limit, offset])
+                rows = cur.fetchall()
+
+                # Format response with owner information
+                assets = []
+                for row in rows:
+                    asset_dict = dict(zip([desc[0] for desc in cur.description], row))
+                    asset_response = format_asset_response(asset_dict)
+                    
+                    # Add owner information for admin view
+                    asset_response.metadata = asset_response.metadata or {}
+                    asset_response.metadata.update({
+                        "owner_user_id": asset_dict.get("file_owner"),
+                        "owner_username": asset_dict.get("owner_username"),
+                        "owner_display_name": asset_dict.get("owner_display_name")
+                    })
+                    
+                    assets.append(asset_response)
+
+                return KnowledgeListResponse(
+                    assets=assets,
+                    total_count=total_count,
+                    message=f"Retrieved {len(assets)} knowledge assets (Admin view)",
+                )
+        finally:
+            db._return(conn)
+
+    except Exception as e:
+        logger.error(f"Failed to list all knowledge assets: {str(e)}")
+        raise HTTPException(status_code=500, detail=f"Failed to list knowledge assets: {str(e)}")
+
+
 @router.get("/assets", response_model=KnowledgeListResponse)
 async def list_knowledge_assets(
     project_id: Optional[str] = Query(None, description="Filter by project ID"),
@@ -935,6 +1045,98 @@ async def force_delete_knowledge_asset(
         raise HTTPException(status_code=500, detail=f"Failed to delete asset: {str(e)}")
 
 
+@router.delete("/admin/cleanup-unknown")
+async def cleanup_unknown_assets(
+    dry_run: bool = Query(True, description="If true, only count assets to delete without actually deleting them"),
+    db: DatabaseService = Depends(get_knowledge_service),
+    admin_user: Dict = Depends(get_admin_user),
+):
+    """
+    Clean up knowledge assets with unknown or problematic titles (Admin only).
+    
+    This endpoint identifies and optionally deletes assets with:
+    - title = "unknown"
+    - title = ""
+    - title is NULL
+    - document_type = "unknown" and title looks auto-generated
+    
+    Args:
+        dry_run: If true, only returns count without deleting
+    
+    Returns:
+        Summary of cleanup operation
+    """
+    try:
+        logger.info(f"Admin {admin_user.get('user_id')} starting unknown assets cleanup (dry_run={dry_run})")
+
+        conn = db._conn()
+        try:
+            with conn.cursor() as cur:
+                # Find problematic assets
+                cleanup_sql = """
+                    SELECT ka.id, ka.title, ka.document_type, ka.project_id, 
+                           f.filename as source_filename, f.created_by as file_owner,
+                           u.username as owner_username
+                    FROM knowledge_assets ka
+                    LEFT JOIN files f ON ka.source_file_id = f.id
+                    LEFT JOIN public.users u ON f.created_by = u.user_id::text
+                    WHERE 
+                        ka.title = 'unknown' OR 
+                        ka.title = '' OR 
+                        ka.title IS NULL OR
+                        (ka.document_type = 'unknown' AND (
+                            ka.title LIKE 'Asset %' OR 
+                            ka.title LIKE 'Document %' OR
+                            ka.title LIKE 'File %'
+                        ))
+                    ORDER BY ka.created_at DESC
+                """
+                
+                cur.execute(cleanup_sql)
+                problematic_assets = cur.fetchall()
+                
+                asset_details = []
+                for row in problematic_assets:
+                    asset_dict = dict(zip([desc[0] for desc in cur.description], row))
+                    asset_details.append({
+                        "id": str(asset_dict["id"]),
+                        "title": asset_dict["title"] or "(null)",
+                        "document_type": asset_dict["document_type"],
+                        "project_id": str(asset_dict["project_id"]) if asset_dict["project_id"] else None,
+                        "source_filename": asset_dict["source_filename"],
+                        "owner_username": asset_dict["owner_username"]
+                    })
+                
+                deleted_count = 0
+                if not dry_run and problematic_assets:
+                    # Actually delete the assets
+                    asset_ids = [str(row[0]) for row in problematic_assets]
+                    placeholders = ','.join(['%s'] * len(asset_ids))
+                    delete_sql = f"DELETE FROM knowledge_assets WHERE id IN ({placeholders})"
+                    
+                    cur.execute(delete_sql, asset_ids)
+                    deleted_count = cur.rowcount
+                    conn.commit()
+                    
+                    logger.info(f"Deleted {deleted_count} problematic knowledge assets")
+
+                return {
+                    "success": True,
+                    "dry_run": dry_run,
+                    "found_count": len(problematic_assets),
+                    "deleted_count": deleted_count,
+                    "message": f"{'Found' if dry_run else 'Deleted'} {len(problematic_assets)} problematic knowledge assets",
+                    "assets": asset_details if dry_run else None
+                }
+
+        finally:
+            db._return(conn)
+
+    except Exception as e:
+        logger.error(f"Failed to cleanup unknown assets: {str(e)}")
+        raise HTTPException(status_code=500, detail=f"Cleanup failed: {str(e)}")
+
+
 # ========================================
 # PROCESSING JOBS ENDPOINTS
 # ========================================
@@ -1024,10 +1226,78 @@ async def list_processing_jobs(
                         )
                     )
 
-                return jobs
+                database_jobs = jobs
 
         finally:
             db._return(conn)
+
+        # Get active Camunda workflows for reprocessing
+        camunda_jobs = []
+        try:
+            import httpx
+            CAMUNDA_BASE_URL = "http://localhost:8080"
+            CAMUNDA_REST_API = f"{CAMUNDA_BASE_URL}/engine-rest"
+            
+            async with httpx.AsyncClient(timeout=10) as client:
+                # Query active process instances for knowledge processing workflows
+                response = await client.get(
+                    f"{CAMUNDA_REST_API}/process-instance",
+                    params={
+                        "processDefinitionKey": "automatic_knowledge_processing",
+                        "active": "true"
+                    }
+                )
+                
+                if response.status_code == 200:
+                    active_processes = response.json()
+                    
+                    for process in active_processes:
+                        try:
+                            # Get process variables to extract file info
+                            vars_response = await client.get(
+                                f"{CAMUNDA_REST_API}/process-instance/{process['id']}/variables"
+                            )
+                            
+                            if vars_response.status_code == 200:
+                                variables = vars_response.json()
+                                file_id = variables.get("file_id", {}).get("value", "unknown")
+                                filename = variables.get("filename", {}).get("value", "unknown")
+                                doc_type = variables.get("document_type", {}).get("value", "unknown")
+                                
+                                # Create a synthetic job response for the Camunda workflow
+                                camunda_job = ProcessingJobResponse(
+                                    id=f"camunda-{process['id']}",
+                                    asset_id=f"processing-{file_id}",
+                                    job_type="reprocessing",
+                                    status="running",
+                                    progress_percent=50,  # Assume 50% for active workflows
+                                    created_at=process.get("startTime", ""),
+                                    started_at=process.get("startTime", ""),
+                                    completed_at=None,
+                                    error_message=None,
+                                    metadata={
+                                        "file_id": file_id,
+                                        "filename": filename,
+                                        "document_type": doc_type,
+                                        "process_instance_id": process["id"],
+                                        "source": "camunda"
+                                    }
+                                )
+                                camunda_jobs.append(camunda_job)
+                        except Exception as e:
+                            logger.warning(f"Failed to process Camunda workflow {process['id']}: {e}")
+                            continue
+                            
+        except Exception as e:
+            logger.warning(f"Failed to query Camunda processes: {e}")
+            # Continue without Camunda jobs if the query fails
+
+        # Combine database jobs and Camunda jobs
+        all_jobs = database_jobs + camunda_jobs
+        
+        # Sort by created_at and limit
+        all_jobs.sort(key=lambda x: x.created_at or "", reverse=True)
+        return all_jobs[:limit]
 
     except HTTPException:
         raise

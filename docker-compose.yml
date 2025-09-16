@@ -103,6 +103,22 @@ services:
       timeout: 5s
       retries: 5
 
+  # Redis for session management and event streaming
+  redis:
+    image: redis:7-alpine
+    container_name: odras_redis
+    restart: unless-stopped
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_data:/data
+    command: redis-server --appendonly yes --loglevel verbose --logfile ""
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 3
+
 volumes:
   qdrant_data:
   neo4j_data:
@@ -111,6 +127,7 @@ volumes:
   ollama_data:
   minio_data:
   postgres_data:
+  redis_data:
 
 
 

@@ -338,6 +338,20 @@ clean_databases() {
     fi
     
     if [[ true ]]; then
+        # Log out all users first by calling logout-all endpoint
+        print_status "Logging out all users and invalidating sessions..."
+        if curl -s -X POST http://localhost:8000/api/auth/logout-all >/dev/null 2>&1; then
+            print_success "✓ All user sessions invalidated via API"
+        elif docker exec odras_postgres psql -U postgres -d odras -c "DELETE FROM auth_tokens;" >/dev/null 2>&1; then
+            print_success "✓ All user sessions invalidated via database"
+        else
+            print_warning "⚠ Could not invalidate sessions (app and database may not be accessible)"
+        fi
+        
+        # Stop application server to prevent access during clean
+        print_status "Stopping application server to ensure clean state..."
+        stop_app
+        
         print_status "Cleaning all databases..."
         
         # Check if Docker services are running
@@ -389,6 +403,11 @@ clean_databases() {
                  
             # Create odras_requirements collection (384 dimensions)
             curl -s -X PUT "http://localhost:6333/collections/odras_requirements" \
+                 -H "Content-Type: application/json" \
+                 -d '{"vectors": {"size": 384, "distance": "Cosine"}}' >/dev/null 2>&1
+                 
+            # Create das_instructions collection (384 dimensions for DAS instruction embeddings)
+            curl -s -X PUT "http://localhost:6333/collections/das_instructions" \
                  -H "Content-Type: application/json" \
                  -d '{"vectors": {"size": 384, "distance": "Cosine"}}' >/dev/null 2>&1
             
@@ -1055,7 +1074,7 @@ init_databases() {
     if [[ -d "backend/migrations" ]]; then
         print_status "Running PostgreSQL migrations..."
         
-        # Run migrations in specific order to ensure dependencies
+        # Run migrations in numerical order (000-013)
         local migrations=(
             "000_files_table.sql"
             "001_knowledge_management.sql"
@@ -1070,6 +1089,7 @@ init_databases() {
             "010_namespace_management.sql"
             "011_add_service_namespace_type.sql"
             "012_migrate_auth_system.sql"
+            "013_fix_projects_created_by_type.sql"
         )
         
         for migration in "${migrations[@]}"; do
@@ -1124,25 +1144,49 @@ init_databases() {
              -H "Content-Type: application/json" \
              -d '{"vectors": {"size": 384, "distance": "Cosine"}}' >/dev/null 2>&1
         
-        print_success "✓ Created Qdrant collections: knowledge_chunks, knowledge_large, odras_requirements"
+        print_success "✓ Created Qdrant collections: knowledge_chunks, knowledge_large, odras_requirements, das_instructions"
     else
         print_warning "⚠ Could not connect to Qdrant to create collections"
     fi
     
-    # Create default users
-    print_status "Creating default users..."
-    docker exec odras_postgres psql -U postgres -d odras -c "
-    INSERT INTO users (username, display_name, is_admin) 
-    VALUES ('admin', 'Administrator', TRUE), ('jdehart', 'J DeHart', FALSE)
+    # Create default users with proper password authentication
+    print_status "Creating default users with password authentication..."
+    
+    # Wait a moment for database to be ready after migrations
+    sleep 2
+    
+    # First create the basic user records
+    if docker exec odras_postgres psql -U postgres -d odras -c "
+    INSERT INTO users (username, display_name, is_admin, is_active) 
+    VALUES ('admin', 'Administrator', TRUE, TRUE), ('jdehart', 'J DeHart', TRUE, TRUE)
     ON CONFLICT (username) DO UPDATE SET 
         display_name = EXCLUDED.display_name, 
         is_admin = EXCLUDED.is_admin,
+        is_active = EXCLUDED.is_active,
         updated_at = NOW();
-    " >/dev/null 2>&1 && print_success "✓ Created default users: admin, jdehart"
+    " >/dev/null 2>&1; then
+        print_success "✓ Created user records"
+    else
+        print_warning "⚠ Failed to create user records"
+    fi
+    
+    # Then set up passwords using the existing script
+    print_status "Setting up user passwords..."
+    if python scripts/setup_initial_users.py --ci; then
+        print_success "✓ Created default users with password authentication"
+        print_status "  Login credentials:"
+        print_status "    Username: admin  | Password: admin123!"
+        print_status "    Username: jdehart | Password: jdehart123!"
+        print_status "  ⚠️  IMPORTANT: Change these passwords after first login!"
+    else
+        print_warning "⚠ Password setup failed - users created without passwords"
+        print_status "  Run 'python scripts/setup_initial_users.py --ci' manually"
+    fi
     
     print_success "🎉 Database initialization completed!"
     print_status "📊 Database schema and collections are ready"
-    print_status "👤 Default users created: admin/admin, jdehart/jdehart"
+    print_status "👤 Default users created with password authentication"
+    print_status "🔐 Redis session management ready"
     print_status "🌐 URL: http://localhost:8000/app"
 }
 
@@ -1241,6 +1285,62 @@ create_default_ontology() {
     fi
 }
 
+# Create initial users with password authentication
+create_users() {
+    print_status "Creating initial users with password authentication..."
+    
+    # Check if database is accessible
+    if ! docker exec odras_postgres psql -U postgres -d odras -c "SELECT 1;" >/dev/null 2>&1; then
+        print_error "❌ Cannot connect to PostgreSQL database"
+        print_status "   Make sure Docker services are running: ./odras.sh up"
+        return 1
+    fi
+    
+    # Check if users table exists
+    if ! docker exec odras_postgres psql -U postgres -d odras -c "SELECT 1 FROM users LIMIT 1;" >/dev/null 2>&1; then
+        print_error "❌ Users table does not exist"
+        print_status "   Run database initialization first: ./odras.sh init-db"
+        return 1
+    fi
+    
+    # Create basic user records first
+    print_status "Creating user records..."
+    if docker exec odras_postgres psql -U postgres -d odras -c "
+    INSERT INTO users (username, display_name, is_admin, is_active) 
+    VALUES 
+      ('admin', 'Administrator', TRUE, TRUE),
+      ('jdehart', 'J DeHart', TRUE, TRUE)
+    ON CONFLICT (username) DO UPDATE SET 
+        display_name = EXCLUDED.display_name, 
+        is_admin = EXCLUDED.is_admin,
+        is_active = EXCLUDED.is_active,
+        updated_at = NOW();
+    " >/dev/null 2>&1; then
+        print_success "✓ User records created"
+    else
+        print_error "❌ Failed to create user records"
+        return 1
+    fi
+    
+    # Set up passwords using the existing script
+    print_status "Setting up user passwords..."
+    if python scripts/setup_initial_users.py --ci; then
+        print_success "🎉 Users created successfully!"
+        print_status ""
+        print_status "📋 Login credentials:"
+        print_status "    Username: admin  | Password: admin123!"
+        print_status "    Username: jdehart | Password: jdehart123!"
+        print_status ""
+        print_status "⚠️  IMPORTANT: Change these passwords after first login!"
+        print_status "🌐 URL: http://localhost:8000/app"
+        return 0
+    else
+        print_error "❌ Password setup failed"
+        print_status "   Users created but without passwords"
+        return 1
+    fi
+}
+
 # Show help
 show_help() {
     echo "ODRAS Application Management Script"
@@ -1262,11 +1362,13 @@ show_help() {
     echo "  docker-logs    Show Docker services logs"
     echo ""
     echo "Database Commands:"
-    echo "  clean          Clean all database data (keeps containers running)"
+    echo "  clean          Stop app and clean all database data (keeps containers running)"
     echo "  clean -y       Clean all database data without confirmation prompt"
     echo "  clean-all      DESTROY everything - containers, volumes, and data"
     echo "  clean-all -y   DESTROY everything without confirmation prompt"
     echo "  init-db        Initialize databases with schema and default project"
+    echo "  create-users   Create initial users (admin/admin123!, jdehart/jdehart123!)"
+    echo "  -cu            Short form of create-users"
     echo ""
     echo "Utility Commands:"
     echo "  help           Show this help message"
@@ -1278,6 +1380,7 @@ show_help() {
     echo "  $0 logs        # View app logs"
     echo "  $0 clean       # Clean all database data for fresh testing"
     echo "  $0 init-db     # Initialize databases with default project"
+    echo "  $0 -cu         # Create initial users after init-db"
     echo "  $0 clean-all   # DANGER: Destroy everything and start over"
 }
 
@@ -1326,6 +1429,9 @@ main() {
             ;;
         init-db)
             init_databases
+            ;;
+        create-users|--create-users|-cu)
+            create_users
             ;;
         help|--help|-h)
             show_help

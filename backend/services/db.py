@@ -244,6 +244,27 @@ class DatabaseService:
         """Legacy method - use update_project instead."""
         return self.update_project(project_id, name=new_name)
 
+    async def get_user_projects(self, user_id: str) -> List[Dict[str, Any]]:
+        """Get all projects for a user, ordered by most recent activity."""
+        conn = self._conn()
+        try:
+            with conn.cursor(cursor_factory=RealDictCursor) as cur:
+                cur.execute(
+                    """
+                    SELECT p.project_id, p.name, p.description, p.created_at, p.updated_at, 
+                           p.is_active, pm.role
+                    FROM public.projects p
+                    JOIN public.project_members pm ON p.project_id = pm.project_id
+                    WHERE pm.user_id = %s AND p.is_active = true
+                    ORDER BY p.updated_at DESC
+                    """,
+                    (user_id,),
+                )
+                rows = cur.fetchall()
+                return [dict(row) for row in rows]
+        finally:
+            self._return(conn)
+
     # Ontologies registry
     def add_ontology(
         self,

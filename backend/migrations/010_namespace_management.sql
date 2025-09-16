@@ -77,3 +77,9 @@ SELECT
 FROM namespace_registry 
 WHERE name IN ('odras-core', 'odras-admin');
 
+-- Now that namespace_registry exists, add the foreign key constraint to projects table
+-- This was deferred from migration 008 to avoid dependency issues
+ALTER TABLE public.projects 
+ADD CONSTRAINT fk_projects_namespace_id 
+FOREIGN KEY (namespace_id) REFERENCES namespace_registry(id) ON DELETE CASCADE;
+

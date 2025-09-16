@@ -135,14 +135,44 @@ class RAGService:
             for chunk in search_results:
                 if await self._has_chunk_access(chunk, project_id, user_id):
                     accessible_chunks.append(chunk)
-                    if len(accessible_chunks) >= max_chunks:
-                        break
 
-            return accessible_chunks
+            # Deduplicate sources - keep only the best chunk per asset/document
+            deduplicated_chunks = self._deduplicate_sources(accessible_chunks, max_chunks)
+            
+            return deduplicated_chunks
 
         except Exception as e:
             logger.error(f"Failed to retrieve relevant chunks: {str(e)}")
             return []
+
+    def _deduplicate_sources(self, chunks: List[Dict[str, Any]], max_chunks: int) -> List[Dict[str, Any]]:
+        """
+        Deduplicate chunks by keeping only the best chunk per asset/document.
+        This ensures we don't show multiple "sources" from the same document.
+        """
+        if not chunks:
+            return []
+        
+        # Group chunks by asset_id
+        asset_groups = {}
+        for chunk in chunks:
+            payload = chunk.get("payload", {})
+            asset_id = payload.get("asset_id", "unknown")
+            
+            if asset_id not in asset_groups:
+                asset_groups[asset_id] = []
+            asset_groups[asset_id].append(chunk)
+        
+        # Keep the best chunk from each asset (highest score)
+        deduplicated_chunks = []
+        for asset_id, asset_chunks in asset_groups.items():
+            # Sort by score (highest first) and take the best one
+            best_chunk = max(asset_chunks, key=lambda c: c.get("score", 0))
+            deduplicated_chunks.append(best_chunk)
+        
+        # Sort all deduplicated chunks by score and limit to max_chunks
+        deduplicated_chunks.sort(key=lambda c: c.get("score", 0), reverse=True)
+        return deduplicated_chunks[:max_chunks]
 
     async def _has_chunk_access(
         self, chunk: Dict[str, Any], project_id: Optional[str], user_id: Optional[str]

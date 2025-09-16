@@ -13,6 +13,7 @@ class Settings(BaseSettings):
     fuseki_user: Optional[str] = None
     fuseki_password: Optional[str] = None
     ollama_url: str = "http://localhost:11434"
+    redis_url: str = "redis://localhost:6379"
 
     llm_provider: str = "openai"  # openai | ollama
     llm_model: str = "gpt-4o-mini"
@@ -48,21 +49,30 @@ class Settings(BaseSettings):
     environment: str = "development"
     log_level: str = "INFO"
 
-    # Installation Configuration for Organizational Namespaces
+    # Installation Configuration for Installation-Specific IRIs
     # These values are loaded from environment variables with INSTALLATION_ prefix
+    installation_name: str = Field(
+        default="ODRAS-DEV", alias="INSTALLATION_NAME"
+    )  # Installation identifier (e.g., 'XMA-ADT', 'AFIT-RESEARCH')
     installation_organization: str = Field(
         default="ODRAS Development", alias="INSTALLATION_ORGANIZATION"
     )
     installation_base_uri: str = Field(
-        default="http://odras.local", alias="INSTALLATION_BASE_URI"
-    )  # Override this for production!
+        default="https://odras-dev.local", alias="INSTALLATION_BASE_URI"
+    )  # Installation-specific domain (e.g., 'https://xma-adt.usn.mil')
     installation_prefix: str = Field(default="odras", alias="INSTALLATION_PREFIX")
     installation_type: str = Field(
         default="development", alias="INSTALLATION_TYPE"
-    )  # navy, airforce, army, industry, research, etc.
+    )  # usn, usaf, usa, usmc, ussf, industry, research, etc.
     installation_program_office: str = Field(
         default="Development", alias="INSTALLATION_PROGRAM_OFFICE"
     )
+    top_level_domain: str = Field(
+        default="local", alias="TOP_LEVEL_DOMAIN"
+    )  # mil, gov, com, edu, org
+    authority_contact: str = Field(
+        default="admin@odras.local", alias="AUTHORITY_CONTACT"
+    )  # Responsible authority for this installation
 
     # Namespace URI Templates
     namespace_core_template: str = "{base_uri}/core#{entity}"

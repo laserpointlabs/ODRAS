@@ -24,12 +24,12 @@ from psycopg2.extras import RealDictCursor
 
 logger = logging.getLogger(__name__)
 
-# Import services using relative imports
-from .services.config import Settings
-from .services.db import DatabaseService
-from .services.namespace_uri_generator import NamespaceURIGenerator
-from .services.resource_uri_service import get_resource_uri_service
-from .services.auth import (
+# Import services using absolute imports
+from backend.services.config import Settings
+from backend.services.db import DatabaseService
+from backend.services.namespace_uri_generator import NamespaceURIGenerator
+from backend.services.resource_uri_service import get_resource_uri_service
+from backend.services.auth import (
     get_user as auth_get_user,
     get_admin_user,
     create_token,
@@ -45,6 +45,7 @@ from backend.api.ontology import router as ontology_router
 from backend.api.workflows import router as workflows_router
 from backend.api.embedding_models import router as embedding_models_router
 from backend.api.knowledge import router as knowledge_router
+from backend.api.das import router as das_router
 from backend.api.namespace_simple import (
     router as namespace_router,
     public_router as namespace_public_router,
@@ -54,10 +55,18 @@ from backend.api.domain_management import (
     router as domain_router,
     public_router as domain_public_router,
 )
+from backend.api.session_intelligence import router as session_intelligence_router
 from backend.run_registry import RUNS as SHARED_RUNS
 from backend.test_review_endpoint import router as test_router
 
 app = FastAPI(title="ODRAS API", version="0.1.0")
+
+# Create session capture middleware during app creation (before startup)
+from backend.middleware.session_capture import SessionCaptureMiddleware
+
+# Global middleware instance to be configured during startup
+session_middleware = SessionCaptureMiddleware(app, redis_client=None)
+app.add_middleware(SessionCaptureMiddleware, redis_client=None)
 
 # Include API routers
 app.include_router(test_router)
@@ -66,11 +75,21 @@ app.include_router(files_router)
 app.include_router(workflows_router)
 app.include_router(embedding_models_router)
 app.include_router(knowledge_router)
+app.include_router(das_router)
+
+# Import and include IRI resolution router
+from backend.api.iri_resolution import router as iri_router
+app.include_router(iri_router)
+
+# Import and include federated access router
+from backend.api.federated_access import router as federated_router
+app.include_router(federated_router)
 app.include_router(namespace_router)
 app.include_router(namespace_public_router)
 app.include_router(prefix_router)
 app.include_router(domain_router)
 app.include_router(domain_public_router)
+app.include_router(session_intelligence_router)
 
 # Import and include users router (after app creation to avoid circular import)
 from backend.api.users import router as users_router
@@ -166,7 +185,7 @@ def login(body: Dict):
 
     # Use new authentication service
     try:
-        from .services.auth_service import AuthService
+        from backend.services.auth_service import AuthService
 
         auth_service = AuthService(db)
 
@@ -223,6 +242,21 @@ def logout(authorization: Optional[str] = Header(None)):
     except Exception as e:
         logger.error(f"Error during logout: {e}")
         return {"message": "Logged out successfully"}  # Don't reveal errors to client
+
+
+@app.post("/api/auth/logout-all")
+def logout_all():
+    """Logout all users by invalidating all tokens (admin operation for clean process)."""
+    try:
+        # Clear all tokens from database
+        with db.get_cursor() as cursor:
+            cursor.execute("DELETE FROM auth_tokens")
+            db.commit()
+        
+        return {"message": "All users logged out successfully", "tokens_cleared": True}
+    except Exception as e:
+        logger.error(f"Failed to logout all users: {e}")
+        raise HTTPException(status_code=500, detail="Failed to logout all users")
 
 
 @app.on_event("startup")
@@ -507,8 +541,75 @@ def restore_project(project_id: str, user=Depends(get_user)):
 
 @app.on_event("startup")
 async def on_startup():
-    # Ensure services are initialized lazily via Settings
-    Settings()  # loads env
+    print("🔥 STARTUP EVENT TRIGGERED")
+    logger.info("🔥 STARTUP EVENT TRIGGERED")
+    
+    try:
+        print("🔥 Step 1: Loading settings...")
+        logger.info("🔥 Step 1: Loading settings...")
+        Settings()  # loads env
+        print("✅ Settings loaded")
+        
+        print("🔥 Step 2: Starting DAS initialization...")
+        logger.info("🚀 Starting DAS initialization...")
+        
+        print("🔥 Step 3: Importing services...")
+        from backend.api.das import initialize_das_engine
+        from backend.services.rag_service import RAGService
+        import redis.asyncio as redis
+        print("✅ Services imported")
+        
+        print("🔥 Step 4: Creating service instances...")
+        logger.info("📦 Creating service instances...")
+        settings = Settings()
+        print("✅ Settings instance created")
+        
+        print("🔥 Step 5: Creating RAG service...")
+        rag_service = RAGService(settings)
+        print("✅ RAG service created")
+        
+        print("🔥 Step 6: Connecting to Redis...")
+        logger.info("🔗 Connecting to Redis...")
+        redis_client = redis.from_url(settings.redis_url if hasattr(settings, 'redis_url') else "redis://localhost:6379")
+        print("✅ Redis client created")
+        
+        print("🔥 Step 7: Initializing DAS...")
+        logger.info("🤖 Initializing DAS...")
+        await initialize_das_engine(settings, rag_service, db, redis_client)
+        print("✅ DAS initialized")
+        
+        print("🔥 Step 8: Configuring middleware...")
+        logger.info("🔧 Configuring middleware...")
+        from backend.middleware.session_capture import set_global_redis_client
+        set_global_redis_client(redis_client)
+        print("✅ Middleware configured with global Redis client")
+        
+        print("🔥 Step 9: Initializing semantic capture...")
+        logger.info("📊 Initializing semantic capture...")
+        from backend.services.semantic_event_capture import initialize_semantic_capture
+        await initialize_semantic_capture(redis_client)
+        print("✅ Semantic capture initialized")
+        
+        print("🔥 Step 10: Starting background processor...")
+        logger.info("⚙️ Starting background processor...")
+        from backend.services.session_thread_processor import start_session_thread_processor
+        from backend.api.das_simple import session_thread_service
+        if session_thread_service:
+            await start_session_thread_processor(settings, redis_client, session_thread_service)
+            print("✅ Background processor started")
+        else:
+            print("⚠️ session_thread_service not available")
+        
+        print("🎉 DAS INITIALIZATION COMPLETE!")
+        logger.info("✅ DAS initialization complete!")
+        
+    except Exception as e:
+        print(f"💥 STARTUP FAILED: {e}")
+        logger.error(f"❌ Failed to initialize DAS engine: {e}")
+        import traceback
+        traceback.print_exc()
+        logger.error(f"Full traceback: {traceback.format_exc()}")
+        # Don't fail startup if DAS initialization fails
 
 
 @app.get("/ontology-editor", response_class=HTMLResponse)
@@ -520,6 +621,19 @@ async def ontology_editor():
     except FileNotFoundError:
         return HTMLResponse(
             content="<h1>Ontology Editor not found</h1><p>Please ensure frontend/simple-ontology-editor.html exists.</p>",
+            status_code=404,
+        )
+
+
+@app.get("/session-intelligence-demo", response_class=HTMLResponse)
+async def session_intelligence_demo():
+    """Session Intelligence demonstration interface."""
+    try:
+        with open("frontend/session-intelligence-demo.html", "r") as f:
+            return HTMLResponse(content=f.read())
+    except FileNotFoundError:
+        return HTMLResponse(
+            content="<h1>Session Intelligence Demo not found</h1><p>Please ensure frontend/session-intelligence-demo.html exists.</p>",
             status_code=404,
         )
 
