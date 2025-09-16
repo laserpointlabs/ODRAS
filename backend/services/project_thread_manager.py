@@ -258,14 +258,14 @@ class ProjectThreadManager:
                 context_snapshot=context_snapshot or {}
             )
             
-            # Add to Redis queue for background processing
-            await self.redis.lpush(self.event_queue, json.dumps(event.to_dict()))
+            # Add to Redis queue for background processing (if available)
+            if self.redis:
+                self.redis.lpush(self.event_queue, json.dumps(event.to_dict()))
+                # Publish for real-time monitoring
+                self.redis.publish(f"project_watch:{project_id}", json.dumps(event.to_dict()))
             
             # Update project thread context immediately
             await self._update_thread_context_from_event(event)
-            
-            # Publish for real-time monitoring
-            await self.redis.publish(f"project_watch:{project_id}", json.dumps(event.to_dict()))
             
             logger.debug(f"Captured project event {event_type.value} for project {project_id}")
             return True
@@ -444,13 +444,13 @@ class ProjectThreadManager:
             # Also cache in Redis if available (for performance)
             if self.redis:
                 thread_json = json.dumps(thread_data)
-                await self.redis.set(
+                self.redis.set(
                     f"{self.thread_prefix}:{thread_context.project_thread_id}",
                     thread_json,
                     ex=86400 * 7  # 7 days cache
                 )
                 # Create project index for fast lookup
-                await self.redis.set(f"project_index:{thread_context.project_id}", thread_context.project_thread_id, ex=86400 * 7)
+                self.redis.set(f"project_index:{thread_context.project_id}", thread_context.project_thread_id, ex=86400 * 7)
             
         except Exception as e:
             logger.error(f"Failed to persist project thread {thread_context.project_thread_id}: {e}")
@@ -493,8 +493,10 @@ class ProjectThreadManager:
         try:
             # Try Redis cache first (if available)
             if self.redis:
-                thread_json = await self.redis.get(f"{self.thread_prefix}:{project_thread_id}")
+                thread_json = self.redis.get(f"{self.thread_prefix}:{project_thread_id}")
                 if thread_json:
+                    if isinstance(thread_json, bytes):
+                        thread_json = thread_json.decode('utf-8')
                     thread_data = json.loads(thread_json)
                     logger.debug(f"Loaded project thread {project_thread_id} from Redis cache")
                     return ProjectThreadContext.from_dict(thread_data)
@@ -517,7 +519,7 @@ class ProjectThreadManager:
                         
                         # Cache in Redis if available
                         if self.redis:
-                            await self.redis.set(
+                            self.redis.set(
                                 f"{self.thread_prefix}:{project_thread_id}",
                                 json.dumps(thread_data),
                                 ex=86400 * 7

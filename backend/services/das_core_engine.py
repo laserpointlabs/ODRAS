@@ -248,6 +248,10 @@ class DASCoreEngine:
             
             project_thread.conversation_history.append(conversation_entry)
             
+            # CRITICAL: Persist the updated project thread to vector store
+            await self.project_manager._persist_project_thread(project_thread)
+            logger.info(f"Persisted conversation to project thread {project_thread.project_thread_id}")
+            
             # Update contextual references for future use
             await self.project_intelligence.update_contextual_references(
                 project_thread, message, response_message
@@ -746,6 +750,10 @@ class DASCoreEngine:
             }
             
             project_thread.conversation_history.append(conversation_entry)
+            
+            # CRITICAL: Persist the updated project thread to vector store
+            await self.project_manager._persist_project_thread(project_thread)
+            logger.info(f"Persisted conversation memory to project thread {project_thread.project_thread_id}")
             
             return DASResponse(
                 message=response_message,

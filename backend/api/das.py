@@ -319,23 +319,59 @@ async def get_project_thread_history_by_project(
         if hasattr(engine, 'process_message_with_intelligence') and engine.project_manager:
             project_thread = await engine.project_manager.get_or_create_project_thread(project_id, user_id)
             
-            # Return conversation history
+            # Build conversation history from both conversation_history AND project_events
             history = []
+            
+            # First, add conversations from project_events (where they're actually stored)
+            for event in project_thread.project_events:
+                if event.get("event_type") == "das_question":
+                    event_data = event.get("key_data", {})
+                    user_msg = event_data.get("user_message")
+                    das_response = event_data.get("das_response") 
+                    timestamp = event.get("timestamp")
+                    intent = event_data.get("intent", "question")
+                    
+                    if user_msg and das_response:
+                        history.append({
+                            "type": "user",
+                            "message": user_msg,
+                            "timestamp": timestamp
+                        })
+                        history.append({
+                            "type": "das", 
+                            "message": das_response,
+                            "metadata": {
+                                "intent": intent,
+                                "source": "knowledge_base"
+                            },
+                            "timestamp": timestamp
+                        })
+            
+            # Then add any additional entries from conversation_history (conversation memory, etc.)
             for entry in project_thread.conversation_history:
-                history.append({
-                    "type": "user",
-                    "message": entry.get("user_message"),
-                    "timestamp": entry.get("timestamp")
-                })
-                history.append({
-                    "type": "das",
-                    "message": entry.get("das_response"),
-                    "metadata": {
-                        "intent": entry.get("intent"),
-                        "source": entry.get("source", "knowledge_base")
-                    },
-                    "timestamp": entry.get("timestamp")
-                })
+                # Skip if this conversation is already in project_events
+                user_msg = entry.get("user_message")
+                if not any(event.get("key_data", {}).get("user_message") == user_msg 
+                          for event in project_thread.project_events 
+                          if event.get("event_type") == "das_question"):
+                    
+                    history.append({
+                        "type": "user",
+                        "message": entry.get("user_message"),
+                        "timestamp": entry.get("timestamp")
+                    })
+                    history.append({
+                        "type": "das",
+                        "message": entry.get("das_response"),
+                        "metadata": {
+                            "intent": entry.get("intent"),
+                            "source": entry.get("source", "conversation_memory")
+                        },
+                        "timestamp": entry.get("timestamp")
+                    })
+            
+            # Sort by timestamp to maintain chronological order
+            history.sort(key=lambda x: x.get("timestamp", ""))
             
             return {
                 "project_id": project_id,
