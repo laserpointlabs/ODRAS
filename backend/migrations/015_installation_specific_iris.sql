@@ -143,3 +143,4 @@ COMMENT ON COLUMN public.users.iri IS 'Globally unique IRI for this user';
 COMMENT ON FUNCTION resolve_iri IS 'Resolves an IRI to its resource type and metadata';
 
 
+
