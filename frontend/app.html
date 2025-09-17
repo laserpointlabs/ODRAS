@@ -4904,34 +4904,285 @@
         await renderTree({ id: null, name: '' });
       }
     }
+    // Reusable progress indicator system for project operations
+    function createProjectProgressIndicator(message, type = 'info') {
+      console.log('🔧 createProjectProgressIndicator called:', message, type);
+      
+      // Remove any existing progress indicator
+      const existing = document.getElementById('project-operation-progress');
+      if (existing) {
+        console.log('🔧 Removing existing progress indicator');
+        existing.remove();
+      }
+      
+      const progressDiv = document.createElement('div');
+      progressDiv.id = 'project-operation-progress';
+      console.log('🔧 Created progress div element');
+      
+      const colors = {
+        info: '#2196F3',
+        success: '#4CAF50', 
+        error: '#f44336',
+        warning: '#FF9800'
+      };
+      
+      progressDiv.style.cssText = `
+        position: fixed; top: 50px; right: 50px; 
+        background: ${colors[type]}; color: white; 
+        padding: 20px 30px; border-radius: 12px; 
+        box-shadow: 0 8px 24px rgba(0,0,0,0.5);
+        z-index: 99999; font-weight: bold; font-size: 16px;
+        animation: pulse 1.5s infinite;
+        max-width: 400px; text-align: center;
+        transition: all 0.3s ease;
+        border: 3px solid white;
+      `;
+      progressDiv.innerHTML = message;
+      console.log('🔧 Appending progress div to body');
+      document.body.appendChild(progressDiv);
+      console.log('🔧 Progress indicator should now be visible');
+      return progressDiv;
+    }
+    
+    function updateProjectProgress(message, type = 'info') {
+      console.log('🔧 updateProjectProgress called:', message, type);
+      const progressDiv = document.getElementById('project-operation-progress');
+      if (progressDiv) {
+        console.log('🔧 Found progress div, updating...');
+        progressDiv.innerHTML = message;
+        const colors = {
+          info: '#2196F3',
+          success: '#4CAF50', 
+          error: '#f44336',
+          warning: '#FF9800'
+        };
+        progressDiv.style.background = colors[type];
+        console.log('🔧 Progress updated successfully');
+      } else {
+        console.warn('🔧 Progress div not found for update');
+      }
+    }
+    
+    function removeProjectProgress(delay = 0) {
+      setTimeout(() => {
+        const progressDiv = document.getElementById('project-operation-progress');
+        if (progressDiv) {
+          progressDiv.style.animation = 'fadeOut 0.3s ease';
+          setTimeout(() => progressDiv.remove(), 300);
+        }
+      }, delay);
+    }
+    
+    // Add CSS for animations
+    if (!document.getElementById('project-progress-styles')) {
+      const style = document.createElement('style');
+      style.id = 'project-progress-styles';
+      style.textContent = `
+        @keyframes pulse {
+          0% { transform: scale(1); opacity: 1; }
+          50% { transform: scale(1.05); opacity: 0.8; }
+          100% { transform: scale(1); opacity: 1; }
+        }
+        @keyframes fadeOut {
+          from { opacity: 1; transform: translateY(0); }
+          to { opacity: 0; transform: translateY(-20px); }
+        }
+      `;
+      document.head.appendChild(style);
+    }
+    
+    // Enhanced project deletion with progress indicator
+    async function deleteProjectWithProgress(projectId, projectName) {
+      if (!projectId) {
+        alert('No project selected for deletion');
+        return false;
+      }
+      
+      // Confirm deletion
+      if (!confirm(`Are you sure you want to delete project "${projectName}"?\n\nThis will permanently delete:\n• Project data and settings\n• All uploaded files\n• All knowledge assets\n• All project threads and history\n\nThis action cannot be undone.`)) {
+        return false;
+      }
+      
+      const progressDiv = createProjectProgressIndicator('🗑️ Preparing to delete project...', 'warning');
+      
+      try {
+        const token = localStorage.getItem('odras_token');
+        if (!token) {
+          throw new Error('Authentication required');
+        }
+        
+        console.log(`🗑️ Deleting project "${projectName}" (${projectId})...`);
+        
+        // Step 1: Delete from database
+        updateProjectProgress('🗄️ Removing project from database...', 'warning');
+        
+        const res = await fetch(`/api/projects/${projectId}`, {
+          method: 'DELETE',
+          headers: { 'Authorization': `Bearer ${token}` }
+        });
+        
+        if (!res.ok) {
+          const errorText = await res.text();
+          throw new Error(`Failed to delete project: ${res.status} ${errorText}`);
+        }
+        
+        // Step 2: Clean up UI
+        updateProjectProgress('🔄 Updating project list...', 'info');
+        
+        // Reload projects
+        const pr = await fetch('/api/projects', { 
+          headers: { Authorization: 'Bearer ' + token }
+        }).then(r=>r.json()).catch(()=>({projects:[]}));
+        
+        const raw = pr.projects || [];
+        const list = raw.map(p => ({ id: p.id || p.project_id || p.projectId, name: p.name || p.project_name || 'Project' })).filter(p => !!p.id);
+        
+        // Update project selector
+        const sel = qs('#projectSelect2');
+        if (sel) {
+          sel.innerHTML = list.map(p => `<option value="${p.id}">${p.name}</option>`).join('');
+          if (list.length) {
+            sel.value = list[0].id;
+            sel.disabled = false;
+          } else {
+            sel.innerHTML = '<option value="" disabled selected>No projects</option>';
+            sel.disabled = true;
+          }
+        }
+        
+        // Render tree with new selection
+        const selected = list[0] || { id: null, name: '' };
+        updateProjectProgress('🎨 Updating interface...', 'info');
+        await renderTree(selected);
+        
+        // Success
+        updateProjectProgress(`✅ Project "${projectName}" deleted successfully`, 'success');
+        removeProjectProgress(2000);
+        
+        console.log(`✅ Project "${projectName}" deleted successfully`);
+        return true;
+        
+      } catch (error) {
+        console.error('❌ Error during project deletion:', error);
+        updateProjectProgress('❌ Project deletion failed', 'error');
+        removeProjectProgress(3000);
+        alert(`Error deleting project: ${error.message}`);
+        return false;
+      }
+    }
+    
+    // Global functions for project operations
+    window.createProjectProgressIndicator = createProjectProgressIndicator;
+    window.updateProjectProgress = updateProjectProgress;
+    window.removeProjectProgress = removeProjectProgress;
+    window.deleteProjectWithProgress = deleteProjectWithProgress;
+    
     (function(){
       const npb = qs('#newProjectBtn');
       if (!npb) return;
       npb.onclick = async () => {
-        const name = prompt('Project name'); if (!name) return;
-        const token = localStorage.getItem(tokenKey);
-        const res = await fetch('/api/projects', { method:'POST', headers:{'Content-Type':'application/json', Authorization: 'Bearer ' + token}, body: JSON.stringify({ name }) });
-        let pid = '';
-        let pname = name;
-        if (res.ok) {
-          const js = await res.json().catch(()=>({}));
-          const proj = js.project || js;
-          pid = (proj && (proj.id || proj.project_id || proj.projectId)) || '';
-          pname = (proj && proj.name) || name;
-          if (pid) try { localStorage.setItem('active_project_id', pid); } catch(_) {}
+        // Prevent multiple clicks during project creation
+        if (npb.disabled) {
+          console.log('🚫 Project creation already in progress...');
+          return;
         }
-        // Reload projects, select the created one, and render it
-        const pr = await fetch('/api/projects', { headers: { Authorization: 'Bearer ' + token }}).then(r=>r.json()).catch(()=>({projects:[]}));
-        const raw = pr.projects || [];
-        const list = raw.map(p => ({ id: p.id || p.project_id || p.projectId, name: p.name || p.project_name || 'Project' })).filter(p => !!p.id);
-        const sel = qs('#projectSelect2');
-        if (sel) {
-          sel.innerHTML = list.map(p => `<option value="${p.id}">${p.name}</option>`).join('');
-          if (pid && list.find(p => p.id === pid)) sel.value = pid; else if (list.length) sel.value = list[0].id;
-          sel.disabled = !list.length;
+        
+        const name = prompt('Project name'); 
+        if (!name) return;
+        
+        // Disable button and show loading state
+        const originalText = npb.textContent;
+        npb.disabled = true;
+        npb.innerHTML = '🔄 Creating...';
+        npb.style.opacity = '0.7';
+        npb.style.cursor = 'not-allowed';
+        
+        // Add progress indicator using reusable system
+        console.log('🔧 Creating progress indicator...');
+        let progressDiv;
+        try {
+          progressDiv = createProjectProgressIndicator('🏗️ Creating project...');
+          console.log('🔧 Progress indicator created:', progressDiv);
+        } catch (progressError) {
+          console.error('🔧 Progress indicator failed:', progressError);
+          // Fallback: just log to console
+          console.log('🏗️ Creating project (progress indicator failed)...');
         }
-        const selected = pid ? { id: pid, name: pname } : (list[0] || { id: null, name: '' });
-        await renderTree(selected);
+        
+        try {
+          const token = localStorage.getItem(tokenKey);
+          console.log(`🏗️ Creating project "${name}"...`);
+          
+          // Update progress
+          updateProjectProgress('📝 Submitting project data...');
+          
+          const res = await fetch('/api/projects', { 
+            method:'POST', 
+            headers:{'Content-Type':'application/json', Authorization: 'Bearer ' + token}, 
+            body: JSON.stringify({ name }) 
+          });
+          
+          // Update progress
+          updateProjectProgress('⚙️ Processing project creation...');
+          
+          let pid = '';
+          let pname = name;
+          if (res.ok) {
+            const js = await res.json().catch(()=>({}));
+            const proj = js.project || js;
+            pid = (proj && (proj.id || proj.project_id || proj.projectId)) || '';
+            pname = (proj && proj.name) || name;
+            if (pid) {
+              try { localStorage.setItem('active_project_id', pid); } catch(_) {}
+              console.log(`✅ Project "${pname}" created successfully (ID: ${pid})`);
+            }
+          } else {
+            console.error(`❌ Failed to create project: ${res.status} ${res.statusText}`);
+            alert(`Failed to create project: ${res.status} ${res.statusText}`);
+          }
+          
+          // Reload projects, select the created one, and render it
+          console.log('🔄 Reloading projects...');
+          updateProjectProgress('🔄 Refreshing project list...');
+          
+          const pr = await fetch('/api/projects', { headers: { Authorization: 'Bearer ' + token }}).then(r=>r.json()).catch(()=>({projects:[]}));
+          const raw = pr.projects || [];
+          const list = raw.map(p => ({ id: p.id || p.project_id || p.projectId, name: p.name || p.project_name || 'Project' })).filter(p => !!p.id);
+          const sel = qs('#projectSelect2');
+          if (sel) {
+            sel.innerHTML = list.map(p => `<option value="${p.id}">${p.name}</option>`).join('');
+            if (pid && list.find(p => p.id === pid)) sel.value = pid; else if (list.length) sel.value = list[0].id;
+            sel.disabled = !list.length;
+          }
+          const selected = pid ? { id: pid, name: pname } : (list[0] || { id: null, name: '' });
+          updateProjectProgress('🎨 Setting up project interface...');
+          await renderTree(selected);
+          
+          // Success indicator
+          updateProjectProgress('✅ Project created successfully!', 'success');
+          removeProjectProgress(2000);
+          
+          console.log('✅ Project creation and setup completed');
+          
+        } catch (error) {
+          console.error('❌ Error during project creation:', error);
+          
+          // Error indicator
+          updateProjectProgress('❌ Project creation failed', 'error');
+          removeProjectProgress(3000);
+          
+          alert(`Error creating project: ${error.message}`);
+        } finally {
+          // Re-enable button and restore original state
+          npb.disabled = false;
+          npb.innerHTML = originalText;
+          npb.style.opacity = '1';
+          npb.style.cursor = 'pointer';
+          console.log('🔓 Project creation button re-enabled');
+          
+          // Ensure progress indicator is removed
+          removeProjectProgress(100);
+        }
       };
     })();
     ['#projectSelect2'].forEach(id => {
@@ -13896,6 +14147,32 @@ def hello_world():
           return;
         }
 
+        // Just update the Create Project button in the modal
+        const createBtn = document.querySelector('button[onclick="createProject()"]');
+        const originalBtnText = createBtn ? createBtn.innerHTML : 'Create Project';
+        
+        if (createBtn) {
+          createBtn.disabled = true;
+          createBtn.style.opacity = '0.8';
+          
+          // Fix button width to prevent resizing during animation
+          const currentWidth = createBtn.offsetWidth;
+          createBtn.style.width = currentWidth + 'px';
+          createBtn.style.minWidth = currentWidth + 'px';
+          
+          // Dynamic ellipsis animation on the button itself
+          let dots = 0;
+          const ellipsisInterval = setInterval(() => {
+            dots = (dots + 1) % 4;
+            createBtn.innerHTML = 'Creating' + '.'.repeat(dots);
+          }, 500);
+          
+          // Store for cleanup
+          createBtn._ellipsisInterval = ellipsisInterval;
+        }
+        
+        console.log('🔧 Project creation started with progress banner');
+
         const requestData = {
           name,
           namespace_id: namespaceId,
@@ -13915,11 +14192,13 @@ def hello_world():
           body: JSON.stringify(requestData)
         });
 
+        // No banner updates needed - just button ellipsis
+
         if (response.ok) {
           const newProject = await response.json();
+          
           document.querySelector('.modal').remove();
           
-          // Reload and select the newly created project using the old API format
           const pr = await fetch('/api/projects', { headers: { Authorization: 'Bearer ' + token }}).then(r=>r.json()).catch(()=>({projects:[]}));
           const raw = pr.projects || [];
           const list = raw.map(p => ({ id: p.id || p.project_id || p.projectId, name: p.name || p.project_name || 'Project' })).filter(p => !!p.id);
@@ -13954,6 +14233,25 @@ def hello_world():
       } catch (error) {
         console.error('Error creating project:', error);
         alert('Error creating project: ' + error.message);
+      } finally {
+        // Re-enable the Create Project button and stop ellipsis
+        const createBtn = document.querySelector('button[onclick="createProject()"]');
+        if (createBtn) {
+          // Clear ellipsis animation
+          if (createBtn._ellipsisInterval) {
+            clearInterval(createBtn._ellipsisInterval);
+            createBtn._ellipsisInterval = null;
+          }
+          
+          // Restore button
+          createBtn.disabled = false;
+          createBtn.innerHTML = originalBtnText;
+          createBtn.style.opacity = '1';
+          createBtn.style.width = '';  // Remove fixed width
+          createBtn.style.minWidth = '';  // Remove fixed min-width
+        }
+        
+        console.log('🔧 Project creation completed, button restored');
       }
     }
 

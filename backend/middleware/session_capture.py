@@ -92,8 +92,8 @@ class SessionCaptureMiddleware(BaseHTTPMiddleware):
             if not username:
                 return
             
-            # Extract semantic meaning
-            semantic_data = self._extract_semantics(request, response)
+            # Extract semantic meaning with request/response body analysis
+            semantic_data = await self._extract_semantics(request, response)
             
             # Create clean event
             event = {
@@ -162,7 +162,84 @@ class SessionCaptureMiddleware(BaseHTTPMiddleware):
             pass
         return None
     
-    def _extract_semantics(self, request: Request, response: Response) -> Dict[str, Any]:
+    async def _extract_layout_changes(self, request: Request) -> Optional[str]:
+        """Extract detailed information about ontology layout changes"""
+        try:
+            # Read request body to understand what changed
+            # Note: request.body() can only be called once, and may have been consumed
+            try:
+                body = await request.body()
+            except:
+                # Body may have been consumed already
+                body = getattr(request, '_body', b'')
+            
+            if body:
+                body_str = body.decode('utf-8')
+                
+                # Parse common layout operations
+                changes = []
+                
+                if '"x":' in body_str and '"y":' in body_str:
+                    changes.append("repositioned elements")
+                
+                if '"label":' in body_str or '"name":' in body_str:
+                    # Try to extract class names from body
+                    import re
+                    names = re.findall(r'"(?:label|name)"\s*:\s*"([^"]+)"', body_str)
+                    if names:
+                        changes.append(f"modified {', '.join(names[:3])}")
+                
+                if '"source":' in body_str and '"target":' in body_str:
+                    changes.append("modified relationships")
+                
+                if '"type":' in body_str:
+                    types = re.findall(r'"type"\s*:\s*"([^"]+)"', body_str)
+                    if types:
+                        changes.append(f"worked with {', '.join(set(types[:3]))}")
+                
+                return ", ".join(changes) if changes else None
+                
+        except Exception as e:
+            logger.debug(f"Could not extract layout details: {e}")
+        return None
+    
+    async def _extract_class_creation_details(self, request: Request, response: Response) -> Optional[str]:
+        """Extract details about class creation"""
+        try:
+            # Check request body for class details
+            try:
+                body = await request.body()
+            except:
+                body = getattr(request, '_body', b'')
+            
+            if body:
+                body_str = body.decode('utf-8')
+                
+                # Try to extract class name and type
+                import re
+                class_names = re.findall(r'"(?:label|name|className)"\s*:\s*"([^"]+)"', body_str)
+                class_types = re.findall(r'"(?:type|classType)"\s*:\s*"([^"]+)"', body_str)
+                
+                details = []
+                if class_names:
+                    details.append(f"class '{class_names[0]}'")
+                if class_types and class_types[0] != "owl:Class":
+                    details.append(f"type {class_types[0]}")
+                
+                return " ".join(details) if details else None
+            
+            # Check response for created class info
+            if hasattr(response, '_content') and response._content:
+                response_str = response._content.decode('utf-8')
+                class_names = re.findall(r'"(?:label|name|className)"\s*:\s*"([^"]+)"', response_str)
+                if class_names:
+                    return f"class '{class_names[0]}'"
+                    
+        except Exception as e:
+            logger.debug(f"Could not extract class creation details: {e}")
+        return None
+    
+    async def _extract_semantics(self, request: Request, response: Response) -> Dict[str, Any]:
         """Extract semantic meaning from API call"""
         method = request.method
         path = str(request.url.path)
@@ -173,23 +250,66 @@ class SessionCaptureMiddleware(BaseHTTPMiddleware):
             graph = query_params.get("graph", "")
             ontology_id = graph.split("/")[-1] if graph else "unknown"
             project_id = self._extract_project_id_from_graph(graph)
+            
+            # Try to extract detailed layout changes from request body
+            layout_details = await self._extract_layout_changes(request)
+            
+            action = f"Modified {ontology_id} ontology layout"
+            if layout_details:
+                action = f"Modified {ontology_id} ontology: {layout_details}"
+            
             return {
-                "action": f"Modified {ontology_id} ontology layout",
+                "action": action,
                 "context": {
                     "ontology_id": ontology_id, 
                     "workbench": "ontology",
-                    "project_id": project_id
+                    "project_id": project_id,
+                    "operation_details": layout_details
                 },
-                "metadata": {"type": "ontology_layout", "graph": graph, "project_id": project_id}
+                "metadata": {
+                    "type": "ontology_layout", 
+                    "graph": graph, 
+                    "project_id": project_id,
+                    "detailed_operation": layout_details
+                }
             }
         
         elif "ontology/save" in path and method == "POST":
             graph = query_params.get("graph", "")
             ontology_id = graph.split("/")[-1] if graph else "unknown"
+            project_id = self._extract_project_id_from_graph(graph)
             return {
                 "action": f"Saved ontology {ontology_id}",
-                "context": {"ontology_id": ontology_id, "workbench": "ontology"},
-                "metadata": {"type": "ontology_save", "graph": graph}
+                "context": {"ontology_id": ontology_id, "workbench": "ontology", "project_id": project_id},
+                "metadata": {"type": "ontology_save", "graph": graph, "project_id": project_id}
+            }
+        
+        elif "ontology/classes" in path and method == "POST":
+            graph = query_params.get("graph", "")
+            ontology_id = graph.split("/")[-1] if graph else "unknown"
+            project_id = self._extract_project_id_from_graph(graph)
+            
+            # Extract class creation details
+            class_details = await self._extract_class_creation_details(request, response)
+            
+            action = f"Created ontology class in {ontology_id}"
+            if class_details:
+                action = f"Created {class_details} in {ontology_id} ontology"
+            
+            return {
+                "action": action,
+                "context": {
+                    "ontology_id": ontology_id, 
+                    "workbench": "ontology",
+                    "project_id": project_id,
+                    "operation_details": class_details
+                },
+                "metadata": {
+                    "type": "ontology_class_creation", 
+                    "graph": graph, 
+                    "project_id": project_id,
+                    "class_details": class_details
+                }
             }
         
         # Project operations  

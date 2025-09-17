@@ -524,21 +524,73 @@ async def delete_project(project_id: str, user=Depends(get_user)):
         conn = db._conn()
         try:
             with conn.cursor() as cur:
+                # Delete in order to respect foreign key constraints
+                # 1. Delete project members
                 cur.execute(
                     "DELETE FROM public.project_members WHERE project_id = %s",
                     (project_id,),
                 )
+                
+                # 2. Delete knowledge assets (will cascade to chunks, relationships, jobs)
+                cur.execute(
+                    "DELETE FROM public.knowledge_assets WHERE project_id = %s",
+                    (project_id,),
+                )
+                
+                # 3. Delete files associated with the project
+                cur.execute(
+                    "DELETE FROM public.files WHERE project_id = %s",
+                    (project_id,),
+                )
+                
+                # 4. Finally delete the project itself
                 cur.execute("DELETE FROM public.projects WHERE project_id = %s", (project_id,))
+                
                 conn.commit()
+                logger.info(f"Deleted project {project_id} and all associated data from PostgreSQL")
         finally:
             db._return(conn)
         
         # Clean up project thread from Redis and vector store
         try:
-            from backend.api.das import das_engine
-            if das_engine and das_engine.project_manager:
-                await das_engine.project_manager.delete_project_thread(project_id)
-                logger.info(f"Cleaned up project thread for deleted project {project_id}")
+            # Direct cleanup without depending on DAS engine
+            import redis.asyncio as redis
+            from backend.services.config import Settings
+            
+            settings = Settings()
+            redis_client = redis.from_url(settings.redis_url)
+            
+            # Get project thread ID from Redis index
+            project_thread_id = await redis_client.get(f"project_index:{project_id}")
+            if project_thread_id:
+                project_thread_id = project_thread_id.decode()
+                
+                # Delete from Redis
+                await redis_client.delete(f"project_thread:{project_thread_id}")
+                await redis_client.delete(f"project_index:{project_id}")
+                
+                # Delete from vector store using correct Qdrant API
+                try:
+                    import httpx
+                    async with httpx.AsyncClient() as client:
+                        response = await client.post(
+                            "http://localhost:6333/collections/project_threads/points/delete",
+                            headers={"Content-Type": "application/json"},
+                            json={"points": [project_thread_id]}
+                        )
+                        if response.status_code == 200:
+                            logger.info(f"Deleted project thread {project_thread_id} from vector store")
+                        else:
+                            logger.warning(f"Vector store deletion response: {response.status_code} {response.text}")
+                except Exception as vector_error:
+                    logger.warning(f"Could not delete from vector store: {vector_error}")
+                
+                logger.info(f"Cleaned up project thread {project_thread_id} for deleted project {project_id}")
+            else:
+                logger.info(f"No project thread found for project {project_id}")
+                
+            await redis_client.close()
+            
         except Exception as cleanup_error:
             logger.warning(f"Could not clean up project thread: {cleanup_error}")
             # Don't fail project deletion if thread cleanup fails

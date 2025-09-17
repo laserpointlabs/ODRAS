@@ -145,6 +145,7 @@ class MiddlewareToDASBridge:
         mapping = {
             "ontology_layout": ProjectEventType.ONTOLOGY_MODIFIED,
             "ontology_save": ProjectEventType.ONTOLOGY_MODIFIED,
+            "ontology_class_creation": ProjectEventType.CLASS_CREATED,
             "project_create": ProjectEventType.DAS_COMMAND,  # Project creation as command
             "project_update": ProjectEventType.DAS_COMMAND,
             "file_upload": ProjectEventType.DOCUMENT_UPLOADED,
