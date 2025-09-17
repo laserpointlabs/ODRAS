@@ -114,15 +114,20 @@ class SessionCaptureMiddleware(BaseHTTPMiddleware):
             logger.error(f"Error capturing semantic event: {e}")
     
     async def _get_username_from_request(self, request: Request) -> Optional[str]:
-        """Extract username from request"""
+        """Extract username from request using proper auth system"""
         try:
             auth_header = request.headers.get("authorization", "")
-            if auth_header.startswith("Bearer "):
-                token = auth_header.split(" ")[1]
-                # Simple token-to-user lookup (can be enhanced)
-                if token == "95c6f7542a8fc3018e601332d253cfc0":  # Admin token from our tests
-                    return "admin"
-                # Add more token lookups as needed
+            if not auth_header or not auth_header.startswith("Bearer "):
+                return None
+            
+            # Use the same authentication logic as the auth service
+            from backend.services.auth import get_user
+            try:
+                user = get_user(auth_header)
+                return user.get("username")
+            except Exception:
+                # If auth fails, don't capture event (user not authenticated)
+                return None
         except Exception:
             pass
         return None
@@ -143,6 +148,71 @@ class SessionCaptureMiddleware(BaseHTTPMiddleware):
                 "metadata": {"type": "ontology_layout", "graph": graph}
             }
         
+        elif "ontology/save" in path and method == "POST":
+            graph = query_params.get("graph", "")
+            ontology_id = graph.split("/")[-1] if graph else "unknown"
+            return {
+                "action": f"Saved ontology {ontology_id}",
+                "context": {"ontology_id": ontology_id, "workbench": "ontology"},
+                "metadata": {"type": "ontology_save", "graph": graph}
+            }
+        
+        # Project operations
+        elif path == "/api/projects" and method == "POST":
+            return {
+                "action": "Created new project",
+                "context": {"workbench": "project"},
+                "metadata": {"type": "project_create"}
+            }
+        
+        elif path.startswith("/api/projects/") and method == "PUT":
+            project_id = path.split("/")[3] if len(path.split("/")) > 3 else "unknown"
+            return {
+                "action": f"Updated project {project_id}",
+                "context": {"project_id": project_id, "workbench": "project"},
+                "metadata": {"type": "project_update"}
+            }
+        
+        # File operations
+        elif "/api/files/upload" in path and method == "POST":
+            project_id = query_params.get("project_id", "unknown")
+            return {
+                "action": "Uploaded file to project",
+                "context": {"project_id": project_id, "workbench": "files"},
+                "metadata": {"type": "file_upload"}
+            }
+        
+        elif path.startswith("/api/files/") and method == "DELETE":
+            file_id = path.split("/")[3] if len(path.split("/")) > 3 else "unknown"
+            return {
+                "action": f"Deleted file {file_id}",
+                "context": {"file_id": file_id, "workbench": "files"},
+                "metadata": {"type": "file_delete"}
+            }
+        
+        # Knowledge operations
+        elif "/api/knowledge/query" in path and method == "POST":
+            return {
+                "action": "Searched knowledge base",
+                "context": {"workbench": "knowledge"},
+                "metadata": {"type": "knowledge_search"}
+            }
+        
+        elif "/api/knowledge/assets" in path and method == "POST":
+            return {
+                "action": "Created knowledge asset",
+                "context": {"workbench": "knowledge"},
+                "metadata": {"type": "knowledge_create"}
+            }
+        
+        # Workflow operations
+        elif "/api/workflows/start" in path and method == "POST":
+            return {
+                "action": "Started workflow process",
+                "context": {"workbench": "workflows"},
+                "metadata": {"type": "workflow_start"}
+            }
+        
         # DAS interactions
         elif "/api/das/chat" in path and method == "POST":
             return {
@@ -151,7 +221,14 @@ class SessionCaptureMiddleware(BaseHTTPMiddleware):
                 "metadata": {"type": "das_chat"}
             }
         
-        # Default
+        elif "/api/das/session" in path and method == "POST":
+            return {
+                "action": "Started DAS session",
+                "context": {"workbench": "das"},
+                "metadata": {"type": "das_session_start"}
+            }
+        
+        # Default - still capture for analysis
         else:
             return {
                 "action": f"{method} {path}",
