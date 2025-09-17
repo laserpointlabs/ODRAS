@@ -42,6 +42,7 @@ class SessionThreadProcessor:
         tasks = [
             asyncio.create_task(self._process_api_events()),
             asyncio.create_task(self._process_session_events()),
+            asyncio.create_task(self._process_semantic_events()),
             asyncio.create_task(self._check_for_summarization()),
             asyncio.create_task(self._embed_completed_threads())
         ]
@@ -261,6 +262,113 @@ Keep summary under 200 words and make it searchable for future DAS queries.
         """Stop background processing"""
         self.processing = False
         logger.info("Session thread processor stopped")
+
+
+    async def _process_semantic_events(self):
+        """Process semantic events from middleware"""
+        while self.processing:
+            try:
+                # Get semantic events from middleware
+                event_data = await self.redis.brpop("semantic_events", timeout=1)
+                
+                if event_data:
+                    event_json = event_data[1]
+                    event = json.loads(event_json)
+                    
+                    # Convert semantic event to session thread event
+                    await self._process_semantic_event(event)
+                    logger.debug(f"Processed semantic event: {event.get('semantic_action')}")
+                
+            except Exception as e:
+                logger.error(f"Error processing semantic events: {e}")
+                await asyncio.sleep(1)
+    
+    async def _process_semantic_event(self, event: Dict[str, Any]):
+        """Convert semantic event to session thread event and store"""
+        try:
+            username = event.get("username")
+            if not username:
+                return
+            
+            # Get or create active session thread for this user
+            session_thread_id = await self._get_or_create_user_session_thread(username)
+            
+            # Convert semantic event to session thread event
+            thread_event = {
+                "event_id": event.get("event_id"),
+                "timestamp": event.get("timestamp"),
+                "event_type": self._map_semantic_to_thread_event_type(event),
+                "event_data": {
+                    "semantic_action": event.get("semantic_action"),
+                    "context": event.get("context", {}),
+                    "metadata": event.get("metadata", {}),
+                    "response_time": event.get("response_time"),
+                    "success": event.get("success", True)
+                }
+            }
+            
+            # Add to session thread
+            await self.session_thread_service.add_event_to_thread(
+                session_thread_id=session_thread_id,
+                event_type=thread_event["event_type"],
+                event_data=thread_event["event_data"]
+            )
+            
+            logger.debug(f"Added semantic event to session thread {session_thread_id}: {thread_event['event_type']}")
+            
+        except Exception as e:
+            logger.error(f"Error processing semantic event: {e}")
+    
+    async def _get_or_create_user_session_thread(self, username: str) -> str:
+        """Get or create active session thread for user"""
+        try:
+            # Check for active session thread in Redis
+            active_session_key = f"active_session:{username}"
+            session_thread_id = await self.redis.get(active_session_key)
+            
+            if session_thread_id:
+                # Check if session thread still exists
+                existing_thread = await self.session_thread_service.get_session_thread(session_thread_id.decode())
+                if existing_thread:
+                    return session_thread_id.decode()
+            
+            # Create new session thread
+            new_thread = await self.session_thread_service.create_session_thread(
+                username=username,
+                session_goals="User work session"
+            )
+            
+            # Store as active session
+            await self.redis.set(active_session_key, new_thread.session_thread_id, ex=86400)  # 24 hours
+            
+            logger.info(f"Created new session thread {new_thread.session_thread_id} for user {username}")
+            return new_thread.session_thread_id
+            
+        except Exception as e:
+            logger.error(f"Error getting/creating session thread for {username}: {e}")
+            # Fallback to a default session thread ID
+            import time
+            return f"session_{username}_{int(time.time())}"
+    
+    def _map_semantic_to_thread_event_type(self, event: Dict[str, Any]) -> str:
+        """Map semantic event types to session thread event types"""
+        metadata_type = event.get("metadata", {}).get("type", "")
+        
+        mapping = {
+            "ontology_layout": "ontology_layout_modified",
+            "ontology_save": "ontology_saved", 
+            "project_create": "project_created",
+            "project_update": "project_updated",
+            "file_upload": "file_uploaded",
+            "file_delete": "file_deleted",
+            "knowledge_search": "knowledge_searched",
+            "knowledge_create": "knowledge_created",
+            "workflow_start": "workflow_started",
+            "das_chat": "das_interaction",
+            "das_session_start": "das_session_started"
+        }
+        
+        return mapping.get(metadata_type, "api_call")
 
 
 # Global processor instance

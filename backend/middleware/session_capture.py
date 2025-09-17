@@ -6,6 +6,7 @@ Captures API calls with semantic meaning for session thread intelligence.
 
 import json
 import logging
+import sys
 import time
 from datetime import datetime
 from typing import Dict, Any, Optional, Callable
@@ -75,7 +76,13 @@ class SessionCaptureMiddleware(BaseHTTPMiddleware):
             return False
         
         # Capture meaningful API operations
-        return request.method in ["POST", "PUT", "DELETE"]
+        meaningful_operations = request.method in ["POST", "PUT", "DELETE"]
+        
+        # Also capture project creation even if it fails (for debugging)
+        if "projects" in path and request.method == "POST":
+            return True
+            
+        return meaningful_operations
     
     async def _capture_semantic_event(self, request: Request, response: Response, start_time: float, redis_client):
         """Extract semantic meaning and queue event"""
@@ -100,14 +107,26 @@ class SessionCaptureMiddleware(BaseHTTPMiddleware):
                 "success": True
             }
             
-            # Queue for processing
-            print(f"🔥 CAPTURE: Queuing event to Redis: {event['semantic_action']}")
-            try:
-                result = await redis_client.lpush("semantic_events", json.dumps(event))
-                print(f"🔥 CAPTURE: Event queued successfully, result: {result}")
-            except Exception as redis_error:
-                print(f"🔥 CAPTURE: Redis write FAILED: {redis_error}")
-                raise redis_error
+            # Route directly to DAS bridge if available, otherwise queue
+            das_bridge = getattr(sys.modules[__name__], 'das_bridge', None)
+            if das_bridge:
+                print(f"🔥 CAPTURE: Routing event directly to DAS: {event['semantic_action']}")
+                try:
+                    success = await das_bridge._route_event_to_das(event)
+                    print(f"🔥 CAPTURE: DAS routing {'SUCCESS' if success else 'FAILED'}")
+                except Exception as das_error:
+                    print(f"🔥 CAPTURE: DAS routing FAILED: {das_error}")
+                    # Fallback to queue
+                    result = await redis_client.lpush("api_events", json.dumps(event))
+                    print(f"🔥 CAPTURE: Fallback queued, result: {result}")
+            else:
+                print(f"🔥 CAPTURE: No DAS bridge, queuing event: {event['semantic_action']}")
+                try:
+                    result = await redis_client.lpush("api_events", json.dumps(event))
+                    print(f"🔥 CAPTURE: Event queued successfully, result: {result}")
+                except Exception as redis_error:
+                    print(f"🔥 CAPTURE: Redis write FAILED: {redis_error}")
+                    raise redis_error
             logger.debug(f"Captured: {semantic_data['action']} for {username}")
             
         except Exception as e:
@@ -130,6 +149,17 @@ class SessionCaptureMiddleware(BaseHTTPMiddleware):
                 return None
         except Exception:
             pass
+            return None
+    
+    def _extract_project_id_from_graph(self, graph_url: str) -> Optional[str]:
+        """Extract project ID from ontology graph URL"""
+        try:
+            # Pattern: https://xma-adt.usnc.mil/odras/core/{project_id}/ontologies/{ontology_id}
+            if "/core/" in graph_url and "/ontologies/" in graph_url:
+                parts = graph_url.split("/core/")[1].split("/ontologies/")[0]
+                return parts if parts else None
+        except Exception:
+            pass
         return None
     
     def _extract_semantics(self, request: Request, response: Response) -> Dict[str, Any]:
@@ -142,10 +172,15 @@ class SessionCaptureMiddleware(BaseHTTPMiddleware):
         if "ontology/layout" in path and method == "PUT":
             graph = query_params.get("graph", "")
             ontology_id = graph.split("/")[-1] if graph else "unknown"
+            project_id = self._extract_project_id_from_graph(graph)
             return {
                 "action": f"Modified {ontology_id} ontology layout",
-                "context": {"ontology_id": ontology_id, "workbench": "ontology"},
-                "metadata": {"type": "ontology_layout", "graph": graph}
+                "context": {
+                    "ontology_id": ontology_id, 
+                    "workbench": "ontology",
+                    "project_id": project_id
+                },
+                "metadata": {"type": "ontology_layout", "graph": graph, "project_id": project_id}
             }
         
         elif "ontology/save" in path and method == "POST":
@@ -157,12 +192,31 @@ class SessionCaptureMiddleware(BaseHTTPMiddleware):
                 "metadata": {"type": "ontology_save", "graph": graph}
             }
         
-        # Project operations
+        # Project operations  
         elif path == "/api/projects" and method == "POST":
+            # Try to extract project details from request body
+            project_name = "Unknown"
+            project_description = None
+            try:
+                if hasattr(request, '_body'):
+                    body = json.loads(request._body)
+                    project_name = body.get("name", "Unknown")
+                    project_description = body.get("description")
+            except:
+                pass
+                
             return {
-                "action": "Created new project",
-                "context": {"workbench": "project"},
-                "metadata": {"type": "project_create"}
+                "action": f"Created project '{project_name}'",
+                "context": {
+                    "workbench": "project", 
+                    "project_name": project_name,
+                    "project_description": project_description
+                },
+                "metadata": {
+                    "type": "project_create",
+                    "project_name": project_name,
+                    "has_description": bool(project_description)
+                }
             }
         
         elif path.startswith("/api/projects/") and method == "PUT":

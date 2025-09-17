@@ -284,7 +284,7 @@ def list_projects(state: Optional[str] = None, user=Depends(get_user)):
 
 
 @app.post("/api/projects")
-def create_project(body: Dict, user=Depends(get_user)):
+async def create_project(body: Dict, user=Depends(get_user)):
     name = (body.get("name") or "").strip()
     namespace_id = body.get("namespace_id")
     domain = body.get("domain")
@@ -321,6 +321,41 @@ def create_project(body: Dict, user=Depends(get_user)):
             namespace_id=namespace_id,
             domain=domain,
         )
+        
+        # Create project thread immediately with project context using existing DAS system
+        try:
+            from backend.api.das import das_engine
+            from backend.services.project_thread_manager import ProjectEventType
+            if das_engine and das_engine.project_manager:
+                # Create project thread with initial context
+                project_thread = await das_engine.project_manager.get_or_create_project_thread(
+                    project_id=proj["project_id"],
+                    user_id=user["user_id"]
+                )
+                
+                # Add initial project context event
+                await das_engine.project_manager.capture_project_event(
+                    project_id=proj["project_id"],
+                    project_thread_id=project_thread.project_thread_id,
+                    user_id=user["user_id"],
+                    event_type=ProjectEventType.DAS_COMMAND,
+                    event_data={
+                        "action": "project_created",
+                        "project_name": name,
+                        "project_description": body.get("description"),
+                        "domain": domain,
+                        "namespace_id": namespace_id,
+                        "created_by": user["username"],
+                        "initial_context": f"Project '{name}' created in domain '{domain}'" + 
+                                         (f" with description: {body.get('description')}" if body.get("description") else "")
+                    }
+                )
+                
+                logger.info(f"Created project thread {project_thread.project_thread_id} for new project {proj['project_id']}")
+        except Exception as thread_error:
+            logger.warning(f"Could not create project thread: {thread_error}")
+            # Don't fail project creation if thread creation fails
+        
         return {"project": proj}
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
@@ -473,7 +508,7 @@ def update_project(project_id: str, body: Dict, user=Depends(get_user)):
 
 
 @app.delete("/api/projects/{project_id}")
-def delete_project(project_id: str, user=Depends(get_user)):
+async def delete_project(project_id: str, user=Depends(get_user)):
     """Hard delete a project and memberships. Does NOT delete external artifacts.
 
     For now, we perform a hard delete from the DB (projects, memberships). Artifacts like ontologies are not deleted;
@@ -497,6 +532,17 @@ def delete_project(project_id: str, user=Depends(get_user)):
                 conn.commit()
         finally:
             db._return(conn)
+        
+        # Clean up project thread from Redis and vector store
+        try:
+            from backend.api.das import das_engine
+            if das_engine and das_engine.project_manager:
+                await das_engine.project_manager.delete_project_thread(project_id)
+                logger.info(f"Cleaned up project thread for deleted project {project_id}")
+        except Exception as cleanup_error:
+            logger.warning(f"Could not clean up project thread: {cleanup_error}")
+            # Don't fail project deletion if thread cleanup fails
+        
         return {"deleted": project_id}
     except HTTPException:
         raise
@@ -582,7 +628,7 @@ async def on_startup():
         logger.info("🔧 Configuring middleware...")
         from backend.middleware.session_capture import set_global_redis_client
         set_global_redis_client(redis_client)
-        print("✅ Middleware configured with global Redis client")
+        print("✅ Middleware configured with Redis client")
         
         print("🔥 Step 9: Initializing semantic capture...")
         logger.info("📊 Initializing semantic capture...")
@@ -590,15 +636,25 @@ async def on_startup():
         await initialize_semantic_capture(redis_client)
         print("✅ Semantic capture initialized")
         
-        print("🔥 Step 10: Starting background processor...")
-        logger.info("⚙️ Starting background processor...")
-        from backend.services.session_thread_processor import start_session_thread_processor
-        from backend.api.das_simple import session_thread_service
-        if session_thread_service:
-            await start_session_thread_processor(settings, redis_client, session_thread_service)
-            print("✅ Background processor started")
-        else:
-            print("⚠️ session_thread_service not available")
+        print("🔥 Step 10: Setting up middleware-to-DAS event routing...")
+        logger.info("🔗 Configuring middleware to route events to existing ProjectThreadManager...")
+        try:
+            # Configure middleware to route events directly to DAS
+            from backend.services.middleware_to_das_bridge import MiddlewareToDASBridge
+            global middleware_bridge
+            middleware_bridge = MiddlewareToDASBridge(redis_client)
+            print(f"✅ Middleware-to-DAS bridge configured")
+            
+            # Store bridge instance globally for middleware access
+            import backend.middleware.session_capture as session_middleware
+            session_middleware.das_bridge = middleware_bridge
+            print("✅ Bridge connected to middleware")
+            
+        except Exception as e:
+            print(f"❌ Error setting up middleware bridge: {e}")
+            logger.error(f"Middleware bridge error: {e}")
+            import traceback
+            traceback.print_exc()
         
         print("🎉 DAS INITIALIZATION COMPLETE!")
         logger.info("✅ DAS initialization complete!")

@@ -260,9 +260,9 @@ class ProjectThreadManager:
             
             # Add to Redis queue for background processing (if available)
             if self.redis:
-                self.redis.lpush(self.event_queue, json.dumps(event.to_dict()))
+                await self.redis.lpush(self.event_queue, json.dumps(event.to_dict()))
                 # Publish for real-time monitoring
-                self.redis.publish(f"project_watch:{project_id}", json.dumps(event.to_dict()))
+                await self.redis.publish(f"project_watch:{project_id}", json.dumps(event.to_dict()))
             
             # Update project thread context immediately
             await self._update_thread_context_from_event(event)
@@ -444,13 +444,13 @@ class ProjectThreadManager:
             # Also cache in Redis if available (for performance)
             if self.redis:
                 thread_json = json.dumps(thread_data)
-                self.redis.set(
+                await self.redis.set(
                     f"{self.thread_prefix}:{thread_context.project_thread_id}",
                     thread_json,
                     ex=86400 * 7  # 7 days cache
                 )
                 # Create project index for fast lookup
-                self.redis.set(f"project_index:{thread_context.project_id}", thread_context.project_thread_id, ex=86400 * 7)
+                await self.redis.set(f"project_index:{thread_context.project_id}", thread_context.project_thread_id, ex=86400 * 7)
             
         except Exception as e:
             logger.error(f"Failed to persist project thread {thread_context.project_thread_id}: {e}")
@@ -493,7 +493,7 @@ class ProjectThreadManager:
         try:
             # Try Redis cache first (if available)
             if self.redis:
-                thread_json = self.redis.get(f"{self.thread_prefix}:{project_thread_id}")
+                thread_json = await self.redis.get(f"{self.thread_prefix}:{project_thread_id}")
                 if thread_json:
                     if isinstance(thread_json, bytes):
                         thread_json = thread_json.decode('utf-8')
@@ -519,7 +519,7 @@ class ProjectThreadManager:
                         
                         # Cache in Redis if available
                         if self.redis:
-                            self.redis.set(
+                            await self.redis.set(
                                 f"{self.thread_prefix}:{project_thread_id}",
                                 json.dumps(thread_data),
                                 ex=86400 * 7
@@ -582,3 +582,36 @@ class ProjectThreadManager:
             
         except Exception as e:
             logger.error(f"Failed to update thread context from event: {e}")
+    
+    async def delete_project_thread(self, project_id: str) -> bool:
+        """Delete project thread from both Redis and vector store"""
+        try:
+            # Get project thread ID from Redis index
+            if self.redis:
+                project_thread_id = await self.redis.get(f"project_index:{project_id}")
+                if project_thread_id:
+                    project_thread_id = project_thread_id.decode()
+                    
+                    # Delete from Redis
+                    await self.redis.delete(f"{self.thread_prefix}:{project_thread_id}")
+                    await self.redis.delete(f"project_index:{project_id}")
+                    logger.info(f"Deleted project thread {project_thread_id} from Redis")
+                    
+                    # Delete from vector store
+                    try:
+                        self.qdrant.delete_vectors(self.collection_name, [project_thread_id])
+                        logger.info(f"Deleted project thread {project_thread_id} from vector store")
+                    except Exception as vector_error:
+                        logger.warning(f"Could not delete from vector store: {vector_error}")
+                    
+                    return True
+                else:
+                    logger.warning(f"No project thread found for project {project_id}")
+                    return False
+            else:
+                logger.warning("Redis not available for project thread deletion")
+                return False
+                
+        except Exception as e:
+            logger.error(f"Error deleting project thread for project {project_id}: {e}")
+            return False
