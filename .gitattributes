@@ -1,23 +1,22 @@
-# ODRAS Git Attributes
-# Configure how git handles different file types
+# ODRAS Git Attributes - Normalize line endings and handle whitespace
+# Based on diagnostic findings to prevent Cursor reformatting issues
 
-# Python files
+# Force LF line endings for all text files
+* text=auto eol=lf
+
+# Specific file type handling
 *.py text eol=lf
-
-# SQL files
 *.sql text eol=lf
-
-# Documentation
 *.md text eol=lf
-*.txt text eol=lf
-
-# Configuration files
 *.yml text eol=lf
 *.yaml text eol=lf
 *.json text eol=lf
-
-# Shell scripts
+*.txt text eol=lf
 *.sh text eol=lf
+*.js text eol=lf
+*.ts text eol=lf
+*.html text eol=lf
+*.css text eol=lf
 
 # Binary files
 *.png binary
@@ -26,12 +25,14 @@
 *.gif binary
 *.ico binary
 *.pdf binary
-
-# Archives
 *.zip binary
 *.tar.gz binary
-*.tar.bz2 binary
 
-# Ignore whitespace changes for certain file types
-*.md -whitespace
-*.sql -whitespace
+# Ignore whitespace changes for problematic files that keep getting reformatted
+backend/migrations/014_orphaned_assets_management.sql -whitespace
+backend/migrations/015_installation_specific_iris.sql -whitespace
+backend/services/installation_iri_service.py -whitespace
+docs/FEDERATED_ACCESS_QUICK_REFERENCE.md -whitespace
+docs/INSTALLATION_AND_IRI_SETUP.md -whitespace
+docs/INSTALLATION_SPECIFIC_IRI_CONFIG.md -whitespace
+docs/IRI_SYSTEM_OVERVIEW.md -whitespace
