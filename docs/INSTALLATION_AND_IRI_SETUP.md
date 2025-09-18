@@ -658,29 +658,4 @@ python -c "exec(open('backend/migrations/015_installation_specific_iris.sql').re
 - ✅ Log all federated access
 - ✅ Provide clear access policies
 
-### 3. Cross-Installation Collaboration
-- ✅ Use IRIs for all resource references
-- ✅ Include installation discovery in integration
-- ✅ Respect access controls and permissions
-- ✅ Maintain audit trails for shared resources
-
----
-
-## Conclusion
-
-The ODRAS installation-specific IRI system enables powerful federated capabilities while maintaining proper security and authority controls. External systems can discover, reference, and access public artifacts using standard semantic web protocols, enabling true cross-installation collaboration and knowledge sharing.
-
-For questions or support, contact your installation authority listed in the IRI resolution responses.
-
-
-
-
-
-
-
-
-
-
-
-
 

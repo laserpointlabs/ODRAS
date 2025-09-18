@@ -94,29 +94,4 @@ curl "https://{installation}.{service}.mil/api/federated/installations/discover"
 
 For integration support or access to private resources, contact the installation authority listed in IRI resolution responses:
 
-- **XMA-ADT**: admin@xma-adt.usn.mil
-- **AFIT**: admin@afit-research.usaf.mil<br>
-- **TRADOC**: admin@tradoc-sim.usa.mil
-
----
-
-## 🎯 Common Use Cases
-
-1. **Cross-Installation Analysis**: Norfolk Naval Base uses XMA-ADT's mission analysis
-2. **Academic Research**: AFIT references Navy requirements for research
-3. **Industry Integration**: Boeing accesses Navy specifications for design
-4. **Tool Integration**: External analysis tools process ODRAS artifacts
-5. **Knowledge Sharing**: Share lessons learned across installations
-
-
-
-
-
-
-
-
-
-
-
-
 
