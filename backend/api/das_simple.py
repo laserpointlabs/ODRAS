@@ -57,7 +57,7 @@ async def create_session_thread(username: str, project_id: Optional[str] = None)
     """Create a new session thread for user"""
     session_thread_id = str(uuid.uuid4())
     start_time = datetime.now()
-    
+
     # Store in Redis
     thread_data = {
         "session_thread_id": session_thread_id,
@@ -68,21 +68,21 @@ async def create_session_thread(username: str, project_id: Optional[str] = None)
         "session_goals": None,
         "status": "active"
     }
-    
+
     if redis_client:
         await redis_client.set(
             f"session_thread:{session_thread_id}",
             json.dumps(thread_data),
             ex=86400  # 24 hours
         )
-        
+
         # Log session start event
         await log_session_event(
             session_thread_id=session_thread_id,
             event_type="session_start",
             event_data={"username": username, "project_id": project_id}
         )
-    
+
     logger.info(f"Created session thread {session_thread_id} for user {username}")
     return thread_data
 
@@ -91,7 +91,7 @@ async def log_session_event(session_thread_id: str, event_type: str, event_data:
     """Log an event to the session thread"""
     if not redis_client:
         return
-        
+
     event = {
         "event_id": str(uuid.uuid4()),
         "session_thread_id": session_thread_id,
@@ -99,7 +99,7 @@ async def log_session_event(session_thread_id: str, event_type: str, event_data:
         "event_type": event_type,
         "event_data": event_data
     }
-    
+
     # Add to Redis event queue for background processing
     await redis_client.lpush("session_events", json.dumps(event))
     logger.debug(f"Logged event {event_type} for session thread {session_thread_id}")
@@ -117,19 +117,19 @@ async def chat_with_das(
     try:
         username = current_user.get("username")
         user_id = current_user.get("user_id")
-        
+
         if not username:
             raise HTTPException(
                 status_code=status.HTTP_401_UNAUTHORIZED,
                 detail="User not authenticated"
             )
-        
+
         # Get or create session thread
         session_thread_id = request.session_thread_id
         if not session_thread_id:
             thread_data = await create_session_thread(username, request.project_id)
             session_thread_id = thread_data["session_thread_id"]
-        
+
         # Log user message
         await log_session_event(
             session_thread_id=session_thread_id,
@@ -141,7 +141,7 @@ async def chat_with_das(
                 "workbench": request.workbench
             }
         )
-        
+
         # Use existing RAG service (no complex DAS engine)
         if rag_service:
             rag_response = await rag_service.query_knowledge_base(
@@ -153,24 +153,24 @@ async def chat_with_das(
                 include_metadata=True,
                 response_style="comprehensive"
             )
-            
+
             response_message = rag_response.get("response", "I couldn't process your request.")
             confidence = rag_response.get("confidence", "low")
-            
+
         else:
             response_message = "DAS service not available"
             confidence = "low"
-        
+
         # Log DAS response
         await log_session_event(
             session_thread_id=session_thread_id,
-            event_type="das_response", 
+            event_type="das_response",
             event_data={
                 "response": response_message,
                 "confidence": confidence
             }
         )
-        
+
         return ChatResponse(
             message=response_message,
             confidence=confidence,
@@ -180,7 +180,7 @@ async def chat_with_das(
                 "rag_used": bool(rag_service)
             }
         )
-        
+
     except Exception as e:
         logger.error(f"Error in DAS chat: {e}")
         raise HTTPException(
@@ -202,16 +202,16 @@ async def start_session_thread(
                 status_code=status.HTTP_401_UNAUTHORIZED,
                 detail="User not authenticated"
             )
-        
+
         thread_data = await create_session_thread(username, project_id)
-        
+
         return SessionThreadResponse(
             session_thread_id=thread_data["session_thread_id"],
             username=thread_data["username"],
             start_time=thread_data["start_time"],
             status=thread_data["status"]
         )
-        
+
     except Exception as e:
         logger.error(f"Error starting session thread: {e}")
         raise HTTPException(
@@ -246,7 +246,7 @@ async def llm_health_check():
         else:
             return {
                 "status": "unavailable",
-                "service": "LLM", 
+                "service": "LLM",
                 "error": "RAG service not initialized",
                 "timestamp": datetime.now().isoformat()
             }
@@ -265,9 +265,10 @@ async def initialize_simple_das(settings: Settings, rag_svc: RAGService, redis_c
     global rag_service, redis_client, session_thread_service
     rag_service = rag_svc
     redis_client = redis_client_instance
-    
+
     # Initialize session thread service
     from ..services.session_thread_service import SessionThreadService
     session_thread_service = SessionThreadService(settings, redis_client_instance)
-    
+
     logger.info("Simple DAS initialized successfully")
+

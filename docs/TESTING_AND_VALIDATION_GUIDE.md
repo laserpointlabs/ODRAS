@@ -1,831 +1,832 @@
-# ODRAS Testing and Validation Guide
-
-## 🎯 Overview
-
-This document provides comprehensive testing and validation strategies for the ODRAS (Ontology-Driven Requirements Analysis System) tool. It covers all API endpoints, integration testing, and pre-merge validation procedures to ensure system reliability and functionality.
-
-## 📋 Table of Contents
-
-1. [Testing Philosophy](#testing-philosophy)
-2. [API Testing Strategy](#api-testing-strategy)
-3. [Module-Specific Testing](#module-specific-testing)
-4. [Integration Testing](#integration-testing)
-5. [Pre-Merge Validation](#pre-merge-validation)
-6. [Automated Testing Pipeline](#automated-testing-pipeline)
-7. [Manual Testing Procedures](#manual-testing-procedures)
-8. [Performance Testing](#performance-testing)
-9. [Security Testing](#security-testing)
-10. [Test Data Management](#test-data-management)
-
-## 🧪 Testing Philosophy
-
-### Core Principles
-- **API-First Testing**: Every API endpoint must have comprehensive test coverage
-- **Integration Validation**: End-to-end workflow testing for critical paths
-- **Regression Prevention**: Automated tests prevent breaking changes
-- **Performance Monitoring**: Response time and resource usage validation
-- **Security Verification**: Authentication, authorization, and data protection testing
-
-### Testing Levels
-1. **Unit Tests**: Individual function and class testing
-2. **Integration Tests**: API endpoint and service interaction testing
-3. **End-to-End Tests**: Complete workflow validation
-4. **Performance Tests**: Load and stress testing
-5. **Security Tests**: Vulnerability and access control testing
-
-## 🔌 API Testing Strategy
-
-### Current API Coverage Analysis
-
-Based on the codebase analysis, ODRAS has **131 API endpoints** across 8 major modules:
-
-#### Core Modules and Endpoint Counts:
-- **Authentication & Projects**: 15 endpoints
-- **File Management**: 15 endpoints  
-- **Ontology Management**: 12 endpoints
-- **Knowledge Management**: 12 endpoints
-- **Workflow Management**: 3 endpoints
-- **Namespace Management**: 8 endpoints (simple) + 12 endpoints (advanced)
-- **Domain Management**: 5 endpoints
-- **Prefix Management**: 4 endpoints
-- **Embedding Models**: 7 endpoints
-- **Persona & Prompt Management**: 8 endpoints
-- **User Tasks & Review**: 6 endpoints
-
-### Testing Framework Setup
-
-```python
-# Recommended testing stack
-pytest>=7.4.0
-pytest-asyncio>=0.21.0
-pytest-cov>=4.1.0
-httpx>=0.24.0  # For async API testing
-pytest-mock>=3.10.0
-```
-
-## 📊 Module-Specific Testing
-
-### 1. Authentication & Project Management
-
-**Endpoints to Test:**
-- `POST /api/auth/login`
-- `GET /api/auth/me`
-- `POST /api/auth/logout`
-- `GET /api/projects`
-- `POST /api/projects`
-- `GET /api/projects/{project_id}`
-- `PUT /api/projects/{project_id}`
-- `DELETE /api/projects/{project_id}`
-
-**Test Scenarios:**
-```python
-# Authentication Tests
-async def test_login_success():
-    """Test successful user login with valid credentials"""
-    
-async def test_login_invalid_credentials():
-    """Test login failure with invalid credentials"""
-    
-async def test_token_expiration():
-    """Test token expiration and refresh mechanism"""
-    
-async def test_logout():
-    """Test user logout and token invalidation"""
-
-# Project Management Tests
-async def test_create_project():
-    """Test project creation with valid data"""
-    
-async def test_project_access_control():
-    """Test user can only access their own projects"""
-    
-async def test_project_archival():
-    """Test project archival and restoration"""
-```
-
-### 2. File Management
-
-**Endpoints to Test:**
-- `POST /api/files/upload`
-- `GET /api/files/`
-- `GET /api/files/{file_id}/download`
-- `GET /api/files/{file_id}/url`
-- `DELETE /api/files/{file_id}`
-- `PUT /api/files/{file_id}/tags`
-- `POST /api/files/batch/upload`
-- `POST /api/files/{file_id}/process`
-
-**Test Scenarios:**
-```python
-# File Upload Tests
-async def test_single_file_upload():
-    """Test uploading a single file with metadata"""
-    
-async def test_batch_file_upload():
-    """Test uploading multiple files simultaneously"""
-    
-async def test_file_type_validation():
-    """Test file type restrictions and validation"""
-    
-async def test_large_file_handling():
-    """Test handling of large files (>100MB)"""
-
-# File Management Tests
-async def test_file_download():
-    """Test file download with proper authentication"""
-    
-async def test_file_deletion():
-    """Test file deletion and cleanup"""
-    
-async def test_file_visibility_controls():
-    """Test admin-controlled file visibility"""
-```
-
-### 3. Ontology Management
-
-**Endpoints to Test:**
-- `GET /api/ontology/`
-- `PUT /api/ontology/`
-- `POST /api/ontology/classes`
-- `POST /api/ontology/properties`
-- `DELETE /api/ontology/classes/{class_name}`
-- `DELETE /api/ontology/properties/{property_name}`
-- `POST /api/ontology/validate`
-- `POST /api/ontology/import`
-- `GET /api/ontology/export/{format}`
-
-**Test Scenarios:**
-```python
-# Ontology CRUD Tests
-async def test_ontology_retrieval():
-    """Test ontology data retrieval"""
-    
-async def test_class_creation():
-    """Test adding new ontology classes"""
-    
-async def test_property_creation():
-    """Test adding new ontology properties"""
-    
-async def test_ontology_validation():
-    """Test ontology structure validation"""
-
-# Import/Export Tests
-async def test_ontology_import():
-    """Test importing ontology from various formats"""
-    
-async def test_ontology_export():
-    """Test exporting ontology to different formats"""
-```
-
-### 4. Knowledge Management
-
-**Endpoints to Test:**
-- `GET /api/knowledge/assets`
-- `POST /api/knowledge/assets`
-- `GET /api/knowledge/assets/{asset_id}`
-- `PUT /api/knowledge/assets/{asset_id}`
-- `DELETE /api/knowledge/assets/{asset_id}`
-- `POST /api/knowledge/search`
-- `POST /api/knowledge/query`
-- `POST /api/knowledge/search/semantic`
-
-**Test Scenarios:**
-```python
-# Knowledge Asset Tests
-async def test_knowledge_asset_creation():
-    """Test creating knowledge assets"""
-    
-async def test_semantic_search():
-    """Test semantic search functionality"""
-    
-async def test_rag_query():
-    """Test RAG (Retrieval-Augmented Generation) queries"""
-    
-async def test_knowledge_asset_processing():
-    """Test asset processing and embedding generation"""
-```
-
-### 5. Workflow Management
-
-**Endpoints to Test:**
-- `POST /api/workflows/start`
-- `POST /api/workflows/rag-query`
-- `GET /api/workflows/rag-query/{process_instance_id}/status`
-
-**Test Scenarios:**
-```python
-# Workflow Tests
-async def test_workflow_start():
-    """Test starting BPMN workflows"""
-    
-async def test_workflow_status():
-    """Test workflow status monitoring"""
-    
-async def test_rag_workflow():
-    """Test RAG query workflow execution"""
-```
-
-## 🔗 Integration Testing
-
-### End-to-End Workflow Tests
-
-```python
-async def test_complete_document_processing_workflow():
-    """Test complete workflow: upload → process → extract → review"""
-    
-    # 1. Create project
-    project = await create_test_project()
-    
-    # 2. Upload document
-    file_id = await upload_test_document(project["id"])
-    
-    # 3. Start processing workflow
-    workflow_id = await start_processing_workflow(project["id"], [file_id])
-    
-    # 4. Monitor workflow status
-    status = await monitor_workflow_completion(workflow_id)
-    
-    # 5. Verify results
-    assert status == "completed"
-    requirements = await get_extracted_requirements(workflow_id)
-    assert len(requirements) > 0
-
-async def test_ontology_workflow_integration():
-    """Test ontology creation and knowledge asset integration"""
-    
-    # 1. Create ontology classes
-    await create_ontology_classes()
-    
-    # 2. Create knowledge assets
-    asset_id = await create_knowledge_asset()
-    
-    # 3. Verify ontology integration
-    integration_status = await verify_ontology_integration(asset_id)
-    assert integration_status == "success"
-```
-
-### Cross-Module Integration Tests
-
-```python
-async def test_file_to_knowledge_pipeline():
-    """Test file upload → processing → knowledge asset creation"""
-    
-async def test_ontology_to_workflow_integration():
-    """Test ontology changes affecting workflow behavior"""
-    
-async def test_namespace_to_ontology_consistency():
-    """Test namespace changes maintaining ontology consistency"""
-```
-
-## ✅ Pre-Merge Validation
-
-### Mandatory Pre-Merge Checklist
-
-#### 1. Code Quality Checks
-- [ ] **Linting**: All code passes `flake8` and `black` formatting
-- [ ] **Type Hints**: All functions have proper type annotations
-- [ ] **Documentation**: All new functions have docstrings
-- [ ] **Security**: No hardcoded secrets or credentials
-
-#### 2. Test Coverage Requirements
-- [ ] **Unit Tests**: 90%+ code coverage for new/modified code
-- [ ] **API Tests**: All new endpoints have comprehensive tests
-- [ ] **Integration Tests**: Critical workflows have end-to-end tests
-- [ ] **Regression Tests**: Existing functionality still works
-
-#### 3. API Validation
-- [ ] **Response Formats**: All endpoints return expected JSON schemas
-- [ ] **Error Handling**: Proper HTTP status codes and error messages
-- [ ] **Authentication**: All protected endpoints require valid tokens
-- [ ] **Input Validation**: All inputs are properly validated
-
-#### 4. Database Integrity
-- [ ] **Schema Changes**: Database migrations are tested
-- [ ] **Data Consistency**: Foreign key constraints are maintained
-- [ ] **Performance**: No N+1 queries or performance regressions
-
-#### 5. Frontend Integration
-- [ ] **UI Components**: New UI elements render correctly
-- [ ] **API Integration**: Frontend correctly calls backend APIs
-- [ ] **Error States**: Error handling displays user-friendly messages
-- [ ] **Responsive Design**: UI works on different screen sizes
-
-### Automated Pre-Merge Script
-
-```bash
-#!/bin/bash
-# pre-merge-validation.sh
-
-echo "🔍 Starting ODRAS Pre-Merge Validation..."
-
-# 1. Code Quality
-echo "📝 Running code quality checks..."
-flake8 backend/ --count --select=E9,F63,F7,F82 --show-source --statistics
-black --check backend/ scripts/
-
-# 2. Test Execution
-echo "🧪 Running test suite..."
-pytest tests/ -v --cov=backend --cov-report=html --cov-report=term
-
-# 3. API Validation
-echo "🔌 Validating API endpoints..."
-python scripts/validate_all_endpoints.py
-
-# 4. Integration Tests
-echo "🔗 Running integration tests..."
-pytest tests/integration/ -v
-
-# 5. Performance Tests
-echo "⚡ Running performance tests..."
-pytest tests/performance/ -v
-
-# 6. Security Tests
-echo "🔒 Running security tests..."
-bandit -r backend/ -ll
-
-echo "✅ Pre-merge validation complete!"
-```
-
-## 🤖 Automated Testing Pipeline
-
-### CI/CD Pipeline Configuration
-
-```yaml
-# .github/workflows/comprehensive-testing.yml
-name: Comprehensive Testing Pipeline
-
-on:
-  push:
-    branches: [main, develop, feature/*]
-  pull_request:
-    branches: [main, develop]
-
-jobs:
-  unit-tests:
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v3
-      - name: Set up Python
-        uses: actions/setup-python@v4
-        with:
-          python-version: '3.10'
-      - name: Install dependencies
-        run: |
-          pip install -r requirements.txt
-          pip install pytest pytest-cov pytest-asyncio
-      - name: Run unit tests
-        run: pytest tests/unit/ -v --cov=backend --cov-report=xml
-      - name: Upload coverage
-        uses: codecov/codecov-action@v3
-
-  api-tests:
-    runs-on: ubuntu-latest
-    services:
-      postgres:
-        image: postgres:13
-        env:
-          POSTGRES_PASSWORD: postgres
-        options: >-
-          --health-cmd pg_isready
-          --health-interval 10s
-          --health-timeout 5s
-          --health-retries 5
-    steps:
-      - uses: actions/checkout@v3
-      - name: Set up Python
-        uses: actions/setup-python@v4
-        with:
-          python-version: '3.10'
-      - name: Install dependencies
-        run: pip install -r requirements.txt
-      - name: Run API tests
-        run: pytest tests/api/ -v
-
-  integration-tests:
-    runs-on: ubuntu-latest
-    needs: [unit-tests, api-tests]
-    steps:
-      - uses: actions/checkout@v3
-      - name: Set up Python
-        uses: actions/setup-python@v4
-        with:
-          python-version: '3.10'
-      - name: Install dependencies
-        run: pip install -r requirements.txt
-      - name: Run integration tests
-        run: pytest tests/integration/ -v
-
-  performance-tests:
-    runs-on: ubuntu-latest
-    needs: [integration-tests]
-    steps:
-      - uses: actions/checkout@v3
-      - name: Set up Python
-        uses: actions/setup-python@v4
-        with:
-          python-version: '3.10'
-      - name: Install dependencies
-        run: pip install -r requirements.txt
-      - name: Run performance tests
-        run: pytest tests/performance/ -v
-```
-
-### Test Organization Structure
-
-```
-tests/
-├── unit/
-│   ├── test_auth.py
-│   ├── test_file_management.py
-│   ├── test_ontology.py
-│   ├── test_knowledge.py
-│   └── test_workflows.py
-├── api/
-│   ├── test_auth_endpoints.py
-│   ├── test_file_endpoints.py
-│   ├── test_ontology_endpoints.py
-│   ├── test_knowledge_endpoints.py
-│   └── test_workflow_endpoints.py
-├── integration/
-│   ├── test_document_processing_workflow.py
-│   ├── test_ontology_knowledge_integration.py
-│   └── test_cross_module_integration.py
-├── performance/
-│   ├── test_api_response_times.py
-│   ├── test_large_file_handling.py
-│   └── test_concurrent_users.py
-├── security/
-│   ├── test_authentication.py
-│   ├── test_authorization.py
-│   └── test_input_validation.py
-└── fixtures/
-    ├── test_data.json
-    ├── sample_ontologies/
-    └── sample_documents/
-```
-
-## 🧪 Manual Testing Procedures
-
-### 1. User Interface Testing
-
-#### File Management Workbench
-```bash
-# Test file upload functionality
-1. Navigate to Files workbench
-2. Upload various file types (PDF, DOCX, TXT, CSV)
-3. Verify file appears in library
-4. Test file preview functionality
-5. Test file deletion
-6. Test batch upload
-```
-
-#### Ontology Editor
-```bash
-# Test ontology editing
-1. Navigate to Ontology Editor
-2. Create new classes and properties
-3. Test JSON editing interface
-4. Verify Fuseki synchronization
-5. Test import/export functionality
-```
-
-#### Knowledge Management
-```bash
-# Test knowledge asset management
-1. Navigate to Knowledge workbench
-2. Create knowledge assets
-3. Test semantic search
-4. Test RAG queries
-5. Verify asset processing
-```
-
-### 2. Workflow Testing
-
-#### Document Processing Workflow
-```bash
-# Test complete document processing
-1. Upload a requirements document
-2. Start ingestion workflow
-3. Monitor workflow progress
-4. Review extracted requirements
-5. Approve or rerun extraction
-6. Verify knowledge asset creation
-```
-
-### 3. Cross-Browser Testing
-
-Test on multiple browsers:
-- Chrome (latest)
-- Firefox (latest)
-- Safari (latest)
-- Edge (latest)
-
-## ⚡ Performance Testing
-
-### Response Time Requirements
-
-| Endpoint Category | Max Response Time |
-|------------------|-------------------|
-| Authentication | 200ms |
-| File Upload | 5s (per MB) |
-| File Download | 1s (per MB) |
-| Ontology Operations | 500ms |
-| Knowledge Search | 2s |
-| RAG Queries | 10s |
-
-### Load Testing Scenarios
-
-```python
-# Performance test example
-async def test_concurrent_file_uploads():
-    """Test system under concurrent file upload load"""
-    
-    async def upload_file(client, file_data):
-        return await client.post("/api/files/upload", files=file_data)
-    
-    # Simulate 10 concurrent uploads
-    tasks = [upload_file(client, test_file) for _ in range(10)]
-    results = await asyncio.gather(*tasks)
-    
-    # Verify all uploads succeeded
-    for result in results:
-        assert result.status_code == 200
-        assert result.json()["success"] is True
-```
-
-## 🔒 Security Testing
-
-### Authentication & Authorization Tests
-
-```python
-async def test_unauthorized_access():
-    """Test that protected endpoints reject unauthorized requests"""
-    
-    # Test without token
-    response = await client.get("/api/projects")
-    assert response.status_code == 401
-    
-    # Test with invalid token
-    headers = {"Authorization": "Bearer invalid_token"}
-    response = await client.get("/api/projects", headers=headers)
-    assert response.status_code == 401
-
-async def test_user_isolation():
-    """Test that users can only access their own data"""
-    
-    # Create two users
-    user1_token = await login_user("user1")
-    user2_token = await login_user("user2")
-    
-    # User1 creates a project
-    project = await create_project(user1_token, "User1 Project")
-    
-    # User2 tries to access User1's project
-    headers = {"Authorization": f"Bearer {user2_token}"}
-    response = await client.get(f"/api/projects/{project['id']}", headers=headers)
-    assert response.status_code == 403
-```
-
-### Input Validation Tests
-
-```python
-async def test_sql_injection_prevention():
-    """Test that SQL injection attempts are blocked"""
-    
-    malicious_input = "'; DROP TABLE projects; --"
-    response = await client.post("/api/projects", 
-                                json={"name": malicious_input})
-    # Should not cause database error
-    assert response.status_code in [400, 422]
-
-async def test_xss_prevention():
-    """Test that XSS attempts are sanitized"""
-    
-    xss_payload = "<script>alert('xss')</script>"
-    response = await client.post("/api/projects",
-                                json={"name": xss_payload})
-    # Should sanitize the input
-    assert "<script>" not in response.json()["project"]["name"]
-```
-
-## 📊 Test Data Management
-
-### Test Data Strategy
-
-```python
-# test_data/fixtures.py
-class TestDataManager:
-    def __init__(self):
-        self.sample_documents = {
-            "requirements_doc": "test_data/sample_requirements.pdf",
-            "technical_spec": "test_data/sample_spec.docx",
-            "csv_data": "test_data/sample_data.csv"
-        }
-        
-        self.sample_ontologies = {
-            "base_ontology": "test_data/base_ontology.ttl",
-            "extended_ontology": "test_data/extended_ontology.ttl"
-        }
-        
-        self.test_users = {
-            "admin": {"username": "admin", "is_admin": True},
-            "user": {"username": "testuser", "is_admin": False}
-        }
-    
-    async def setup_test_environment(self):
-        """Set up clean test environment"""
-        await self.clean_database()
-        await self.create_test_users()
-        await self.load_sample_data()
-    
-    async def cleanup_test_environment(self):
-        """Clean up after tests"""
-        await self.clean_database()
-        await self.remove_test_files()
-```
-
-### Database Testing
-
-```python
-# tests/database/test_database_integrity.py
-async def test_foreign_key_constraints():
-    """Test that foreign key constraints are enforced"""
-    
-    # Try to create a project with invalid user_id
-    response = await client.post("/api/projects",
-                                json={"name": "Test Project", "user_id": "invalid"})
-    assert response.status_code == 400
-
-async def test_cascade_deletion():
-    """Test that cascade deletions work correctly"""
-    
-    # Create project with files
-    project = await create_test_project()
-    file_id = await upload_test_file(project["id"])
-    
-    # Delete project
-    await client.delete(f"/api/projects/{project['id']}")
-    
-    # Verify file is also deleted
-    response = await client.get(f"/api/files/{file_id}")
-    assert response.status_code == 404
-```
-
-## 📈 Monitoring and Metrics
-
-### Test Metrics to Track
-
-1. **Test Coverage**: Maintain 90%+ code coverage
-2. **Test Execution Time**: Keep full test suite under 10 minutes
-3. **API Response Times**: Monitor 95th percentile response times
-4. **Error Rates**: Track test failure rates and flaky tests
-5. **Performance Regression**: Monitor for performance degradation
-
-### Continuous Monitoring
-
-```python
-# monitoring/test_metrics.py
-class TestMetrics:
-    def __init__(self):
-        self.metrics = {
-            "test_coverage": 0,
-            "execution_time": 0,
-            "api_response_times": {},
-            "error_rate": 0
-        }
-    
-    def record_test_execution(self, test_name, duration, status):
-        """Record individual test execution metrics"""
-        pass
-    
-    def record_api_response_time(self, endpoint, response_time):
-        """Record API response time metrics"""
-        pass
-    
-    def generate_report(self):
-        """Generate comprehensive test metrics report"""
-        pass
-```
-
-## 🚀 Best Practices for Testing
-
-### 1. Test Naming Conventions
-```python
-# Good test names
-def test_user_login_with_valid_credentials_returns_success():
-def test_file_upload_with_invalid_type_returns_error():
-def test_ontology_class_creation_updates_fuseki_server():
-
-# Bad test names
-def test_login():
-def test_upload():
-def test_ontology():
-```
-
-### 2. Test Organization
-```python
-# Group related tests in classes
-class TestFileManagement:
-    async def test_file_upload_success(self):
-        pass
-    
-    async def test_file_upload_failure(self):
-        pass
-    
-    async def test_file_download(self):
-        pass
-```
-
-### 3. Test Data Management
-```python
-# Use fixtures for reusable test data
-@pytest.fixture
-async def test_project():
-    """Create a test project for use in multiple tests"""
-    return await create_test_project()
-
-@pytest.fixture
-async def authenticated_client():
-    """Create an authenticated HTTP client"""
-    client = AsyncClient(app=app, base_url="http://test")
-    token = await login_test_user(client)
-    client.headers.update({"Authorization": f"Bearer {token}"})
-    return client
-```
-
-### 4. Error Testing
-```python
-# Test both success and failure scenarios
-async def test_file_upload_success():
-    """Test successful file upload"""
-    response = await client.post("/api/files/upload", files=test_file)
-    assert response.status_code == 200
-    assert response.json()["success"] is True
-
-async def test_file_upload_invalid_type():
-    """Test file upload with invalid file type"""
-    response = await client.post("/api/files/upload", files=invalid_file)
-    assert response.status_code == 400
-    assert "Invalid file type" in response.json()["error"]
-```
-
-## 📋 Testing Checklist Template
-
-### Before Each Feature Branch Merge
-
-- [ ] **Code Quality**
-  - [ ] All code passes linting (flake8, black)
-  - [ ] Type hints are complete and accurate
-  - [ ] Documentation is updated
-  - [ ] No hardcoded secrets or credentials
-
-- [ ] **Unit Tests**
-  - [ ] New functions have unit tests
-  - [ ] Test coverage is 90%+ for new code
-  - [ ] All tests pass locally
-  - [ ] Edge cases are covered
-
-- [ ] **API Tests**
-  - [ ] All new endpoints have comprehensive tests
-  - [ ] Request/response schemas are validated
-  - [ ] Error cases are tested
-  - [ ] Authentication/authorization is tested
-
-- [ ] **Integration Tests**
-  - [ ] End-to-end workflows are tested
-  - [ ] Cross-module interactions work
-  - [ ] Database integrity is maintained
-  - [ ] External service integrations work
-
-- [ ] **Performance Tests**
-  - [ ] Response times meet requirements
-  - [ ] No performance regressions
-  - [ ] Memory usage is reasonable
-  - [ ] Concurrent operations work correctly
-
-- [ ] **Security Tests**
-  - [ ] Authentication is properly enforced
-  - [ ] Authorization works correctly
-  - [ ] Input validation prevents attacks
-  - [ ] No sensitive data is exposed
-
-- [ ] **Manual Testing**
-  - [ ] UI components work correctly
-  - [ ] User workflows are intuitive
-  - [ ] Error messages are helpful
-  - [ ] Cross-browser compatibility
-
-## 🎯 Conclusion
-
-This comprehensive testing and validation guide ensures that ODRAS maintains high quality and reliability. By following these procedures, we can:
-
-1. **Prevent Regressions**: Catch breaking changes before they reach production
-2. **Ensure Quality**: Maintain high code quality and user experience
-3. **Validate Integration**: Ensure all components work together correctly
-4. **Monitor Performance**: Track and maintain system performance
-5. **Secure the System**: Protect against common security vulnerabilities
-
-The key to successful testing is **automation** and **consistency**. Every feature branch should go through the same rigorous testing process before being merged into the main branch.
-
-Remember: **"If it's not tested, it's broken."** - Every line of code should have corresponding tests to ensure the system works as expected.
+# ODRAS Testing and Validation Guide<br>
+<br>
+## 🎯 Overview<br>
+<br>
+This document provides comprehensive testing and validation strategies for the ODRAS (Ontology-Driven Requirements Analysis System) tool. It covers all API endpoints, integration testing, and pre-merge validation procedures to ensure system reliability and functionality.<br>
+<br>
+## 📋 Table of Contents<br>
+<br>
+1. [Testing Philosophy](#testing-philosophy)<br>
+2. [API Testing Strategy](#api-testing-strategy)<br>
+3. [Module-Specific Testing](#module-specific-testing)<br>
+4. [Integration Testing](#integration-testing)<br>
+5. [Pre-Merge Validation](#pre-merge-validation)<br>
+6. [Automated Testing Pipeline](#automated-testing-pipeline)<br>
+7. [Manual Testing Procedures](#manual-testing-procedures)<br>
+8. [Performance Testing](#performance-testing)<br>
+9. [Security Testing](#security-testing)<br>
+10. [Test Data Management](#test-data-management)<br>
+<br>
+## 🧪 Testing Philosophy<br>
+<br>
+### Core Principles<br>
+- **API-First Testing**: Every API endpoint must have comprehensive test coverage<br>
+- **Integration Validation**: End-to-end workflow testing for critical paths<br>
+- **Regression Prevention**: Automated tests prevent breaking changes<br>
+- **Performance Monitoring**: Response time and resource usage validation<br>
+- **Security Verification**: Authentication, authorization, and data protection testing<br>
+<br>
+### Testing Levels<br>
+1. **Unit Tests**: Individual function and class testing<br>
+2. **Integration Tests**: API endpoint and service interaction testing<br>
+3. **End-to-End Tests**: Complete workflow validation<br>
+4. **Performance Tests**: Load and stress testing<br>
+5. **Security Tests**: Vulnerability and access control testing<br>
+<br>
+## 🔌 API Testing Strategy<br>
+<br>
+### Current API Coverage Analysis<br>
+<br>
+Based on the codebase analysis, ODRAS has **131 API endpoints** across 8 major modules:<br>
+<br>
+#### Core Modules and Endpoint Counts:<br>
+- **Authentication & Projects**: 15 endpoints<br>
+- **File Management**: 15 endpoints<br>
+- **Ontology Management**: 12 endpoints<br>
+- **Knowledge Management**: 12 endpoints<br>
+- **Workflow Management**: 3 endpoints<br>
+- **Namespace Management**: 8 endpoints (simple) + 12 endpoints (advanced)<br>
+- **Domain Management**: 5 endpoints<br>
+- **Prefix Management**: 4 endpoints<br>
+- **Embedding Models**: 7 endpoints<br>
+- **Persona & Prompt Management**: 8 endpoints<br>
+- **User Tasks & Review**: 6 endpoints<br>
+<br>
+### Testing Framework Setup<br>
+<br>
+```python<br>
+# Recommended testing stack<br>
+pytest>=7.4.0<br>
+pytest-asyncio>=0.21.0<br>
+pytest-cov>=4.1.0<br>
+httpx>=0.24.0  # For async API testing<br>
+pytest-mock>=3.10.0<br>
+```<br>
+<br>
+## 📊 Module-Specific Testing<br>
+<br>
+### 1. Authentication & Project Management<br>
+<br>
+**Endpoints to Test:**<br>
+- `POST /api/auth/login`<br>
+- `GET /api/auth/me`<br>
+- `POST /api/auth/logout`<br>
+- `GET /api/projects`<br>
+- `POST /api/projects`<br>
+- `GET /api/projects/{project_id}`<br>
+- `PUT /api/projects/{project_id}`<br>
+- `DELETE /api/projects/{project_id}`<br>
+<br>
+**Test Scenarios:**<br>
+```python<br>
+# Authentication Tests<br>
+async def test_login_success():<br>
+    """Test successful user login with valid credentials"""<br>
+<br>
+async def test_login_invalid_credentials():<br>
+    """Test login failure with invalid credentials"""<br>
+<br>
+async def test_token_expiration():<br>
+    """Test token expiration and refresh mechanism"""<br>
+<br>
+async def test_logout():<br>
+    """Test user logout and token invalidation"""<br>
+<br>
+# Project Management Tests<br>
+async def test_create_project():<br>
+    """Test project creation with valid data"""<br>
+<br>
+async def test_project_access_control():<br>
+    """Test user can only access their own projects"""<br>
+<br>
+async def test_project_archival():<br>
+    """Test project archival and restoration"""<br>
+```<br>
+<br>
+### 2. File Management<br>
+<br>
+**Endpoints to Test:**<br>
+- `POST /api/files/upload`<br>
+- `GET /api/files/`<br>
+- `GET /api/files/{file_id}/download`<br>
+- `GET /api/files/{file_id}/url`<br>
+- `DELETE /api/files/{file_id}`<br>
+- `PUT /api/files/{file_id}/tags`<br>
+- `POST /api/files/batch/upload`<br>
+- `POST /api/files/{file_id}/process`<br>
+<br>
+**Test Scenarios:**<br>
+```python<br>
+# File Upload Tests<br>
+async def test_single_file_upload():<br>
+    """Test uploading a single file with metadata"""<br>
+<br>
+async def test_batch_file_upload():<br>
+    """Test uploading multiple files simultaneously"""<br>
+<br>
+async def test_file_type_validation():<br>
+    """Test file type restrictions and validation"""<br>
+<br>
+async def test_large_file_handling():<br>
+    """Test handling of large files (>100MB)"""<br>
+<br>
+# File Management Tests<br>
+async def test_file_download():<br>
+    """Test file download with proper authentication"""<br>
+<br>
+async def test_file_deletion():<br>
+    """Test file deletion and cleanup"""<br>
+<br>
+async def test_file_visibility_controls():<br>
+    """Test admin-controlled file visibility"""<br>
+```<br>
+<br>
+### 3. Ontology Management<br>
+<br>
+**Endpoints to Test:**<br>
+- `GET /api/ontology/`<br>
+- `PUT /api/ontology/`<br>
+- `POST /api/ontology/classes`<br>
+- `POST /api/ontology/properties`<br>
+- `DELETE /api/ontology/classes/{class_name}`<br>
+- `DELETE /api/ontology/properties/{property_name}`<br>
+- `POST /api/ontology/validate`<br>
+- `POST /api/ontology/import`<br>
+- `GET /api/ontology/export/{format}`<br>
+<br>
+**Test Scenarios:**<br>
+```python<br>
+# Ontology CRUD Tests<br>
+async def test_ontology_retrieval():<br>
+    """Test ontology data retrieval"""<br>
+<br>
+async def test_class_creation():<br>
+    """Test adding new ontology classes"""<br>
+<br>
+async def test_property_creation():<br>
+    """Test adding new ontology properties"""<br>
+<br>
+async def test_ontology_validation():<br>
+    """Test ontology structure validation"""<br>
+<br>
+# Import/Export Tests<br>
+async def test_ontology_import():<br>
+    """Test importing ontology from various formats"""<br>
+<br>
+async def test_ontology_export():<br>
+    """Test exporting ontology to different formats"""<br>
+```<br>
+<br>
+### 4. Knowledge Management<br>
+<br>
+**Endpoints to Test:**<br>
+- `GET /api/knowledge/assets`<br>
+- `POST /api/knowledge/assets`<br>
+- `GET /api/knowledge/assets/{asset_id}`<br>
+- `PUT /api/knowledge/assets/{asset_id}`<br>
+- `DELETE /api/knowledge/assets/{asset_id}`<br>
+- `POST /api/knowledge/search`<br>
+- `POST /api/knowledge/query`<br>
+- `POST /api/knowledge/search/semantic`<br>
+<br>
+**Test Scenarios:**<br>
+```python<br>
+# Knowledge Asset Tests<br>
+async def test_knowledge_asset_creation():<br>
+    """Test creating knowledge assets"""<br>
+<br>
+async def test_semantic_search():<br>
+    """Test semantic search functionality"""<br>
+<br>
+async def test_rag_query():<br>
+    """Test RAG (Retrieval-Augmented Generation) queries"""<br>
+<br>
+async def test_knowledge_asset_processing():<br>
+    """Test asset processing and embedding generation"""<br>
+```<br>
+<br>
+### 5. Workflow Management<br>
+<br>
+**Endpoints to Test:**<br>
+- `POST /api/workflows/start`<br>
+- `POST /api/workflows/rag-query`<br>
+- `GET /api/workflows/rag-query/{process_instance_id}/status`<br>
+<br>
+**Test Scenarios:**<br>
+```python<br>
+# Workflow Tests<br>
+async def test_workflow_start():<br>
+    """Test starting BPMN workflows"""<br>
+<br>
+async def test_workflow_status():<br>
+    """Test workflow status monitoring"""<br>
+<br>
+async def test_rag_workflow():<br>
+    """Test RAG query workflow execution"""<br>
+```<br>
+<br>
+## 🔗 Integration Testing<br>
+<br>
+### End-to-End Workflow Tests<br>
+<br>
+```python<br>
+async def test_complete_document_processing_workflow():<br>
+    """Test complete workflow: upload → process → extract → review"""<br>
+<br>
+    # 1. Create project<br>
+    project = await create_test_project()<br>
+<br>
+    # 2. Upload document<br>
+    file_id = await upload_test_document(project["id"])<br>
+<br>
+    # 3. Start processing workflow<br>
+    workflow_id = await start_processing_workflow(project["id"], [file_id])<br>
+<br>
+    # 4. Monitor workflow status<br>
+    status = await monitor_workflow_completion(workflow_id)<br>
+<br>
+    # 5. Verify results<br>
+    assert status == "completed"<br>
+    requirements = await get_extracted_requirements(workflow_id)<br>
+    assert len(requirements) > 0<br>
+<br>
+async def test_ontology_workflow_integration():<br>
+    """Test ontology creation and knowledge asset integration"""<br>
+<br>
+    # 1. Create ontology classes<br>
+    await create_ontology_classes()<br>
+<br>
+    # 2. Create knowledge assets<br>
+    asset_id = await create_knowledge_asset()<br>
+<br>
+    # 3. Verify ontology integration<br>
+    integration_status = await verify_ontology_integration(asset_id)<br>
+    assert integration_status == "success"<br>
+```<br>
+<br>
+### Cross-Module Integration Tests<br>
+<br>
+```python<br>
+async def test_file_to_knowledge_pipeline():<br>
+    """Test file upload → processing → knowledge asset creation"""<br>
+<br>
+async def test_ontology_to_workflow_integration():<br>
+    """Test ontology changes affecting workflow behavior"""<br>
+<br>
+async def test_namespace_to_ontology_consistency():<br>
+    """Test namespace changes maintaining ontology consistency"""<br>
+```<br>
+<br>
+## ✅ Pre-Merge Validation<br>
+<br>
+### Mandatory Pre-Merge Checklist<br>
+<br>
+#### 1. Code Quality Checks<br>
+- [ ] **Linting**: All code passes `flake8` and `black` formatting<br>
+- [ ] **Type Hints**: All functions have proper type annotations<br>
+- [ ] **Documentation**: All new functions have docstrings<br>
+- [ ] **Security**: No hardcoded secrets or credentials<br>
+<br>
+#### 2. Test Coverage Requirements<br>
+- [ ] **Unit Tests**: 90%+ code coverage for new/modified code<br>
+- [ ] **API Tests**: All new endpoints have comprehensive tests<br>
+- [ ] **Integration Tests**: Critical workflows have end-to-end tests<br>
+- [ ] **Regression Tests**: Existing functionality still works<br>
+<br>
+#### 3. API Validation<br>
+- [ ] **Response Formats**: All endpoints return expected JSON schemas<br>
+- [ ] **Error Handling**: Proper HTTP status codes and error messages<br>
+- [ ] **Authentication**: All protected endpoints require valid tokens<br>
+- [ ] **Input Validation**: All inputs are properly validated<br>
+<br>
+#### 4. Database Integrity<br>
+- [ ] **Schema Changes**: Database migrations are tested<br>
+- [ ] **Data Consistency**: Foreign key constraints are maintained<br>
+- [ ] **Performance**: No N+1 queries or performance regressions<br>
+<br>
+#### 5. Frontend Integration<br>
+- [ ] **UI Components**: New UI elements render correctly<br>
+- [ ] **API Integration**: Frontend correctly calls backend APIs<br>
+- [ ] **Error States**: Error handling displays user-friendly messages<br>
+- [ ] **Responsive Design**: UI works on different screen sizes<br>
+<br>
+### Automated Pre-Merge Script<br>
+<br>
+```bash<br>
+#!/bin/bash<br>
+# pre-merge-validation.sh<br>
+<br>
+echo "🔍 Starting ODRAS Pre-Merge Validation..."<br>
+<br>
+# 1. Code Quality<br>
+echo "📝 Running code quality checks..."<br>
+flake8 backend/ --count --select=E9,F63,F7,F82 --show-source --statistics<br>
+black --check backend/ scripts/<br>
+<br>
+# 2. Test Execution<br>
+echo "🧪 Running test suite..."<br>
+pytest tests/ -v --cov=backend --cov-report=html --cov-report=term<br>
+<br>
+# 3. API Validation<br>
+echo "🔌 Validating API endpoints..."<br>
+python scripts/validate_all_endpoints.py<br>
+<br>
+# 4. Integration Tests<br>
+echo "🔗 Running integration tests..."<br>
+pytest tests/integration/ -v<br>
+<br>
+# 5. Performance Tests<br>
+echo "⚡ Running performance tests..."<br>
+pytest tests/performance/ -v<br>
+<br>
+# 6. Security Tests<br>
+echo "🔒 Running security tests..."<br>
+bandit -r backend/ -ll<br>
+<br>
+echo "✅ Pre-merge validation complete!"<br>
+```<br>
+<br>
+## 🤖 Automated Testing Pipeline<br>
+<br>
+### CI/CD Pipeline Configuration<br>
+<br>
+```yaml<br>
+# .github/workflows/comprehensive-testing.yml<br>
+name: Comprehensive Testing Pipeline<br>
+<br>
+on:<br>
+  push:<br>
+    branches: [main, develop, feature/*]<br>
+  pull_request:<br>
+    branches: [main, develop]<br>
+<br>
+jobs:<br>
+  unit-tests:<br>
+    runs-on: ubuntu-latest<br>
+    steps:<br>
+      - uses: actions/checkout@v3<br>
+      - name: Set up Python<br>
+        uses: actions/setup-python@v4<br>
+        with:<br>
+          python-version: '3.10'<br>
+      - name: Install dependencies<br>
+        run: |<br>
+          pip install -r requirements.txt<br>
+          pip install pytest pytest-cov pytest-asyncio<br>
+      - name: Run unit tests<br>
+        run: pytest tests/unit/ -v --cov=backend --cov-report=xml<br>
+      - name: Upload coverage<br>
+        uses: codecov/codecov-action@v3<br>
+<br>
+  api-tests:<br>
+    runs-on: ubuntu-latest<br>
+    services:<br>
+      postgres:<br>
+        image: postgres:13<br>
+        env:<br>
+          POSTGRES_PASSWORD: postgres<br>
+        options: >-<br>
+          --health-cmd pg_isready<br>
+          --health-interval 10s<br>
+          --health-timeout 5s<br>
+          --health-retries 5<br>
+    steps:<br>
+      - uses: actions/checkout@v3<br>
+      - name: Set up Python<br>
+        uses: actions/setup-python@v4<br>
+        with:<br>
+          python-version: '3.10'<br>
+      - name: Install dependencies<br>
+        run: pip install -r requirements.txt<br>
+      - name: Run API tests<br>
+        run: pytest tests/api/ -v<br>
+<br>
+  integration-tests:<br>
+    runs-on: ubuntu-latest<br>
+    needs: [unit-tests, api-tests]<br>
+    steps:<br>
+      - uses: actions/checkout@v3<br>
+      - name: Set up Python<br>
+        uses: actions/setup-python@v4<br>
+        with:<br>
+          python-version: '3.10'<br>
+      - name: Install dependencies<br>
+        run: pip install -r requirements.txt<br>
+      - name: Run integration tests<br>
+        run: pytest tests/integration/ -v<br>
+<br>
+  performance-tests:<br>
+    runs-on: ubuntu-latest<br>
+    needs: [integration-tests]<br>
+    steps:<br>
+      - uses: actions/checkout@v3<br>
+      - name: Set up Python<br>
+        uses: actions/setup-python@v4<br>
+        with:<br>
+          python-version: '3.10'<br>
+      - name: Install dependencies<br>
+        run: pip install -r requirements.txt<br>
+      - name: Run performance tests<br>
+        run: pytest tests/performance/ -v<br>
+```<br>
+<br>
+### Test Organization Structure<br>
+<br>
+```<br>
+tests/<br>
+├── unit/<br>
+│   ├── test_auth.py<br>
+│   ├── test_file_management.py<br>
+│   ├── test_ontology.py<br>
+│   ├── test_knowledge.py<br>
+│   └── test_workflows.py<br>
+├── api/<br>
+│   ├── test_auth_endpoints.py<br>
+│   ├── test_file_endpoints.py<br>
+│   ├── test_ontology_endpoints.py<br>
+│   ├── test_knowledge_endpoints.py<br>
+│   └── test_workflow_endpoints.py<br>
+├── integration/<br>
+│   ├── test_document_processing_workflow.py<br>
+│   ├── test_ontology_knowledge_integration.py<br>
+│   └── test_cross_module_integration.py<br>
+├── performance/<br>
+│   ├── test_api_response_times.py<br>
+│   ├── test_large_file_handling.py<br>
+│   └── test_concurrent_users.py<br>
+├── security/<br>
+│   ├── test_authentication.py<br>
+│   ├── test_authorization.py<br>
+│   └── test_input_validation.py<br>
+└── fixtures/<br>
+    ├── test_data.json<br>
+    ├── sample_ontologies/<br>
+    └── sample_documents/<br>
+```<br>
+<br>
+## 🧪 Manual Testing Procedures<br>
+<br>
+### 1. User Interface Testing<br>
+<br>
+#### File Management Workbench<br>
+```bash<br>
+# Test file upload functionality<br>
+1. Navigate to Files workbench<br>
+2. Upload various file types (PDF, DOCX, TXT, CSV)<br>
+3. Verify file appears in library<br>
+4. Test file preview functionality<br>
+5. Test file deletion<br>
+6. Test batch upload<br>
+```<br>
+<br>
+#### Ontology Editor<br>
+```bash<br>
+# Test ontology editing<br>
+1. Navigate to Ontology Editor<br>
+2. Create new classes and properties<br>
+3. Test JSON editing interface<br>
+4. Verify Fuseki synchronization<br>
+5. Test import/export functionality<br>
+```<br>
+<br>
+#### Knowledge Management<br>
+```bash<br>
+# Test knowledge asset management<br>
+1. Navigate to Knowledge workbench<br>
+2. Create knowledge assets<br>
+3. Test semantic search<br>
+4. Test RAG queries<br>
+5. Verify asset processing<br>
+```<br>
+<br>
+### 2. Workflow Testing<br>
+<br>
+#### Document Processing Workflow<br>
+```bash<br>
+# Test complete document processing<br>
+1. Upload a requirements document<br>
+2. Start ingestion workflow<br>
+3. Monitor workflow progress<br>
+4. Review extracted requirements<br>
+5. Approve or rerun extraction<br>
+6. Verify knowledge asset creation<br>
+```<br>
+<br>
+### 3. Cross-Browser Testing<br>
+<br>
+Test on multiple browsers:<br>
+- Chrome (latest)<br>
+- Firefox (latest)<br>
+- Safari (latest)<br>
+- Edge (latest)<br>
+<br>
+## ⚡ Performance Testing<br>
+<br>
+### Response Time Requirements<br>
+<br>
+| Endpoint Category | Max Response Time |<br>
+|------------------|-------------------|<br>
+| Authentication | 200ms |<br>
+| File Upload | 5s (per MB) |<br>
+| File Download | 1s (per MB) |<br>
+| Ontology Operations | 500ms |<br>
+| Knowledge Search | 2s |<br>
+| RAG Queries | 10s |<br>
+<br>
+### Load Testing Scenarios<br>
+<br>
+```python<br>
+# Performance test example<br>
+async def test_concurrent_file_uploads():<br>
+    """Test system under concurrent file upload load"""<br>
+<br>
+    async def upload_file(client, file_data):<br>
+        return await client.post("/api/files/upload", files=file_data)<br>
+<br>
+    # Simulate 10 concurrent uploads<br>
+    tasks = [upload_file(client, test_file) for _ in range(10)]<br>
+    results = await asyncio.gather(*tasks)<br>
+<br>
+    # Verify all uploads succeeded<br>
+    for result in results:<br>
+        assert result.status_code == 200<br>
+        assert result.json()["success"] is True<br>
+```<br>
+<br>
+## 🔒 Security Testing<br>
+<br>
+### Authentication & Authorization Tests<br>
+<br>
+```python<br>
+async def test_unauthorized_access():<br>
+    """Test that protected endpoints reject unauthorized requests"""<br>
+<br>
+    # Test without token<br>
+    response = await client.get("/api/projects")<br>
+    assert response.status_code == 401<br>
+<br>
+    # Test with invalid token<br>
+    headers = {"Authorization": "Bearer invalid_token"}<br>
+    response = await client.get("/api/projects", headers=headers)<br>
+    assert response.status_code == 401<br>
+<br>
+async def test_user_isolation():<br>
+    """Test that users can only access their own data"""<br>
+<br>
+    # Create two users<br>
+    user1_token = await login_user("user1")<br>
+    user2_token = await login_user("user2")<br>
+<br>
+    # User1 creates a project<br>
+    project = await create_project(user1_token, "User1 Project")<br>
+<br>
+    # User2 tries to access User1's project<br>
+    headers = {"Authorization": f"Bearer {user2_token}"}<br>
+    response = await client.get(f"/api/projects/{project['id']}", headers=headers)<br>
+    assert response.status_code == 403<br>
+```<br>
+<br>
+### Input Validation Tests<br>
+<br>
+```python<br>
+async def test_sql_injection_prevention():<br>
+    """Test that SQL injection attempts are blocked"""<br>
+<br>
+    malicious_input = "'; DROP TABLE projects; --"<br>
+    response = await client.post("/api/projects",<br>
+                                json={"name": malicious_input})<br>
+    # Should not cause database error<br>
+    assert response.status_code in [400, 422]<br>
+<br>
+async def test_xss_prevention():<br>
+    """Test that XSS attempts are sanitized"""<br>
+<br>
+    xss_payload = "<script>alert('xss')</script>"<br>
+    response = await client.post("/api/projects",<br>
+                                json={"name": xss_payload})<br>
+    # Should sanitize the input<br>
+    assert "<script>" not in response.json()["project"]["name"]<br>
+```<br>
+<br>
+## 📊 Test Data Management<br>
+<br>
+### Test Data Strategy<br>
+<br>
+```python<br>
+# test_data/fixtures.py<br>
+class TestDataManager:<br>
+    def __init__(self):<br>
+        self.sample_documents = {<br>
+            "requirements_doc": "test_data/sample_requirements.pdf",<br>
+            "technical_spec": "test_data/sample_spec.docx",<br>
+            "csv_data": "test_data/sample_data.csv"<br>
+        }<br>
+<br>
+        self.sample_ontologies = {<br>
+            "base_ontology": "test_data/base_ontology.ttl",<br>
+            "extended_ontology": "test_data/extended_ontology.ttl"<br>
+        }<br>
+<br>
+        self.test_users = {<br>
+            "admin": {"username": "admin", "is_admin": True},<br>
+            "user": {"username": "testuser", "is_admin": False}<br>
+        }<br>
+<br>
+    async def setup_test_environment(self):<br>
+        """Set up clean test environment"""<br>
+        await self.clean_database()<br>
+        await self.create_test_users()<br>
+        await self.load_sample_data()<br>
+<br>
+    async def cleanup_test_environment(self):<br>
+        """Clean up after tests"""<br>
+        await self.clean_database()<br>
+        await self.remove_test_files()<br>
+```<br>
+<br>
+### Database Testing<br>
+<br>
+```python<br>
+# tests/database/test_database_integrity.py<br>
+async def test_foreign_key_constraints():<br>
+    """Test that foreign key constraints are enforced"""<br>
+<br>
+    # Try to create a project with invalid user_id<br>
+    response = await client.post("/api/projects",<br>
+                                json={"name": "Test Project", "user_id": "invalid"})<br>
+    assert response.status_code == 400<br>
+<br>
+async def test_cascade_deletion():<br>
+    """Test that cascade deletions work correctly"""<br>
+<br>
+    # Create project with files<br>
+    project = await create_test_project()<br>
+    file_id = await upload_test_file(project["id"])<br>
+<br>
+    # Delete project<br>
+    await client.delete(f"/api/projects/{project['id']}")<br>
+<br>
+    # Verify file is also deleted<br>
+    response = await client.get(f"/api/files/{file_id}")<br>
+    assert response.status_code == 404<br>
+```<br>
+<br>
+## 📈 Monitoring and Metrics<br>
+<br>
+### Test Metrics to Track<br>
+<br>
+1. **Test Coverage**: Maintain 90%+ code coverage<br>
+2. **Test Execution Time**: Keep full test suite under 10 minutes<br>
+3. **API Response Times**: Monitor 95th percentile response times<br>
+4. **Error Rates**: Track test failure rates and flaky tests<br>
+5. **Performance Regression**: Monitor for performance degradation<br>
+<br>
+### Continuous Monitoring<br>
+<br>
+```python<br>
+# monitoring/test_metrics.py<br>
+class TestMetrics:<br>
+    def __init__(self):<br>
+        self.metrics = {<br>
+            "test_coverage": 0,<br>
+            "execution_time": 0,<br>
+            "api_response_times": {},<br>
+            "error_rate": 0<br>
+        }<br>
+<br>
+    def record_test_execution(self, test_name, duration, status):<br>
+        """Record individual test execution metrics"""<br>
+        pass<br>
+<br>
+    def record_api_response_time(self, endpoint, response_time):<br>
+        """Record API response time metrics"""<br>
+        pass<br>
+<br>
+    def generate_report(self):<br>
+        """Generate comprehensive test metrics report"""<br>
+        pass<br>
+```<br>
+<br>
+## 🚀 Best Practices for Testing<br>
+<br>
+### 1. Test Naming Conventions<br>
+```python<br>
+# Good test names<br>
+def test_user_login_with_valid_credentials_returns_success():<br>
+def test_file_upload_with_invalid_type_returns_error():<br>
+def test_ontology_class_creation_updates_fuseki_server():<br>
+<br>
+# Bad test names<br>
+def test_login():<br>
+def test_upload():<br>
+def test_ontology():<br>
+```<br>
+<br>
+### 2. Test Organization<br>
+```python<br>
+# Group related tests in classes<br>
+class TestFileManagement:<br>
+    async def test_file_upload_success(self):<br>
+        pass<br>
+<br>
+    async def test_file_upload_failure(self):<br>
+        pass<br>
+<br>
+    async def test_file_download(self):<br>
+        pass<br>
+```<br>
+<br>
+### 3. Test Data Management<br>
+```python<br>
+# Use fixtures for reusable test data<br>
+@pytest.fixture<br>
+async def test_project():<br>
+    """Create a test project for use in multiple tests"""<br>
+    return await create_test_project()<br>
+<br>
+@pytest.fixture<br>
+async def authenticated_client():<br>
+    """Create an authenticated HTTP client"""<br>
+    client = AsyncClient(app=app, base_url="http://test")<br>
+    token = await login_test_user(client)<br>
+    client.headers.update({"Authorization": f"Bearer {token}"})<br>
+    return client<br>
+```<br>
+<br>
+### 4. Error Testing<br>
+```python<br>
+# Test both success and failure scenarios<br>
+async def test_file_upload_success():<br>
+    """Test successful file upload"""<br>
+    response = await client.post("/api/files/upload", files=test_file)<br>
+    assert response.status_code == 200<br>
+    assert response.json()["success"] is True<br>
+<br>
+async def test_file_upload_invalid_type():<br>
+    """Test file upload with invalid file type"""<br>
+    response = await client.post("/api/files/upload", files=invalid_file)<br>
+    assert response.status_code == 400<br>
+    assert "Invalid file type" in response.json()["error"]<br>
+```<br>
+<br>
+## 📋 Testing Checklist Template<br>
+<br>
+### Before Each Feature Branch Merge<br>
+<br>
+- [ ] **Code Quality**<br>
+  - [ ] All code passes linting (flake8, black)<br>
+  - [ ] Type hints are complete and accurate<br>
+  - [ ] Documentation is updated<br>
+  - [ ] No hardcoded secrets or credentials<br>
+<br>
+- [ ] **Unit Tests**<br>
+  - [ ] New functions have unit tests<br>
+  - [ ] Test coverage is 90%+ for new code<br>
+  - [ ] All tests pass locally<br>
+  - [ ] Edge cases are covered<br>
+<br>
+- [ ] **API Tests**<br>
+  - [ ] All new endpoints have comprehensive tests<br>
+  - [ ] Request/response schemas are validated<br>
+  - [ ] Error cases are tested<br>
+  - [ ] Authentication/authorization is tested<br>
+<br>
+- [ ] **Integration Tests**<br>
+  - [ ] End-to-end workflows are tested<br>
+  - [ ] Cross-module interactions work<br>
+  - [ ] Database integrity is maintained<br>
+  - [ ] External service integrations work<br>
+<br>
+- [ ] **Performance Tests**<br>
+  - [ ] Response times meet requirements<br>
+  - [ ] No performance regressions<br>
+  - [ ] Memory usage is reasonable<br>
+  - [ ] Concurrent operations work correctly<br>
+<br>
+- [ ] **Security Tests**<br>
+  - [ ] Authentication is properly enforced<br>
+  - [ ] Authorization works correctly<br>
+  - [ ] Input validation prevents attacks<br>
+  - [ ] No sensitive data is exposed<br>
+<br>
+- [ ] **Manual Testing**<br>
+  - [ ] UI components work correctly<br>
+  - [ ] User workflows are intuitive<br>
+  - [ ] Error messages are helpful<br>
+  - [ ] Cross-browser compatibility<br>
+<br>
+## 🎯 Conclusion<br>
+<br>
+This comprehensive testing and validation guide ensures that ODRAS maintains high quality and reliability. By following these procedures, we can:<br>
+<br>
+1. **Prevent Regressions**: Catch breaking changes before they reach production<br>
+2. **Ensure Quality**: Maintain high code quality and user experience<br>
+3. **Validate Integration**: Ensure all components work together correctly<br>
+4. **Monitor Performance**: Track and maintain system performance<br>
+5. **Secure the System**: Protect against common security vulnerabilities<br>
+<br>
+The key to successful testing is **automation** and **consistency**. Every feature branch should go through the same rigorous testing process before being merged into the main branch.<br>
+<br>
+Remember: **"If it's not tested, it's broken."** - Every line of code should have corresponding tests to ensure the system works as expected.<br>
+<br>
 

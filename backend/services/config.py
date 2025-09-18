@@ -89,3 +89,4 @@ class Settings(BaseSettings):
         case_sensitive=False,
         extra="ignore",  # ignore unrelated environment variables
     )
+

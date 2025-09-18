@@ -22,30 +22,30 @@ _global_redis_client = None
 
 class SessionCaptureMiddleware(BaseHTTPMiddleware):
     """Middleware to capture API calls for session intelligence"""
-    
+
     def __init__(self, app: ASGIApp, redis_client=None):
         super().__init__(app)
         self.redis = redis_client
-        
+
     async def dispatch(self, request: Request, call_next: Callable) -> Response:
         """Process request and capture semantic events"""
         start_time = time.time()
-        
+
         # Debug: Log that middleware is being called
         print(f"🔥 MIDDLEWARE: {request.method} {request.url.path}")
-        
+
         # Process the request
         response = await call_next(request)
-        
+
         # Debug: Check if we should capture
         should_capture = self._should_capture(request, response)
         print(f"🔥 MIDDLEWARE: Should capture {request.method} {request.url.path}: {should_capture}")
         print(f"🔥 MIDDLEWARE: Redis available: {bool(self.redis)}")
         print(f"🔥 MIDDLEWARE: Global Redis available: {bool(_global_redis_client)}")
-        
+
         # Use global Redis client
         redis_client = self.redis or _global_redis_client
-        
+
         # Capture semantic events if Redis is available
         if redis_client and should_capture:
             try:
@@ -61,29 +61,29 @@ class SessionCaptureMiddleware(BaseHTTPMiddleware):
             print(f"🔥 MIDDLEWARE: No Redis client available for {request.method} {request.url.path}")
         elif not should_capture:
             print(f"🔥 MIDDLEWARE: Not capturing {request.method} {request.url.path} (filtered out)")
-        
+
         return response
-    
+
     def _should_capture(self, request: Request, response: Response) -> bool:
         """Determine if this request should be captured"""
         # Only capture successful state-changing operations
         if response.status_code not in [200, 201]:
             return False
-        
+
         # Skip health checks and static content
         path = str(request.url.path)
         if any(skip in path for skip in ["/health", "/static", "/favicon"]):
             return False
-        
+
         # Capture meaningful API operations
         meaningful_operations = request.method in ["POST", "PUT", "DELETE"]
-        
+
         # Also capture project creation even if it fails (for debugging)
         if "projects" in path and request.method == "POST":
             return True
-            
+
         return meaningful_operations
-    
+
     async def _capture_semantic_event(self, request: Request, response: Response, start_time: float, redis_client):
         """Extract semantic meaning and queue event"""
         try:
@@ -91,10 +91,10 @@ class SessionCaptureMiddleware(BaseHTTPMiddleware):
             username = await self._get_username_from_request(request)
             if not username:
                 return
-            
+
             # Extract semantic meaning with request/response body analysis
             semantic_data = await self._extract_semantics(request, response)
-            
+
             # Create clean event
             event = {
                 "event_id": f"api_{int(time.time() * 1000)}",
@@ -106,7 +106,7 @@ class SessionCaptureMiddleware(BaseHTTPMiddleware):
                 "response_time": time.time() - start_time,
                 "success": True
             }
-            
+
             # Route directly to DAS bridge if available, otherwise queue
             das_bridge = getattr(sys.modules[__name__], 'das_bridge', None)
             if das_bridge:
@@ -128,17 +128,17 @@ class SessionCaptureMiddleware(BaseHTTPMiddleware):
                     print(f"🔥 CAPTURE: Redis write FAILED: {redis_error}")
                     raise redis_error
             logger.debug(f"Captured: {semantic_data['action']} for {username}")
-            
+
         except Exception as e:
             logger.error(f"Error capturing semantic event: {e}")
-    
+
     async def _get_username_from_request(self, request: Request) -> Optional[str]:
         """Extract username from request using proper auth system"""
         try:
             auth_header = request.headers.get("authorization", "")
             if not auth_header or not auth_header.startswith("Bearer "):
                 return None
-            
+
             # Use the same authentication logic as the auth service
             from backend.services.auth import get_user
             try:
@@ -150,7 +150,7 @@ class SessionCaptureMiddleware(BaseHTTPMiddleware):
         except Exception:
             pass
             return None
-    
+
     def _extract_project_id_from_graph(self, graph_url: str) -> Optional[str]:
         """Extract project ID from ontology graph URL"""
         try:
@@ -161,7 +161,7 @@ class SessionCaptureMiddleware(BaseHTTPMiddleware):
         except Exception:
             pass
         return None
-    
+
     async def _extract_layout_changes(self, request: Request) -> Optional[str]:
         """Extract detailed information about ontology layout changes"""
         try:
@@ -172,37 +172,37 @@ class SessionCaptureMiddleware(BaseHTTPMiddleware):
             except:
                 # Body may have been consumed already
                 body = getattr(request, '_body', b'')
-            
+
             if body:
                 body_str = body.decode('utf-8')
-                
+
                 # Parse common layout operations
                 changes = []
-                
+
                 if '"x":' in body_str and '"y":' in body_str:
                     changes.append("repositioned elements")
-                
+
                 if '"label":' in body_str or '"name":' in body_str:
                     # Try to extract class names from body
                     import re
                     names = re.findall(r'"(?:label|name)"\s*:\s*"([^"]+)"', body_str)
                     if names:
                         changes.append(f"modified {', '.join(names[:3])}")
-                
+
                 if '"source":' in body_str and '"target":' in body_str:
                     changes.append("modified relationships")
-                
+
                 if '"type":' in body_str:
                     types = re.findall(r'"type"\s*:\s*"([^"]+)"', body_str)
                     if types:
                         changes.append(f"worked with {', '.join(set(types[:3]))}")
-                
+
                 return ", ".join(changes) if changes else None
-                
+
         except Exception as e:
             logger.debug(f"Could not extract layout details: {e}")
         return None
-    
+
     async def _extract_class_creation_details(self, request: Request, response: Response) -> Optional[str]:
         """Extract details about class creation"""
         try:
@@ -211,69 +211,69 @@ class SessionCaptureMiddleware(BaseHTTPMiddleware):
                 body = await request.body()
             except:
                 body = getattr(request, '_body', b'')
-            
+
             if body:
                 body_str = body.decode('utf-8')
-                
+
                 # Try to extract class name and type
                 import re
                 class_names = re.findall(r'"(?:label|name|className)"\s*:\s*"([^"]+)"', body_str)
                 class_types = re.findall(r'"(?:type|classType)"\s*:\s*"([^"]+)"', body_str)
-                
+
                 details = []
                 if class_names:
                     details.append(f"class '{class_names[0]}'")
                 if class_types and class_types[0] != "owl:Class":
                     details.append(f"type {class_types[0]}")
-                
+
                 return " ".join(details) if details else None
-            
+
             # Check response for created class info
             if hasattr(response, '_content') and response._content:
                 response_str = response._content.decode('utf-8')
                 class_names = re.findall(r'"(?:label|name|className)"\s*:\s*"([^"]+)"', response_str)
                 if class_names:
                     return f"class '{class_names[0]}'"
-                    
+
         except Exception as e:
             logger.debug(f"Could not extract class creation details: {e}")
         return None
-    
+
     async def _extract_semantics(self, request: Request, response: Response) -> Dict[str, Any]:
         """Extract semantic meaning from API call"""
         method = request.method
         path = str(request.url.path)
         query_params = dict(request.query_params)
-        
+
         # Ontology operations
         if "ontology/layout" in path and method == "PUT":
             graph = query_params.get("graph", "")
             ontology_id = graph.split("/")[-1] if graph else "unknown"
             project_id = self._extract_project_id_from_graph(graph)
-            
+
             # Try to extract detailed layout changes from request body
             layout_details = await self._extract_layout_changes(request)
-            
+
             action = f"Modified {ontology_id} ontology layout"
             if layout_details:
                 action = f"Modified {ontology_id} ontology: {layout_details}"
-            
+
             return {
                 "action": action,
                 "context": {
-                    "ontology_id": ontology_id, 
+                    "ontology_id": ontology_id,
                     "workbench": "ontology",
                     "project_id": project_id,
                     "operation_details": layout_details
                 },
                 "metadata": {
-                    "type": "ontology_layout", 
-                    "graph": graph, 
+                    "type": "ontology_layout",
+                    "graph": graph,
                     "project_id": project_id,
                     "detailed_operation": layout_details
                 }
             }
-        
+
         elif "ontology/save" in path and method == "POST":
             graph = query_params.get("graph", "")
             ontology_id = graph.split("/")[-1] if graph else "unknown"
@@ -283,36 +283,36 @@ class SessionCaptureMiddleware(BaseHTTPMiddleware):
                 "context": {"ontology_id": ontology_id, "workbench": "ontology", "project_id": project_id},
                 "metadata": {"type": "ontology_save", "graph": graph, "project_id": project_id}
             }
-        
+
         elif "ontology/classes" in path and method == "POST":
             graph = query_params.get("graph", "")
             ontology_id = graph.split("/")[-1] if graph else "unknown"
             project_id = self._extract_project_id_from_graph(graph)
-            
+
             # Extract class creation details
             class_details = await self._extract_class_creation_details(request, response)
-            
+
             action = f"Created ontology class in {ontology_id}"
             if class_details:
                 action = f"Created {class_details} in {ontology_id} ontology"
-            
+
             return {
                 "action": action,
                 "context": {
-                    "ontology_id": ontology_id, 
+                    "ontology_id": ontology_id,
                     "workbench": "ontology",
                     "project_id": project_id,
                     "operation_details": class_details
                 },
                 "metadata": {
-                    "type": "ontology_class_creation", 
-                    "graph": graph, 
+                    "type": "ontology_class_creation",
+                    "graph": graph,
                     "project_id": project_id,
                     "class_details": class_details
                 }
             }
-        
-        # Project operations  
+
+        # Project operations
         elif path == "/api/projects" and method == "POST":
             # Try to extract project details from request body
             project_name = "Unknown"
@@ -324,11 +324,11 @@ class SessionCaptureMiddleware(BaseHTTPMiddleware):
                     project_description = body.get("description")
             except:
                 pass
-                
+
             return {
                 "action": f"Created project '{project_name}'",
                 "context": {
-                    "workbench": "project", 
+                    "workbench": "project",
                     "project_name": project_name,
                     "project_description": project_description
                 },
@@ -338,7 +338,7 @@ class SessionCaptureMiddleware(BaseHTTPMiddleware):
                     "has_description": bool(project_description)
                 }
             }
-        
+
         elif path.startswith("/api/projects/") and method == "PUT":
             project_id = path.split("/")[3] if len(path.split("/")) > 3 else "unknown"
             return {
@@ -346,7 +346,7 @@ class SessionCaptureMiddleware(BaseHTTPMiddleware):
                 "context": {"project_id": project_id, "workbench": "project"},
                 "metadata": {"type": "project_update"}
             }
-        
+
         # File operations
         elif "/api/files/upload" in path and method == "POST":
             project_id = query_params.get("project_id", "unknown")
@@ -355,7 +355,7 @@ class SessionCaptureMiddleware(BaseHTTPMiddleware):
                 "context": {"project_id": project_id, "workbench": "files"},
                 "metadata": {"type": "file_upload"}
             }
-        
+
         elif path.startswith("/api/files/") and method == "DELETE":
             file_id = path.split("/")[3] if len(path.split("/")) > 3 else "unknown"
             return {
@@ -363,7 +363,7 @@ class SessionCaptureMiddleware(BaseHTTPMiddleware):
                 "context": {"file_id": file_id, "workbench": "files"},
                 "metadata": {"type": "file_delete"}
             }
-        
+
         # Knowledge operations
         elif "/api/knowledge/query" in path and method == "POST":
             return {
@@ -371,14 +371,14 @@ class SessionCaptureMiddleware(BaseHTTPMiddleware):
                 "context": {"workbench": "knowledge"},
                 "metadata": {"type": "knowledge_search"}
             }
-        
+
         elif "/api/knowledge/assets" in path and method == "POST":
             return {
                 "action": "Created knowledge asset",
                 "context": {"workbench": "knowledge"},
                 "metadata": {"type": "knowledge_create"}
             }
-        
+
         # Workflow operations
         elif "/api/workflows/start" in path and method == "POST":
             return {
@@ -386,7 +386,7 @@ class SessionCaptureMiddleware(BaseHTTPMiddleware):
                 "context": {"workbench": "workflows"},
                 "metadata": {"type": "workflow_start"}
             }
-        
+
         # DAS interactions
         elif "/api/das/chat" in path and method == "POST":
             return {
@@ -394,14 +394,14 @@ class SessionCaptureMiddleware(BaseHTTPMiddleware):
                 "context": {"workbench": "das"},
                 "metadata": {"type": "das_chat"}
             }
-        
+
         elif "/api/das/session" in path and method == "POST":
             return {
                 "action": "Started DAS session",
                 "context": {"workbench": "das"},
                 "metadata": {"type": "das_session_start"}
             }
-        
+
         # Default - still capture for analysis
         else:
             return {
@@ -423,3 +423,4 @@ def create_session_capture_middleware(redis_client):
     def middleware_factory(app: ASGIApp) -> SessionCaptureMiddleware:
         return SessionCaptureMiddleware(app, redis_client)
     return middleware_factory
+

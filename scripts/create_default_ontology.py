@@ -70,8 +70,8 @@ class DefaultOntologyCreator:
             with conn.cursor(cursor_factory=RealDictCursor) as cur:
                 cur.execute(
                     """
-                    SELECT project_id, name 
-                    FROM projects 
+                    SELECT project_id, name
+                    FROM projects
                     WHERE name = 'Default Project'
                     LIMIT 1
                 """
@@ -423,3 +423,4 @@ if __name__ == "__main__":
 
     success = asyncio.run(main())
     sys.exit(0 if success else 1)
+

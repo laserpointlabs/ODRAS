@@ -55,8 +55,8 @@ BEGIN
 END;
 $$ language 'plpgsql';
 
-CREATE TRIGGER update_files_updated_at 
-    BEFORE UPDATE ON files 
+CREATE TRIGGER update_files_updated_at
+    BEFORE UPDATE ON files
     FOR EACH ROW EXECUTE FUNCTION update_files_updated_at();
 
 -- Comments for documentation
@@ -66,3 +66,4 @@ COMMENT ON COLUMN files.metadata IS 'File processing metadata and custom attribu
 COMMENT ON COLUMN files.tags IS 'User-defined tags including docType and classification';
 COMMENT ON COLUMN files.storage_key IS 'Key/path for cloud storage backends (S3, MinIO, etc)';
 COMMENT ON COLUMN files.storage_path IS 'Local filesystem path for local backend';
+

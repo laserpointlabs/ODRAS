@@ -260,7 +260,7 @@ class DatabaseSchemaManager:
         template = f"""-- {description}
 -- Migration {next_version}: {description}
 
--- DEPENDS ON: 
+-- DEPENDS ON:
 -- Add any dependencies here, e.g., 001_knowledge_management.sql
 
 -- Add your migration SQL here
@@ -619,3 +619,4 @@ def main():
 
 if __name__ == "__main__":
     main()
+

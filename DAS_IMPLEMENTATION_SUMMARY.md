@@ -71,8 +71,8 @@ Pre-populated with comprehensive guidance covering:
 
 ### **Data Flow**
 ```
-User Input → DAS Dock → API Endpoints → DAS Core Engine → 
-Intent Recognition → Context Building → Enhanced RAG → 
+User Input → DAS Dock → API Endpoints → DAS Core Engine →
+Intent Recognition → Context Building → Enhanced RAG →
 Response Generation → Frontend Display
 ```
 
@@ -142,3 +142,4 @@ python test_das_integration.py
 **🎉 Congratulations! Your DAS MVP is ready to assist users with ODRAS tasks!**
 
 The system successfully combines conversational AI with your existing knowledge base to provide intelligent, contextual assistance. Users can now get help with ontology management, document processing, analysis workflows, and more through a natural language interface.
+

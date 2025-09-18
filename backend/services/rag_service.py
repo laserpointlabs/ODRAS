@@ -138,7 +138,7 @@ class RAGService:
 
             # Deduplicate sources - keep only the best chunk per asset/document
             deduplicated_chunks = self._deduplicate_sources(accessible_chunks, max_chunks)
-            
+
             return deduplicated_chunks
 
         except Exception as e:
@@ -152,24 +152,24 @@ class RAGService:
         """
         if not chunks:
             return []
-        
+
         # Group chunks by asset_id
         asset_groups = {}
         for chunk in chunks:
             payload = chunk.get("payload", {})
             asset_id = payload.get("asset_id", "unknown")
-            
+
             if asset_id not in asset_groups:
                 asset_groups[asset_id] = []
             asset_groups[asset_id].append(chunk)
-        
+
         # Keep the best chunk from each asset (highest score)
         deduplicated_chunks = []
         for asset_id, asset_chunks in asset_groups.items():
             # Sort by score (highest first) and take the best one
             best_chunk = max(asset_chunks, key=lambda c: c.get("score", 0))
             deduplicated_chunks.append(best_chunk)
-        
+
         # Sort all deduplicated chunks by score and limit to max_chunks
         deduplicated_chunks.sort(key=lambda c: c.get("score", 0), reverse=True)
         return deduplicated_chunks[:max_chunks]
@@ -242,9 +242,9 @@ class RAGService:
 
             # Choose system prompt based on response style
             system_prompts = {
-                "comprehensive": """You are a knowledgeable assistant helping users understand information from their knowledge base. 
-                Provide comprehensive, well-structured answers using the provided context. 
-                Include relevant details and explain concepts clearly. 
+                "comprehensive": """You are a knowledgeable assistant helping users understand information from their knowledge base.
+                Provide comprehensive, well-structured answers using the provided context.
+                Include relevant details and explain concepts clearly.
                 If the context doesn't fully answer the question, be honest about limitations.
                 Always ground your response in the provided context.""",
                 "concise": """You are a helpful assistant providing concise, direct answers from the knowledge base.
@@ -394,7 +394,7 @@ Please provide a helpful response based on the context provided. If the context 
                 with conn.cursor() as cur:
                     # Base query for user's accessible assets
                     base_query = """
-                    SELECT DISTINCT document_type, title, metadata 
+                    SELECT DISTINCT document_type, title, metadata
                     FROM knowledge_assets ka
                     """
 
@@ -473,3 +473,4 @@ def get_rag_service() -> RAGService:
     """Factory function to get RAG service instance."""
     settings = Settings()
     return RAGService(settings)
+

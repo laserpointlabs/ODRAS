@@ -43,3 +43,4 @@ async def test_api_docs_available():
         response = await client.get("/docs")
         assert response.status_code == 200
         assert "swagger" in response.text.lower() or "openapi" in response.text.lower()
+

@@ -120,7 +120,7 @@ The document ingestion pipeline must handle various document formats including t
 
 Requirements:
 - The system shall validate all uploaded documents
-- The system must chunk documents into appropriate sizes  
+- The system must chunk documents into appropriate sizes
 - The system shall generate vector embeddings for all chunks
 - The system must store embeddings in the vector database
 - The system shall update search indices for discoverability
@@ -161,3 +161,4 @@ The system must support concurrent processing of multiple documents.
 
 if __name__ == "__main__":
     main()
+

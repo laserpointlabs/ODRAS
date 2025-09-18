@@ -301,3 +301,4 @@ class EmbeddingService:
             del self._embedders[model_id]
 
         return True
+

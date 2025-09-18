@@ -25,7 +25,7 @@ CREATE INDEX IF NOT EXISTS idx_auth_tokens_is_active ON public.auth_tokens(is_ac
 CREATE OR REPLACE FUNCTION cleanup_expired_tokens()
 RETURNS void AS $$
 BEGIN
-    DELETE FROM public.auth_tokens 
+    DELETE FROM public.auth_tokens
     WHERE expires_at < NOW() OR is_active = FALSE;
 END;
 $$ LANGUAGE plpgsql;
@@ -34,8 +34,8 @@ $$ LANGUAGE plpgsql;
 CREATE OR REPLACE FUNCTION update_token_last_used(token_hash_param VARCHAR(64))
 RETURNS void AS $$
 BEGIN
-    UPDATE public.auth_tokens 
-    SET last_used_at = NOW() 
+    UPDATE public.auth_tokens
+    SET last_used_at = NOW()
     WHERE token_hash = token_hash_param AND is_active = TRUE;
 END;
 $$ LANGUAGE plpgsql;
@@ -45,3 +45,4 @@ COMMENT ON TABLE public.auth_tokens IS 'Persistent storage for authentication to
 COMMENT ON COLUMN public.auth_tokens.token_hash IS 'SHA-256 hash of the actual token for security';
 COMMENT ON COLUMN public.auth_tokens.expires_at IS 'Token expiration time (default 24 hours)';
 COMMENT ON COLUMN public.auth_tokens.last_used_at IS 'Last time this token was used for authentication';
+

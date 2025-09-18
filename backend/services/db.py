@@ -224,7 +224,7 @@ class DatabaseService:
 
                 cur.execute(
                     f"""
-                    UPDATE public.projects 
+                    UPDATE public.projects
                     SET {', '.join(update_fields)}
                     WHERE project_id = %s
                     RETURNING project_id, name, description, created_at, updated_at, created_by, is_active, namespace_id, domain
@@ -251,7 +251,7 @@ class DatabaseService:
             with conn.cursor(cursor_factory=RealDictCursor) as cur:
                 cur.execute(
                     """
-                    SELECT p.project_id, p.name, p.description, p.created_at, p.updated_at, 
+                    SELECT p.project_id, p.name, p.description, p.created_at, p.updated_at,
                            p.is_active, pm.role
                     FROM public.projects p
                     JOIN public.project_members pm ON p.project_id = pm.project_id
@@ -337,3 +337,4 @@ class DatabaseService:
                 return result is not None
         finally:
             self._return(conn)
+

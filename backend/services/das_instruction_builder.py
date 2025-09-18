@@ -32,7 +32,7 @@ class ExecutableInstruction:
     curl_example: str  # Full CURL command example
     expected_response: Dict[str, Any]
     category: str
-    
+
     def to_searchable_content(self) -> str:
         """Convert to searchable text for embedding"""
         content_parts = [
@@ -52,18 +52,18 @@ class DASInstructionBuilder:
     """
     Builds executable instruction collection for DAS autonomous operations
     """
-    
+
     def __init__(self, settings: Settings):
         self.settings = settings
         self.qdrant_service = QdrantService(settings)
         self.embedding_service = EmbeddingService(settings)
         self.collection_name = "das_instructions"
-        
+
     def create_instruction_collection(self) -> List[ExecutableInstruction]:
         """Create comprehensive instruction collection with executable commands"""
-        
+
         instructions = []
-        
+
         # Project Management Instructions
         instructions.extend([
             ExecutableInstruction(
@@ -72,7 +72,7 @@ class DASInstructionBuilder:
                 description="Create a new project in ODRAS with specified name and description",
                 user_intent_examples=[
                     "create a new project called test-a",
-                    "please create a project named aircraft-systems", 
+                    "please create a project named aircraft-systems",
                     "make a new project for navigation systems",
                     "create project test-a"
                 ],
@@ -95,7 +95,7 @@ class DASInstructionBuilder:
                 },
                 category="project_management"
             ),
-            
+
             ExecutableInstruction(
                 instruction_id="list_projects",
                 title="List All Projects",
@@ -107,7 +107,7 @@ class DASInstructionBuilder:
                     "show projects"
                 ],
                 command_template="GET /api/projects",
-                api_endpoint="/api/projects", 
+                api_endpoint="/api/projects",
                 http_method="GET",
                 parameters={},
                 curl_example='curl -X GET http://localhost:8000/api/projects -H "Authorization: Bearer TOKEN"',
@@ -123,7 +123,7 @@ class DASInstructionBuilder:
                 category="project_management"
             )
         ])
-        
+
         # Ontology Management Instructions
         instructions.extend([
             ExecutableInstruction(
@@ -137,7 +137,7 @@ class DASInstructionBuilder:
                 ],
                 command_template="POST /api/ontologies/{ontology_id}/classes",
                 api_endpoint="/api/ontologies/{ontology_id}/classes",
-                http_method="POST", 
+                http_method="POST",
                 parameters={
                     "ontology_id": "string (from context or user input)",
                     "name": "string (required)",
@@ -149,13 +149,13 @@ class DASInstructionBuilder:
                     "success": True,
                     "class": {
                         "id": "AirVehicle",
-                        "name": "AirVehicle", 
+                        "name": "AirVehicle",
                         "description": "Class for air vehicles"
                     }
                 },
                 category="ontology_management"
             ),
-            
+
             ExecutableInstruction(
                 instruction_id="retrieve_ontology",
                 title="Retrieve Ontology Information",
@@ -183,7 +183,7 @@ class DASInstructionBuilder:
                 category="ontology_management"
             )
         ])
-        
+
         # File Management Instructions
         instructions.extend([
             ExecutableInstruction(
@@ -215,7 +215,7 @@ class DASInstructionBuilder:
                 category="file_management"
             )
         ])
-        
+
         # Analysis Instructions
         instructions.extend([
             ExecutableInstruction(
@@ -224,7 +224,7 @@ class DASInstructionBuilder:
                 description="Execute requirements analysis workflow on a document",
                 user_intent_examples=[
                     "analyze the uploaded requirements document",
-                    "run analysis on the CDD file", 
+                    "run analysis on the CDD file",
                     "extract requirements from the specification"
                 ],
                 command_template="POST /api/workflows/requirements_analysis",
@@ -245,8 +245,8 @@ class DASInstructionBuilder:
                 category="analysis_workflows"
             )
         ])
-        
-        # Knowledge Search Instructions  
+
+        # Knowledge Search Instructions
         instructions.extend([
             ExecutableInstruction(
                 instruction_id="search_knowledge",
@@ -258,7 +258,7 @@ class DASInstructionBuilder:
                     "look up performance specifications"
                 ],
                 command_template="POST /api/knowledge/search",
-                api_endpoint="/api/knowledge/search", 
+                api_endpoint="/api/knowledge/search",
                 http_method="POST",
                 parameters={
                     "query": "string (required)",
@@ -279,9 +279,9 @@ class DASInstructionBuilder:
                 category="knowledge_management"
             )
         ])
-        
+
         return instructions
-    
+
     async def populate_instruction_collection(self) -> bool:
         """Populate the das_instructions vector collection with executable commands"""
         try:
@@ -291,14 +291,14 @@ class DASInstructionBuilder:
                 vector_size=384,  # sentence-transformers embedding size
                 distance="Cosine"
             )
-            
+
             # Create instruction collection
             instructions = self.create_instruction_collection()
-            
+
             # Generate embeddings for all instructions
             texts = [instruction.to_searchable_content() for instruction in instructions]
             embeddings = self.embedding_service.generate_embeddings(texts)
-            
+
             # Prepare points for Qdrant
             points = []
             for i, instruction in enumerate(instructions):
@@ -321,26 +321,26 @@ class DASInstructionBuilder:
                     }
                 }
                 points.append(point)
-            
+
             # Store in Qdrant
             self.qdrant_service.store_vectors(
                 collection_name=self.collection_name,
                 vectors=points
             )
-            
+
             logger.info(f"Successfully populated {len(instructions)} executable instructions in das_instructions collection")
             return True
-            
+
         except Exception as e:
             logger.error(f"Failed to populate instruction collection: {e}")
             return False
-    
+
     async def search_executable_instructions(self, user_query: str, limit: int = 3) -> List[Dict[str, Any]]:
         """Search for executable instructions based on user query"""
         try:
             # Generate embedding for user query
             query_embedding = self.embedding_service.generate_embeddings([user_query])
-            
+
             # Search instruction collection
             results = self.qdrant_service.search_vectors(
                 collection_name=self.collection_name,
@@ -348,7 +348,7 @@ class DASInstructionBuilder:
                 limit=limit,
                 score_threshold=0.4  # Lower threshold to catch more possibilities
             )
-            
+
             # Format results with executable commands
             executable_instructions = []
             for result in results:
@@ -366,12 +366,13 @@ class DASInstructionBuilder:
                     "confidence": result.get("score", 0),
                     "category": payload.get("category")
                 })
-            
+
             return executable_instructions
-            
+
         except Exception as e:
             logger.error(f"Error searching executable instructions: {e}")
             return []
+
 
 
 

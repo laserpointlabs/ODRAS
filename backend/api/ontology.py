@@ -533,3 +533,4 @@ async def validate_ontology_integrity(
     except Exception as e:
         logger.error(f"Failed to validate integrity: {e}")
         raise HTTPException(status_code=500, detail=f"Failed to validate integrity: {str(e)}")
+

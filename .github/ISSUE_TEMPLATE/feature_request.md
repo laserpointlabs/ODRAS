@@ -22,8 +22,9 @@ Describe the problem and the desired outcome.
 - [ ] Tooling
 
 ## Acceptance Criteria
-- 
-- 
+-
+-
 
 ## Additional context
+
 

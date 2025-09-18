@@ -539,8 +539,8 @@ class Neo4jService:
                 # Get node counts by label
                 node_stats = session.run(
                     """
-                    MATCH (n) 
-                    RETURN labels(n) as labels, count(n) as count 
+                    MATCH (n)
+                    RETURN labels(n) as labels, count(n) as count
                     ORDER BY count DESC
                 """
                 ).data()
@@ -548,8 +548,8 @@ class Neo4jService:
                 # Get relationship counts by type
                 rel_stats = session.run(
                     """
-                    MATCH ()-[r]->() 
-                    RETURN type(r) as type, count(r) as count 
+                    MATCH ()-[r]->()
+                    RETURN type(r) as type, count(r) as count
                     ORDER BY count DESC
                 """
                 ).data()
@@ -626,3 +626,4 @@ def setup_knowledge_graph_schema(neo4j_service: Neo4jService) -> bool:
     except Exception as e:
         logger.error(f"Failed to setup knowledge graph schema: {str(e)}")
         return False
+

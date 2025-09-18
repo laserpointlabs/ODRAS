@@ -402,3 +402,4 @@ async def get_model_info(
     except Exception as e:
         logger.error(f"Failed to get model info for {model_id}: {e}")
         raise HTTPException(status_code=500, detail=f"Failed to get model info: {str(e)}")
+

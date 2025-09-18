@@ -47,7 +47,7 @@ class DASAPIClient:
         self.session: Optional[ClientSession] = None
         self.auth_token: Optional[str] = None
         self.timeout = ClientTimeout(total=30, connect=10)
-        
+
         # API endpoints that DAS is allowed to call autonomously
         self.allowed_endpoints = {
             # Ontology management
@@ -56,21 +56,21 @@ class DASAPIClient:
             "POST:/api/ontologies/{ontology_id}/classes": "create_class",
             "POST:/api/ontologies/{ontology_id}/relationships": "create_relationship",
             "PUT:/api/ontologies/{ontology_id}/classes/{class_id}": "update_class",
-            
+
             # Knowledge management
             "GET:/api/knowledge/assets": "read_knowledge_assets",
             "POST:/api/knowledge/search": "search_knowledge",
             "GET:/api/knowledge/assets/{asset_id}": "read_knowledge_asset",
-            
+
             # File operations (limited)
             "GET:/api/files": "list_files",
             "GET:/api/files/{file_id}": "read_file_info",
             "POST:/api/files/upload": "upload_file",
-            
+
             # Analysis workflows
             "POST:/api/workflows/requirements_analysis": "run_requirements_analysis",
             "GET:/api/workflows/status/{workflow_id}": "check_workflow_status",
-            
+
             # Project management (read-only)
             "GET:/api/projects": "list_projects",
             "GET:/api/projects/{project_id}": "read_project",
@@ -130,12 +130,12 @@ class DASAPIClient:
                 if response.status == 200:
                     result = await response.json()
                     self.auth_token = result.get("token")
-                    
+
                     # Update session headers with auth token
                     self.session.headers.update({
                         "Authorization": f"Bearer {self.auth_token}"
                     })
-                    
+
                     logger.info("DAS authenticated successfully")
                     return True
                 else:
@@ -153,16 +153,16 @@ class DASAPIClient:
         """
         # Create a key for the allowed endpoints
         endpoint_key = f"{method.upper()}:{endpoint}"
-        
+
         # First check against hardcoded whitelist
         if endpoint_key in self.allowed_endpoints:
             return True
-        
+
         # Check pattern match (for endpoints with path parameters)
         for allowed_pattern in self.allowed_endpoints.keys():
             if self._endpoint_matches_pattern(endpoint_key, allowed_pattern):
                 return True
-        
+
         # Additional security: Block dangerous operations for DAS service account
         dangerous_patterns = [
             "DELETE:",  # No delete operations
@@ -173,12 +173,12 @@ class DASAPIClient:
             "DELETE:*/api/users",  # No user deletion
             ":*/api/system/",  # No system operations
         ]
-        
+
         for dangerous in dangerous_patterns:
             if dangerous in endpoint_key:
                 logger.warning(f"DAS service account blocked from dangerous operation: {endpoint_key}")
                 return False
-        
+
         return False
 
     def _endpoint_matches_pattern(self, endpoint: str, pattern: str) -> bool:
@@ -188,25 +188,25 @@ class DASAPIClient:
         # Split method and path
         endpoint_parts = endpoint.split(":", 1)
         pattern_parts = pattern.split(":", 1)
-        
+
         if len(endpoint_parts) != 2 or len(pattern_parts) != 2:
             return False
-        
+
         endpoint_method, endpoint_path = endpoint_parts
         pattern_method, pattern_path = pattern_parts
-        
+
         # Method must match exactly
         if endpoint_method != pattern_method:
             return False
-        
+
         # Split paths into segments
         endpoint_segments = endpoint_path.strip("/").split("/")
         pattern_segments = pattern_path.strip("/").split("/")
-        
+
         # Must have same number of segments
         if len(endpoint_segments) != len(pattern_segments):
             return False
-        
+
         # Check each segment
         for ep_seg, pat_seg in zip(endpoint_segments, pattern_segments):
             # Pattern segment with {} matches any value
@@ -215,7 +215,7 @@ class DASAPIClient:
             # Otherwise must match exactly
             elif ep_seg != pat_seg:
                 return False
-        
+
         return True
 
     async def execute_api_call(
@@ -231,7 +231,7 @@ class DASAPIClient:
         """
         import time
         start_time = time.time()
-        
+
         try:
             # Security check - only allow pre-approved endpoints
             if not self._is_endpoint_allowed(method, endpoint):
@@ -256,7 +256,7 @@ class DASAPIClient:
 
             # Build full URL
             url = urljoin(self.base_url, endpoint.lstrip("/"))
-            
+
             # Prepare request kwargs
             request_kwargs = {}
             if data:
@@ -277,7 +277,7 @@ class DASAPIClient:
             # Execute the request
             async with self.session.request(method, url, **request_kwargs) as response:
                 response_time = time.time() - start_time
-                
+
                 # Get response data
                 try:
                     if response.content_type == 'application/json':
@@ -341,7 +341,7 @@ class DASAPIClient:
             "name": class_name,
             "description": description or f"Class {class_name} created by DAS"
         }
-        
+
         if parent_class:
             data["parent_class"] = parent_class
         if properties:
@@ -375,7 +375,7 @@ class DASAPIClient:
             "query": query,
             "max_results": max_results
         }
-        
+
         if project_id:
             data["project_id"] = project_id
 
@@ -398,7 +398,7 @@ class DASAPIClient:
             "document_id": document_id,
             "analysis_type": analysis_type
         }
-        
+
         if ontology_id:
             data["ontology_id"] = ontology_id
 
@@ -438,7 +438,7 @@ class DASAPIClient:
             "target_class": target_class,
             "relationship_type": relationship_type
         }
-        
+
         if properties:
             data["properties"] = properties
 
@@ -466,3 +466,4 @@ class DASAPIClient:
             return result.success
         except Exception:
             return False
+

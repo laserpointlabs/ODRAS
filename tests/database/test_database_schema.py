@@ -400,3 +400,4 @@ class TestDatabaseSchema:
                     f"Migration {migration_file} references table {referenced_table} "
                     f"before it's created in {creating_migration}"
                 )
+

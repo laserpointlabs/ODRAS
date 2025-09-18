@@ -101,3 +101,4 @@ class PersonaManager:
         except Exception as e:
             print(f"Error testing prompt: {e}")
             return None
+

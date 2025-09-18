@@ -237,7 +237,7 @@ import os
 try:
     db = DatabaseService(Settings())
     conn = db._conn()
-    
+
     # Test creating a simple table
     with conn.cursor() as cur:
         cur.execute('CREATE TABLE IF NOT EXISTS test_migration_validation (id SERIAL PRIMARY KEY, test_col VARCHAR(50))')
@@ -250,7 +250,7 @@ try:
         else:
             print('Migration application test failed - no data found')
             sys.exit(1)
-    
+
     db._return(conn)
 except Exception as e:
     print(f'Migration application test failed: {e}')
@@ -402,8 +402,8 @@ except Exception as e:
                 # Check if users table exists
                 cur.execute(
                     """
-                    SELECT column_name, data_type, is_nullable 
-                    FROM information_schema.columns 
+                    SELECT column_name, data_type, is_nullable
+                    FROM information_schema.columns
                     WHERE table_name = 'users' AND table_schema = 'public'
                     ORDER BY ordinal_position
                 """
@@ -561,3 +561,4 @@ def main():
 
 if __name__ == "__main__":
     main()
+

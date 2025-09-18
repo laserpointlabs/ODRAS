@@ -51,8 +51,8 @@ def setup_initial_users():
             # Check if password fields exist
             cur.execute(
                 """
-                SELECT column_name 
-                FROM information_schema.columns 
+                SELECT column_name
+                FROM information_schema.columns
                 WHERE table_name = 'users' AND column_name = 'password_hash'
             """
             )
@@ -77,7 +77,7 @@ def setup_initial_users():
                 # Update user with password
                 cur.execute(
                     """
-                    UPDATE public.users 
+                    UPDATE public.users
                     SET password_hash = %s, salt = %s, is_active = TRUE, updated_at = NOW()
                     WHERE username = %s
                 """,
@@ -182,3 +182,4 @@ def main():
 
 if __name__ == "__main__":
     sys.exit(main())
+

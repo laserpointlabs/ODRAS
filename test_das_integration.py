@@ -27,24 +27,24 @@ async def test_das_integration():
     """Test basic DAS functionality"""
     try:
         logger.info("Starting DAS integration test...")
-        
+
         # Initialize services
         settings = Settings()
         db_service = DatabaseService(settings)
         rag_service = RAGService(settings)
-        
+
         # Initialize DAS engine
         das_engine = DASCoreEngine(settings, rag_service, db_service)
         await das_engine.initialize()
-        
+
         logger.info("✅ DAS engine initialized successfully")
-        
+
         # Test session creation
         test_user_id = "test_user_123"
         session = await das_engine.start_session(test_user_id, "test_project")
-        
+
         logger.info(f"✅ DAS session created: {session.session_id}")
-        
+
         # Test message processing
         test_messages = [
             "How do I create a new ontology?",
@@ -52,25 +52,25 @@ async def test_das_integration():
             "How do I upload a document?",
             "Show me available commands"
         ]
-        
+
         for message in test_messages:
             logger.info(f"Testing message: '{message}'")
             response = await das_engine.process_message(session.session_id, message, test_user_id)
-            
+
             logger.info(f"✅ Response: {response.message[:100]}...")
             logger.info(f"   Intent: {response.intent.value}")
             logger.info(f"   Confidence: {response.confidence.value}")
-            
+
             if response.suggestions:
                 logger.info(f"   Suggestions: {len(response.suggestions)} available")
-        
+
         # Test session cleanup
         await das_engine.end_session(session.session_id)
         logger.info("✅ DAS session ended successfully")
-        
+
         logger.info("🎉 All DAS integration tests passed!")
         return True
-        
+
     except Exception as e:
         logger.error(f"❌ DAS integration test failed: {e}")
         import traceback
@@ -91,3 +91,4 @@ async def main():
 
 if __name__ == "__main__":
     asyncio.run(main())
+
