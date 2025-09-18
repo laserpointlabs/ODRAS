@@ -72,3 +72,4 @@ COMMENT ON TRIGGER trigger_mark_orphaned_asset ON knowledge_assets IS 'Automatic
 
 
 
+
