@@ -28,7 +28,7 @@ Boeing Defense:   https://boeing-defense.boeing.com/
 
 Examples:
 ├── Files: https://xma-adt.usn.mil/program/abc/project/xyz/files/requirements.pdf
-├── Knowledge: https://xma-adt.usn.mil/program/abc/project/xyz/knowledge/mission-analysis  
+├── Knowledge: https://xma-adt.usn.mil/program/abc/project/xyz/knowledge/mission-analysis<br>
 ├── Ontologies: https://xma-adt.usn.mil/program/abc/project/xyz/ontologies/requirements
 └── Core: https://xma-adt.usn.mil/core/ontologies/odras-base
 ```
@@ -41,7 +41,7 @@ Examples:
 - **[Installation and IRI Setup](./INSTALLATION_AND_IRI_SETUP.md)** - Complete setup guide
 - **[Configuration Template](../config/installation-specific.env.template)** - Environment configuration
 
-### Development and Integration  
+### Development and Integration<br>
 - **[Federated Access Quick Reference](./FEDERATED_ACCESS_QUICK_REFERENCE.md)** - Developer integration guide
 - **[API Documentation](./API_REFERENCE.md)** - Complete API reference (if exists)
 
@@ -114,7 +114,7 @@ citation = {
 
 ### For Military Organizations
 - **Resource Sharing**: Share analysis and knowledge across installations
-- **Standardization**: Common IRI format across all ODRAS installations  
+- **Standardization**: Common IRI format across all ODRAS installations<br>
 - **Authority Control**: Clear ownership and contact information
 - **Security**: Controlled access with public/private distinctions
 
