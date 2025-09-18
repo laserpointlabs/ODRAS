@@ -36,7 +36,7 @@ content = requests.get("https://xma-adt.usn.mil/api/iri/public/resolve", params=
 analysis = requests.get(content).json()
 ```
 
-### Bash One-Liner  
+### Bash One-Liner<br>
 ```bash
 curl -s "https://xma-adt.usn.mil/api/iri/public/resolve?iri=https://xma-adt.usn.mil/program/abc/project/xyz/files/report.pdf" | jq -r '.access_urls.download' | xargs curl -o report.pdf
 ```
@@ -95,7 +95,7 @@ curl "https://{installation}.{service}.mil/api/federated/installations/discover"
 For integration support or access to private resources, contact the installation authority listed in IRI resolution responses:
 
 - **XMA-ADT**: admin@xma-adt.usn.mil
-- **AFIT**: admin@afit-research.usaf.mil  
+- **AFIT**: admin@afit-research.usaf.mil<br>
 - **TRADOC**: admin@tradoc-sim.usa.mil
 
 ---
@@ -107,6 +107,7 @@ For integration support or access to private resources, contact the installation
 3. **Industry Integration**: Boeing accesses Navy specifications for design
 4. **Tool Integration**: External analysis tools process ODRAS artifacts
 5. **Knowledge Sharing**: Share lessons learned across installations
+
 
 
 

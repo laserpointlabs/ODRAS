@@ -7,7 +7,7 @@ This document describes how to set up an ODRAS installation with proper installa
 ## Table of Contents
 
 1. [Installation Configuration](#installation-configuration)
-2. [IRI System Setup](#iri-system-setup) 
+2. [IRI System Setup](#iri-system-setup)
 3. [Federated Access](#federated-access)
 4. [External System Integration](#external-system-integration)
 5. [Security and Access Control](#security-and-access-control)
@@ -55,7 +55,7 @@ TOP_LEVEL_DOMAIN=mil
 INSTALLATION_BASE_URI=https://xma-adt.usn.mil
 ```
 
-#### Air Force Installation  
+#### Air Force Installation<br>
 ```bash
 INSTALLATION_NAME=AFIT-RESEARCH
 INSTALLATION_TYPE=usaf
@@ -244,7 +244,7 @@ import requests
 class ODRASFederatedClient:
     def __init__(self, installation_base_uri):
         self.base_uri = installation_base_uri.rstrip('/')
-    
+
     def resolve_iri(self, iri):
         """Resolve an ODRAS IRI to get access information."""
         response = requests.get(
@@ -253,24 +253,24 @@ class ODRASFederatedClient:
         )
         response.raise_for_status()
         return response.json()
-    
+
     def get_file_content(self, iri):
         """Download file content using IRI."""
         resolution = self.resolve_iri(iri)
         if resolution["resource_type"] != "file":
             raise ValueError("IRI does not point to a file")
-        
+
         download_url = resolution["access_urls"]["download"]
         response = requests.get(download_url)
         response.raise_for_status()
         return response.content
-    
+
     def get_knowledge_content(self, iri):
         """Get knowledge asset content and analysis results."""
         resolution = self.resolve_iri(iri)
         if resolution["resource_type"] != "knowledge_asset":
             raise ValueError("IRI does not point to a knowledge asset")
-        
+
         content_url = resolution["access_urls"]["content"]
         response = requests.get(content_url)
         response.raise_for_status()
@@ -328,31 +328,31 @@ class ODRASFederatedClient {
     constructor(installationBaseUri) {
         this.baseUri = installationBaseUri.replace(/\/$/, '');
     }
-    
+
     async resolveIRI(iri) {
         const response = await fetch(
             `${this.baseUri}/api/iri/public/resolve?iri=${encodeURIComponent(iri)}&include_content_url=true`
         );
-        
+
         if (!response.ok) {
             throw new Error(`IRI resolution failed: ${response.status}`);
         }
-        
+
         return await response.json();
     }
-    
+
     async getKnowledgeContent(iri) {
         const resolution = await this.resolveIRI(iri);
-        
+
         if (resolution.resource_type !== 'knowledge_asset') {
             throw new Error('IRI does not point to a knowledge asset');
         }
-        
+
         const contentResponse = await fetch(resolution.access_urls.content);
         if (!contentResponse.ok) {
             throw new Error(`Content access failed: ${contentResponse.status}`);
         }
-        
+
         return await contentResponse.json();
     }
 }
@@ -624,7 +624,7 @@ from backend.services.installation_iri_service import get_installation_iri_servi
 iri_service = get_installation_iri_service()
 test_iri = iri_service.generate_file_iri(
     'caee53ce-4b7a-4da0-937b-8f4664eb3462',
-    'test.pdf', 
+    'test.pdf',
     '12345678-1234-1234-1234-123456789abc'
 )
 print(f'Generated IRI: {test_iri}')
@@ -671,6 +671,7 @@ python -c "exec(open('backend/migrations/015_installation_specific_iris.sql').re
 The ODRAS installation-specific IRI system enables powerful federated capabilities while maintaining proper security and authority controls. External systems can discover, reference, and access public artifacts using standard semantic web protocols, enabling true cross-installation collaboration and knowledge sharing.
 
 For questions or support, contact your installation authority listed in the IRI resolution responses.
+
 
 
 
