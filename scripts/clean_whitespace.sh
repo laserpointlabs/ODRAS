@@ -21,12 +21,4 @@ find . -type f \( -name "*.py" -o -name "*.sql" -o -name "*.md" -o -name "*.yml"
     -exec sed -i -e :a -e '/^\s*$/N;ba' -e 's/\n*$//' {} \;
 
 echo "✅ Whitespace cleanup completed"
-echo "📋 Checking for remaining whitespace issues..."
-
-# Check for remaining whitespace issues
-if git diff --check >/dev/null 2>&1; then
-    echo "✅ No whitespace issues found"
-else
-    echo "⚠️  Some whitespace issues remain:"
-    git diff --check
-fi
+echo "📝 Run 'git add -A && git commit -m \"fix(whitespace): Clean up trailing whitespace\"' to commit changes"
