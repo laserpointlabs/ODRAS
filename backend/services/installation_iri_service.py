@@ -311,20 +311,3 @@ def get_installation_iri_service(settings: Settings = None, db_service: Database
     if not db_service:
         db_service = DatabaseService(settings)
     return InstallationIRIService(settings, db_service)
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-

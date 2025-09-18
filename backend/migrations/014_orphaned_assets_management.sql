@@ -61,20 +61,3 @@ COMMENT ON COLUMN knowledge_assets.traceability_status IS 'Tracks relationship t
 COMMENT ON COLUMN knowledge_assets.orphaned_at IS 'Timestamp when asset became orphaned (source file deleted)';
 COMMENT ON COLUMN knowledge_assets.orphaned_reason IS 'Reason why asset became orphaned for audit trail';
 COMMENT ON TRIGGER trigger_mark_orphaned_asset ON knowledge_assets IS 'Automatically marks assets as orphaned when source file is deleted';
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
