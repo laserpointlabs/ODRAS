@@ -168,3 +168,9 @@ citation = {
 The ODRAS IRI system transforms isolated installations into a **federated semantic web** where knowledge and artifacts can be shared, referenced, and integrated across the entire defense and industry ecosystem.
 
 
+
+
+
+
+
+
