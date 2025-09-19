@@ -1,0 +1,166 @@
+[15:43:43] INFO: 🚀 Starting complete event capture pipeline test...
+[15:43:43] INFO:    Test Session: test_1758224623
+[15:43:43] INFO:    Log File: logs/event_capture_test_test_1758224623.log
+[15:43:43] INFO: ✅ Authentication successful
+[15:43:43] INFO: 🧪 TEST 1: Creating project and verifying project thread...
+[15:43:44] INFO: ✅ Project created: a9485d12-1027-451b-948f-d40154026c79
+[15:43:44] INFO:    Name: Event Pipeline Test test_1758224623
+[15:43:46] INFO: 🔍 Querying Qdrant for project thread with project_id: a9485d12-1027-451b-948f-d40154026c79
+[15:43:46] INFO: 🔍 Qdrant response status: 200
+[15:43:46] INFO: 🔍 Found 1 project threads for project a9485d12-1027-451b-948f-d40154026c79
+[15:43:46] INFO: 🔍 Using most recent project thread: 1e85aa4a-2592-4b8e-87f6-4e2230323a31
+[15:43:46] INFO: 🔍 Last activity: 2025-09-18T15:43:43.971450
+[15:43:46] INFO: ✅ Project thread created: 1e85aa4a-2592-4b8e-87f6-4e2230323a31
+[15:43:46] INFO: 🔍 Verifying event: project_creation
+[15:43:46] INFO: 🔍 Querying Qdrant for project thread with project_id: a9485d12-1027-451b-948f-d40154026c79
+[15:43:46] INFO: 🔍 Qdrant response status: 200
+[15:43:46] INFO: 🔍 Found 1 project threads for project a9485d12-1027-451b-948f-d40154026c79
+[15:43:46] INFO: 🔍 Using most recent project thread: 1e85aa4a-2592-4b8e-87f6-4e2230323a31
+[15:43:46] INFO: 🔍 Last activity: 2025-09-18T15:43:43.971450
+[15:43:46] INFO: ✅ PASS: project_creation event found: project_created
+[15:43:46] INFO: 🧪 TEST 2: Creating ontology and verifying capture...
+[15:43:46] INFO: ✅ Ontology created successfully
+[15:43:46] INFO:    Backup ID: e297b9fb-3f2b-44ef-9ac3-18c87feb3924
+[15:43:46] INFO:    Triples: 3
+[15:43:48] INFO: 🔍 Verifying event: ontology_creation
+[15:43:48] INFO: 🔍 Querying Qdrant for project thread with project_id: a9485d12-1027-451b-948f-d40154026c79
+[15:43:48] INFO: 🔍 Qdrant response status: 200
+[15:43:48] INFO: 🔍 Found 1 project threads for project a9485d12-1027-451b-948f-d40154026c79
+[15:43:48] INFO: 🔍 Using most recent project thread: 1e85aa4a-2592-4b8e-87f6-4e2230323a31
+[15:43:48] INFO: 🔍 Last activity: 2025-09-18T15:43:46.455924
+[15:43:48] INFO: ✅ PASS: ontology_creation event found: Created new ontology: default
+[15:43:48] INFO: 🧪 TEST 3: Performing semantic operations...
+[15:43:48] INFO: ✅ Classes created: TestClass1, TestClass2
+[15:43:50] INFO: ✅ Added: relationship 'relatedTo', data property 'testName', renamed TestClass1
+[15:43:52] INFO: 🔍 Querying Qdrant for project thread with project_id: a9485d12-1027-451b-948f-d40154026c79
+[15:43:52] INFO: 🔍 Qdrant response status: 200
+[15:43:52] INFO: 🔍 Found 1 project threads for project a9485d12-1027-451b-948f-d40154026c79
+[15:43:52] INFO: 🔍 Using most recent project thread: 1e85aa4a-2592-4b8e-87f6-4e2230323a31
+[15:43:52] INFO: 🔍 Last activity: 2025-09-18T15:43:50.288422
+[15:43:52] INFO: ✅ Captured 3 semantic ontology events
+[15:43:52] INFO:    - Created new ontology: default
+[15:43:52] INFO:    - Updated ontology with semantic changes
+[15:43:52] INFO:    - Updated ontology with semantic changes
+[15:43:52] INFO: 🧪 TEST 3.5: Uploading knowledge files...
+[15:43:52] INFO: 📁 Uploading data/decision_matrix_template.md...
+[15:43:52] INFO: ✅ Uploaded decision_matrix_template.md
+[15:43:52] INFO:    File ID: b50e8f79-6c19-435e-b006-75527ad55dae
+[15:43:52] INFO:    Workflow ID: unknown
+[15:43:53] INFO: 📁 Uploading data/disaster_response_requirements.md...
+[15:43:54] INFO: ✅ Uploaded disaster_response_requirements.md
+[15:43:54] INFO:    File ID: 46ed5ff5-c612-4f84-8636-428105e47e58
+[15:43:54] INFO:    Workflow ID: unknown
+[15:43:55] INFO: 📁 Uploading data/uas_specifications.md...
+[15:43:55] INFO: ✅ Uploaded uas_specifications.md
+[15:43:55] INFO:    File ID: ef0291a5-9624-43f9-abfa-42aa641c1c0a
+[15:43:55] INFO:    Workflow ID: unknown
+[15:43:56] INFO: ⏳ Monitoring Camunda knowledge processing workflows...
+[15:43:56] INFO: 🔍 Monitoring our specific process instances (BEST PRACTICE)...
+[15:43:56] INFO: 🔍 Found 5 active knowledge processing instances
+[15:43:56] INFO:    📋 Monitoring process instance: 160be975-94c6-11f0-ba07-0242ac140002
+[15:43:56] INFO:    📋 Monitoring process instance: 65bdb6b0-94c7-11f0-ba07-0242ac140002
+[15:43:56] INFO:    📋 Monitoring process instance: ce171f9a-94c7-11f0-ba07-0242ac140002
+[15:43:56] INFO:    📋 Monitoring process instance: cef4393e-94c7-11f0-ba07-0242ac140002
+[15:43:56] INFO:    📋 Monitoring process instance: cfdf3592-94c7-11f0-ba07-0242ac140002
+[15:43:56] INFO: ⏳ 5 knowledge processing workflows still active (elapsed: 0s)
+[15:43:56] INFO:    📋 Active process: 160be975-94c6-11f0-ba07-0242ac140002
+[15:43:56] INFO:    📋 Active process: 65bdb6b0-94c7-11f0-ba07-0242ac140002
+[15:43:56] INFO:    📋 Active process: ce171f9a-94c7-11f0-ba07-0242ac140002
+[15:44:01] INFO: ⏳ 5 knowledge processing workflows still active (elapsed: 5s)
+[15:44:01] INFO:    📋 Active process: 160be975-94c6-11f0-ba07-0242ac140002
+[15:44:01] INFO:    📋 Active process: 65bdb6b0-94c7-11f0-ba07-0242ac140002
+[15:44:01] INFO:    📋 Active process: ce171f9a-94c7-11f0-ba07-0242ac140002
+[15:44:06] INFO: ⏳ 5 knowledge processing workflows still active (elapsed: 10s)
+[15:44:06] INFO:    📋 Active process: 160be975-94c6-11f0-ba07-0242ac140002
+[15:44:06] INFO:    📋 Active process: 65bdb6b0-94c7-11f0-ba07-0242ac140002
+[15:44:06] INFO:    📋 Active process: ce171f9a-94c7-11f0-ba07-0242ac140002
+[15:44:11] INFO: ⏳ 5 knowledge processing workflows still active (elapsed: 15s)
+[15:44:11] INFO:    📋 Active process: 160be975-94c6-11f0-ba07-0242ac140002
+[15:44:11] INFO:    📋 Active process: 65bdb6b0-94c7-11f0-ba07-0242ac140002
+[15:44:11] INFO:    📋 Active process: ce171f9a-94c7-11f0-ba07-0242ac140002
+[15:44:16] INFO: ⏳ 5 knowledge processing workflows still active (elapsed: 20s)
+[15:44:16] INFO:    📋 Active process: 160be975-94c6-11f0-ba07-0242ac140002
+[15:44:16] INFO:    📋 Active process: 65bdb6b0-94c7-11f0-ba07-0242ac140002
+[15:44:16] INFO:    📋 Active process: ce171f9a-94c7-11f0-ba07-0242ac140002
+[15:44:21] INFO: ⏳ 5 knowledge processing workflows still active (elapsed: 25s)
+[15:44:21] INFO:    📋 Active process: 160be975-94c6-11f0-ba07-0242ac140002
+[15:44:21] INFO:    📋 Active process: 65bdb6b0-94c7-11f0-ba07-0242ac140002
+[15:44:21] INFO:    📋 Active process: ce171f9a-94c7-11f0-ba07-0242ac140002
+[15:44:26] INFO: ⏳ 5 knowledge processing workflows still active (elapsed: 30s)
+[15:44:26] INFO:    📋 Active process: 160be975-94c6-11f0-ba07-0242ac140002
+[15:44:26] INFO:    📋 Active process: 65bdb6b0-94c7-11f0-ba07-0242ac140002
+[15:44:26] INFO:    📋 Active process: ce171f9a-94c7-11f0-ba07-0242ac140002
+[15:44:31] INFO: ⏳ 4 knowledge processing workflows still active (elapsed: 35s)
+[15:44:31] INFO:    📋 Active process: 160be975-94c6-11f0-ba07-0242ac140002
+[15:44:31] INFO:    📋 Active process: 65bdb6b0-94c7-11f0-ba07-0242ac140002
+[15:44:31] INFO:    📋 Active process: cef4393e-94c7-11f0-ba07-0242ac140002
+[15:44:36] INFO: ⏳ 4 knowledge processing workflows still active (elapsed: 40s)
+[15:44:36] INFO:    📋 Active process: 160be975-94c6-11f0-ba07-0242ac140002
+[15:44:36] INFO:    📋 Active process: 65bdb6b0-94c7-11f0-ba07-0242ac140002
+[15:44:36] INFO:    📋 Active process: cef4393e-94c7-11f0-ba07-0242ac140002
+[15:44:41] INFO: ⏳ 4 knowledge processing workflows still active (elapsed: 45s)
+[15:44:41] INFO:    📋 Active process: 160be975-94c6-11f0-ba07-0242ac140002
+[15:44:41] INFO:    📋 Active process: 65bdb6b0-94c7-11f0-ba07-0242ac140002
+[15:44:41] INFO:    📋 Active process: cef4393e-94c7-11f0-ba07-0242ac140002
+[15:44:46] INFO: ⏳ 4 knowledge processing workflows still active (elapsed: 50s)
+[15:44:46] INFO:    📋 Active process: 160be975-94c6-11f0-ba07-0242ac140002
+[15:44:46] INFO:    📋 Active process: 65bdb6b0-94c7-11f0-ba07-0242ac140002
+[15:44:46] INFO:    📋 Active process: cef4393e-94c7-11f0-ba07-0242ac140002
+[15:44:51] INFO: ⏳ 4 knowledge processing workflows still active (elapsed: 55s)
+[15:44:51] INFO:    📋 Active process: 160be975-94c6-11f0-ba07-0242ac140002
+[15:44:51] INFO:    📋 Active process: 65bdb6b0-94c7-11f0-ba07-0242ac140002
+[15:44:51] INFO:    📋 Active process: cef4393e-94c7-11f0-ba07-0242ac140002
+[15:44:56] INFO: ⏳ 4 knowledge processing workflows still active (elapsed: 60s)
+[15:44:56] INFO:    📋 Active process: 160be975-94c6-11f0-ba07-0242ac140002
+[15:44:56] INFO:    📋 Active process: 65bdb6b0-94c7-11f0-ba07-0242ac140002
+[15:44:56] INFO:    📋 Active process: cef4393e-94c7-11f0-ba07-0242ac140002
+[15:45:01] INFO: ⏳ 3 knowledge processing workflows still active (elapsed: 65s)
+[15:45:01] INFO:    📋 Active process: 160be975-94c6-11f0-ba07-0242ac140002
+[15:45:01] INFO:    📋 Active process: 65bdb6b0-94c7-11f0-ba07-0242ac140002
+[15:45:01] INFO:    📋 Active process: cfdf3592-94c7-11f0-ba07-0242ac140002
+[15:45:06] INFO: ⏳ 3 knowledge processing workflows still active (elapsed: 70s)
+[15:45:06] INFO:    📋 Active process: 160be975-94c6-11f0-ba07-0242ac140002
+[15:45:06] INFO:    📋 Active process: 65bdb6b0-94c7-11f0-ba07-0242ac140002
+[15:45:06] INFO:    📋 Active process: cfdf3592-94c7-11f0-ba07-0242ac140002
+[15:45:11] INFO: ⏳ 3 knowledge processing workflows still active (elapsed: 75s)
+[15:45:11] INFO:    📋 Active process: 160be975-94c6-11f0-ba07-0242ac140002
+[15:45:11] INFO:    📋 Active process: 65bdb6b0-94c7-11f0-ba07-0242ac140002
+[15:45:11] INFO:    📋 Active process: cfdf3592-94c7-11f0-ba07-0242ac140002
+[15:45:16] INFO: ⏳ 3 knowledge processing workflows still active (elapsed: 80s)
+[15:45:16] INFO:    📋 Active process: 160be975-94c6-11f0-ba07-0242ac140002
+[15:45:16] INFO:    📋 Active process: 65bdb6b0-94c7-11f0-ba07-0242ac140002
+[15:45:16] INFO:    📋 Active process: cfdf3592-94c7-11f0-ba07-0242ac140002
+[15:45:21] INFO: ⏳ 3 knowledge processing workflows still active (elapsed: 85s)
+[15:45:21] INFO:    📋 Active process: 160be975-94c6-11f0-ba07-0242ac140002
+[15:45:21] INFO:    📋 Active process: 65bdb6b0-94c7-11f0-ba07-0242ac140002
+[15:45:21] INFO:    📋 Active process: cfdf3592-94c7-11f0-ba07-0242ac140002
+[15:45:26] INFO: ⏳ 2 knowledge processing workflows still active (elapsed: 90s)
+[15:45:26] INFO:    📋 Active process: 160be975-94c6-11f0-ba07-0242ac140002
+[15:45:26] INFO:    📋 Active process: 65bdb6b0-94c7-11f0-ba07-0242ac140002
+[15:45:32] INFO: ⏳ 2 knowledge processing workflows still active (elapsed: 95s)
+[15:45:32] INFO:    📋 Active process: 160be975-94c6-11f0-ba07-0242ac140002
+[15:45:32] INFO:    📋 Active process: 65bdb6b0-94c7-11f0-ba07-0242ac140002
+[15:45:37] INFO: ⏳ 2 knowledge processing workflows still active (elapsed: 100s)
+[15:45:37] INFO:    📋 Active process: 160be975-94c6-11f0-ba07-0242ac140002
+[15:45:37] INFO:    📋 Active process: 65bdb6b0-94c7-11f0-ba07-0242ac140002
+[15:45:42] INFO: ⏳ 2 knowledge processing workflows still active (elapsed: 105s)
+[15:45:42] INFO:    📋 Active process: 160be975-94c6-11f0-ba07-0242ac140002
+[15:45:42] INFO:    📋 Active process: 65bdb6b0-94c7-11f0-ba07-0242ac140002
+[15:45:47] INFO: ⏳ 2 knowledge processing workflows still active (elapsed: 110s)
+[15:45:47] INFO:    📋 Active process: 160be975-94c6-11f0-ba07-0242ac140002
+[15:45:47] INFO:    📋 Active process: 65bdb6b0-94c7-11f0-ba07-0242ac140002
+[15:45:52] INFO: ⏳ 2 knowledge processing workflows still active (elapsed: 115s)
+[15:45:52] INFO:    📋 Active process: 160be975-94c6-11f0-ba07-0242ac140002
+[15:45:52] INFO:    📋 Active process: 65bdb6b0-94c7-11f0-ba07-0242ac140002
+[15:45:57] INFO: ⏳ 2 knowledge processing workflows still active (elapsed: 120s)
+[15:45:57] INFO:    📋 Active process: 160be975-94c6-11f0-ba07-0242ac140002
+[15:45:57] INFO:    📋 Active process: 65bdb6b0-94c7-11f0-ba07-0242ac140002
+[15:46:02] INFO: ⏳ 2 knowledge processing workflows still active (elapsed: 125s)
+[15:46:02] INFO:    📋 Active process: 160be975-94c6-11f0-ba07-0242ac140002
+[15:46:02] INFO:    📋 Active process: 65bdb6b0-94c7-11f0-ba07-0242ac140002
+[15:46:07] INFO: ⏳ 2 knowledge processing workflows still active (elapsed: 130s)
+[15:46:07] INFO:    📋 Active process: 160be975-94c6-11f0-ba07-0242ac140002
+[15:46:07] INFO:    📋 Active process: 65bdb6b0-94c7-11f0-ba07-0242ac140002
+[15:46:12] INFO: ⏳ 2 knowledge processing workflows still active (elapsed: 135s)
+[15:46:12] INFO:    📋 Active process: 160be975-94c6-11f0-ba07-0242ac140002
+[15:46:12] INFO:    📋 Active process: 65bdb6b0-94c7-11f0-ba07-0242ac140002

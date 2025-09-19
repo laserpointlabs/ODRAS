@@ -420,7 +420,11 @@ class ProjectThreadManager:
 
             # Generate embedding for the thread
             from sentence_transformers import SentenceTransformer
-            model = SentenceTransformer('all-MiniLM-L6-v2')
+            import os
+
+            # Use local cache to avoid downloading model metadata from HuggingFace
+            cache_dir = os.path.join(os.path.dirname(os.path.dirname(os.path.dirname(__file__))), "models", "embeddings")
+            model = SentenceTransformer('all-MiniLM-L6-v2', cache_folder=cache_dir)
             embedding = model.encode([searchable_text])[0].tolist()
 
             # Store in vector store (primary storage)
@@ -615,4 +619,3 @@ class ProjectThreadManager:
         except Exception as e:
             logger.error(f"Error deleting project thread for project {project_id}: {e}")
             return False
-

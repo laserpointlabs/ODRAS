@@ -95,6 +95,11 @@ class SessionCaptureMiddleware(BaseHTTPMiddleware):
             # Extract semantic meaning with request/response body analysis
             semantic_data = await self._extract_semantics(request, response)
 
+            # Skip event if semantic extraction returned None (filtered out)
+            if semantic_data is None:
+                print(f"🔥 MIDDLEWARE: Event filtered out - not capturing")
+                return
+
             # Create clean event
             event = {
                 "event_id": f"api_{int(time.time() * 1000)}",
@@ -162,8 +167,8 @@ class SessionCaptureMiddleware(BaseHTTPMiddleware):
             pass
         return None
 
-    async def _extract_layout_changes(self, request: Request) -> Optional[str]:
-        """Extract detailed information about ontology layout changes"""
+    async def _extract_layout_changes(self, request: Request) -> Optional[Dict[str, Any]]:
+        """Extract detailed information about ontology layout changes and classify them"""
         try:
             # Read request body to understand what changed
             # Note: request.body() can only be called once, and may have been consumed
@@ -178,26 +183,42 @@ class SessionCaptureMiddleware(BaseHTTPMiddleware):
 
                 # Parse common layout operations
                 changes = []
+                is_semantic = False  # Track if this is a meaningful semantic change
 
+                # Check for pure positioning changes (not semantic)
                 if '"x":' in body_str and '"y":' in body_str:
                     changes.append("repositioned elements")
 
+                # Check for semantic changes (meaningful for DAS)
                 if '"label":' in body_str or '"name":' in body_str:
                     # Try to extract class names from body
                     import re
                     names = re.findall(r'"(?:label|name)"\s*:\s*"([^"]+)"', body_str)
                     if names:
                         changes.append(f"modified {', '.join(names[:3])}")
+                        is_semantic = True  # Renaming is semantic
 
                 if '"source":' in body_str and '"target":' in body_str:
                     changes.append("modified relationships")
+                    is_semantic = True  # Relationship changes are semantic
 
                 if '"type":' in body_str:
                     types = re.findall(r'"type"\s*:\s*"([^"]+)"', body_str)
                     if types:
                         changes.append(f"worked with {', '.join(set(types[:3]))}")
+                        # Type changes might be semantic depending on the type
+                        if any(t for t in types if t not in ['position', 'layout', 'view']):
+                            is_semantic = True
 
-                return ", ".join(changes) if changes else None
+                # Check for class creation/deletion indicators
+                if any(keyword in body_str.lower() for keyword in ['create', 'delete', 'add', 'remove']):
+                    is_semantic = True
+
+                return {
+                    "description": ", ".join(changes) if changes else None,
+                    "is_semantic": is_semantic,
+                    "is_layout_only": len(changes) == 1 and "repositioned elements" in changes
+                }
 
         except Exception as e:
             logger.debug(f"Could not extract layout details: {e}")
@@ -245,6 +266,8 @@ class SessionCaptureMiddleware(BaseHTTPMiddleware):
         path = str(request.url.path)
         query_params = dict(request.query_params)
 
+        print(f"🔥 MIDDLEWARE: Extracting semantics for {method} {path}")
+
         # Ontology operations
         if "ontology/layout" in path and method == "PUT":
             graph = query_params.get("graph", "")
@@ -252,11 +275,26 @@ class SessionCaptureMiddleware(BaseHTTPMiddleware):
             project_id = self._extract_project_id_from_graph(graph)
 
             # Try to extract detailed layout changes from request body
-            layout_details = await self._extract_layout_changes(request)
+            layout_analysis = await self._extract_layout_changes(request)
 
-            action = f"Modified {ontology_id} ontology layout"
-            if layout_details:
+            # Skip layout-only changes to prevent CUDA memory overload
+            if layout_analysis and layout_analysis.get("is_layout_only", False):
+                print(f"🔥 MIDDLEWARE: Skipping layout-only change for {ontology_id} (prevents CUDA overload)")
+                return None  # Signal to skip this event
+
+            # Only process semantic changes, but use the same routing path that worked before
+            layout_details = layout_analysis.get("description") if layout_analysis else None
+
+            # Determine if this is semantic or just layout
+            is_semantic = layout_analysis and layout_analysis.get("is_semantic", False)
+
+            if is_semantic:
                 action = f"Modified {ontology_id} ontology: {layout_details}"
+                print(f"🔥 MIDDLEWARE: Capturing semantic ontology change: {layout_details}")
+            else:
+                # This is a pure layout change, skip it
+                print(f"🔥 MIDDLEWARE: Skipping pure layout change for {ontology_id}")
+                return None
 
             return {
                 "action": action,
@@ -267,10 +305,98 @@ class SessionCaptureMiddleware(BaseHTTPMiddleware):
                     "operation_details": layout_details
                 },
                 "metadata": {
-                    "type": "ontology_layout",
+                    "type": "ontology_layout",  # Keep same type that worked before
                     "graph": graph,
                     "project_id": project_id,
-                    "detailed_operation": layout_details
+                    "detailed_operation": layout_details,
+                    "is_semantic": is_semantic
+                }
+            }
+
+        elif path == "/api/ontology/" and method == "POST":
+            # Handle ontology creation
+            project_id = query_params.get("project_id")
+            print(f"🔥 MIDDLEWARE: Capturing ontology CREATION for project {project_id}")
+
+            ontology_name = "default"
+
+            # Extract ontology name from request body
+            try:
+                body = await request.body()
+                if body:
+                    body_str = body.decode('utf-8')
+                    body_json = json.loads(body_str)
+                    if body_json.get("metadata", {}).get("name"):
+                        ontology_name = body_json["metadata"]["name"]
+            except:
+                pass
+
+            action = f"Created new ontology: {ontology_name}"
+
+            return {
+                "action": action,
+                "context": {
+                    "ontology_name": ontology_name,
+                    "workbench": "ontology",
+                    "operation_type": "ontology_creation",
+                    "project_id": project_id
+                },
+                "metadata": {
+                    "type": "ontology_layout",  # Use same type as working layout events
+                    "is_semantic": True,
+                    "is_creation": True,
+                    "endpoint": "/api/ontology/",
+                    "ontology_name": ontology_name,
+                    "project_id": project_id
+                }
+            }
+
+        elif path == "/api/ontology/" and method == "PUT":
+            # Handle general ontology updates (semantic changes like adding classes, properties)
+            project_id = query_params.get("project_id")
+            print(f"🔥 MIDDLEWARE: Capturing general ontology update for project {project_id}")
+
+            action = "Updated ontology with semantic changes"
+            ontology_name = "default"
+
+            # Try to extract what was changed from the request body
+            try:
+                body = await request.body()
+                if body:
+                    body_str = body.decode('utf-8')
+                    body_json = json.loads(body_str)
+
+                    # Extract ontology name if available
+                    if body_json.get("metadata", {}).get("name"):
+                        ontology_name = body_json["metadata"]["name"]
+
+                    changes = []
+                    if body_json.get("classes"):
+                        changes.append(f"{len(body_json['classes'])} classes")
+                    if body_json.get("object_properties"):
+                        changes.append(f"{len(body_json['object_properties'])} object properties")
+                    if body_json.get("datatype_properties"):
+                        changes.append(f"{len(body_json['datatype_properties'])} datatype properties")
+
+                    if changes:
+                        action = f"Updated {ontology_name} ontology: {', '.join(changes)}"
+            except:
+                pass
+
+            return {
+                "action": action,
+                "context": {
+                    "ontology_name": ontology_name,
+                    "workbench": "ontology",
+                    "operation_type": "semantic_update",
+                    "project_id": project_id
+                },
+                "metadata": {
+                    "type": "ontology_layout",  # Use same type as working layout events
+                    "is_semantic": True,
+                    "endpoint": "/api/ontology/",
+                    "ontology_name": ontology_name,
+                    "project_id": project_id
                 }
             }
 
@@ -423,4 +549,3 @@ def create_session_capture_middleware(redis_client):
     def middleware_factory(app: ASGIApp) -> SessionCaptureMiddleware:
         return SessionCaptureMiddleware(app, redis_client)
     return middleware_factory
-

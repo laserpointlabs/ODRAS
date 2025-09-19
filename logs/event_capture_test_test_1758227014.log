@@ -1,0 +1,135 @@
+[16:23:34] INFO: 🚀 Starting complete event capture pipeline test...
+[16:23:34] INFO:    Test Session: test_1758227014
+[16:23:34] INFO:    Log File: logs/event_capture_test_test_1758227014.log
+[16:23:34] INFO: ✅ Authentication successful
+[16:23:34] INFO: 🧪 TEST 1: Creating project and verifying project thread...
+[16:23:35] INFO: ✅ Project created: 150a4993-c8fa-49c0-8a75-00f3f4650e8b
+[16:23:35] INFO:    Name: Event Pipeline Test test_1758227014
+[16:23:37] INFO: 🔍 Querying Qdrant for project thread with project_id: 150a4993-c8fa-49c0-8a75-00f3f4650e8b
+[16:23:37] INFO: 🔍 Qdrant response status: 200
+[16:23:37] INFO: 🔍 Found 1 project threads for project 150a4993-c8fa-49c0-8a75-00f3f4650e8b
+[16:23:37] INFO: 🔍 Using most recent project thread: 620ec7e4-c05b-491f-8f09-36c801e2410a
+[16:23:37] INFO: 🔍 Last activity: 2025-09-18T16:23:35.630148
+[16:23:37] INFO: ✅ Project thread created: 620ec7e4-c05b-491f-8f09-36c801e2410a
+[16:23:37] INFO: 🔍 Verifying event: project_creation
+[16:23:37] INFO: 🔍 Querying Qdrant for project thread with project_id: 150a4993-c8fa-49c0-8a75-00f3f4650e8b
+[16:23:37] INFO: 🔍 Qdrant response status: 200
+[16:23:37] INFO: 🔍 Found 1 project threads for project 150a4993-c8fa-49c0-8a75-00f3f4650e8b
+[16:23:37] INFO: 🔍 Using most recent project thread: 620ec7e4-c05b-491f-8f09-36c801e2410a
+[16:23:37] INFO: 🔍 Last activity: 2025-09-18T16:23:35.630148
+[16:23:37] INFO: ✅ PASS: project_creation event found: project_created
+[16:23:37] INFO: 🧪 TEST 2: Creating ontology and verifying capture...
+[16:23:38] INFO: ✅ Ontology created successfully
+[16:23:38] INFO:    Backup ID: dde8251d-4486-45aa-9862-4edc4e75a409
+[16:23:38] INFO:    Triples: 3
+[16:23:40] INFO: 🔍 Verifying event: ontology_creation
+[16:23:40] INFO: 🔍 Querying Qdrant for project thread with project_id: 150a4993-c8fa-49c0-8a75-00f3f4650e8b
+[16:23:40] INFO: 🔍 Qdrant response status: 200
+[16:23:40] INFO: 🔍 Found 2 project threads for project 150a4993-c8fa-49c0-8a75-00f3f4650e8b
+[16:23:40] INFO: 🔍 Using most recent project thread: cc373ca7-16a4-4b4f-a5d7-f836d5dcf4d5
+[16:23:40] INFO: 🔍 Last activity: 2025-09-18T16:23:38.221377
+[16:23:40] INFO: ✅ PASS: ontology_creation event found: Created new ontology: default
+[16:23:40] INFO: 🧪 TEST 3: Performing semantic operations...
+[16:23:40] INFO: ✅ Classes created: TestClass1, TestClass2
+[16:23:42] INFO: ✅ Added: relationship 'relatedTo', data property 'testName', renamed TestClass1
+[16:23:44] INFO: 🔍 Querying Qdrant for project thread with project_id: 150a4993-c8fa-49c0-8a75-00f3f4650e8b
+[16:23:44] INFO: 🔍 Qdrant response status: 200
+[16:23:44] INFO: 🔍 Found 4 project threads for project 150a4993-c8fa-49c0-8a75-00f3f4650e8b
+[16:23:44] INFO: 🔍 Using most recent project thread: 1759cfde-c85e-4335-80e6-0dd71c432867
+[16:23:44] INFO: 🔍 Last activity: 2025-09-18T16:23:42.383967
+[16:23:44] INFO: ✅ Captured 1 semantic ontology events
+[16:23:44] INFO:    - Updated ontology with semantic changes
+[16:23:44] INFO: 🧪 TEST 3.5: Uploading knowledge files...
+[16:23:44] INFO: 📁 Uploading data/decision_matrix_template.md...
+[16:23:45] INFO: ✅ Uploaded decision_matrix_template.md
+[16:23:45] INFO:    File ID: bf05f348-2bfc-433f-8bd0-d70604999403
+[16:23:45] INFO:    Knowledge Asset ID: 5fe8e459-94cd-11f0-ba07-0242ac140002
+[16:23:45] INFO:    Message: File uploaded and BPMN knowledge processing started (workflow: 5fe8e459-94cd-11f0-ba07-0242ac140002)
+[16:23:45] INFO:    Process Instance: 5fe8e459-94cd-11f0-ba07-0242ac140002
+[16:23:46] INFO: 📁 Uploading data/disaster_response_requirements.md...
+[16:23:46] INFO: ✅ Uploaded disaster_response_requirements.md
+[16:23:46] INFO:    File ID: 4594729c-7131-47c8-85fb-11787eb24099
+[16:23:46] INFO:    Knowledge Asset ID: 60d1bdcd-94cd-11f0-ba07-0242ac140002
+[16:23:46] INFO:    Message: File uploaded and BPMN knowledge processing started (workflow: 60d1bdcd-94cd-11f0-ba07-0242ac140002)
+[16:23:46] INFO:    Process Instance: 60d1bdcd-94cd-11f0-ba07-0242ac140002
+[16:23:47] INFO: 📁 Uploading data/uas_specifications.md...
+[16:23:48] INFO: ✅ Uploaded uas_specifications.md
+[16:23:48] INFO:    File ID: a0421502-53d1-48c2-84f0-89dea023e51b
+[16:23:48] INFO:    Knowledge Asset ID: 61babd51-94cd-11f0-ba07-0242ac140002
+[16:23:48] INFO:    Message: File uploaded and BPMN knowledge processing started (workflow: 61babd51-94cd-11f0-ba07-0242ac140002)
+[16:23:48] INFO:    Process Instance: 61babd51-94cd-11f0-ba07-0242ac140002
+[16:23:49] INFO: ⏳ Monitoring Camunda knowledge processing workflows...
+[16:23:49] INFO: 🔍 Checking for existing processes before starting monitoring...
+[16:23:52] INFO: ⏳ Waiting for knowledge processing to complete...
+[16:23:52] INFO: ⏳ 3 processes still active (elapsed: 0s)
+[16:23:57] INFO: ⏳ 3 processes still active (elapsed: 5s)
+[16:24:02] INFO: ⏳ 3 processes still active (elapsed: 10s)
+[16:24:07] INFO: ⏳ 3 processes still active (elapsed: 15s)
+[16:24:12] INFO: ⏳ 3 processes still active (elapsed: 20s)
+[16:24:17] INFO: ⏳ 2 processes still active (elapsed: 25s)
+[16:24:22] INFO: ⏳ 2 processes still active (elapsed: 30s)
+[16:24:27] INFO: ⏳ 2 processes still active (elapsed: 35s)
+[16:24:32] INFO: ⏳ 2 processes still active (elapsed: 40s)
+[16:24:37] INFO: ⏳ 2 processes still active (elapsed: 45s)
+[16:24:42] INFO: ⏳ 2 processes still active (elapsed: 50s)
+[16:24:47] INFO: ⏳ 1 processes still active (elapsed: 55s)
+[16:24:52] INFO: ⏳ 1 processes still active (elapsed: 60s)
+[16:24:57] INFO: ⏳ 1 processes still active (elapsed: 65s)
+[16:24:57] INFO: 🧹 Processes taking too long, cleaning up...
+[16:24:59] INFO: ⏳ Waiting up to 10 minutes for knowledge assets to become available...
+[16:24:59] INFO: 📋 decision_matrix_template.md: Asset unknown - Status: active
+[16:24:59] INFO: 📋 disaster_response_requirements.md: Asset unknown - Status: active
+[16:24:59] INFO: 📊 Assets: 0 completed, 2 active
+[16:24:59] INFO: ⏳ Waiting for asset completion (elapsed: 0s)
+[16:25:14] INFO: 📋 decision_matrix_template.md: Asset unknown - Status: active
+[16:25:14] INFO: 📋 disaster_response_requirements.md: Asset unknown - Status: active
+[16:25:14] INFO: 📊 Assets: 0 completed, 2 active
+[16:25:14] INFO: ⏳ Waiting for asset completion (elapsed: 15s)
+[16:25:29] INFO: 📋 decision_matrix_template.md: Asset unknown - Status: active
+[16:25:29] INFO: 📋 disaster_response_requirements.md: Asset unknown - Status: active
+[16:25:29] INFO: 📊 Assets: 0 completed, 2 active
+[16:25:29] INFO: ⏳ Waiting for asset completion (elapsed: 30s)
+[16:25:44] INFO: 📋 decision_matrix_template.md: Asset unknown - Status: active
+[16:25:45] INFO: 📋 disaster_response_requirements.md: Asset unknown - Status: active
+[16:25:45] INFO: 📊 Assets: 0 completed, 2 active
+[16:25:45] INFO: ⏳ Waiting for asset completion (elapsed: 45s)
+[16:26:00] INFO: 📋 decision_matrix_template.md: Asset unknown - Status: active
+[16:26:00] INFO: 📋 disaster_response_requirements.md: Asset unknown - Status: active
+[16:26:00] INFO: 📊 Assets: 0 completed, 2 active
+[16:26:00] INFO: ⏳ Waiting for asset completion (elapsed: 61s)
+[16:26:15] INFO: 📋 decision_matrix_template.md: Asset unknown - Status: active
+[16:26:15] INFO: 📋 disaster_response_requirements.md: Asset unknown - Status: active
+[16:26:15] INFO: 📊 Assets: 0 completed, 2 active
+[16:26:15] INFO: ⏳ Waiting for asset completion (elapsed: 76s)
+[16:26:30] INFO: 📋 decision_matrix_template.md: Asset unknown - Status: active
+[16:26:30] INFO: 📋 disaster_response_requirements.md: Asset unknown - Status: active
+[16:26:30] INFO: 📊 Assets: 0 completed, 2 active
+[16:26:30] INFO: ⏳ Waiting for asset completion (elapsed: 91s)
+[16:26:45] INFO: 📋 decision_matrix_template.md: Asset unknown - Status: active
+[16:26:45] INFO: 📋 disaster_response_requirements.md: Asset unknown - Status: active
+[16:26:45] INFO: 📊 Assets: 0 completed, 2 active
+[16:26:45] INFO: ⏳ Waiting for asset completion (elapsed: 106s)
+[16:27:01] INFO: 📋 decision_matrix_template.md: Asset unknown - Status: active
+[16:27:01] INFO: 📋 disaster_response_requirements.md: Asset unknown - Status: active
+[16:27:01] INFO: 📊 Assets: 0 completed, 2 active
+[16:27:01] INFO: ⏳ Waiting for asset completion (elapsed: 121s)
+[16:27:16] INFO: 📋 decision_matrix_template.md: Asset unknown - Status: active
+[16:27:16] INFO: 📋 disaster_response_requirements.md: Asset unknown - Status: active
+[16:27:16] INFO: 📊 Assets: 0 completed, 2 active
+[16:27:16] INFO: ⏳ Waiting for asset completion (elapsed: 137s)
+[16:27:31] INFO: 📋 decision_matrix_template.md: Asset unknown - Status: active
+[16:27:31] INFO: 📋 disaster_response_requirements.md: Asset unknown - Status: active
+[16:27:31] INFO: 📊 Assets: 0 completed, 2 active
+[16:27:31] INFO: ⏳ Waiting for asset completion (elapsed: 152s)
+[16:27:46] INFO: 📋 decision_matrix_template.md: Asset unknown - Status: active
+[16:27:46] INFO: 📋 disaster_response_requirements.md: Asset unknown - Status: active
+[16:27:46] INFO: 📊 Assets: 0 completed, 2 active
+[16:27:46] INFO: ⏳ Waiting for asset completion (elapsed: 167s)
+[16:28:01] INFO: 📋 decision_matrix_template.md: Asset unknown - Status: active
+[16:28:02] INFO: 📋 disaster_response_requirements.md: Asset unknown - Status: active
+[16:28:02] INFO: 📊 Assets: 0 completed, 2 active
+[16:28:02] INFO: ⏳ Waiting for asset completion (elapsed: 182s)
+[16:28:17] INFO: 📋 decision_matrix_template.md: Asset unknown - Status: active
+[16:28:17] INFO: 📋 disaster_response_requirements.md: Asset unknown - Status: active
+[16:28:17] INFO: 📊 Assets: 0 completed, 2 active
+[16:28:17] INFO: ⏳ Waiting for asset completion (elapsed: 197s)

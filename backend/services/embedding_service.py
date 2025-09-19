@@ -482,4 +482,3 @@ def batch_embed_texts(
         embedding_service = get_embedding_service()
 
     return embedding_service.generate_embeddings(texts, model_id, batch_size)
-

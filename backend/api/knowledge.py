@@ -1058,6 +1058,7 @@ async def cleanup_unknown_assets(
     - title = "unknown"
     - title = ""
     - title is NULL
+    - source_file_id is NULL (orphaned knowledge assets)
     - document_type = "unknown" and title looks auto-generated
 
     Args:
@@ -1084,6 +1085,7 @@ async def cleanup_unknown_assets(
                         ka.title = 'unknown' OR
                         ka.title = '' OR
                         ka.title IS NULL OR
+                        ka.source_file_id IS NULL OR
                         (ka.document_type = 'unknown' AND (
                             ka.title LIKE 'Asset %' OR
                             ka.title LIKE 'Document %' OR
@@ -1862,4 +1864,3 @@ async def knowledge_health():
         "version": "1.0.0",
         "timestamp": datetime.now(timezone.utc).isoformat(),
     }
-

@@ -212,9 +212,19 @@ class DASCoreEngine:
                 )
 
             # Query RAG with enhanced context for knowledge questions
+            # Convert project thread to dict for context
+            project_thread_dict = project_thread.to_dict() if hasattr(project_thread, 'to_dict') else {
+                'project_id': project_thread.project_id,
+                'project_thread_id': project_thread.project_thread_id,
+                'created_at': project_thread.created_at.isoformat() if hasattr(project_thread.created_at, 'isoformat') else str(project_thread.created_at),
+                'last_activity': project_thread.last_activity.isoformat() if hasattr(project_thread.last_activity, 'isoformat') else str(project_thread.last_activity),
+                'thread_data': project_thread.context
+            }
+
             rag_response = await self.rag_service.query_knowledge_base(
                 question=enhanced_query,
                 project_id=project_id,
+                project_thread_context=project_thread_dict,
                 user_id=user_id,
                 max_chunks=3,  # Fewer chunks for more focused responses
                 similarity_threshold=0.5,  # Higher threshold for precision
@@ -940,4 +950,3 @@ class DASCoreEngine:
             session_id=project_thread_id,
             suggestions=["Try asking a question instead", "Upload a document for analysis"]
         )
-

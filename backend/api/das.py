@@ -1112,4 +1112,3 @@ async def initialize_das_engine(settings: Settings, rag_service: RAGService, db_
     except Exception as e:
         logger.error(f"Failed to initialize DAS engine: {e}")
         raise
-
