@@ -1,0 +1,461 @@
+{
+  "nodes": [
+    {
+      "data": {
+        "id": "Class1",
+        "label": "Requirement",
+        "type": "class",
+        "attrs": {
+          "creator": "jdehart",
+          "created_date": "2025-09-23",
+          "created_timestamp": "2025-09-23T17:08:33.432Z",
+          "last_modified_by": "jdehart",
+          "last_modified_date": "2025-09-23",
+          "last_modified_timestamp": "2025-09-23T17:18:47.668Z"
+        }
+      },
+      "position": {
+        "x": 804.0262173982253,
+        "y": 452.7374376224225
+      }
+    },
+    {
+      "data": {
+        "id": "Class2",
+        "label": "Crterion",
+        "type": "class",
+        "attrs": {
+          "creator": "jdehart",
+          "created_date": "2025-09-23",
+          "created_timestamp": "2025-09-23T17:08:35.074Z",
+          "last_modified_by": "jdehart",
+          "last_modified_date": "2025-09-23",
+          "last_modified_timestamp": "2025-09-23T17:18:35.568Z"
+        }
+      },
+      "position": {
+        "x": 391.0398991063665,
+        "y": 306.9927445949167
+      }
+    },
+    {
+      "data": {
+        "id": "Class3",
+        "label": "Design Decison",
+        "type": "class",
+        "attrs": {
+          "creator": "jdehart",
+          "created_date": "2025-09-23",
+          "created_timestamp": "2025-09-23T17:08:57.387Z",
+          "last_modified_by": "jdehart",
+          "last_modified_date": "2025-09-23",
+          "last_modified_timestamp": "2025-09-23T17:18:33.417Z"
+        }
+      },
+      "position": {
+        "x": 522.1396470384299,
+        "y": 455.7532334087536
+      }
+    },
+    {
+      "data": {
+        "id": "Class4",
+        "label": "Alternative",
+        "type": "class",
+        "attrs": {
+          "creator": "jdehart",
+          "created_date": "2025-09-23",
+          "created_timestamp": "2025-09-23T17:09:08.862Z",
+          "last_modified_by": "jdehart",
+          "last_modified_date": "2025-09-23",
+          "last_modified_timestamp": "2025-09-23T17:10:07.634Z"
+        }
+      },
+      "position": {
+        "x": 408.1153995974652,
+        "y": 611.7012609776713
+      }
+    },
+    {
+      "data": {
+        "id": "Class5",
+        "label": "Performance",
+        "type": "class",
+        "attrs": {
+          "creator": "jdehart",
+          "created_date": "2025-09-23",
+          "created_timestamp": "2025-09-23T17:09:18.241Z",
+          "last_modified_by": "jdehart",
+          "last_modified_date": "2025-09-23",
+          "last_modified_timestamp": "2025-09-23T17:18:19.645Z"
+        }
+      },
+      "position": {
+        "x": 242.71890765977363,
+        "y": 465.7065218117562
+      }
+    },
+    {
+      "data": {
+        "id": "Class7",
+        "label": "Equation",
+        "type": "class",
+        "attrs": {
+          "creator": "jdehart",
+          "created_date": "2025-09-23",
+          "created_timestamp": "2025-09-23T17:10:26.995Z",
+          "last_modified_by": "jdehart",
+          "last_modified_date": "2025-09-23",
+          "last_modified_timestamp": "2025-09-23T17:18:36.734Z"
+        }
+      },
+      "position": {
+        "x": 86.56611962592258,
+        "y": 306.3191776625117
+      }
+    },
+    {
+      "data": {
+        "id": "Class8",
+        "label": "Measure",
+        "type": "class",
+        "attrs": {
+          "creator": "jdehart",
+          "created_date": "2025-09-23",
+          "created_timestamp": "2025-09-23T17:10:28.650Z",
+          "last_modified_by": "jdehart",
+          "last_modified_date": "2025-09-23",
+          "last_modified_timestamp": "2025-09-23T17:18:38.643Z"
+        }
+      },
+      "position": {
+        "x": 78.02318897668934,
+        "y": 632.1525238125829
+      }
+    },
+    {
+      "data": {
+        "id": "Class9",
+        "label": "Risk",
+        "type": "class",
+        "attrs": {
+          "creator": "jdehart",
+          "created_date": "2025-09-23",
+          "created_timestamp": "2025-09-23T17:14:40.701Z",
+          "last_modified_by": "jdehart",
+          "last_modified_date": "2025-09-23",
+          "last_modified_timestamp": "2025-09-23T17:18:28.418Z"
+        }
+      },
+      "position": {
+        "x": 213.9817656733347,
+        "y": 781.2631578619672
+      }
+    },
+    {
+      "data": {
+        "id": "Class10",
+        "label": "Opportunity",
+        "type": "class",
+        "attrs": {
+          "creator": "jdehart",
+          "created_date": "2025-09-23",
+          "created_timestamp": "2025-09-23T17:14:42.349Z",
+          "last_modified_by": "jdehart",
+          "last_modified_date": "2025-09-23",
+          "last_modified_timestamp": "2025-09-23T17:18:40.584Z"
+        }
+      },
+      "position": {
+        "x": 410.22865132607046,
+        "y": 780.2564857255448
+      }
+    },
+    {
+      "data": {
+        "id": "Class11",
+        "label": "Asset",
+        "type": "class",
+        "attrs": {
+          "creator": "jdehart",
+          "created_date": "2025-09-23",
+          "created_timestamp": "2025-09-23T17:14:43.967Z",
+          "last_modified_by": "jdehart",
+          "last_modified_date": "2025-09-23",
+          "last_modified_timestamp": "2025-09-23T17:18:44.168Z"
+        }
+      },
+      "position": {
+        "x": 604.7907256762641,
+        "y": 778.9370830471879
+      }
+    },
+    {
+      "data": {
+        "id": "Note1758647934475",
+        "label": "Note 4475",
+        "type": "note",
+        "attrs": {
+          "noteType": "Note",
+          "content": "A design decision ontology from John Fitch.",
+          "creator": "jdehart",
+          "created_date": "2025-09-23",
+          "created_timestamp": "2025-09-23T17:18:54.475Z",
+          "last_modified_by": "jdehart",
+          "last_modified_date": "2025-09-23",
+          "last_modified_timestamp": "2025-09-23T17:21:21.001Z",
+          "author": "jdehart"
+        }
+      },
+      "position": {
+        "x": 714.0292336780918,
+        "y": 286.7754036425094
+      }
+    }
+  ],
+  "edges": [
+    {
+      "data": {
+        "id": "e1758647372755",
+        "source": "Class1",
+        "target": "Class2",
+        "predicate": "refined_by",
+        "type": "objectProperty",
+        "attrs": {
+          "creator": "jdehart",
+          "created_date": "2025-09-23",
+          "created_timestamp": "2025-09-23T17:09:32.755Z",
+          "last_modified_by": "jdehart",
+          "last_modified_date": "2025-09-23",
+          "last_modified_timestamp": "2025-09-23T17:12:00.577Z",
+          "functional": false,
+          "inverse_functional": false
+        }
+      }
+    },
+    {
+      "data": {
+        "id": "e1758647396870",
+        "source": "Class2",
+        "target": "Class3",
+        "predicate": "constrains",
+        "type": "objectProperty",
+        "attrs": {
+          "creator": "jdehart",
+          "created_date": "2025-09-23",
+          "created_timestamp": "2025-09-23T17:09:56.870Z",
+          "last_modified_by": "jdehart",
+          "last_modified_date": "2025-09-23",
+          "last_modified_timestamp": "2025-09-23T17:12:12.144Z",
+          "functional": false,
+          "inverse_functional": false
+        }
+      }
+    },
+    {
+      "data": {
+        "id": "e1758647399077",
+        "source": "Class3",
+        "target": "Class4",
+        "predicate": "selects",
+        "type": "objectProperty",
+        "attrs": {
+          "creator": "jdehart",
+          "created_date": "2025-09-23",
+          "created_timestamp": "2025-09-23T17:09:59.077Z",
+          "last_modified_by": "jdehart",
+          "last_modified_date": "2025-09-23",
+          "last_modified_timestamp": "2025-09-23T17:14:31.461Z",
+          "functional": false,
+          "inverse_functional": false
+        }
+      }
+    },
+    {
+      "data": {
+        "id": "e1758647401299",
+        "source": "Class4",
+        "target": "Class5",
+        "predicate": "relatedTo",
+        "type": "objectProperty",
+        "attrs": {
+          "creator": "jdehart",
+          "created_date": "2025-09-23",
+          "created_timestamp": "2025-09-23T17:10:01.298Z",
+          "last_modified_by": "jdehart",
+          "last_modified_date": "2025-09-23",
+          "last_modified_timestamp": "2025-09-23T17:10:01.298Z"
+        }
+      }
+    },
+    {
+      "data": {
+        "id": "e1758647403750",
+        "source": "Class5",
+        "target": "Class2",
+        "predicate": "relatedTo",
+        "type": "objectProperty",
+        "attrs": {
+          "creator": "jdehart",
+          "created_date": "2025-09-23",
+          "created_timestamp": "2025-09-23T17:10:03.750Z",
+          "last_modified_by": "jdehart",
+          "last_modified_date": "2025-09-23",
+          "last_modified_timestamp": "2025-09-23T17:10:03.750Z"
+        }
+      }
+    },
+    {
+      "data": {
+        "id": "e1758647452587",
+        "source": "Class7",
+        "target": "Class5",
+        "predicate": "is_a_variable_of",
+        "type": "objectProperty",
+        "attrs": {
+          "creator": "jdehart",
+          "created_date": "2025-09-23",
+          "created_timestamp": "2025-09-23T17:10:52.587Z",
+          "last_modified_by": "jdehart",
+          "last_modified_date": "2025-09-23",
+          "last_modified_timestamp": "2025-09-23T17:11:03.361Z",
+          "functional": false,
+          "inverse_functional": false
+        }
+      }
+    },
+    {
+      "data": {
+        "id": "e1758647474925",
+        "source": "Class8",
+        "target": "Class5",
+        "predicate": "is_a_basis_of_estimate",
+        "type": "objectProperty",
+        "attrs": {
+          "creator": "jdehart",
+          "created_date": "2025-09-23",
+          "created_timestamp": "2025-09-23T17:11:14.925Z",
+          "last_modified_by": "jdehart",
+          "last_modified_date": "2025-09-23",
+          "last_modified_timestamp": "2025-09-23T17:11:42.007Z",
+          "functional": false,
+          "inverse_functional": false
+        }
+      }
+    },
+    {
+      "data": {
+        "id": "e1758647578477",
+        "source": "Class3",
+        "target": "Class4",
+        "predicate": "performs_analysis_of",
+        "type": "objectProperty",
+        "attrs": {
+          "creator": "jdehart",
+          "created_date": "2025-09-23",
+          "created_timestamp": "2025-09-23T17:12:58.477Z",
+          "last_modified_by": "jdehart",
+          "last_modified_date": "2025-09-23",
+          "last_modified_timestamp": "2025-09-23T17:14:01.302Z",
+          "functional": false,
+          "inverse_functional": false
+        }
+      }
+    },
+    {
+      "data": {
+        "id": "e1758647644663",
+        "source": "Class3",
+        "target": "Class4",
+        "predicate": "down_selects",
+        "type": "objectProperty",
+        "attrs": {
+          "creator": "jdehart",
+          "created_date": "2025-09-23",
+          "created_timestamp": "2025-09-23T17:14:04.663Z",
+          "last_modified_by": "jdehart",
+          "last_modified_date": "2025-09-23",
+          "last_modified_timestamp": "2025-09-23T17:14:20.033Z",
+          "functional": false,
+          "inverse_functional": false
+        }
+      }
+    },
+    {
+      "data": {
+        "id": "e1758647699547",
+        "source": "Class4",
+        "target": "Class11",
+        "predicate": "requires",
+        "type": "objectProperty",
+        "attrs": {
+          "creator": "jdehart",
+          "created_date": "2025-09-23",
+          "created_timestamp": "2025-09-23T17:14:59.547Z",
+          "last_modified_by": "jdehart",
+          "last_modified_date": "2025-09-23",
+          "last_modified_timestamp": "2025-09-23T17:18:01.441Z",
+          "functional": false,
+          "inverse_functional": false
+        }
+      }
+    },
+    {
+      "data": {
+        "id": "e1758647695846",
+        "source": "Class4",
+        "target": "Class9",
+        "predicate": "introduces",
+        "type": "objectProperty",
+        "attrs": {
+          "creator": "jdehart",
+          "created_date": "2025-09-23",
+          "created_timestamp": "2025-09-23T17:14:55.846Z",
+          "last_modified_by": "jdehart",
+          "last_modified_date": "2025-09-23",
+          "last_modified_timestamp": "2025-09-23T17:17:19.129Z",
+          "functional": false,
+          "inverse_functional": false
+        }
+      }
+    },
+    {
+      "data": {
+        "id": "e1758647697776",
+        "source": "Class4",
+        "target": "Class10",
+        "predicate": "introduces",
+        "type": "objectProperty",
+        "attrs": {
+          "creator": "jdehart",
+          "created_date": "2025-09-23",
+          "created_timestamp": "2025-09-23T17:14:57.776Z",
+          "last_modified_by": "jdehart",
+          "last_modified_date": "2025-09-23",
+          "last_modified_timestamp": "2025-09-23T17:17:33.112Z",
+          "functional": false,
+          "inverse_functional": false
+        }
+      }
+    },
+    {
+      "data": {
+        "id": "e1758647797763",
+        "source": "Class4",
+        "target": "Class1",
+        "predicate": "results_in",
+        "type": "objectProperty",
+        "attrs": {
+          "creator": "jdehart",
+          "created_date": "2025-09-23",
+          "created_timestamp": "2025-09-23T17:16:37.763Z",
+          "last_modified_by": "jdehart",
+          "last_modified_date": "2025-09-23",
+          "last_modified_timestamp": "2025-09-23T17:17:02.589Z",
+          "functional": false,
+          "inverse_functional": false
+        }
+      }
+    }
+  ]
+}
