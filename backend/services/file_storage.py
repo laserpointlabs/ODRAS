@@ -495,8 +495,8 @@ class PostgreSQLBackend(StorageBackend):
                 # Insert metadata
                 cursor.execute(
                     """
-                    INSERT INTO files 
-                    (id, filename, content_type, file_size, hash_md5, hash_sha256, 
+                    INSERT INTO files
+                    (id, filename, content_type, file_size, hash_md5, hash_sha256,
                      storage_path, project_id, tags, created_at, updated_at, created_by, iri)
                     VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
                     ON CONFLICT (id) DO UPDATE SET
@@ -638,7 +638,7 @@ class PostgreSQLBackend(StorageBackend):
 
                 cursor.execute(
                     """
-                    UPDATE files 
+                    UPDATE files
                     SET metadata = metadata || %s,
                         updated_at = NOW()
                     WHERE id = %s
@@ -693,7 +693,7 @@ class PostgreSQLBackend(StorageBackend):
                     """
                     SELECT id as file_id, filename, content_type, file_size as size, hash_md5, hash_sha256,
                            storage_path, created_at, updated_at, metadata, iri
-                    FROM files 
+                    FROM files
                     """
                     + where_clause  # nosec B608
                     + """
@@ -1106,10 +1106,10 @@ class FileStorageService:
         try:
             # Delete from storage backend (MinIO, local, etc.)
             backend_success = await self.backend.delete_file(file_id)
-            
+
             if not backend_success:
                 return False
-            
+
             # For non-PostgreSQL backends, also delete the database record
             # This triggers the CASCADE/SET NULL behavior for knowledge assets
             if self.settings.storage_backend != "postgresql" and self.metadata_backend:
@@ -1121,7 +1121,7 @@ class FileStorageService:
                     logger.error(f"Failed to delete file record from database: {e}")
                     # Don't fail the whole operation if database deletion fails
                     pass
-            
+
             return True
 
         except Exception as e:
@@ -1374,7 +1374,7 @@ class FileStorageService:
                     """
                     SELECT id, filename, content_type, file_size, hash_md5, hash_sha256,
                            storage_path, project_id, tags, created_at, updated_at, metadata, created_by
-                    FROM files 
+                    FROM files
                     WHERE id = %s
                     """,
                     (file_id,),
@@ -1405,3 +1405,4 @@ def get_file_storage_service() -> FileStorageService:
         settings = Settings()
         _file_storage_service = FileStorageService(settings)
     return _file_storage_service
+

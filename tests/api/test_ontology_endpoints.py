@@ -269,3 +269,4 @@ class TestOntologyEndpoints:
         assert "iri" in data
         assert data["iri"].startswith("http://example.org/")
         assert "TestResource" in data["iri"]
+

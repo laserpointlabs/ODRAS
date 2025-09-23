@@ -177,3 +177,4 @@ The migrations are applied in this order:
 11. 010_namespace_management.sql
 12. 011_add_service_namespace_type.sql
 13. 012_migrate_auth_system.sql
+

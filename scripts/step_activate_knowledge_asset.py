@@ -45,7 +45,7 @@ async def activate_knowledge_asset(knowledge_asset_id: str, processing_data: dic
                 cur.execute(
                     """
                     SELECT metadata, title, document_type
-                    FROM knowledge_assets 
+                    FROM knowledge_assets
                     WHERE id = %s
                 """,
                     (knowledge_asset_id,),
@@ -62,7 +62,7 @@ async def activate_knowledge_asset(knowledge_asset_id: str, processing_data: dic
                     """
                     SELECT COALESCE(SUM(token_count), 0) as total_tokens,
                            COUNT(*) as actual_chunks
-                    FROM knowledge_chunks 
+                    FROM knowledge_chunks
                     WHERE asset_id = %s
                 """,
                     (knowledge_asset_id,),
@@ -97,8 +97,8 @@ async def activate_knowledge_asset(knowledge_asset_id: str, processing_data: dic
                 # Update status and copy correct stats to processing_stats field
                 cur.execute(
                     """
-                    UPDATE knowledge_assets 
-                    SET status = 'active', 
+                    UPDATE knowledge_assets
+                    SET status = 'active',
                         updated_at = NOW(),
                         processing_stats = %s
                     WHERE id = %s
@@ -115,10 +115,10 @@ async def activate_knowledge_asset(knowledge_asset_id: str, processing_data: dic
                     # Get asset details for reporting
                     cur.execute(
                         """
-                        SELECT title, document_type, 
+                        SELECT title, document_type,
                                (metadata->>'chunk_count')::int as chunk_count,
                                (metadata->>'source_filename') as filename
-                        FROM knowledge_assets 
+                        FROM knowledge_assets
                         WHERE id = %s
                     """,
                         (knowledge_asset_id,),
@@ -230,3 +230,4 @@ def main():
 
 if __name__ == "__main__":
     main()
+

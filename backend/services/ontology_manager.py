@@ -86,7 +86,7 @@ class OntologyManager:
             PREFIX owl: <http://www.w3.org/2002/07/owl#>
             PREFIX rdfs: <http://www.w3.org/2000/01/rdf-schema#>
             PREFIX odras: <{self.base_uri}/ontology#>
-            
+
             SELECT ?s ?p ?o WHERE {{
                 ?s ?p ?o .
                 FILTER(STRSTARTS(STR(?s), "{self.base_uri}/ontology"))
@@ -123,7 +123,7 @@ class OntologyManager:
             PREFIX owl: <http://www.w3.org/2002/07/owl#>
             PREFIX rdfs: <http://www.w3.org/2000/01/rdf-schema#>
             PREFIX odras: <{self.base_uri}/ontology#>
-            
+
             SELECT ?s ?p ?o WHERE {{
                 GRAPH <{graph_iri}> {{
                     ?s ?p ?o .
@@ -389,8 +389,8 @@ class OntologyManager:
             query = """
             PREFIX owl: <http://www.w3.org/2002/07/owl#>
             PREFIX rdfs: <http://www.w3.org/2000/01/rdf-schema#>
-            
-            SELECT 
+
+            SELECT
                 (COUNT(DISTINCT ?class) AS ?classCount)
                 (COUNT(DISTINCT ?objProp) AS ?objectPropertyCount)
                 (COUNT(DISTINCT ?dataProp) AS ?datatypePropertyCount)
@@ -905,7 +905,7 @@ class OntologyManager:
     def _property_exists(self, prop_uri: URIRef) -> bool:
         """Check if a property already exists in the ontology."""
         query = f"""
-        ASK {{ 
+        ASK {{
             {{ <{prop_uri}> a owl:ObjectProperty }} UNION
             {{ <{prop_uri}> a owl:DatatypeProperty }} UNION
             {{ <{prop_uri}> a owl:AnnotationProperty }}
@@ -945,7 +945,7 @@ class OntologyManager:
             layout_graph_iri = f"{graph_iri}#layout"
             query = f"""
             PREFIX layout: <{self.base_uri}/layout#>
-            
+
             SELECT ?nodes ?edges ?zoom ?pan WHERE {{
                 GRAPH <{layout_graph_iri}> {{
                     ?layout layout:nodes ?nodes ;
@@ -1181,7 +1181,7 @@ class OntologyManager:
             query = f"""
             PREFIX owl: <http://www.w3.org/2002/07/owl#>
             PREFIX rdfs: <http://www.w3.org/2000/01/rdf-schema#>
-            
+
             SELECT ?s ?p ?o WHERE {{
                 GRAPH <{graph_iri}> {{
                     ?s ?p ?o .
@@ -1242,3 +1242,4 @@ class OntologyManager:
                 "errors": [f"Validation failed: {str(e)}"],
                 "entity_count": 0,
             }
+

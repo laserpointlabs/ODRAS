@@ -1,590 +1,591 @@
-# Ontology Workbench Upgrade Plan
+# Ontology Workbench Upgrade Plan<br>
+<br>
+**Version**: 1.0<br>
+**Date**: 2025-01-27<br>
+**Status**: Implementation Planning<br>
+<br>
+## Executive Summary<br>
+<br>
+This document outlines the comprehensive upgrade plan for the ODRAS ontology workbench to align with our new namespace and project naming conventions, plus best practices for managing external ontology imports. The current system has several gaps that need to be addressed to fully leverage our organizational URI structure.<br>
+<br>
+## Current State Analysis<br>
+<br>
+### ✅ What's Working Well<br>
+1. **Project Namespace Inheritance**: Ontologies correctly inherit their project's namespace<br>
+2. **Simplified Creation**: Basic ontology creation modal with project namespace display<br>
+3. **External Import Support**: URL-based ontology import functionality exists<br>
+4. **Reference Ontology Management**: Admin can mark ontologies as reference for ODRAS users<br>
+5. **Import Best Practices**: URL-based imports with proper validation and conflict detection<br>
+6. **Fuseki Integration**: Proper RDF storage and retrieval<br>
+7. **Admin UI Controls**: Admin badge and workbench properly hidden for non-admin users<br>
+<br>
+### ✅ Completed MVP Features (2025-09-10)<br>
+<br>
+#### 1. **Visual Ontology Editor**<br>
+- **Completed**: Full Cytoscape-based visual editor with direct manipulation<br>
+- **Features**: Drag-to-create, inline editing, visual connections, multiple layouts<br>
+- **Impact**: Professional ontology development environment<br>
+<br>
+#### 2. **Import Management System**<br>
+- **Completed**: Complete external ontology import with read-only protection<br>
+- **Features**: URL imports, reference ontology library, proper IRI attribution<br>
+- **Impact**: Enables ontology reuse and collaboration<br>
+<br>
+#### 3. **Rich Metadata Tracking**<br>
+- **Completed**: Comprehensive metadata with Dublin Core annotations<br>
+- **Features**: Creator tracking, creation/modification dates, automatic metadata updates<br>
+- **Impact**: Full provenance tracking for all ontology objects<br>
+<br>
+#### 4. **Advanced UI Features**<br>
+- **Completed**: Professional interface with comprehensive controls<br>
+- **Features**: Visibility management, named views, note system, tree-canvas sync<br>
+- **Impact**: Enterprise-grade user experience<br>
+<br>
+#### 5. **Layout and State Persistence**<br>
+- **Completed**: Server-synchronized layout and state management<br>
+- **Features**: Position persistence, view configurations, import state retention<br>
+- **Impact**: Reliable workspace preservation across sessions<br>
+<br>
+### 🔄 Remaining Gaps for Post-MVP<br>
+<br>
+#### 1. **OWL Code Editor Integration**<br>
+- **Gap**: No direct OWL/Turtle code editing capability<br>
+- **Impact**: Advanced users cannot directly edit OWL syntax<br>
+- **Planned**: Dual-mode editor with diagram ↔ code synchronization<br>
+<br>
+#### 2. **SHACL Constraint System**<br>
+- **Gap**: No constraint definition or validation system<br>
+- **Impact**: Cannot validate individuals or enforce data quality<br>
+- **Planned**: Visual SHACL editor with Python validation backend<br>
+<br>
+#### 3. **Individual/Instance Management**<br>
+- **Gap**: No dedicated system for managing ontology individuals<br>
+- **Impact**: Cannot efficiently handle hundreds of extracted requirement individuals<br>
+- **Planned**: Dedicated individuals workbench with filtering and bulk operations<br>
+<br>
+#### 4. **DAS Integration**<br>
+- **Gap**: No API integration for Digital Assistant System<br>
+- **Impact**: DAS cannot create or manage ontology objects<br>
+- **Planned**: API endpoints with knowledge base integration<br>
+<br>
+## Implementation Plan<br>
+<br>
+### Phase 1: Core URI Generation Alignment (High Priority)<br>
+<br>
+#### 1.1 Update Ontology URI Generation<br>
+- **Action**: Modify `create_ontology` endpoint to use project namespace<br>
+- **Implementation**:<br>
+  - Query project's namespace from `namespace_registry`<br>
+  - Generate URI: `http://{org}/{namespace-path}/{project-id}/ontologies/{name}`<br>
+  - Update `NamespaceURIGenerator` to support project-scoped URIs<br>
+- **Files**: `backend/main.py`, `backend/services/namespace_uri_generator.py`<br>
+<br>
+#### 1.2 Update Frontend URI Display<br>
+- **Action**: Show proper organizational URIs in ontology creation modal<br>
+- **Implementation**:<br>
+  - Display full project namespace path<br>
+  - Show generated ontology URI preview<br>
+  - Update URI generation in real-time<br>
+- **Files**: `frontend/app.html`<br>
+<br>
+#### 1.3 Migrate Existing Ontologies<br>
+- **Action**: Update existing ontology URIs to new structure<br>
+- **Implementation**:<br>
+  - Create migration script for existing ontologies<br>
+  - Update Fuseki named graphs<br>
+  - Update `ontologies_registry` table<br>
+- **Files**: New migration script<br>
+<br>
+### Phase 2: Enhanced Ontology Management (Medium Priority)<br>
+<br>
+#### 2.1 Add Ontology Metadata Fields<br>
+- **Action**: Extend ontology model with organizational metadata<br>
+- **Implementation**:<br>
+  - Add `domain`, `version`, `status` fields to ontologies<br>
+  - Update database schema<br>
+  - Modify creation/editing interfaces<br>
+- **Files**: Database migration, `backend/main.py`, `frontend/app.html`<br>
+<br>
+#### 2.2 Implement Ontology CRUD Operations<br>
+- **Action**: Add full CRUD operations for ontologies<br>
+- **Implementation**:<br>
+  - GET, PUT, DELETE endpoints for individual ontologies<br>
+  - Ontology editing modal with metadata<br>
+  - Version management and history<br>
+- **Files**: `backend/main.py`, `frontend/app.html`<br>
+<br>
+#### 2.3 Add Ontology Actions Menu<br>
+- **Action**: Implement ontology actions (edit, archive, export, delete)<br>
+- **Implementation**:<br>
+  - Context menu for ontology nodes<br>
+  - Action buttons in ontology list<br>
+  - Confirmation dialogs for destructive actions<br>
+- **Files**: `frontend/app.html`<br>
+<br>
+### Phase 3: Ontology Import and Sharing Management (High Priority)<br>
+<br>
+#### 3.1 Cross-Project Ontology Import<br>
+- **Action**: Enable users to import ontologies from other projects<br>
+- **Implementation**:<br>
+  - Project ontology browser and selector<br>
+  - Import permission checking<br>
+  - Namespace resolution for cross-project imports<br>
+- **Files**: `frontend/app.html`, `backend/api/ontology_imports.py`<br>
+<br>
+#### 3.2 Reference Ontology Import<br>
+- **Action**: Allow users to import admin-managed reference ontologies<br>
+- **Implementation**:<br>
+  - Reference ontology library interface<br>
+  - Import from reference ontology registry<br>
+  - Automatic namespace mapping<br>
+- **Files**: `frontend/app.html`, `backend/api/reference_ontologies.py`<br>
+<br>
+#### 3.3 Nested Import Support<br>
+- **Action**: Support importing ontologies that have their own imports<br>
+- **Implementation**:<br>
+  - Recursive import resolution<br>
+  - Show/hide nested imports in visualization<br>
+  - Auto-link equivalent classes between imports<br>
+  - Import dependency visualization<br>
+- **Files**: `backend/services/nested_import_resolver.py`<br>
+<br>
+#### 3.4 Import Visualization in Cytoscape<br>
+- **Action**: Show imported ontologies and their relationships in the canvas<br>
+- **Implementation**:<br>
+  - **Collapsed View**: Imported ontologies shown as single round entities by default<br>
+  - **Expandable**: Users can expand imported ontologies to view internal details<br>
+  - Import hierarchy visualization<br>
+  - Different styling for imported vs. local elements<br>
+  - Show/hide controls for nested imports<br>
+  - Auto-linking of equivalent classes between imports<br>
+  - **IMMUTABLE**: Imported ontologies cannot be edited (only visual positioning)<br>
+- **Files**: `frontend/app.html` (Cytoscape integration)<br>
+<br>
+#### 3.5 User-to-User Ontology Sharing<br>
+- **Action**: Enable users to share ontologies with specific users<br>
+- **Implementation**:<br>
+  - Ontology sharing permissions<br>
+  - User invitation system<br>
+  - Shared ontology workspace<br>
+- **Files**: `backend/api/ontology_sharing.py`, `frontend/app.html`<br>
+<br>
+### Phase 4: Data Object Management (Medium Priority)<br>
+<br>
+#### 4.1 Data Object Modeling Framework<br>
+- **Action**: Create clear patterns for managing data objects in ontologies<br>
+- **Implementation**:<br>
+  - Data object classification system<br>
+  - Relationship pattern templates<br>
+  - Data object lifecycle management<br>
+- **Files**: New data object management system<br>
+<br>
+#### 4.2 Data Object Relationship Management<br>
+- **Action**: Provide tools for managing complex data object relationships<br>
+- **Implementation**:<br>
+  - Relationship type definitions<br>
+  - Cardinality constraints<br>
+  - Relationship validation<br>
+- **Files**: `backend/services/data_object_manager.py`<br>
+<br>
+#### 4.3 Data Object Visualization<br>
+- **Action**: Specialized visualization for data objects and their relationships<br>
+- **Implementation**:<br>
+  - Data object-specific Cytoscape layouts<br>
+  - Relationship strength indicators<br>
+  - Data object clustering<br>
+- **Files**: `frontend/app.html` (Cytoscape extensions)<br>
+<br>
+### Phase 5: External Ontology Management (Low Priority)<br>
+<br>
+#### 5.1 Admin Interface for External Ontologies<br>
+- **Action**: Create admin panel for managing external ontologies<br>
+- **Implementation**:<br>
+  - External ontology registry<br>
+  - Import/export management<br>
+  - Version tracking and updates<br>
+- **Files**: New admin interface, `backend/api/external_ontologies.py`<br>
+<br>
+#### 5.2 Import Validation and Conflict Detection<br>
+- **Action**: Implement best practices for external ontology imports<br>
+- **Implementation**:<br>
+  - Namespace conflict detection<br>
+  - Import validation rules<br>
+  - Dependency management<br>
+- **Files**: `backend/services/ontology_import_validator.py`<br>
+<br>
+#### 5.3 Reference Ontology Library<br>
+- **Action**: Create curated library of reference ontologies<br>
+- **Implementation**:<br>
+  - Pre-configured external ontologies<br>
+  - Standard namespace mappings<br>
+  - Import templates and guides<br>
+- **Files**: New reference ontology management system<br>
+<br>
+### Phase 6: OWL Code Editor Integration (High Priority - Post-MVP)<br>
+<br>
+#### 6.1 Dual-Mode Ontology Editor<br>
+- **Action**: Add OWL/Turtle code editor alongside visual diagram<br>
+- **Implementation**:<br>
+  - Monaco Editor or CodeMirror integration<br>
+  - Real-time bidirectional synchronization (diagram ↔ OWL code)<br>
+  - OWL syntax highlighting and validation<br>
+  - Conflict resolution when both modes are edited<br>
+- **Inspiration**: Similar to Camunda's BPMN modeler with XML view<br>
+- **Files**: `frontend/app.html`, new OWL parser/serializer modules<br>
+<br>
+#### 6.2 OWL Format Support<br>
+- **Action**: Support multiple OWL serialization formats<br>
+- **Implementation**:<br>
+  - Turtle, RDF/XML, JSON-LD import/export<br>
+  - Format conversion utilities<br>
+  - Syntax validation for all formats<br>
+- **Files**: Backend OWL processing services<br>
+<br>
+### Phase 7: SHACL Constraints and Validation (High Priority - Post-MVP)<br>
+<br>
+#### 7.1 Visual SHACL Shape Editor<br>
+- **Action**: Create GUI for defining SHACL constraints<br>
+- **Implementation**:<br>
+  - Visual constraint builder for classes and properties<br>
+  - Template-based constraint creation<br>
+  - Unit validation with QUDT integration<br>
+  - Multiplicity and value bounding constraints<br>
+- **Files**: New SHACL editor components<br>
+<br>
+#### 7.2 Python OWL/SHACL Integration<br>
+- **Action**: Integrate Python OWL ecosystem for advanced validation<br>
+- **Implementation**:<br>
+  - **owlready2**: OWL ontology manipulation<br>
+  - **pyshacl**: SHACL validation engine<br>
+  - **rdflib**: RDF graph operations<br>
+  - **pint**: Unit conversion and validation<br>
+- **Files**: `backend/services/shacl_validator.py`, requirements.txt<br>
+<br>
+#### 7.3 Real-time Validation System<br>
+- **Action**: Validate individuals and constraints in real-time<br>
+- **Implementation**:<br>
+  - Live validation as users create individuals<br>
+  - Batch validation for existing data<br>
+  - Validation reports with error locations and suggestions<br>
+  - Engineering-specific constraints (units, bounds, patterns)<br>
+- **Files**: Backend validation services, frontend validation UI<br>
+<br>
+### Phase 8: Individual/Instance Management (High Priority - Post-MVP)<br>
+<br>
+#### 8.1 Individuals Workbench<br>
+- **Action**: Create dedicated interface for managing ontology individuals<br>
+- **Challenge**: Handle hundreds of requirement-extracted individuals efficiently<br>
+- **Implementation Options**:<br>
+  - **Option A**: Extend ontology tree with grouped individuals<br>
+  - **Option B**: Separate individuals tab with table/search interface (RECOMMENDED)<br>
+  - **Option C**: Hybrid approach with tree summary and detailed table<br>
+- **Files**: New individuals workbench tab<br>
+<br>
+#### 8.2 Individual Management Features<br>
+- **Action**: Comprehensive individual lifecycle management<br>
+- **Implementation**:<br>
+  - Table view with sorting, filtering, pagination<br>
+  - Full-text search across individual properties<br>
+  - Bulk operations (validate, export, classify, delete)<br>
+  - Individual-requirement traceability<br>
+  - Confidence scoring and review workflows<br>
+- **Files**: Individuals management system<br>
+<br>
+#### 8.3 LLM-Generated Individual Processing<br>
+- **Action**: Handle LLM-extracted requirement individuals<br>
+- **Implementation**:<br>
+  - Batch import of LLM-generated individuals<br>
+  - Confidence-based review workflows<br>
+  - Automatic class assignment and validation<br>
+  - Component/Interface/Process/Function generation from requirements<br>
+- **Files**: LLM integration services<br>
+<br>
+### Phase 9: Digital Assistant System (DAS) Integration (Medium Priority - Post-MVP)<br>
+<br>
+#### 9.1 DAS-Ontology API Design<br>
+- **Action**: Create API endpoints for DAS to manage ontology objects<br>
+- **Implementation**:<br>
+  - `POST /api/das/ontology/create-class`<br>
+  - `POST /api/das/ontology/create-individual`<br>
+  - `POST /api/das/ontology/validate`<br>
+  - `GET /api/das/ontology/query`<br>
+- **Files**: `backend/api/das_ontology.py`<br>
+<br>
+#### 9.2 DAS Knowledge Base for API Instructions<br>
+- **Action**: Create comprehensive API knowledge base in Qdrant<br>
+- **Implementation**:<br>
+  - API documentation with examples in Qdrant<br>
+  - Ontology operation patterns and best practices<br>
+  - Error handling and troubleshooting guides<br>
+  - Integration with RAG system for API guidance<br>
+- **Files**: DAS knowledge base population scripts<br>
+<br>
+#### 9.3 RAG Integration for Ontology Operations<br>
+- **Action**: Enable RAG system to detect and handle ontology requests<br>
+- **Implementation**:<br>
+  - Query classification for ontology operations<br>
+  - Context retrieval from API knowledge base<br>
+  - Action guidance with executable code examples<br>
+  - End-to-end requirement-to-individual workflows<br>
+- **Files**: RAG system ontology integration<br>
+<br>
+### Phase 10: Advanced Features (Low Priority)<br>
+<br>
+#### 10.1 Ontology Versioning<br>
+- **Action**: Implement proper ontology versioning<br>
+- **Implementation**:<br>
+  - Version IRIs and tracking<br>
+  - Change history and diff<br>
+  - Rollback capabilities<br>
+- **Files**: Version management system<br>
+<br>
+#### 10.2 Ontology Dependencies<br>
+- **Action**: Manage ontology import dependencies<br>
+- **Implementation**:<br>
+  - Dependency graph visualization<br>
+  - Circular dependency detection<br>
+  - Automatic dependency updates<br>
+- **Files**: Dependency management system<br>
+<br>
+#### 10.3 Ontology Publishing<br>
+- **Action**: Publish ontologies to external endpoints<br>
+- **Implementation**:<br>
+  - Public ontology endpoints<br>
+  - Content negotiation<br>
+  - API documentation generation<br>
+- **Files**: Publishing system<br>
+<br>
+## Detailed Implementation Actions<br>
+<br>
+### Immediate Actions (This Session)<br>
+<br>
+#### 1. Update Ontology URI Generation<br>
+```python<br>
+# In backend/main.py create_ontology function<br>
+# Replace current URI generation with:<br>
+project_namespace = get_project_namespace(project)<br>
+if project_namespace:<br>
+    graph_iri = f"{settings.installation_base_uri}/{project_namespace['path']}/{project}/{name}"<br>
+else:<br>
+    # Fallback for projects without namespace<br>
+    graph_iri = f"{settings.installation_base_uri}/projects/{project}/{name}"<br>
+```<br>
+<br>
+#### 2. Add Project Namespace Display<br>
+```javascript<br>
+// In frontend/app.html showCreateOntologyModal function<br>
+// Update namespace display to show full organizational path<br>
+async function loadCurrentProjectNamespace(displayElement) {<br>
+  const currentProjectId = localStorage.getItem('active_project_id');<br>
+  const response = await fetch(`/api/projects/${currentProjectId}/namespace`);<br>
+  const namespaceData = await response.json();<br>
+  displayElement.textContent = namespaceData.namespace_path || 'No namespace assigned';<br>
+}<br>
+```<br>
+<br>
+#### 3. Update URI Preview<br>
+```javascript<br>
+// Add real-time URI preview in ontology creation modal<br>
+function updateOntologyUriPreview() {<br>
+  const name = document.getElementById('simpleOntologyName').value;<br>
+  const namespaceDisplay = document.getElementById('modalNamespaceDisplay').textContent;<br>
+  const projectId = localStorage.getItem('active_project_id');<br>
+<br>
+  if (name && namespaceDisplay && projectId) {<br>
+    const uri = `http://${namespaceDisplay}/${projectId}/ontologies/${name}`;<br>
+    document.getElementById('ontologyUriPreview').textContent = uri;<br>
+  }<br>
+}<br>
+```<br>
+<br>
+### Next Session Actions<br>
+<br>
+#### 1. Database Schema Updates<br>
+```sql<br>
+-- Add ontology metadata fields<br>
+ALTER TABLE public.ontologies_registry ADD COLUMN IF NOT EXISTS domain VARCHAR(255);<br>
+ALTER TABLE public.ontologies_registry ADD COLUMN IF NOT EXISTS version VARCHAR(50) DEFAULT '1.0.0';<br>
+ALTER TABLE public.ontologies_registry ADD COLUMN IF NOT EXISTS status VARCHAR(50) DEFAULT 'active';<br>
+ALTER TABLE public.ontologies_registry ADD COLUMN IF NOT EXISTS description TEXT;<br>
+```<br>
+<br>
+#### 2. Ontology CRUD Endpoints<br>
+```python<br>
+# Add to backend/main.py<br>
+@app.get("/api/ontologies/{ontology_id}")<br>
+async def get_ontology(ontology_id: str, user=Depends(get_user)):<br>
+    """Get individual ontology details"""<br>
+<br>
+@app.put("/api/ontologies/{ontology_id}")<br>
+async def update_ontology(ontology_id: str, body: Dict, user=Depends(get_user)):<br>
+    """Update ontology metadata"""<br>
+<br>
+@app.delete("/api/ontologies/{ontology_id}")<br>
+async def delete_ontology(ontology_id: str, user=Depends(get_user)):<br>
+    """Delete ontology"""<br>
+```<br>
+<br>
+#### 3. External Ontology Management<br>
+```python<br>
+# New file: backend/api/external_ontologies.py<br>
+@router.get("/api/admin/external-ontologies")<br>
+async def list_external_ontologies(admin_user=Depends(get_admin_user)):<br>
+    """List all external/reference ontologies"""<br>
+<br>
+@router.post("/api/admin/external-ontologies")<br>
+async def add_external_ontology(body: Dict, admin_user=Depends(get_admin_user)):<br>
+    """Add new external ontology to registry"""<br>
+```<br>
+<br>
+## Best Practices Implementation<br>
+<br>
+### 1. Namespace Management<br>
+- **Principle**: All ontologies inherit their project's namespace<br>
+- **Implementation**: Automatic namespace inheritance, no manual selection<br>
+- **Validation**: Ensure project has valid namespace before ontology creation<br>
+<br>
+### 2. External Ontology Imports<br>
+- **Principle**: Controlled imports with validation and conflict detection<br>
+- **Implementation**:<br>
+  - Admin-managed external ontology registry<br>
+  - Import validation before adding to projects<br>
+  - Namespace conflict detection<br>
+  - **IMMUTABILITY**: Imported ontologies are read-only<br>
+- **Validation**: Check for naming conflicts, circular dependencies<br>
+<br>
+### 2.1 Import Immutability Rules<br>
+- **Principle**: Imported ontologies cannot be modified by importers<br>
+- **Implementation**:<br>
+  - Read-only access to imported ontology content<br>
+  - Visual positioning only for Cytoscape nodes<br>
+  - Show/hide controls for nested imports<br>
+  - Auto-linking of equivalent classes<br>
+- **Rationale**: Prevents corruption of shared reference ontologies<br>
+<br>
+### 3. URI Consistency<br>
+- **Principle**: All URIs follow organizational hierarchy<br>
+- **Implementation**:<br>
+  - Project URIs: `http://{org}/{namespace}/{project-id}/ontologies/{name}`<br>
+  - External URIs: Preserved as-is for imports<br>
+  - System URIs: `http://{org}/admin/ontologies/{name}`<br>
+<br>
+### 4. Metadata Completeness<br>
+- **Principle**: Rich metadata for discoverability and management<br>
+- **Implementation**:<br>
+  - Domain association from project<br>
+  - Version tracking and history<br>
+  - Status management (active, deprecated, archived)<br>
+  - Description and documentation<br>
+<br>
+## Current Discussion Points (2025-01-27)<br>
+<br>
+### Reference Ontology Management<br>
+- **Status**: ✅ **COMPLETED** - Admin can mark ontologies as reference for ODRAS users<br>
+- **Implementation**: Admin workbench with reference ontology toggle<br>
+- **Next Steps**: Focus on import capabilities rather than editing reference ontologies<br>
+<br>
+### Import Capabilities Priority<br>
+- **Cross-Project Imports**: Users need to import ontologies from other projects<br>
+- **Reference Ontology Imports**: Users need to import admin-managed reference ontologies<br>
+- **Nested Imports**: Support for ontologies that import other ontologies<br>
+- **Visualization**: Show imported ontologies in Cytoscape canvas with proper styling<br>
+<br>
+### Import Constraints and Rules<br>
+- **IMMUTABILITY**: Imported ontologies are read-only - users cannot edit their content<br>
+- **Visual Positioning Only**: Users can only adjust Cytoscape node positions for imported elements<br>
+- **Nested Import Controls**: Show/hide nested imports with toggle controls<br>
+- **Auto-linking**: Automatically link equivalent classes between different imports<br>
+- **Namespace Preservation**: Imported ontologies maintain their original namespaces<br>
+<br>
+### Nice to Have: Collapsible Import Visualization<br>
+- **Collapsed View**: Imported ontologies appear as single round entities showing all equivalent relationships<br>
+- **Expandable Detail**: Users can expand imported ontologies to view their internal structure and details<br>
+- **Clean Canvas**: Keeps the main workspace uncluttered while preserving full access to imported content<br>
+- **Progressive Disclosure**: Users see high-level relationships first, then drill down as needed<br>
+<br>
+### Data Object Management<br>
+- **Status**: 🔄 **PLANNING** - Identified as confusing area requiring multiple iterations<br>
+- **Approach**: Add to work list and iterate to get it right<br>
+- **Focus**: Clear patterns for modeling and managing data objects in ontologies<br>
+<br>
+### User Sharing<br>
+- **Status**: 📋 **PLANNED** - Enable users to share ontologies with each other<br>
+- **Priority**: Medium - Important for collaboration but not critical for MVP<br>
+<br>
+## Success Criteria<br>
+<br>
+### Phase 1 Success<br>
+- [ ] All new ontologies use project namespace URIs<br>
+- [ ] Existing ontologies migrated to new URI structure<br>
+- [ ] Frontend displays proper organizational URIs<br>
+- [ ] URI generation is consistent across the system<br>
+<br>
+### Phase 2 Success<br>
+- [ ] Full ontology CRUD operations implemented<br>
+- [ ] Rich metadata support added<br>
+- [ ] Ontology actions menu functional<br>
+- [ ] Version management working<br>
+<br>
+### Phase 3 Success (Import & Sharing)<br>
+- [ ] Cross-project ontology import functionality<br>
+- [ ] Reference ontology import from admin-managed library<br>
+- [ ] Nested import support with dependency resolution<br>
+- [ ] Import visualization in Cytoscape canvas<br>
+- [ ] User-to-user ontology sharing capabilities<br>
+- [ ] **Nice to Have**: Collapsible import visualization (single entities with expand/collapse)<br>
+<br>
+### Phase 4 Success (Data Objects)<br>
+- [ ] Data object modeling framework established<br>
+- [ ] Clear patterns for data object relationships<br>
+- [ ] Data object visualization in Cytoscape<br>
+- [ ] Data object lifecycle management<br>
+<br>
+### Long-term Success<br>
+- [ ] Complete ontology lifecycle management<br>
+- [ ] Seamless external ontology integration<br>
+- [ ] Professional ontology publishing capabilities<br>
+- [ ] Full compliance with organizational URI standards<br>
+- [ ] Robust data object management system<br>
+<br>
+## Risk Assessment<br>
+<br>
+### High Risk<br>
+- **URI Migration**: Changing existing ontology URIs may break references<br>
+- **Fuseki Integration**: Named graph updates require careful coordination<br>
+<br>
+### Medium Risk<br>
+- **External Ontology Conflicts**: Import validation complexity<br>
+- **User Experience**: Changes to familiar interfaces<br>
+<br>
+### Low Risk<br>
+- **Metadata Addition**: Non-breaking schema changes<br>
+- **Admin Interface**: New functionality, no existing dependencies<br>
+<br>
+## Next Steps<br>
+<br>
+1. **Immediate**: Update ontology URI generation to use project namespaces<br>
+2. **This Session**: Implement project namespace display in creation modal<br>
+3. **Next Session**: Add ontology metadata fields and CRUD operations<br>
+4. **Priority Focus**: Implement cross-project and reference ontology import capabilities<br>
+5. **Iterative Development**: Data object management - plan, implement, test, iterate<br>
+6. **Future**: User sharing and advanced features<br>
+<br>
+---<br>
+<br>
+**Priority**: High - This aligns the ontology workbench with our organizational URI structure and enables proper namespace management.<br>
+<br>
+**Estimated Effort**:<br>
+- Phase 1: 2-3 hours<br>
+- Phase 2: 4-6 hours<br>
+- Phase 3 (Import & Sharing): 8-12 hours<br>
+- Phase 4 (Data Objects): 6-10 hours (iterative)<br>
+- Phase 5 (External Management): 6-8 hours<br>
+- Phase 6 (Advanced Features): 8-12 hours<br>
+<br>
+**Dependencies**: Requires completed namespace and project management systems (✅ Done)<br>
+<br>
+**Key Focus Areas**:<br>
+- **Import Capabilities**: Critical for user productivity and ontology reuse<br>
+- **Data Object Management**: Requires careful planning and iteration to get right<br>
+- **Reference Ontology Integration**: Leverage existing admin capabilities<br>
 
-**Version**: 1.0  
-**Date**: 2025-01-27  
-**Status**: Implementation Planning  
-
-## Executive Summary
-
-This document outlines the comprehensive upgrade plan for the ODRAS ontology workbench to align with our new namespace and project naming conventions, plus best practices for managing external ontology imports. The current system has several gaps that need to be addressed to fully leverage our organizational URI structure.
-
-## Current State Analysis
-
-### ✅ What's Working Well
-1. **Project Namespace Inheritance**: Ontologies correctly inherit their project's namespace
-2. **Simplified Creation**: Basic ontology creation modal with project namespace display
-3. **External Import Support**: URL-based ontology import functionality exists
-4. **Reference Ontology Management**: Admin can mark ontologies as reference for ODRAS users
-5. **Import Best Practices**: URL-based imports with proper validation and conflict detection
-6. **Fuseki Integration**: Proper RDF storage and retrieval
-7. **Admin UI Controls**: Admin badge and workbench properly hidden for non-admin users
-
-### ✅ Completed MVP Features (2025-09-10)
-
-#### 1. **Visual Ontology Editor**
-- **Completed**: Full Cytoscape-based visual editor with direct manipulation
-- **Features**: Drag-to-create, inline editing, visual connections, multiple layouts
-- **Impact**: Professional ontology development environment
-
-#### 2. **Import Management System**  
-- **Completed**: Complete external ontology import with read-only protection
-- **Features**: URL imports, reference ontology library, proper IRI attribution
-- **Impact**: Enables ontology reuse and collaboration
-
-#### 3. **Rich Metadata Tracking**
-- **Completed**: Comprehensive metadata with Dublin Core annotations
-- **Features**: Creator tracking, creation/modification dates, automatic metadata updates
-- **Impact**: Full provenance tracking for all ontology objects
-
-#### 4. **Advanced UI Features**
-- **Completed**: Professional interface with comprehensive controls
-- **Features**: Visibility management, named views, note system, tree-canvas sync
-- **Impact**: Enterprise-grade user experience
-
-#### 5. **Layout and State Persistence**
-- **Completed**: Server-synchronized layout and state management
-- **Features**: Position persistence, view configurations, import state retention
-- **Impact**: Reliable workspace preservation across sessions
-
-### 🔄 Remaining Gaps for Post-MVP
-
-#### 1. **OWL Code Editor Integration**
-- **Gap**: No direct OWL/Turtle code editing capability
-- **Impact**: Advanced users cannot directly edit OWL syntax
-- **Planned**: Dual-mode editor with diagram ↔ code synchronization
-
-#### 2. **SHACL Constraint System**
-- **Gap**: No constraint definition or validation system
-- **Impact**: Cannot validate individuals or enforce data quality
-- **Planned**: Visual SHACL editor with Python validation backend
-
-#### 3. **Individual/Instance Management**
-- **Gap**: No dedicated system for managing ontology individuals
-- **Impact**: Cannot efficiently handle hundreds of extracted requirement individuals
-- **Planned**: Dedicated individuals workbench with filtering and bulk operations
-
-#### 4. **DAS Integration**
-- **Gap**: No API integration for Digital Assistant System
-- **Impact**: DAS cannot create or manage ontology objects
-- **Planned**: API endpoints with knowledge base integration
-
-## Implementation Plan
-
-### Phase 1: Core URI Generation Alignment (High Priority)
-
-#### 1.1 Update Ontology URI Generation
-- **Action**: Modify `create_ontology` endpoint to use project namespace
-- **Implementation**: 
-  - Query project's namespace from `namespace_registry`
-  - Generate URI: `http://{org}/{namespace-path}/{project-id}/ontologies/{name}`
-  - Update `NamespaceURIGenerator` to support project-scoped URIs
-- **Files**: `backend/main.py`, `backend/services/namespace_uri_generator.py`
-
-#### 1.2 Update Frontend URI Display
-- **Action**: Show proper organizational URIs in ontology creation modal
-- **Implementation**:
-  - Display full project namespace path
-  - Show generated ontology URI preview
-  - Update URI generation in real-time
-- **Files**: `frontend/app.html`
-
-#### 1.3 Migrate Existing Ontologies
-- **Action**: Update existing ontology URIs to new structure
-- **Implementation**:
-  - Create migration script for existing ontologies
-  - Update Fuseki named graphs
-  - Update `ontologies_registry` table
-- **Files**: New migration script
-
-### Phase 2: Enhanced Ontology Management (Medium Priority)
-
-#### 2.1 Add Ontology Metadata Fields
-- **Action**: Extend ontology model with organizational metadata
-- **Implementation**:
-  - Add `domain`, `version`, `status` fields to ontologies
-  - Update database schema
-  - Modify creation/editing interfaces
-- **Files**: Database migration, `backend/main.py`, `frontend/app.html`
-
-#### 2.2 Implement Ontology CRUD Operations
-- **Action**: Add full CRUD operations for ontologies
-- **Implementation**:
-  - GET, PUT, DELETE endpoints for individual ontologies
-  - Ontology editing modal with metadata
-  - Version management and history
-- **Files**: `backend/main.py`, `frontend/app.html`
-
-#### 2.3 Add Ontology Actions Menu
-- **Action**: Implement ontology actions (edit, archive, export, delete)
-- **Implementation**:
-  - Context menu for ontology nodes
-  - Action buttons in ontology list
-  - Confirmation dialogs for destructive actions
-- **Files**: `frontend/app.html`
-
-### Phase 3: Ontology Import and Sharing Management (High Priority)
-
-#### 3.1 Cross-Project Ontology Import
-- **Action**: Enable users to import ontologies from other projects
-- **Implementation**:
-  - Project ontology browser and selector
-  - Import permission checking
-  - Namespace resolution for cross-project imports
-- **Files**: `frontend/app.html`, `backend/api/ontology_imports.py`
-
-#### 3.2 Reference Ontology Import
-- **Action**: Allow users to import admin-managed reference ontologies
-- **Implementation**:
-  - Reference ontology library interface
-  - Import from reference ontology registry
-  - Automatic namespace mapping
-- **Files**: `frontend/app.html`, `backend/api/reference_ontologies.py`
-
-#### 3.3 Nested Import Support
-- **Action**: Support importing ontologies that have their own imports
-- **Implementation**:
-  - Recursive import resolution
-  - Show/hide nested imports in visualization
-  - Auto-link equivalent classes between imports
-  - Import dependency visualization
-- **Files**: `backend/services/nested_import_resolver.py`
-
-#### 3.4 Import Visualization in Cytoscape
-- **Action**: Show imported ontologies and their relationships in the canvas
-- **Implementation**:
-  - **Collapsed View**: Imported ontologies shown as single round entities by default
-  - **Expandable**: Users can expand imported ontologies to view internal details
-  - Import hierarchy visualization
-  - Different styling for imported vs. local elements
-  - Show/hide controls for nested imports
-  - Auto-linking of equivalent classes between imports
-  - **IMMUTABLE**: Imported ontologies cannot be edited (only visual positioning)
-- **Files**: `frontend/app.html` (Cytoscape integration)
-
-#### 3.5 User-to-User Ontology Sharing
-- **Action**: Enable users to share ontologies with specific users
-- **Implementation**:
-  - Ontology sharing permissions
-  - User invitation system
-  - Shared ontology workspace
-- **Files**: `backend/api/ontology_sharing.py`, `frontend/app.html`
-
-### Phase 4: Data Object Management (Medium Priority)
-
-#### 4.1 Data Object Modeling Framework
-- **Action**: Create clear patterns for managing data objects in ontologies
-- **Implementation**:
-  - Data object classification system
-  - Relationship pattern templates
-  - Data object lifecycle management
-- **Files**: New data object management system
-
-#### 4.2 Data Object Relationship Management
-- **Action**: Provide tools for managing complex data object relationships
-- **Implementation**:
-  - Relationship type definitions
-  - Cardinality constraints
-  - Relationship validation
-- **Files**: `backend/services/data_object_manager.py`
-
-#### 4.3 Data Object Visualization
-- **Action**: Specialized visualization for data objects and their relationships
-- **Implementation**:
-  - Data object-specific Cytoscape layouts
-  - Relationship strength indicators
-  - Data object clustering
-- **Files**: `frontend/app.html` (Cytoscape extensions)
-
-### Phase 5: External Ontology Management (Low Priority)
-
-#### 5.1 Admin Interface for External Ontologies
-- **Action**: Create admin panel for managing external ontologies
-- **Implementation**:
-  - External ontology registry
-  - Import/export management
-  - Version tracking and updates
-- **Files**: New admin interface, `backend/api/external_ontologies.py`
-
-#### 5.2 Import Validation and Conflict Detection
-- **Action**: Implement best practices for external ontology imports
-- **Implementation**:
-  - Namespace conflict detection
-  - Import validation rules
-  - Dependency management
-- **Files**: `backend/services/ontology_import_validator.py`
-
-#### 5.3 Reference Ontology Library
-- **Action**: Create curated library of reference ontologies
-- **Implementation**:
-  - Pre-configured external ontologies
-  - Standard namespace mappings
-  - Import templates and guides
-- **Files**: New reference ontology management system
-
-### Phase 6: OWL Code Editor Integration (High Priority - Post-MVP)
-
-#### 6.1 Dual-Mode Ontology Editor
-- **Action**: Add OWL/Turtle code editor alongside visual diagram
-- **Implementation**:
-  - Monaco Editor or CodeMirror integration
-  - Real-time bidirectional synchronization (diagram ↔ OWL code)
-  - OWL syntax highlighting and validation
-  - Conflict resolution when both modes are edited
-- **Inspiration**: Similar to Camunda's BPMN modeler with XML view
-- **Files**: `frontend/app.html`, new OWL parser/serializer modules
-
-#### 6.2 OWL Format Support
-- **Action**: Support multiple OWL serialization formats
-- **Implementation**:
-  - Turtle, RDF/XML, JSON-LD import/export
-  - Format conversion utilities
-  - Syntax validation for all formats
-- **Files**: Backend OWL processing services
-
-### Phase 7: SHACL Constraints and Validation (High Priority - Post-MVP)
-
-#### 7.1 Visual SHACL Shape Editor
-- **Action**: Create GUI for defining SHACL constraints
-- **Implementation**:
-  - Visual constraint builder for classes and properties
-  - Template-based constraint creation
-  - Unit validation with QUDT integration
-  - Multiplicity and value bounding constraints
-- **Files**: New SHACL editor components
-
-#### 7.2 Python OWL/SHACL Integration
-- **Action**: Integrate Python OWL ecosystem for advanced validation
-- **Implementation**:
-  - **owlready2**: OWL ontology manipulation
-  - **pyshacl**: SHACL validation engine  
-  - **rdflib**: RDF graph operations
-  - **pint**: Unit conversion and validation
-- **Files**: `backend/services/shacl_validator.py`, requirements.txt
-
-#### 7.3 Real-time Validation System
-- **Action**: Validate individuals and constraints in real-time
-- **Implementation**:
-  - Live validation as users create individuals
-  - Batch validation for existing data
-  - Validation reports with error locations and suggestions
-  - Engineering-specific constraints (units, bounds, patterns)
-- **Files**: Backend validation services, frontend validation UI
-
-### Phase 8: Individual/Instance Management (High Priority - Post-MVP)
-
-#### 8.1 Individuals Workbench
-- **Action**: Create dedicated interface for managing ontology individuals
-- **Challenge**: Handle hundreds of requirement-extracted individuals efficiently
-- **Implementation Options**:
-  - **Option A**: Extend ontology tree with grouped individuals
-  - **Option B**: Separate individuals tab with table/search interface (RECOMMENDED)
-  - **Option C**: Hybrid approach with tree summary and detailed table
-- **Files**: New individuals workbench tab
-
-#### 8.2 Individual Management Features
-- **Action**: Comprehensive individual lifecycle management
-- **Implementation**:
-  - Table view with sorting, filtering, pagination
-  - Full-text search across individual properties
-  - Bulk operations (validate, export, classify, delete)
-  - Individual-requirement traceability
-  - Confidence scoring and review workflows
-- **Files**: Individuals management system
-
-#### 8.3 LLM-Generated Individual Processing
-- **Action**: Handle LLM-extracted requirement individuals
-- **Implementation**:
-  - Batch import of LLM-generated individuals
-  - Confidence-based review workflows
-  - Automatic class assignment and validation
-  - Component/Interface/Process/Function generation from requirements
-- **Files**: LLM integration services
-
-### Phase 9: Digital Assistant System (DAS) Integration (Medium Priority - Post-MVP)
-
-#### 9.1 DAS-Ontology API Design
-- **Action**: Create API endpoints for DAS to manage ontology objects
-- **Implementation**:
-  - `POST /api/das/ontology/create-class`
-  - `POST /api/das/ontology/create-individual`
-  - `POST /api/das/ontology/validate`
-  - `GET /api/das/ontology/query`
-- **Files**: `backend/api/das_ontology.py`
-
-#### 9.2 DAS Knowledge Base for API Instructions
-- **Action**: Create comprehensive API knowledge base in Qdrant
-- **Implementation**:
-  - API documentation with examples in Qdrant
-  - Ontology operation patterns and best practices
-  - Error handling and troubleshooting guides
-  - Integration with RAG system for API guidance
-- **Files**: DAS knowledge base population scripts
-
-#### 9.3 RAG Integration for Ontology Operations
-- **Action**: Enable RAG system to detect and handle ontology requests
-- **Implementation**:
-  - Query classification for ontology operations
-  - Context retrieval from API knowledge base
-  - Action guidance with executable code examples
-  - End-to-end requirement-to-individual workflows
-- **Files**: RAG system ontology integration
-
-### Phase 10: Advanced Features (Low Priority)
-
-#### 10.1 Ontology Versioning
-- **Action**: Implement proper ontology versioning
-- **Implementation**:
-  - Version IRIs and tracking
-  - Change history and diff
-  - Rollback capabilities
-- **Files**: Version management system
-
-#### 10.2 Ontology Dependencies
-- **Action**: Manage ontology import dependencies
-- **Implementation**:
-  - Dependency graph visualization
-  - Circular dependency detection
-  - Automatic dependency updates
-- **Files**: Dependency management system
-
-#### 10.3 Ontology Publishing
-- **Action**: Publish ontologies to external endpoints
-- **Implementation**:
-  - Public ontology endpoints
-  - Content negotiation
-  - API documentation generation
-- **Files**: Publishing system
-
-## Detailed Implementation Actions
-
-### Immediate Actions (This Session)
-
-#### 1. Update Ontology URI Generation
-```python
-# In backend/main.py create_ontology function
-# Replace current URI generation with:
-project_namespace = get_project_namespace(project)
-if project_namespace:
-    graph_iri = f"{settings.installation_base_uri}/{project_namespace['path']}/{project}/{name}"
-else:
-    # Fallback for projects without namespace
-    graph_iri = f"{settings.installation_base_uri}/projects/{project}/{name}"
-```
-
-#### 2. Add Project Namespace Display
-```javascript
-// In frontend/app.html showCreateOntologyModal function
-// Update namespace display to show full organizational path
-async function loadCurrentProjectNamespace(displayElement) {
-  const currentProjectId = localStorage.getItem('active_project_id');
-  const response = await fetch(`/api/projects/${currentProjectId}/namespace`);
-  const namespaceData = await response.json();
-  displayElement.textContent = namespaceData.namespace_path || 'No namespace assigned';
-}
-```
-
-#### 3. Update URI Preview
-```javascript
-// Add real-time URI preview in ontology creation modal
-function updateOntologyUriPreview() {
-  const name = document.getElementById('simpleOntologyName').value;
-  const namespaceDisplay = document.getElementById('modalNamespaceDisplay').textContent;
-  const projectId = localStorage.getItem('active_project_id');
-  
-  if (name && namespaceDisplay && projectId) {
-    const uri = `http://${namespaceDisplay}/${projectId}/ontologies/${name}`;
-    document.getElementById('ontologyUriPreview').textContent = uri;
-  }
-}
-```
-
-### Next Session Actions
-
-#### 1. Database Schema Updates
-```sql
--- Add ontology metadata fields
-ALTER TABLE public.ontologies_registry ADD COLUMN IF NOT EXISTS domain VARCHAR(255);
-ALTER TABLE public.ontologies_registry ADD COLUMN IF NOT EXISTS version VARCHAR(50) DEFAULT '1.0.0';
-ALTER TABLE public.ontologies_registry ADD COLUMN IF NOT EXISTS status VARCHAR(50) DEFAULT 'active';
-ALTER TABLE public.ontologies_registry ADD COLUMN IF NOT EXISTS description TEXT;
-```
-
-#### 2. Ontology CRUD Endpoints
-```python
-# Add to backend/main.py
-@app.get("/api/ontologies/{ontology_id}")
-async def get_ontology(ontology_id: str, user=Depends(get_user)):
-    """Get individual ontology details"""
-
-@app.put("/api/ontologies/{ontology_id}")
-async def update_ontology(ontology_id: str, body: Dict, user=Depends(get_user)):
-    """Update ontology metadata"""
-
-@app.delete("/api/ontologies/{ontology_id}")
-async def delete_ontology(ontology_id: str, user=Depends(get_user)):
-    """Delete ontology"""
-```
-
-#### 3. External Ontology Management
-```python
-# New file: backend/api/external_ontologies.py
-@router.get("/api/admin/external-ontologies")
-async def list_external_ontologies(admin_user=Depends(get_admin_user)):
-    """List all external/reference ontologies"""
-
-@router.post("/api/admin/external-ontologies")
-async def add_external_ontology(body: Dict, admin_user=Depends(get_admin_user)):
-    """Add new external ontology to registry"""
-```
-
-## Best Practices Implementation
-
-### 1. Namespace Management
-- **Principle**: All ontologies inherit their project's namespace
-- **Implementation**: Automatic namespace inheritance, no manual selection
-- **Validation**: Ensure project has valid namespace before ontology creation
-
-### 2. External Ontology Imports
-- **Principle**: Controlled imports with validation and conflict detection
-- **Implementation**: 
-  - Admin-managed external ontology registry
-  - Import validation before adding to projects
-  - Namespace conflict detection
-  - **IMMUTABILITY**: Imported ontologies are read-only
-- **Validation**: Check for naming conflicts, circular dependencies
-
-### 2.1 Import Immutability Rules
-- **Principle**: Imported ontologies cannot be modified by importers
-- **Implementation**:
-  - Read-only access to imported ontology content
-  - Visual positioning only for Cytoscape nodes
-  - Show/hide controls for nested imports
-  - Auto-linking of equivalent classes
-- **Rationale**: Prevents corruption of shared reference ontologies
-
-### 3. URI Consistency
-- **Principle**: All URIs follow organizational hierarchy
-- **Implementation**: 
-  - Project URIs: `http://{org}/{namespace}/{project-id}/ontologies/{name}`
-  - External URIs: Preserved as-is for imports
-  - System URIs: `http://{org}/admin/ontologies/{name}`
-
-### 4. Metadata Completeness
-- **Principle**: Rich metadata for discoverability and management
-- **Implementation**:
-  - Domain association from project
-  - Version tracking and history
-  - Status management (active, deprecated, archived)
-  - Description and documentation
-
-## Current Discussion Points (2025-01-27)
-
-### Reference Ontology Management
-- **Status**: ✅ **COMPLETED** - Admin can mark ontologies as reference for ODRAS users
-- **Implementation**: Admin workbench with reference ontology toggle
-- **Next Steps**: Focus on import capabilities rather than editing reference ontologies
-
-### Import Capabilities Priority
-- **Cross-Project Imports**: Users need to import ontologies from other projects
-- **Reference Ontology Imports**: Users need to import admin-managed reference ontologies
-- **Nested Imports**: Support for ontologies that import other ontologies
-- **Visualization**: Show imported ontologies in Cytoscape canvas with proper styling
-
-### Import Constraints and Rules
-- **IMMUTABILITY**: Imported ontologies are read-only - users cannot edit their content
-- **Visual Positioning Only**: Users can only adjust Cytoscape node positions for imported elements
-- **Nested Import Controls**: Show/hide nested imports with toggle controls
-- **Auto-linking**: Automatically link equivalent classes between different imports
-- **Namespace Preservation**: Imported ontologies maintain their original namespaces
-
-### Nice to Have: Collapsible Import Visualization
-- **Collapsed View**: Imported ontologies appear as single round entities showing all equivalent relationships
-- **Expandable Detail**: Users can expand imported ontologies to view their internal structure and details
-- **Clean Canvas**: Keeps the main workspace uncluttered while preserving full access to imported content
-- **Progressive Disclosure**: Users see high-level relationships first, then drill down as needed
-
-### Data Object Management
-- **Status**: 🔄 **PLANNING** - Identified as confusing area requiring multiple iterations
-- **Approach**: Add to work list and iterate to get it right
-- **Focus**: Clear patterns for modeling and managing data objects in ontologies
-
-### User Sharing
-- **Status**: 📋 **PLANNED** - Enable users to share ontologies with each other
-- **Priority**: Medium - Important for collaboration but not critical for MVP
-
-## Success Criteria
-
-### Phase 1 Success
-- [ ] All new ontologies use project namespace URIs
-- [ ] Existing ontologies migrated to new URI structure
-- [ ] Frontend displays proper organizational URIs
-- [ ] URI generation is consistent across the system
-
-### Phase 2 Success
-- [ ] Full ontology CRUD operations implemented
-- [ ] Rich metadata support added
-- [ ] Ontology actions menu functional
-- [ ] Version management working
-
-### Phase 3 Success (Import & Sharing)
-- [ ] Cross-project ontology import functionality
-- [ ] Reference ontology import from admin-managed library
-- [ ] Nested import support with dependency resolution
-- [ ] Import visualization in Cytoscape canvas
-- [ ] User-to-user ontology sharing capabilities
-- [ ] **Nice to Have**: Collapsible import visualization (single entities with expand/collapse)
-
-### Phase 4 Success (Data Objects)
-- [ ] Data object modeling framework established
-- [ ] Clear patterns for data object relationships
-- [ ] Data object visualization in Cytoscape
-- [ ] Data object lifecycle management
-
-### Long-term Success
-- [ ] Complete ontology lifecycle management
-- [ ] Seamless external ontology integration
-- [ ] Professional ontology publishing capabilities
-- [ ] Full compliance with organizational URI standards
-- [ ] Robust data object management system
-
-## Risk Assessment
-
-### High Risk
-- **URI Migration**: Changing existing ontology URIs may break references
-- **Fuseki Integration**: Named graph updates require careful coordination
-
-### Medium Risk
-- **External Ontology Conflicts**: Import validation complexity
-- **User Experience**: Changes to familiar interfaces
-
-### Low Risk
-- **Metadata Addition**: Non-breaking schema changes
-- **Admin Interface**: New functionality, no existing dependencies
-
-## Next Steps
-
-1. **Immediate**: Update ontology URI generation to use project namespaces
-2. **This Session**: Implement project namespace display in creation modal
-3. **Next Session**: Add ontology metadata fields and CRUD operations
-4. **Priority Focus**: Implement cross-project and reference ontology import capabilities
-5. **Iterative Development**: Data object management - plan, implement, test, iterate
-6. **Future**: User sharing and advanced features
-
----
-
-**Priority**: High - This aligns the ontology workbench with our organizational URI structure and enables proper namespace management.
-
-**Estimated Effort**: 
-- Phase 1: 2-3 hours
-- Phase 2: 4-6 hours  
-- Phase 3 (Import & Sharing): 8-12 hours
-- Phase 4 (Data Objects): 6-10 hours (iterative)
-- Phase 5 (External Management): 6-8 hours
-- Phase 6 (Advanced Features): 8-12 hours
-
-**Dependencies**: Requires completed namespace and project management systems (✅ Done)
-
-**Key Focus Areas**:
-- **Import Capabilities**: Critical for user productivity and ontology reuse
-- **Data Object Management**: Requires careful planning and iteration to get right
-- **Reference Ontology Integration**: Leverage existing admin capabilities

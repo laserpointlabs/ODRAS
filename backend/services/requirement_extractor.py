@@ -12,3 +12,4 @@ class RequirementExtractor:
         sentences = re.split(r"(?<=[.!?])\s+", text)
         reqs = [s.strip() for s in sentences if s and SHALL_PATTERN.search(s)]
         return reqs
+

@@ -5,6 +5,10 @@
 		}
 	],
 	"settings": {
-		"postman.settings.dotenv-detection-notification-visibility": false
+		"postman.settings.dotenv-detection-notification-visibility": false,
+		"files.eol": "\n",
+		"files.insertFinalNewline": true,
+		"editor.formatOnSave": true,
+		"files.trimTrailingWhitespace": true
 	}
 }

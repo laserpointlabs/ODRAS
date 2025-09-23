@@ -101,7 +101,7 @@ async def send_message(
                 status_code=status.HTTP_401_UNAUTHORIZED,
                 detail="User not authenticated"
             )
-        
+
         # Get or create project thread
         if request.project_thread_id:
             session = await engine.get_project_thread(request.project_thread_id)
@@ -121,7 +121,7 @@ async def send_message(
                         context_updates["active_ontology"] = request.ontology_id
                     if request.workbench:
                         context_updates["current_workbench"] = request.workbench
-                    
+
                     if context_updates:
                         await session_manager.update_session_context(session.project_thread_id, context_updates)
                         logger.info(f"Updated DAS project thread context: {context_updates}")
@@ -132,9 +132,9 @@ async def send_message(
                     status_code=status.HTTP_400_BAD_REQUEST,
                     detail="Project ID is required to start a new project thread"
                 )
-            
+
             session = await engine.get_or_create_project_thread(user_id, request.project_id)
-            
+
             # Set additional context if provided
             if session_manager and (request.ontology_id or request.workbench):
                 context_updates = {}
@@ -142,25 +142,25 @@ async def send_message(
                     context_updates["active_ontology"] = request.ontology_id
                 if request.workbench:
                     context_updates["current_workbench"] = request.workbench
-                
+
                 if context_updates:
                     await session_manager.update_session_context(session.project_thread_id, context_updates)
-        
+
         # Process message with project intelligence
         current_context = {
             "project_id": request.project_id,
             "ontology_id": request.ontology_id,
             "workbench": request.workbench
         }
-        
+
         # Use new intelligent processing - NO FALLBACKS
         response = await engine.process_message_with_intelligence(
             request.project_id or session.project_id,
-            request.message, 
+            request.message,
             user_id,
             current_context
         )
-        
+
         # Convert to API response
         # Convert string suggestions to dictionary format
         suggestions_dict = []
@@ -171,7 +171,7 @@ async def send_message(
                     "text": suggestion,
                     "type": "suggestion"
                 })
-        
+
         return ChatResponse(
             message=response.message,
             confidence=response.confidence.value,
@@ -181,7 +181,7 @@ async def send_message(
             artifacts=response.artifacts or [],
             metadata=response.metadata or {}
         )
-        
+
     except Exception as e:
         logger.error(f"Error processing chat message: {e}")
         raise HTTPException(
@@ -208,14 +208,14 @@ async def get_project_thread_history(
                 status_code=status.HTTP_404_NOT_FOUND,
                 detail="Project thread not found"
             )
-        
+
         # Check user access
         if session.user_id != current_user.get("user_id"):
             raise HTTPException(
                 status_code=status.HTTP_403_FORBIDDEN,
                 detail="Access denied to this project thread"
             )
-        
+
         # Get conversation history from session context
         history = []
         for entry in session.context.get("conversation_history", []):
@@ -230,9 +230,9 @@ async def get_project_thread_history(
                 "metadata": {"intent": entry.get("intent")},
                 "timestamp": entry.get("timestamp")
             })
-        
+
         return {"project_thread_id": project_thread_id, "history": history}
-        
+
     except HTTPException:
         raise
     except Exception as e:
@@ -260,7 +260,7 @@ async def get_project_thread_by_project_id(
                 status_code=status.HTTP_401_UNAUTHORIZED,
                 detail="User not authenticated"
             )
-        
+
         # Use the intelligent system to get or create project thread
         if hasattr(engine, 'process_message_with_intelligence'):
             # New system: get or create via project manager
@@ -269,9 +269,9 @@ async def get_project_thread_by_project_id(
                     status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
                     detail="Project intelligence not initialized - check Redis/Qdrant connections"
                 )
-            
+
             project_thread = await engine.project_manager.get_or_create_project_thread(project_id, user_id)
-            
+
             return ProjectThreadResponse(
                 project_thread_id=project_thread.project_thread_id,
                 user_id=project_thread.created_by,
@@ -289,7 +289,7 @@ async def get_project_thread_by_project_id(
                 start_time=session.started_at.isoformat(),
                 status="active"
             )
-        
+
     except Exception as e:
         logger.error(f"Error getting project thread for project {project_id}: {e}")
         raise HTTPException(
@@ -314,29 +314,65 @@ async def get_project_thread_history_by_project(
                 status_code=status.HTTP_401_UNAUTHORIZED,
                 detail="User not authenticated"
             )
-        
+
         # Get the project thread
         if hasattr(engine, 'process_message_with_intelligence') and engine.project_manager:
             project_thread = await engine.project_manager.get_or_create_project_thread(project_id, user_id)
-            
-            # Return conversation history
+
+            # Build conversation history from both conversation_history AND project_events
             history = []
+
+            # First, add conversations from project_events (where they're actually stored)
+            for event in project_thread.project_events:
+                if event.get("event_type") == "das_question":
+                    event_data = event.get("key_data", {})
+                    user_msg = event_data.get("user_message")
+                    das_response = event_data.get("das_response")
+                    timestamp = event.get("timestamp")
+                    intent = event_data.get("intent", "question")
+
+                    if user_msg and das_response:
+                        history.append({
+                            "type": "user",
+                            "message": user_msg,
+                            "timestamp": timestamp
+                        })
+                        history.append({
+                            "type": "das",
+                            "message": das_response,
+                            "metadata": {
+                                "intent": intent,
+                                "source": "knowledge_base"
+                            },
+                            "timestamp": timestamp
+                        })
+
+            # Then add any additional entries from conversation_history (conversation memory, etc.)
             for entry in project_thread.conversation_history:
-                history.append({
-                    "type": "user",
-                    "message": entry.get("user_message"),
-                    "timestamp": entry.get("timestamp")
-                })
-                history.append({
-                    "type": "das",
-                    "message": entry.get("das_response"),
-                    "metadata": {
-                        "intent": entry.get("intent"),
-                        "source": entry.get("source", "knowledge_base")
-                    },
-                    "timestamp": entry.get("timestamp")
-                })
-            
+                # Skip if this conversation is already in project_events
+                user_msg = entry.get("user_message")
+                if not any(event.get("key_data", {}).get("user_message") == user_msg
+                          for event in project_thread.project_events
+                          if event.get("event_type") == "das_question"):
+
+                    history.append({
+                        "type": "user",
+                        "message": entry.get("user_message"),
+                        "timestamp": entry.get("timestamp")
+                    })
+                    history.append({
+                        "type": "das",
+                        "message": entry.get("das_response"),
+                        "metadata": {
+                            "intent": entry.get("intent"),
+                            "source": entry.get("source", "conversation_memory")
+                        },
+                        "timestamp": entry.get("timestamp")
+                    })
+
+            # Sort by timestamp to maintain chronological order
+            history.sort(key=lambda x: x.get("timestamp", ""))
+
             return {
                 "project_id": project_id,
                 "project_thread_id": project_thread.project_thread_id,
@@ -347,7 +383,7 @@ async def get_project_thread_history_by_project(
                 status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
                 detail="Project intelligence not available"
             )
-        
+
     except Exception as e:
         logger.error(f"Error getting project thread history for project {project_id}: {e}")
         raise HTTPException(
@@ -372,9 +408,9 @@ async def start_project_thread(
                 status_code=status.HTTP_401_UNAUTHORIZED,
                 detail="User not authenticated"
             )
-        
+
         session = await engine.start_project_thread(user_id, request.project_id)
-        
+
         return ProjectThreadResponse(
             project_thread_id=session.project_thread_id,
             user_id=session.user_id,
@@ -382,7 +418,7 @@ async def start_project_thread(
             start_time=session.started_at.isoformat(),
             status="active"
         )
-        
+
     except Exception as e:
         logger.error(f"Error starting project thread: {e}")
         raise HTTPException(
@@ -407,14 +443,14 @@ async def get_project_thread(
                 status_code=status.HTTP_404_NOT_FOUND,
                 detail="Project thread not found"
             )
-        
+
         # Check user access
         if session.user_id != current_user.get("user_id"):
             raise HTTPException(
                 status_code=status.HTTP_403_FORBIDDEN,
                 detail="Access denied to this project thread"
             )
-        
+
         return ProjectThreadResponse(
             project_thread_id=session.project_thread_id,
             user_id=session.user_id,
@@ -422,7 +458,7 @@ async def get_project_thread(
             start_time=session.started_at.isoformat(),
             status="active"
         )
-        
+
     except HTTPException:
         raise
     except Exception as e:
@@ -454,7 +490,7 @@ async def execute_command(
             "command": request.command,
             "session_id": request.session_id
         }
-        
+
     except Exception as e:
         logger.error(f"Error executing command: {e}")
         raise HTTPException(
@@ -505,9 +541,9 @@ async def get_command_templates(
                 "category": "file_operations"
             }
         ]
-        
+
         return {"templates": templates}
-        
+
     except Exception as e:
         logger.error(f"Error getting command templates: {e}")
         raise HTTPException(
@@ -533,17 +569,17 @@ async def get_command_templates(
 #                 status_code=status.HTTP_404_NOT_FOUND,
 #                 detail="Session not found"
 #             )
-#         
+#
 #         # Check user access
 #         if session.user_id != current_user.get("user_id"):
 #             raise HTTPException(
 #                 status_code=status.HTTP_403_FORBIDDEN,
 #                 detail="Access denied to this session"
 #             )
-#         
+#
 #         # For now, return basic suggestions based on session context
 #         suggestions = []
-#         
+#
 #         if session.active_project:
 #             suggestions.append({
 #                 "id": "analyze_project",
@@ -553,7 +589,7 @@ async def get_command_templates(
 #                 "confidence": "high",
 #                 "category": "analysis_workflows"
 #             })
-#         
+#
 #         suggestions.extend([
 #             {
 #                 "id": "browse_ontologies",
@@ -572,9 +608,9 @@ async def get_command_templates(
 #                 "category": "file_operations"
 #             }
 #         ])
-#         
+#
 #         return {"suggestions": suggestions}
-#         
+#
 #     except HTTPException:
 #         raise
 #     except Exception as e:
@@ -607,10 +643,10 @@ async def llm_health_check():
     try:
         from ..services.config import Settings
         from ..services.llm_team import LLMTeam
-        
+
         settings = Settings()
         llm_team = LLMTeam(settings)
-        
+
         # Test LLM connectivity with a simple query
         test_response = await llm_team.analyze_requirement(
             requirement_text="Test connectivity",
@@ -621,7 +657,7 @@ async def llm_health_check():
                 "is_active": True
             }]
         )
-        
+
         return {
             "status": "healthy",
             "service": "LLM",
@@ -656,11 +692,11 @@ async def create_session(
                 status_code=status.HTTP_401_UNAUTHORIZED,
                 detail="User not authenticated"
             )
-        
+
         # Create session using session manager
         if session_manager:
             session_context = await session_manager.create_session(user_id, project_id)
-            
+
             return {
                 "session_id": session_context.session_id,
                 "user_id": session_context.user_id,
@@ -673,7 +709,7 @@ async def create_session(
                 status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
                 detail="Session manager not initialized"
             )
-            
+
     except Exception as e:
         logger.error(f"Error creating session: {e}")
         raise HTTPException(
@@ -713,7 +749,7 @@ async def set_session_goals(
                 status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
                 detail="Session manager not initialized"
             )
-            
+
     except Exception as e:
         logger.error(f"Error setting session goals: {e}")
         raise HTTPException(
@@ -744,7 +780,7 @@ async def capture_session_event(
                 status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
                 detail="Session manager not initialized"
             )
-            
+
     except Exception as e:
         logger.error(f"Error capturing session event: {e}")
         raise HTTPException(
@@ -776,7 +812,7 @@ async def get_session_context(
                 status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
                 detail="Session manager not initialized"
             )
-            
+
     except Exception as e:
         logger.error(f"Error getting session context: {e}")
         raise HTTPException(
@@ -803,7 +839,7 @@ async def get_session_activity_summary(
                 status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
                 detail="Session manager not initialized"
             )
-            
+
     except Exception as e:
         logger.error(f"Error getting session activity: {e}")
         raise HTTPException(
@@ -832,7 +868,7 @@ async def capture_ontology_selection(
                 session_id, request.ontology_id, request.ontology_name
             )
             return {
-                "success": success, 
+                "success": success,
                 "event_type": "ontology_selected",
                 "ontology_id": request.ontology_id
             }
@@ -841,7 +877,7 @@ async def capture_ontology_selection(
                 status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
                 detail="Session manager not initialized"
             )
-            
+
     except Exception as e:
         logger.error(f"Error capturing ontology selection: {e}")
         raise HTTPException(
@@ -868,14 +904,14 @@ async def capture_document_upload_event(
     try:
         if session_manager:
             success = await session_manager.capture_document_upload(
-                session_id, 
-                request.document_id, 
+                session_id,
+                request.document_id,
                 request.filename,
                 request.document_type,
                 request.file_size
             )
             return {
-                "success": success, 
+                "success": success,
                 "event_type": "document_uploaded",
                 "document_id": request.document_id
             }
@@ -884,7 +920,7 @@ async def capture_document_upload_event(
                 status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
                 detail="Session manager not initialized"
             )
-            
+
     except Exception as e:
         logger.error(f"Error capturing document upload: {e}")
         raise HTTPException(
@@ -912,7 +948,7 @@ async def capture_workbench_change(
                 session_id, request.workbench, request.previous_workbench
             )
             return {
-                "success": success, 
+                "success": success,
                 "event_type": "workbench_changed",
                 "workbench": request.workbench
             }
@@ -921,7 +957,7 @@ async def capture_workbench_change(
                 status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
                 detail="Session manager not initialized"
             )
-            
+
     except Exception as e:
         logger.error(f"Error capturing workbench change: {e}")
         raise HTTPException(
@@ -948,13 +984,13 @@ async def capture_analysis_started_event(
     try:
         if session_manager:
             success = await session_manager.capture_analysis_started(
-                session_id, 
+                session_id,
                 request.analysis_type,
                 request.target_id,
                 request.target_type
             )
             return {
-                "success": success, 
+                "success": success,
                 "event_type": "analysis_started",
                 "analysis_type": request.analysis_type
             }
@@ -963,7 +999,7 @@ async def capture_analysis_started_event(
                 status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
                 detail="Session manager not initialized"
             )
-            
+
     except Exception as e:
         logger.error(f"Error capturing analysis started: {e}")
         raise HTTPException(
@@ -984,13 +1020,13 @@ async def capture_analysis_completed_event(
     try:
         if session_manager:
             success = await session_manager.capture_analysis_completed(
-                session_id, 
+                session_id,
                 request.analysis_type,
                 request.target_id,
                 request.results_summary
             )
             return {
-                "success": success, 
+                "success": success,
                 "event_type": "analysis_completed",
                 "analysis_type": request.analysis_type
             }
@@ -999,12 +1035,64 @@ async def capture_analysis_completed_event(
                 status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
                 detail="Session manager not initialized"
             )
-            
+
     except Exception as e:
         logger.error(f"Error capturing analysis completed: {e}")
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail=f"Error capturing event: {str(e)}"
+        )
+
+
+@router.delete("/project/{project_id}/thread/last-message")
+async def remove_last_message_from_thread(
+    project_id: str,
+    current_user: dict = Depends(get_current_user),
+    engine: DASCoreEngine = Depends(get_das_engine)
+):
+    """
+    Remove the last message pair (user + DAS) from project thread for edit & retry
+    """
+    try:
+        user_id = current_user.get("user_id")
+        if not user_id:
+            raise HTTPException(
+                status_code=status.HTTP_401_UNAUTHORIZED,
+                detail="User not authenticated"
+            )
+
+        # Get the project thread
+        if hasattr(engine, 'project_manager') and engine.project_manager:
+            project_thread = await engine.project_manager.get_or_create_project_thread(project_id, user_id)
+
+            # Remove last conversation entry if it exists
+            if project_thread.conversation_history:
+                removed_entry = project_thread.conversation_history.pop()
+
+                # Persist the updated thread
+                await engine.project_manager._persist_project_thread(project_thread)
+
+                return {
+                    "success": True,
+                    "removed_message": removed_entry.get("user_message", ""),
+                    "remaining_entries": len(project_thread.conversation_history)
+                }
+            else:
+                return {
+                    "success": False,
+                    "message": "No conversation history to remove"
+                }
+        else:
+            raise HTTPException(
+                status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+                detail="Project intelligence not available"
+            )
+
+    except Exception as e:
+        logger.error(f"Error removing last message from project thread: {e}")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Error removing message: {str(e)}"
         )
 
 
@@ -1017,7 +1105,7 @@ async def initialize_das_engine(settings: Settings, rag_service: RAGService, db_
     try:
         # Get qdrant service from rag_service for project intelligence
         qdrant_service = rag_service.qdrant_service if hasattr(rag_service, 'qdrant_service') else None
-        
+
         das_engine = DASCoreEngine(settings, rag_service, db_service, redis_client, qdrant_service)
         session_manager = SessionManager(settings, redis_client)
         logger.info("DAS engine and session manager initialized with project intelligence")

@@ -39,6 +39,7 @@ class RAGService:
         similarity_threshold: float = 0.5,
         include_metadata: bool = True,
         response_style: str = "comprehensive",
+        project_thread_context: Optional[Dict[str, Any]] = None,
     ) -> Dict[str, Any]:
         """
         Query the knowledge base and generate a contextual response.
@@ -82,6 +83,7 @@ class RAGService:
                 question=question,
                 relevant_chunks=relevant_chunks,
                 response_style=response_style,
+                project_thread_context=project_thread_context,
             )
 
             # 3. Format final response
@@ -138,7 +140,7 @@ class RAGService:
 
             # Deduplicate sources - keep only the best chunk per asset/document
             deduplicated_chunks = self._deduplicate_sources(accessible_chunks, max_chunks)
-            
+
             return deduplicated_chunks
 
         except Exception as e:
@@ -152,24 +154,24 @@ class RAGService:
         """
         if not chunks:
             return []
-        
+
         # Group chunks by asset_id
         asset_groups = {}
         for chunk in chunks:
             payload = chunk.get("payload", {})
             asset_id = payload.get("asset_id", "unknown")
-            
+
             if asset_id not in asset_groups:
                 asset_groups[asset_id] = []
             asset_groups[asset_id].append(chunk)
-        
+
         # Keep the best chunk from each asset (highest score)
         deduplicated_chunks = []
         for asset_id, asset_chunks in asset_groups.items():
             # Sort by score (highest first) and take the best one
             best_chunk = max(asset_chunks, key=lambda c: c.get("score", 0))
             deduplicated_chunks.append(best_chunk)
-        
+
         # Sort all deduplicated chunks by score and limit to max_chunks
         deduplicated_chunks.sort(key=lambda c: c.get("score", 0), reverse=True)
         return deduplicated_chunks[:max_chunks]
@@ -231,7 +233,7 @@ class RAGService:
             return False
 
     async def _generate_response(
-        self, question: str, relevant_chunks: List[Dict[str, Any]], response_style: str
+        self, question: str, relevant_chunks: List[Dict[str, Any]], response_style: str, project_thread_context: Optional[Dict[str, Any]] = None
     ) -> Dict[str, Any]:
         """
         Generate a response using LLM with retrieved knowledge context.
@@ -242,9 +244,9 @@ class RAGService:
 
             # Choose system prompt based on response style
             system_prompts = {
-                "comprehensive": """You are a knowledgeable assistant helping users understand information from their knowledge base. 
-                Provide comprehensive, well-structured answers using the provided context. 
-                Include relevant details and explain concepts clearly. 
+                "comprehensive": """You are a knowledgeable assistant helping users understand information from their knowledge base.
+                Provide comprehensive, well-structured answers using the provided context.
+                Include relevant details and explain concepts clearly.
                 If the context doesn't fully answer the question, be honest about limitations.
                 Always ground your response in the provided context.""",
                 "concise": """You are a helpful assistant providing concise, direct answers from the knowledge base.
@@ -259,13 +261,32 @@ class RAGService:
 
             system_prompt = system_prompts.get(response_style, system_prompts["comprehensive"])
 
-            # Create user prompt with context and question
-            user_prompt = f"""Context from knowledge base:
+            # Prepare project thread context if available
+            project_context_section = ""
+            if project_thread_context:
+                project_context_section = f"""
+PROJECT CONTEXT:
+Project ID: {project_thread_context.get('project_id', 'Unknown')}
+Project Thread ID: {project_thread_context.get('project_thread_id', 'Unknown')}
+Created: {project_thread_context.get('created_at', 'Unknown')}
+Last Activity: {project_thread_context.get('last_activity', 'Unknown')}
+
+Project Events ({len(project_thread_context.get('thread_data', {}).get('project_events', []))} total):
+{self._format_project_events(project_thread_context.get('thread_data', {}).get('project_events', []))}
+
+Active Ontologies: {project_thread_context.get('thread_data', {}).get('active_ontologies', [])}
+Current Workbench: {project_thread_context.get('thread_data', {}).get('current_workbench', 'Unknown')}
+Recent Documents: {project_thread_context.get('thread_data', {}).get('recent_documents', [])}
+"""
+
+            # Create user prompt with both project context and knowledge base context
+            user_prompt = f"""{project_context_section}
+KNOWLEDGE BASE CONTEXT:
 {context}
 
 User Question: {question}
 
-Please provide a helpful response based on the context provided. If the context doesn't contain enough information to fully answer the question, acknowledge this and provide what information you can."""
+Please provide a helpful response using both the project context (showing what has been done in this project) and the knowledge base context (relevant documents and information). If you can answer from the project context, do so. If you need information from the knowledge base, use that. Be specific about what you found in the project vs. what you found in the knowledge base."""
 
             # Use the existing LLM team infrastructure
             # Create a simple schema for RAG responses
@@ -336,6 +357,29 @@ Please provide a helpful response based on the context provided. If the context 
 
         return "\n".join(context_parts)
 
+    def _format_project_events(self, events: List[Dict[str, Any]]) -> str:
+        """Format project events for LLM context"""
+        if not events:
+            return "No project events recorded."
+
+        formatted_events = []
+        for i, event in enumerate(events[-10:], 1):  # Show last 10 events
+            event_type = event.get("event_type", "unknown")
+            timestamp = event.get("timestamp", "unknown")
+            action = event.get("key_data", {}).get("semantic_action", event.get("key_data", {}).get("action", "unknown"))
+
+            # Format timestamp to be more readable
+            try:
+                from datetime import datetime
+                dt = datetime.fromisoformat(timestamp.replace('Z', '+00:00'))
+                readable_time = dt.strftime("%Y-%m-%d %H:%M")
+            except:
+                readable_time = timestamp
+
+            formatted_events.append(f"  {i}. [{event_type}] {action} ({readable_time})")
+
+        return "\n".join(formatted_events)
+
     def _format_sources(self, chunks: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
         """
         Format source information with proper asset titles from database.
@@ -394,7 +438,7 @@ Please provide a helpful response based on the context provided. If the context 
                 with conn.cursor() as cur:
                     # Base query for user's accessible assets
                     base_query = """
-                    SELECT DISTINCT document_type, title, metadata 
+                    SELECT DISTINCT document_type, title, metadata
                     FROM knowledge_assets ka
                     """
 

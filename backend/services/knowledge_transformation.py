@@ -69,7 +69,7 @@ class KnowledgeTransformationService:
             with conn.cursor() as cur:
                 cur.execute(
                     """
-                    INSERT INTO knowledge_processing_jobs 
+                    INSERT INTO knowledge_processing_jobs
                     (id, asset_id, job_type, status, progress_percent, started_at, created_at, metadata)
                     VALUES (%s, %s, %s, %s, %s, %s, %s, %s)
                 """,
@@ -130,8 +130,8 @@ class KnowledgeTransformationService:
             with conn.cursor() as cur:
                 cur.execute(
                     """
-                    INSERT INTO knowledge_assets 
-                    (id, source_file_id, project_id, title, document_type, status, 
+                    INSERT INTO knowledge_assets
+                    (id, source_file_id, project_id, title, document_type, status,
                      created_at, updated_at, metadata, iri)
                     VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
                 """,
@@ -170,7 +170,7 @@ class KnowledgeTransformationService:
                 if status == "completed":
                     cur.execute(
                         """
-                        UPDATE knowledge_processing_jobs 
+                        UPDATE knowledge_processing_jobs
                         SET progress_percent = %s, status = %s, completed_at = %s, error_message = %s
                         WHERE id = %s
                     """,
@@ -185,7 +185,7 @@ class KnowledgeTransformationService:
                 else:
                     cur.execute(
                         """
-                        UPDATE knowledge_processing_jobs 
+                        UPDATE knowledge_processing_jobs
                         SET progress_percent = %s, status = %s, error_message = %s
                         WHERE id = %s
                     """,
@@ -310,8 +310,8 @@ class KnowledgeTransformationService:
 
                     cur.execute(
                         """
-                        INSERT INTO knowledge_chunks 
-                        (id, asset_id, sequence_number, chunk_type, content, token_count, 
+                        INSERT INTO knowledge_chunks
+                        (id, asset_id, sequence_number, chunk_type, content, token_count,
                          metadata, embedding_model, created_at)
                         VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s)
                     """,
@@ -415,8 +415,8 @@ class KnowledgeTransformationService:
                     for chunk_id, qdrant_point_id in zip(chunk_ids, qdrant_point_ids):
                         cur.execute(
                             """
-                            UPDATE knowledge_chunks 
-                            SET qdrant_point_id = %s 
+                            UPDATE knowledge_chunks
+                            SET qdrant_point_id = %s
                             WHERE id = %s
                         """,
                             (qdrant_point_id, chunk_id),
@@ -439,7 +439,7 @@ class KnowledgeTransformationService:
             with conn.cursor() as cur:
                 cur.execute(
                     """
-                    UPDATE knowledge_assets 
+                    UPDATE knowledge_assets
                     SET processing_stats = %s, status = %s, updated_at = %s
                     WHERE id = %s
                 """,
@@ -585,7 +585,7 @@ class KnowledgeTransformationService:
                     with conn.cursor() as cur:
                         cur.execute(
                             """
-                            UPDATE knowledge_assets 
+                            UPDATE knowledge_assets
                             SET status = %s, updated_at = %s
                             WHERE id = %s
                         """,
@@ -657,8 +657,8 @@ class KnowledgeTransformationService:
                 with conn.cursor() as cur:
                     cur.execute(
                         """
-                        SELECT title, document_type 
-                        FROM knowledge_assets 
+                        SELECT title, document_type
+                        FROM knowledge_assets
                         WHERE id = %s
                     """,
                         (asset_id,),
@@ -712,3 +712,4 @@ async def transform_file_to_knowledge_asset(
     """
     service = get_knowledge_transformation_service()
     return await service.transform_file_to_knowledge(file_id, project_id, processing_options)
+

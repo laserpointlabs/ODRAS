@@ -15,7 +15,7 @@ CREATE TABLE IF NOT EXISTS domain_registry (
 
 -- Add constraint to ensure domain follows naming rules
 -- Lowercase letters, numbers, and hyphens only, start with letter, 2-50 characters
-ALTER TABLE domain_registry ADD CONSTRAINT domain_format_check 
+ALTER TABLE domain_registry ADD CONSTRAINT domain_format_check
 CHECK (domain ~ '^[a-z][a-z0-9-]{1,49}$');
 
 -- Create index for faster lookups
@@ -46,4 +46,5 @@ INSERT INTO domain_registry (domain, description, owner, created_by) VALUES
 ('communications', 'Communication systems and protocols', 'admin@odras.local', 'admin'),
 ('radar-systems', 'Radar and sensor technologies', 'admin@odras.local', 'admin'),
 ('weapons-systems', 'Weapons and armament systems', 'admin@odras.local', 'admin');
+
 

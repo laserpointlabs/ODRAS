@@ -1,0 +1,53 @@
+[2025-09-19T07:39:36.913280]
+
+================================================================================
+🔍 PROMPT SENT TO LLM:
+================================================================================
+SYSTEM PROMPT:
+You are a knowledgeable assistant helping users understand information from their knowledge base.
+                Provide comprehensive, well-structured answers using the provided context.
+                Include relevant details and explain concepts clearly.
+                If the context doesn't fully answer the question, be honest about limitations.
+                Always ground your response in the provided context.
+----------------------------------------
+USER PROMPT:
+
+PROJECT CONTEXT:
+Project ID: 4142eefe-a111-489d-9a73-38e2c108e074
+Project Thread ID: 989d8dea-315d-46f3-b417-b298c34938c1
+Created: 2025-09-19T07:26:35.812237
+Last Activity: 2025-09-19T07:39:36.721092
+
+Project Events (1 total):
+  1. [das_command] project_thread_created (2025-09-19 07:26)
+
+Active Ontologies: []
+Current Workbench: ontology
+Recent Documents: []
+
+KNOWLEDGE BASE CONTEXT:
+[Source 1: 1af4c18f-d412-46d8-8444-32d9f91a12b9 (specification)]
+### QuadCopter T4
+- **Weight**: 2.5 kg
+- **Size**: 60 cm diagonal motor-to-motor
+- **Max Speed**: 65 km/h
+- **Endurance**: 35-40 minutes
+- **Range**: 8 km
+- **Ceiling**: 2000 meters
+- **Payload Capacity**: 0.8 kg
+- **Launch Method**: Vertical takeoff
+- **Recovery Method**: Vertical landing
+- **Weather Tolerance**: Low (winds up to 15 knots, no precipitation)
+- **Cost**: $120,000 (with base station and sensors)
+- **Sensors**: 4K camera, thermal option
+- **Data Links**: Encrypted LOS up to 8km
+- **Special Features**: Automated return to home, collision avoidance
+
+
+
+User Question: What are the specifications of the QuadCopter T4?
+
+Please provide a helpful response using both the project context (showing what has been done in this project) and the knowledge base context (relevant documents and information). If you can answer from the project context, do so. If you need information from the knowledge base, use that. Be specific about what you found in the project vs. what you found in the knowledge base.
+================================================================================
+
+

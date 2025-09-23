@@ -1,343 +1,344 @@
-# ODRAS Namespace Management Implementation Plan
-
-## Executive Summary
-
-This document outlines the implementation plan for ODRAS namespace management system with versioning, addressing the current local storage vs Fuseki inconsistencies and establishing a robust, scalable namespace architecture for defense and industry ontologies.
-
-## 1. Current State Analysis
-
-### 1.1 Problems Identified
-- **Data Inconsistency**: Local storage and Fuseki contain different class labels
-- **No Namespace Management**: Ad-hoc IRI generation without proper governance
-- **Import System Issues**: Reference ontology imports fail due to data source mismatches
-- **No Versioning**: No version control for ontology evolution
-- **Single Source of Truth Missing**: Fuseki should be authoritative but isn't consistently used
-
-### 1.2 Root Causes
-- Frontend properties panel updates only local storage, not Fuseki
-- Import system uses mixed data sources (local storage + API)
-- No centralized namespace registry
-- No versioning strategy for ontology evolution
-
-## 2. Target Architecture
-
-### 2.1 Core Principles
-1. **Fuseki as Single Source of Truth**: All ontology data originates from and is validated against Fuseki
-2. **Admin-Controlled Namespaces**: Only admins can create and manage reference ontologies
-3. **Versioned Evolution**: All changes tracked through proper versioning
-4. **Hierarchical Governance**: Enforce namespace hierarchy rules from namespace MVP spec
-5. **Quality Gates**: Automated validation before release
-
-### 2.2 Namespace Structure
-```
-https://w3id.org/defense/{type}/{name}#          # Stable namespace URI
-https://w3id.org/defense/{type}/{name}           # Stable module IRI
-https://w3id.org/defense/{type}/{name}/{version} # Version IRI
-```
-
-**Types**: `core`, `domain`, `program`, `project`, `industry`, `vocab`, `shapes`, `align`
-
-## 3. Implementation Phases
-
-### Phase 1: Core Namespace Management (MVP)
-**Timeline**: 2-3 weeks
-**Goal**: Establish basic namespace management with Fuseki as source of truth
-
-#### 3.1.1 Backend Implementation
-
-**Database Schema**:
-```sql
--- Namespace registry
-CREATE TABLE namespace_registry (
-    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-    name VARCHAR(255) NOT NULL,
-    type VARCHAR(50) NOT NULL, -- core, domain, program, project, industry
-    path VARCHAR(500) NOT NULL, -- dod/core, usn/core, etc.
-    prefix VARCHAR(100) NOT NULL,
-    status VARCHAR(50) DEFAULT 'draft', -- draft, released, deprecated
-    owners TEXT[], -- email addresses
-    created_at TIMESTAMP DEFAULT NOW(),
-    updated_at TIMESTAMP DEFAULT NOW(),
-    UNIQUE(name, type)
-);
-
--- Version management
-CREATE TABLE namespace_versions (
-    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-    namespace_id UUID REFERENCES namespace_registry(id),
-    version VARCHAR(50) NOT NULL, -- 2025-09-01, v1.0.0
-    version_iri VARCHAR(1000) NOT NULL,
-    status VARCHAR(50) DEFAULT 'draft', -- draft, released, deprecated
-    created_at TIMESTAMP DEFAULT NOW(),
-    released_at TIMESTAMP NULL,
-    UNIQUE(namespace_id, version)
-);
-
--- Class definitions (versioned)
-CREATE TABLE namespace_classes (
-    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-    version_id UUID REFERENCES namespace_versions(id),
-    local_name VARCHAR(255) NOT NULL, -- Class1, AirVehicle
-    label VARCHAR(500) NOT NULL, -- "Air Vehicle", "Mission"
-    iri VARCHAR(1000) NOT NULL, -- Full IRI
-    comment TEXT,
-    created_at TIMESTAMP DEFAULT NOW(),
-    updated_at TIMESTAMP DEFAULT NOW()
-);
-```
-
-**API Endpoints**:
-```python
-# Namespace Management
-POST   /api/admin/namespaces                    # Create namespace
-GET    /api/admin/namespaces                    # List namespaces
-GET    /api/admin/namespaces/{id}               # Get namespace details
-PUT    /api/admin/namespaces/{id}               # Update namespace metadata
-DELETE /api/admin/namespaces/{id}               # Delete namespace
-
-# Version Management
-POST   /api/admin/namespaces/{id}/versions      # Create new version
-GET    /api/admin/namespaces/{id}/versions      # List versions
-GET    /api/admin/namespaces/{id}/versions/{version}  # Get version details
-PUT    /api/admin/namespaces/{id}/versions/{version}  # Update version
-DELETE /api/admin/namespaces/{id}/versions/{version}  # Delete version (if draft)
-
-# Class Management (versioned)
-POST   /api/admin/namespaces/{id}/versions/{version}/classes     # Add class
-GET    /api/admin/namespaces/{id}/versions/{version}/classes     # List classes
-PUT    /api/admin/namespaces/{id}/versions/{version}/classes/{class_id}  # Update class
-DELETE /api/admin/namespaces/{id}/versions/{version}/classes/{class_id}  # Delete class
-
-# Release Management
-POST   /api/admin/namespaces/{id}/versions/{version}/release     # Release version
-GET    /api/admin/namespaces/{id}/versions/{version}/diff        # Compare versions
-```
-
-#### 3.1.2 Frontend Implementation
-
-**Admin Namespace Dashboard**:
-- List all reference ontologies with status indicators
-- Create new namespaces with proper IRI generation
-- Manage namespace metadata and ownership
-- Version management interface
-
-**Class Management Interface**:
-- Add/edit/delete classes with proper naming conventions
-- Real-time Fuseki synchronization
-- IRI preview and validation
-- Label management (updates both frontend and Fuseki)
-
-#### 3.1.3 Import System Overhaul
-- Remove local storage dependency for imports
-- Always fetch from Fuseki API
-- Consistent equivalence counting based on Fuseki data
-- Proper namespace resolution
-
-### Phase 2: Dependency Management and Validation
-**Timeline**: 2-3 weeks
-**Goal**: Enforce namespace hierarchy and prevent circular dependencies
-
-#### 3.2.1 Import Validation
-- Validate import hierarchy rules from namespace MVP spec
-- Block invalid import attempts (e.g., core importing from project)
-- Circular dependency detection
-- Version compatibility checking
-
-#### 3.2.2 Content Validation
-- SHACL validation pipeline
-- Naming convention enforcement (UpperCamelCase for classes)
-- RDF syntax validation
-- Import cycle detection
-
-#### 3.2.3 Quality Gates
-- Pre-release validation checks
-- Automated testing pipeline
-- Release approval workflow
-
-### Phase 3: Advanced Features and Governance
-**Timeline**: 3-4 weeks
-**Goal**: Production-ready namespace management with full governance
-
-#### 3.3.1 Access Control
-- Namespace ownership and permissions
-- Role-based access control (owner, contributor, viewer)
-- Cross-namespace change approval workflows
-
-#### 3.3.2 Publishing and Distribution
-- Automatic Fuseki graph creation on release
-- Static documentation generation
-- API endpoint for namespace discovery
-- Version-specific graph management
-
-#### 3.3.3 Monitoring and Analytics
-- Usage analytics and metrics
-- Health checks and monitoring
-- Dependency impact analysis
-- Change tracking and audit logs
-
-### Phase 4: Migration and Advanced Features
-**Timeline**: 2-3 weeks
-**Goal**: Migrate existing system and add advanced capabilities
-
-#### 3.4.1 Migration Strategy
-- Gradual migration from current system
-- Backward compatibility layer
-- Data migration tools
-- Existing ontology conversion
-
-#### 3.4.2 Advanced Features
-- IRI deprecation and migration tools
-- Emergency rollback procedures
-- Conflict resolution system
-- Multi-tenant namespace isolation
-
-## 4. Critical Gaps Addressed
-
-### 4.1 Import Dependency Management
-**Solution**: Import dependency graph validation with hierarchy enforcement
-**Implementation**: Database triggers and API validation
-**Timeline**: Phase 2
-
-### 4.2 Namespace Registry Validation
-**Solution**: Automated validation of namespace hierarchy rules
-**Implementation**: Validation service with rule engine
-**Timeline**: Phase 2
-
-### 4.3 IRI Stability and Migration
-**Solution**: IRI deprecation workflow with automatic redirects
-**Implementation**: IRI mapping service and migration tools
-**Timeline**: Phase 4
-
-### 4.4 Access Control and Permissions
-**Solution**: Granular namespace-level permissions
-**Implementation**: Role-based access control system
-**Timeline**: Phase 3
-
-### 4.5 Content Validation and Quality Gates
-**Solution**: Automated validation pipeline with SHACL
-**Implementation**: Validation service with CI/CD integration
-**Timeline**: Phase 2
-
-### 4.6 Publishing and Distribution
-**Solution**: Automatic publishing to Fuseki on release
-**Implementation**: Publishing service with graph management
-**Timeline**: Phase 3
-
-### 4.7 Conflict Resolution
-**Solution**: Global namespace prefix registry with conflict detection
-**Implementation**: Prefix registry service with validation
-**Timeline**: Phase 2
-
-### 4.8 Rollback and Recovery
-**Solution**: Point-in-time recovery with data integrity validation
-**Implementation**: Backup and recovery service
-**Timeline**: Phase 4
-
-### 4.9 Monitoring and Observability
-**Solution**: Comprehensive monitoring and analytics
-**Implementation**: Monitoring service with metrics collection
-**Timeline**: Phase 3
-
-### 4.10 Integration with Existing System
-**Solution**: Gradual migration with backward compatibility
-**Implementation**: Migration tools and compatibility layer
-**Timeline**: Phase 4
-
-## 5. Technical Specifications
-
-### 5.1 Versioning Strategy
-- **Date-based versioning**: `2025-09-01`, `2025-09-15`
-- **Stable IRIs**: Never change once released
-- **Deprecation**: Use `owl:deprecated "true"^^xsd:boolean`
-- **Version IRIs**: Dated URIs for specific versions
-
-### 5.2 Naming Conventions
-- **Classes**: `UpperCamelCase` (e.g., `AirVehicle`)
-- **Properties**: `lowerCamelCase` (e.g., `supportsMission`)
-- **Individuals**: `UPPER_SNAKE` or UUID suffixes
-- **No spaces or punctuation** in local names
-
-### 5.3 Import Hierarchy Rules
-- `project` may import `program`, `service`, `domain`, `core`
-- `program` may import `service`, `domain`, `core`
-- `service` may import `core`, `gov`
-- `domain` may import `core`
-- `vocab` should not import OWL modules
-- `shapes`/`align` import whatever they validate/map
-
-### 5.4 Data Flow
-1. **Create**: Admin creates namespace and version
-2. **Edit**: Admin adds/edits classes (draft version)
-3. **Validate**: Automated validation checks
-4. **Release**: Version becomes immutable
-5. **Publish**: Automatic Fuseki graph creation
-6. **Import**: Other ontologies import released versions
-
-## 6. Success Criteria
-
-### 6.1 Phase 1 Success
-- [ ] Fuseki is single source of truth
-- [ ] Admin can create and manage namespaces
-- [ ] Class labels sync between frontend and Fuseki
-- [ ] Import system works with Fuseki data only
-- [ ] Basic versioning is functional
-
-### 6.2 Phase 2 Success
-- [ ] Import hierarchy rules enforced
-- [ ] No circular dependencies possible
-- [ ] SHACL validation working
-- [ ] Naming conventions enforced
-- [ ] Quality gates prevent bad releases
-
-### 6.3 Phase 3 Success
-- [ ] Full access control implemented
-- [ ] Automatic publishing to Fuseki
-- [ ] Monitoring and analytics working
-- [ ] Documentation generation functional
-- [ ] Production-ready governance
-
-### 6.4 Phase 4 Success
-- [ ] Existing system migrated
-- [ ] Advanced features operational
-- [ ] Full backward compatibility
-- [ ] Emergency procedures tested
-- [ ] Multi-tenant support working
-
-## 7. Risk Mitigation
-
-### 7.1 Technical Risks
-- **Data Loss**: Comprehensive backup and recovery procedures
-- **Performance**: Fuseki optimization and caching strategies
-- **Compatibility**: Gradual migration with fallback options
-
-### 7.2 Operational Risks
-- **User Adoption**: Training and documentation
-- **Governance**: Clear policies and procedures
-- **Maintenance**: Automated monitoring and alerting
-
-## 8. Next Steps
-
-### 8.1 Immediate Actions
-1. **Approve implementation plan**
-2. **Set up development environment**
-3. **Create database schema**
-4. **Implement Phase 1 backend APIs**
-
-### 8.2 Phase 1 Deliverables
-1. **Namespace management APIs**
-2. **Admin frontend interface**
-3. **Import system overhaul**
-4. **Basic versioning system**
-
-### 8.3 Success Metrics
-- **Data Consistency**: 100% Fuseki-frontend sync
-- **Import Success**: 100% reference ontology imports working
-- **Admin Productivity**: Namespace creation < 5 minutes
-- **System Reliability**: 99.9% uptime
-
-## 9. Conclusion
-
-This implementation plan addresses the current namespace management gaps in ODRAS while establishing a robust, scalable foundation for defense and industry ontology management. The phased approach ensures minimal disruption while delivering immediate value through Fuseki as the single source of truth.
-
-The plan balances immediate needs (fixing import issues) with long-term goals (comprehensive namespace governance) while following established best practices from the namespace MVP specification.
+# ODRAS Namespace Management Implementation Plan<br>
+<br>
+## Executive Summary<br>
+<br>
+This document outlines the implementation plan for ODRAS namespace management system with versioning, addressing the current local storage vs Fuseki inconsistencies and establishing a robust, scalable namespace architecture for defense and industry ontologies.<br>
+<br>
+## 1. Current State Analysis<br>
+<br>
+### 1.1 Problems Identified<br>
+- **Data Inconsistency**: Local storage and Fuseki contain different class labels<br>
+- **No Namespace Management**: Ad-hoc IRI generation without proper governance<br>
+- **Import System Issues**: Reference ontology imports fail due to data source mismatches<br>
+- **No Versioning**: No version control for ontology evolution<br>
+- **Single Source of Truth Missing**: Fuseki should be authoritative but isn't consistently used<br>
+<br>
+### 1.2 Root Causes<br>
+- Frontend properties panel updates only local storage, not Fuseki<br>
+- Import system uses mixed data sources (local storage + API)<br>
+- No centralized namespace registry<br>
+- No versioning strategy for ontology evolution<br>
+<br>
+## 2. Target Architecture<br>
+<br>
+### 2.1 Core Principles<br>
+1. **Fuseki as Single Source of Truth**: All ontology data originates from and is validated against Fuseki<br>
+2. **Admin-Controlled Namespaces**: Only admins can create and manage reference ontologies<br>
+3. **Versioned Evolution**: All changes tracked through proper versioning<br>
+4. **Hierarchical Governance**: Enforce namespace hierarchy rules from namespace MVP spec<br>
+5. **Quality Gates**: Automated validation before release<br>
+<br>
+### 2.2 Namespace Structure<br>
+```<br>
+https://w3id.org/defense/{type}/{name}#          # Stable namespace URI<br>
+https://w3id.org/defense/{type}/{name}           # Stable module IRI<br>
+https://w3id.org/defense/{type}/{name}/{version} # Version IRI<br>
+```<br>
+<br>
+**Types**: `core`, `domain`, `program`, `project`, `industry`, `vocab`, `shapes`, `align`<br>
+<br>
+## 3. Implementation Phases<br>
+<br>
+### Phase 1: Core Namespace Management (MVP)<br>
+**Timeline**: 2-3 weeks<br>
+**Goal**: Establish basic namespace management with Fuseki as source of truth<br>
+<br>
+#### 3.1.1 Backend Implementation<br>
+<br>
+**Database Schema**:<br>
+```sql<br>
+-- Namespace registry<br>
+CREATE TABLE namespace_registry (<br>
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),<br>
+    name VARCHAR(255) NOT NULL,<br>
+    type VARCHAR(50) NOT NULL, -- core, domain, program, project, industry<br>
+    path VARCHAR(500) NOT NULL, -- dod/core, usn/core, etc.<br>
+    prefix VARCHAR(100) NOT NULL,<br>
+    status VARCHAR(50) DEFAULT 'draft', -- draft, released, deprecated<br>
+    owners TEXT[], -- email addresses<br>
+    created_at TIMESTAMP DEFAULT NOW(),<br>
+    updated_at TIMESTAMP DEFAULT NOW(),<br>
+    UNIQUE(name, type)<br>
+);<br>
+<br>
+-- Version management<br>
+CREATE TABLE namespace_versions (<br>
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),<br>
+    namespace_id UUID REFERENCES namespace_registry(id),<br>
+    version VARCHAR(50) NOT NULL, -- 2025-09-01, v1.0.0<br>
+    version_iri VARCHAR(1000) NOT NULL,<br>
+    status VARCHAR(50) DEFAULT 'draft', -- draft, released, deprecated<br>
+    created_at TIMESTAMP DEFAULT NOW(),<br>
+    released_at TIMESTAMP NULL,<br>
+    UNIQUE(namespace_id, version)<br>
+);<br>
+<br>
+-- Class definitions (versioned)<br>
+CREATE TABLE namespace_classes (<br>
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),<br>
+    version_id UUID REFERENCES namespace_versions(id),<br>
+    local_name VARCHAR(255) NOT NULL, -- Class1, AirVehicle<br>
+    label VARCHAR(500) NOT NULL, -- "Air Vehicle", "Mission"<br>
+    iri VARCHAR(1000) NOT NULL, -- Full IRI<br>
+    comment TEXT,<br>
+    created_at TIMESTAMP DEFAULT NOW(),<br>
+    updated_at TIMESTAMP DEFAULT NOW()<br>
+);<br>
+```<br>
+<br>
+**API Endpoints**:<br>
+```python<br>
+# Namespace Management<br>
+POST   /api/admin/namespaces                    # Create namespace<br>
+GET    /api/admin/namespaces                    # List namespaces<br>
+GET    /api/admin/namespaces/{id}               # Get namespace details<br>
+PUT    /api/admin/namespaces/{id}               # Update namespace metadata<br>
+DELETE /api/admin/namespaces/{id}               # Delete namespace<br>
+<br>
+# Version Management<br>
+POST   /api/admin/namespaces/{id}/versions      # Create new version<br>
+GET    /api/admin/namespaces/{id}/versions      # List versions<br>
+GET    /api/admin/namespaces/{id}/versions/{version}  # Get version details<br>
+PUT    /api/admin/namespaces/{id}/versions/{version}  # Update version<br>
+DELETE /api/admin/namespaces/{id}/versions/{version}  # Delete version (if draft)<br>
+<br>
+# Class Management (versioned)<br>
+POST   /api/admin/namespaces/{id}/versions/{version}/classes     # Add class<br>
+GET    /api/admin/namespaces/{id}/versions/{version}/classes     # List classes<br>
+PUT    /api/admin/namespaces/{id}/versions/{version}/classes/{class_id}  # Update class<br>
+DELETE /api/admin/namespaces/{id}/versions/{version}/classes/{class_id}  # Delete class<br>
+<br>
+# Release Management<br>
+POST   /api/admin/namespaces/{id}/versions/{version}/release     # Release version<br>
+GET    /api/admin/namespaces/{id}/versions/{version}/diff        # Compare versions<br>
+```<br>
+<br>
+#### 3.1.2 Frontend Implementation<br>
+<br>
+**Admin Namespace Dashboard**:<br>
+- List all reference ontologies with status indicators<br>
+- Create new namespaces with proper IRI generation<br>
+- Manage namespace metadata and ownership<br>
+- Version management interface<br>
+<br>
+**Class Management Interface**:<br>
+- Add/edit/delete classes with proper naming conventions<br>
+- Real-time Fuseki synchronization<br>
+- IRI preview and validation<br>
+- Label management (updates both frontend and Fuseki)<br>
+<br>
+#### 3.1.3 Import System Overhaul<br>
+- Remove local storage dependency for imports<br>
+- Always fetch from Fuseki API<br>
+- Consistent equivalence counting based on Fuseki data<br>
+- Proper namespace resolution<br>
+<br>
+### Phase 2: Dependency Management and Validation<br>
+**Timeline**: 2-3 weeks<br>
+**Goal**: Enforce namespace hierarchy and prevent circular dependencies<br>
+<br>
+#### 3.2.1 Import Validation<br>
+- Validate import hierarchy rules from namespace MVP spec<br>
+- Block invalid import attempts (e.g., core importing from project)<br>
+- Circular dependency detection<br>
+- Version compatibility checking<br>
+<br>
+#### 3.2.2 Content Validation<br>
+- SHACL validation pipeline<br>
+- Naming convention enforcement (UpperCamelCase for classes)<br>
+- RDF syntax validation<br>
+- Import cycle detection<br>
+<br>
+#### 3.2.3 Quality Gates<br>
+- Pre-release validation checks<br>
+- Automated testing pipeline<br>
+- Release approval workflow<br>
+<br>
+### Phase 3: Advanced Features and Governance<br>
+**Timeline**: 3-4 weeks<br>
+**Goal**: Production-ready namespace management with full governance<br>
+<br>
+#### 3.3.1 Access Control<br>
+- Namespace ownership and permissions<br>
+- Role-based access control (owner, contributor, viewer)<br>
+- Cross-namespace change approval workflows<br>
+<br>
+#### 3.3.2 Publishing and Distribution<br>
+- Automatic Fuseki graph creation on release<br>
+- Static documentation generation<br>
+- API endpoint for namespace discovery<br>
+- Version-specific graph management<br>
+<br>
+#### 3.3.3 Monitoring and Analytics<br>
+- Usage analytics and metrics<br>
+- Health checks and monitoring<br>
+- Dependency impact analysis<br>
+- Change tracking and audit logs<br>
+<br>
+### Phase 4: Migration and Advanced Features<br>
+**Timeline**: 2-3 weeks<br>
+**Goal**: Migrate existing system and add advanced capabilities<br>
+<br>
+#### 3.4.1 Migration Strategy<br>
+- Gradual migration from current system<br>
+- Backward compatibility layer<br>
+- Data migration tools<br>
+- Existing ontology conversion<br>
+<br>
+#### 3.4.2 Advanced Features<br>
+- IRI deprecation and migration tools<br>
+- Emergency rollback procedures<br>
+- Conflict resolution system<br>
+- Multi-tenant namespace isolation<br>
+<br>
+## 4. Critical Gaps Addressed<br>
+<br>
+### 4.1 Import Dependency Management<br>
+**Solution**: Import dependency graph validation with hierarchy enforcement<br>
+**Implementation**: Database triggers and API validation<br>
+**Timeline**: Phase 2<br>
+<br>
+### 4.2 Namespace Registry Validation<br>
+**Solution**: Automated validation of namespace hierarchy rules<br>
+**Implementation**: Validation service with rule engine<br>
+**Timeline**: Phase 2<br>
+<br>
+### 4.3 IRI Stability and Migration<br>
+**Solution**: IRI deprecation workflow with automatic redirects<br>
+**Implementation**: IRI mapping service and migration tools<br>
+**Timeline**: Phase 4<br>
+<br>
+### 4.4 Access Control and Permissions<br>
+**Solution**: Granular namespace-level permissions<br>
+**Implementation**: Role-based access control system<br>
+**Timeline**: Phase 3<br>
+<br>
+### 4.5 Content Validation and Quality Gates<br>
+**Solution**: Automated validation pipeline with SHACL<br>
+**Implementation**: Validation service with CI/CD integration<br>
+**Timeline**: Phase 2<br>
+<br>
+### 4.6 Publishing and Distribution<br>
+**Solution**: Automatic publishing to Fuseki on release<br>
+**Implementation**: Publishing service with graph management<br>
+**Timeline**: Phase 3<br>
+<br>
+### 4.7 Conflict Resolution<br>
+**Solution**: Global namespace prefix registry with conflict detection<br>
+**Implementation**: Prefix registry service with validation<br>
+**Timeline**: Phase 2<br>
+<br>
+### 4.8 Rollback and Recovery<br>
+**Solution**: Point-in-time recovery with data integrity validation<br>
+**Implementation**: Backup and recovery service<br>
+**Timeline**: Phase 4<br>
+<br>
+### 4.9 Monitoring and Observability<br>
+**Solution**: Comprehensive monitoring and analytics<br>
+**Implementation**: Monitoring service with metrics collection<br>
+**Timeline**: Phase 3<br>
+<br>
+### 4.10 Integration with Existing System<br>
+**Solution**: Gradual migration with backward compatibility<br>
+**Implementation**: Migration tools and compatibility layer<br>
+**Timeline**: Phase 4<br>
+<br>
+## 5. Technical Specifications<br>
+<br>
+### 5.1 Versioning Strategy<br>
+- **Date-based versioning**: `2025-09-01`, `2025-09-15`<br>
+- **Stable IRIs**: Never change once released<br>
+- **Deprecation**: Use `owl:deprecated "true"^^xsd:boolean`<br>
+- **Version IRIs**: Dated URIs for specific versions<br>
+<br>
+### 5.2 Naming Conventions<br>
+- **Classes**: `UpperCamelCase` (e.g., `AirVehicle`)<br>
+- **Properties**: `lowerCamelCase` (e.g., `supportsMission`)<br>
+- **Individuals**: `UPPER_SNAKE` or UUID suffixes<br>
+- **No spaces or punctuation** in local names<br>
+<br>
+### 5.3 Import Hierarchy Rules<br>
+- `project` may import `program`, `service`, `domain`, `core`<br>
+- `program` may import `service`, `domain`, `core`<br>
+- `service` may import `core`, `gov`<br>
+- `domain` may import `core`<br>
+- `vocab` should not import OWL modules<br>
+- `shapes`/`align` import whatever they validate/map<br>
+<br>
+### 5.4 Data Flow<br>
+1. **Create**: Admin creates namespace and version<br>
+2. **Edit**: Admin adds/edits classes (draft version)<br>
+3. **Validate**: Automated validation checks<br>
+4. **Release**: Version becomes immutable<br>
+5. **Publish**: Automatic Fuseki graph creation<br>
+6. **Import**: Other ontologies import released versions<br>
+<br>
+## 6. Success Criteria<br>
+<br>
+### 6.1 Phase 1 Success<br>
+- [ ] Fuseki is single source of truth<br>
+- [ ] Admin can create and manage namespaces<br>
+- [ ] Class labels sync between frontend and Fuseki<br>
+- [ ] Import system works with Fuseki data only<br>
+- [ ] Basic versioning is functional<br>
+<br>
+### 6.2 Phase 2 Success<br>
+- [ ] Import hierarchy rules enforced<br>
+- [ ] No circular dependencies possible<br>
+- [ ] SHACL validation working<br>
+- [ ] Naming conventions enforced<br>
+- [ ] Quality gates prevent bad releases<br>
+<br>
+### 6.3 Phase 3 Success<br>
+- [ ] Full access control implemented<br>
+- [ ] Automatic publishing to Fuseki<br>
+- [ ] Monitoring and analytics working<br>
+- [ ] Documentation generation functional<br>
+- [ ] Production-ready governance<br>
+<br>
+### 6.4 Phase 4 Success<br>
+- [ ] Existing system migrated<br>
+- [ ] Advanced features operational<br>
+- [ ] Full backward compatibility<br>
+- [ ] Emergency procedures tested<br>
+- [ ] Multi-tenant support working<br>
+<br>
+## 7. Risk Mitigation<br>
+<br>
+### 7.1 Technical Risks<br>
+- **Data Loss**: Comprehensive backup and recovery procedures<br>
+- **Performance**: Fuseki optimization and caching strategies<br>
+- **Compatibility**: Gradual migration with fallback options<br>
+<br>
+### 7.2 Operational Risks<br>
+- **User Adoption**: Training and documentation<br>
+- **Governance**: Clear policies and procedures<br>
+- **Maintenance**: Automated monitoring and alerting<br>
+<br>
+## 8. Next Steps<br>
+<br>
+### 8.1 Immediate Actions<br>
+1. **Approve implementation plan**<br>
+2. **Set up development environment**<br>
+3. **Create database schema**<br>
+4. **Implement Phase 1 backend APIs**<br>
+<br>
+### 8.2 Phase 1 Deliverables<br>
+1. **Namespace management APIs**<br>
+2. **Admin frontend interface**<br>
+3. **Import system overhaul**<br>
+4. **Basic versioning system**<br>
+<br>
+### 8.3 Success Metrics<br>
+- **Data Consistency**: 100% Fuseki-frontend sync<br>
+- **Import Success**: 100% reference ontology imports working<br>
+- **Admin Productivity**: Namespace creation < 5 minutes<br>
+- **System Reliability**: 99.9% uptime<br>
+<br>
+## 9. Conclusion<br>
+<br>
+This implementation plan addresses the current namespace management gaps in ODRAS while establishing a robust, scalable foundation for defense and industry ontology management. The phased approach ensures minimal disruption while delivering immediate value through Fuseki as the single source of truth.<br>
+<br>
+The plan balances immediate needs (fixing import issues) with long-term goals (comprehensive namespace governance) while following established best practices from the namespace MVP specification.<br>
+<br>
 

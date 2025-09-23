@@ -4,3 +4,4 @@
 ALTER TABLE prefix_registry DROP CONSTRAINT prefix_format_check;
 ALTER TABLE prefix_registry ADD CONSTRAINT prefix_format_check
 CHECK (prefix ~ '^[a-z][a-z0-9]{1,19}$');
+

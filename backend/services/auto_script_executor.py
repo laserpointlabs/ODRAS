@@ -144,3 +144,4 @@ def get_auto_script_executor(settings: Settings = None) -> AutoScriptExecutor:
     if _auto_executor is None:
         _auto_executor = AutoScriptExecutor(settings)
     return _auto_executor
+

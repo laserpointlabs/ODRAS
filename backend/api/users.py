@@ -189,7 +189,7 @@ def update_user(
 
                 cur.execute(
                     f"""
-                    UPDATE public.users 
+                    UPDATE public.users
                     SET {', '.join(update_fields)}
                     WHERE user_id = %s
                     RETURNING user_id, username, display_name, is_admin, is_active, created_at, updated_at
@@ -264,3 +264,4 @@ def activate_user(
     except Exception as e:
         logger.error(f"Error activating user: {e}")
         raise HTTPException(status_code=500, detail="Failed to activate user")
+

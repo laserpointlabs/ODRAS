@@ -451,10 +451,10 @@ async def delete_file(
         # Check for associated knowledge assets before deletion
         from ..services.db import DatabaseService
         from ..services.config import Settings
-        
+
         db = DatabaseService(Settings())
         conn = db._conn()
-        
+
         try:
             with conn.cursor() as cur:
                 # Get knowledge assets for this file
@@ -463,36 +463,36 @@ async def delete_file(
                     FROM knowledge_assets ka
                     WHERE ka.source_file_id = %s
                 """, (file_id,))
-                
+
                 knowledge_assets = cur.fetchall()
-                
+
                 if knowledge_assets and not delete_knowledge_assets:
                     # If user didn't explicitly choose to delete knowledge assets,
                     # apply smart defaults based on asset age
                     from datetime import datetime, timezone, timedelta
                     now = datetime.now(timezone.utc)
-                    
+
                     recent_assets = []
                     old_assets = []
-                    
+
                     for asset in knowledge_assets:
                         asset_age = now - asset[2]  # created_at is index 2
                         if asset_age.days <= 30:
                             recent_assets.append(asset)
                         else:
                             old_assets.append(asset)
-                    
+
                     # Smart default: preserve recent assets, can delete old ones
                     if recent_assets:
                         # File has recent knowledge assets - preserve them by default
                         logger.info(f"File {file_id} has {len(recent_assets)} recent knowledge assets - preserving as orphaned")
-                        
+
                         # Delete file but preserve knowledge assets (they'll become orphaned)
                         success = await storage_service.delete_file(file_id)
-                        
+
                         if success:
                             return {
-                                "success": True, 
+                                "success": True,
                                 "message": f"File deleted, {len(knowledge_assets)} knowledge asset(s) preserved as orphaned",
                                 "orphaned_assets": len(knowledge_assets),
                                 "deletion_strategy": "preserve_knowledge"
@@ -500,16 +500,16 @@ async def delete_file(
                     else:
                         # Only old assets - can delete both
                         logger.info(f"File {file_id} has only old knowledge assets - deleting both file and assets")
-                        
+
                         # Delete knowledge assets first
                         for asset in knowledge_assets:
                             cur.execute("DELETE FROM knowledge_assets WHERE id = %s", (asset[0],))
-                        
+
                         conn.commit()
-                        
+
                         # Then delete file
                         success = await storage_service.delete_file(file_id)
-                        
+
                         if success:
                             return {
                                 "success": True,
@@ -517,20 +517,20 @@ async def delete_file(
                                 "deleted_assets": len(knowledge_assets),
                                 "deletion_strategy": "delete_both"
                             }
-                
+
                 elif delete_knowledge_assets:
                     # User explicitly chose to delete knowledge assets
                     logger.info(f"File {file_id} - user chose to delete {len(knowledge_assets)} knowledge assets")
-                    
+
                     # Delete knowledge assets first
                     for asset in knowledge_assets:
                         cur.execute("DELETE FROM knowledge_assets WHERE id = %s", (asset[0],))
-                    
+
                     conn.commit()
-                    
+
                     # Then delete file
                     success = await storage_service.delete_file(file_id)
-                    
+
                     if success:
                         return {
                             "success": True,
@@ -541,17 +541,17 @@ async def delete_file(
                 else:
                     # No knowledge assets - simple file deletion
                     success = await storage_service.delete_file(file_id)
-                    
+
                     if success:
                         return {
-                            "success": True, 
+                            "success": True,
                             "message": f"File {file_id} deleted successfully",
                             "deletion_strategy": "file_only"
                         }
-                
+
                 # If we get here, deletion failed
                 raise HTTPException(status_code=500, detail="File deletion failed")
-                
+
         finally:
             db._return(conn)
 
@@ -569,16 +569,16 @@ async def check_file_knowledge_assets(
 ):
     """
     Check if a file has associated knowledge assets.
-    
+
     Returns information about knowledge assets that would be affected by file deletion.
     """
     try:
         from ..services.db import DatabaseService
         from ..services.config import Settings
-        
+
         db = DatabaseService(Settings())
         conn = db._conn()
-        
+
         try:
             with conn.cursor() as cur:
                 # Check for knowledge assets linked to this file
@@ -589,10 +589,10 @@ async def check_file_knowledge_assets(
                     WHERE ka.source_file_id = %s
                     ORDER BY ka.created_at DESC
                 """, (file_id,))
-                
+
                 rows = cur.fetchall()
                 assets = []
-                
+
                 for row in rows:
                     asset_dict = dict(zip([desc[0] for desc in cur.description], row))
                     assets.append({
@@ -603,7 +603,7 @@ async def check_file_knowledge_assets(
                         "created_at": asset_dict["created_at"].isoformat() if asset_dict["created_at"] else None,
                         "traceability_status": asset_dict.get("traceability_status", "linked")
                     })
-                
+
                 return {
                     "file_id": file_id,
                     "has_knowledge_assets": len(assets) > 0,
@@ -614,10 +614,10 @@ async def check_file_knowledge_assets(
                         "recommendation": "preserve" if len(assets) > 0 else "delete_both"
                     }
                 }
-                
+
         finally:
             db._return(conn)
-            
+
     except Exception as e:
         logger.error(f"Failed to check knowledge assets for file {file_id}: {e}")
         raise HTTPException(status_code=500, detail=f"Failed to check knowledge assets: {str(e)}")
@@ -687,21 +687,21 @@ async def list_all_files_admin(
 ):
     """
     List ALL files across all projects (Admin only).
-    
+
     This endpoint allows admins to see all files in the system
     regardless of project membership for cleanup and management.
     """
     try:
         logger.info(f"Admin {admin_user.get('user_id')} listing all files")
-        
+
         # Get all files without project filtering
         conn = db._conn()
         try:
             with conn.cursor() as cur:
                 # Get all files with user information
                 cur.execute("""
-                    SELECT f.id as file_id, f.filename, f.content_type, f.file_size as size, 
-                           f.hash_md5, f.hash_sha256, f.storage_path, f.created_at, f.updated_at, 
+                    SELECT f.id as file_id, f.filename, f.content_type, f.file_size as size,
+                           f.hash_md5, f.hash_sha256, f.storage_path, f.created_at, f.updated_at,
                            f.metadata, f.iri, f.created_by, f.project_id,
                            u.username as owner_username, u.display_name as owner_display_name
                     FROM files f
@@ -710,15 +710,15 @@ async def list_all_files_admin(
                     ORDER BY f.created_at DESC
                     LIMIT %s OFFSET %s
                 """, (limit, offset))
-                
+
                 rows = cur.fetchall()
-                
+
                 # Convert to response format
                 files = []
                 for row in rows:
                     row_dict = dict(zip([desc[0] for desc in cur.description], row))
                     metadata = row_dict.get("metadata") or {}
-                    
+
                     # Parse metadata JSON if it's a string
                     if isinstance(metadata, str):
                         import json
@@ -726,7 +726,7 @@ async def list_all_files_admin(
                             metadata = json.loads(metadata)
                         except:
                             metadata = {}
-                    
+
                     file_data = {
                         "file_id": str(row_dict["file_id"]),
                         "filename": row_dict["filename"],
@@ -747,17 +747,17 @@ async def list_all_files_admin(
                         "owner_display_name": row_dict["owner_display_name"]
                     }
                     files.append(file_data)
-                
+
                 return {
                     "success": True,
                     "files": files,  # Return raw dicts instead of Pydantic models to include extra fields
                     "total_count": len(files),
                     "message": f"Retrieved {len(files)} files (Admin view)",
                 }
-                
+
         finally:
             db._return(conn)
-            
+
     except Exception as e:
         logger.error(f"Failed to list all files for admin: {e}")
         raise HTTPException(status_code=500, detail=f"Failed to list files: {str(e)}")
@@ -1021,7 +1021,7 @@ async def process_uploaded_file(
         # Get document type from file metadata/tags, with intelligent fallback
         file_tags = file_metadata.get("tags", {})
         stored_doc_type = file_tags.get("docType")
-        
+
         # If no stored type, detect from filename
         if not stored_doc_type or stored_doc_type == "unknown":
             filename = file_metadata.get("filename", "unknown")
@@ -1227,3 +1227,4 @@ async def update_file_visibility(
     except Exception as e:
         logger.error(f"Failed to update file visibility: {e}")
         raise HTTPException(status_code=500, detail=f"Update failed: {str(e)}")
+

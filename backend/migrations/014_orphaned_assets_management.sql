@@ -2,21 +2,21 @@
 -- Implements hybrid approach for file deletion and knowledge asset preservation
 
 -- Add traceability status column to knowledge assets
-ALTER TABLE knowledge_assets 
-ADD COLUMN IF NOT EXISTS traceability_status VARCHAR(50) DEFAULT 'linked' 
+ALTER TABLE knowledge_assets
+ADD COLUMN IF NOT EXISTS traceability_status VARCHAR(50) DEFAULT 'linked'
 CHECK (traceability_status IN ('linked', 'orphaned', 'archived'));
 
 -- Add orphaned timestamp for tracking
-ALTER TABLE knowledge_assets 
+ALTER TABLE knowledge_assets
 ADD COLUMN IF NOT EXISTS orphaned_at TIMESTAMPTZ;
 
 -- Add orphaned reason for audit trail
-ALTER TABLE knowledge_assets 
+ALTER TABLE knowledge_assets
 ADD COLUMN IF NOT EXISTS orphaned_reason VARCHAR(255);
 
 -- Update existing assets to have 'linked' status
-UPDATE knowledge_assets 
-SET traceability_status = 'linked' 
+UPDATE knowledge_assets
+SET traceability_status = 'linked'
 WHERE traceability_status IS NULL;
 
 -- Create index for efficient orphaned asset queries
@@ -25,12 +25,12 @@ CREATE INDEX IF NOT EXISTS idx_knowledge_orphaned_at ON knowledge_assets(orphane
 
 -- Modify the foreign key constraint to SET NULL instead of CASCADE
 -- First, drop the existing constraint
-ALTER TABLE knowledge_assets 
+ALTER TABLE knowledge_assets
 DROP CONSTRAINT IF EXISTS knowledge_assets_source_file_id_fkey;
 
 -- Add new constraint with SET NULL behavior
-ALTER TABLE knowledge_assets 
-ADD CONSTRAINT knowledge_assets_source_file_id_fkey 
+ALTER TABLE knowledge_assets
+ADD CONSTRAINT knowledge_assets_source_file_id_fkey
 FOREIGN KEY (source_file_id) REFERENCES files(id) ON DELETE SET NULL;
 
 -- Create trigger to mark assets as orphaned when source file is deleted
@@ -61,5 +61,3 @@ COMMENT ON COLUMN knowledge_assets.traceability_status IS 'Tracks relationship t
 COMMENT ON COLUMN knowledge_assets.orphaned_at IS 'Timestamp when asset became orphaned (source file deleted)';
 COMMENT ON COLUMN knowledge_assets.orphaned_reason IS 'Reason why asset became orphaned for audit trail';
 COMMENT ON TRIGGER trigger_mark_orphaned_asset ON knowledge_assets IS 'Automatically marks assets as orphaned when source file is deleted';
-
-

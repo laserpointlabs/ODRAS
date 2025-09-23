@@ -108,8 +108,8 @@ async def store_vector_chunks_in_qdrant(file_id: str, knowledge_asset_id: str):
                     # Insert chunk into PostgreSQL knowledge_chunks table
                     cur.execute(
                         """
-                        INSERT INTO knowledge_chunks 
-                        (id, asset_id, sequence_number, chunk_type, content, 
+                        INSERT INTO knowledge_chunks
+                        (id, asset_id, sequence_number, chunk_type, content,
                          token_count, metadata, embedding_model, qdrant_point_id, created_at)
                         VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, NOW())
                     """,
@@ -207,3 +207,4 @@ def main():
 
 if __name__ == "__main__":
     main()
+

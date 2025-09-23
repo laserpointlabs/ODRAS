@@ -1,0 +1,109 @@
+[15:53:21] INFO: 🚀 Starting complete event capture pipeline test...
+[15:53:21] INFO:    Test Session: test_1758225201
+[15:53:21] INFO:    Log File: logs/event_capture_test_test_1758225201.log
+[15:53:21] INFO: ✅ Authentication successful
+[15:53:21] INFO: 🧪 TEST 1: Creating project and verifying project thread...
+[15:53:22] INFO: ✅ Project created: 3d6b8223-c650-4608-94b2-cb48a22e8248
+[15:53:22] INFO:    Name: Event Pipeline Test test_1758225201
+[15:53:24] INFO: 🔍 Querying Qdrant for project thread with project_id: 3d6b8223-c650-4608-94b2-cb48a22e8248
+[15:53:24] INFO: 🔍 Qdrant response status: 200
+[15:53:24] INFO: 🔍 Found 1 project threads for project 3d6b8223-c650-4608-94b2-cb48a22e8248
+[15:53:24] INFO: 🔍 Using most recent project thread: 773a59c6-16c8-426a-9794-7e6556600d81
+[15:53:24] INFO: 🔍 Last activity: 2025-09-18T15:53:22.424741
+[15:53:24] INFO: ✅ Project thread created: 773a59c6-16c8-426a-9794-7e6556600d81
+[15:53:24] INFO: 🔍 Verifying event: project_creation
+[15:53:24] INFO: 🔍 Querying Qdrant for project thread with project_id: 3d6b8223-c650-4608-94b2-cb48a22e8248
+[15:53:24] INFO: 🔍 Qdrant response status: 200
+[15:53:24] INFO: 🔍 Found 1 project threads for project 3d6b8223-c650-4608-94b2-cb48a22e8248
+[15:53:24] INFO: 🔍 Using most recent project thread: 773a59c6-16c8-426a-9794-7e6556600d81
+[15:53:24] INFO: 🔍 Last activity: 2025-09-18T15:53:22.424741
+[15:53:24] INFO: ✅ PASS: project_creation event found: project_created
+[15:53:24] INFO: 🧪 TEST 2: Creating ontology and verifying capture...
+[15:53:25] INFO: ✅ Ontology created successfully
+[15:53:25] INFO:    Backup ID: 3d52b486-b3b5-4476-9a94-eddbb0f51982
+[15:53:25] INFO:    Triples: 3
+[15:53:27] INFO: 🔍 Verifying event: ontology_creation
+[15:53:27] INFO: 🔍 Querying Qdrant for project thread with project_id: 3d6b8223-c650-4608-94b2-cb48a22e8248
+[15:53:27] INFO: 🔍 Qdrant response status: 200
+[15:53:27] INFO: 🔍 Found 1 project threads for project 3d6b8223-c650-4608-94b2-cb48a22e8248
+[15:53:27] INFO: 🔍 Using most recent project thread: 773a59c6-16c8-426a-9794-7e6556600d81
+[15:53:27] INFO: 🔍 Last activity: 2025-09-18T15:53:24.917060
+[15:53:27] INFO: ✅ PASS: ontology_creation event found: Created new ontology: default
+[15:53:27] INFO: 🧪 TEST 3: Performing semantic operations...
+[15:53:27] INFO: ✅ Classes created: TestClass1, TestClass2
+[15:53:28] INFO: ✅ Added: relationship 'relatedTo', data property 'testName', renamed TestClass1
+[15:53:30] INFO: 🔍 Querying Qdrant for project thread with project_id: 3d6b8223-c650-4608-94b2-cb48a22e8248
+[15:53:30] INFO: 🔍 Qdrant response status: 200
+[15:53:30] INFO: 🔍 Found 1 project threads for project 3d6b8223-c650-4608-94b2-cb48a22e8248
+[15:53:30] INFO: 🔍 Using most recent project thread: 773a59c6-16c8-426a-9794-7e6556600d81
+[15:53:30] INFO: 🔍 Last activity: 2025-09-18T15:53:28.830161
+[15:53:30] INFO: ✅ Captured 3 semantic ontology events
+[15:53:30] INFO:    - Created new ontology: default
+[15:53:30] INFO:    - Updated ontology with semantic changes
+[15:53:30] INFO:    - Updated ontology with semantic changes
+[15:53:30] INFO: 🧪 TEST 3.5: Uploading knowledge files...
+[15:53:30] INFO: 📁 Uploading data/decision_matrix_template.md...
+[15:53:31] INFO: ✅ Uploaded decision_matrix_template.md
+[15:53:31] INFO:    File ID: 7c14d3c9-425e-473a-9a88-048d2a6b9624
+[15:53:31] INFO:    Workflow ID: unknown
+[15:53:32] INFO: 📁 Uploading data/disaster_response_requirements.md...
+[15:53:32] INFO: ✅ Uploaded disaster_response_requirements.md
+[15:53:32] INFO:    File ID: 0e046581-4107-4842-8425-d1a1a0fe0442
+[15:53:32] INFO:    Workflow ID: unknown
+[15:53:33] INFO: 📁 Uploading data/uas_specifications.md...
+[15:53:34] INFO: ✅ Uploaded uas_specifications.md
+[15:53:34] INFO:    File ID: 9b5fd695-0ec7-4dd3-9448-15fa9ddcb685
+[15:53:34] INFO:    Workflow ID: unknown
+[15:53:35] INFO: ⏳ Monitoring Camunda knowledge processing workflows...
+[15:53:35] INFO: 🧹 Cleaning up any hanging knowledge processes...
+[15:53:35] INFO: ✅ Cleaned up 3 hanging processes
+[15:53:38] INFO: ⏳ Waiting for knowledge processing to complete...
+[15:53:38] INFO: ✅ Knowledge processing completed!
+[15:53:38] WARNING: ⚠️  No knowledge assets created yet - may still be processing
+[15:53:38] INFO: 🧪 TEST 5: Testing DAS integration with complete project context...
+[15:53:38] INFO: 🤖 Asking DAS: What is this project name and id?
+[15:53:39] INFO: ✅ DAS Response (high): I couldn't find any relevant information in the knowledge base to answer your question. You may want...
+[15:53:40] INFO: 🤖 Asking DAS: What ontologies does this project have?
+[15:53:40] INFO: ✅ DAS Response (high): I couldn't find any relevant information in the knowledge base to answer your question. You may want...
+[15:53:41] INFO: 🤖 Asking DAS: Can you tell me what classes we have in our ontologies?
+[15:53:42] INFO: ✅ DAS Response (low): I couldn't find any relevant information in the knowledge base to answer your question. You may want...
+[15:53:43] INFO: 🤖 Asking DAS: What files are in this project?
+[15:53:44] INFO: ✅ DAS Response (high): I couldn't find any relevant information in the knowledge base to answer your question. You may want...
+[15:53:45] INFO: 🤖 Asking DAS: What are the specifications of the QuadCopter T4?
+[15:53:45] INFO: ✅ DAS Response (low): I couldn't find any relevant information in the knowledge base to answer your question. You may want...
+[15:53:46] INFO: 🤖 Asking DAS: Tell me about the TriVector VTOL platform
+[15:53:47] INFO: ✅ DAS Response (low): I couldn't find any relevant information in the knowledge base to answer your question. You may want...
+[15:53:48] INFO: 🤖 Asking DAS: What did I just ask?
+[15:53:50] INFO: ✅ DAS Response (high): You just asked: "Tell me about the TriVector VTOL platform"...
+[15:53:51] INFO: 🔍 Checking for DAS routing failures...
+[15:53:51] INFO: ⚠️  Note: Check /tmp/odras_app.log for 'DAS routing FAILED' messages
+[15:53:51] INFO: ⚠️  Routing failures indicate events are captured but not reaching project threads
+[15:53:51] INFO: 📋 PROJECT THREAD SUMMARY (Real Qdrant Data):
+[15:53:51] INFO: 🔍 Querying Qdrant for project thread with project_id: 3d6b8223-c650-4608-94b2-cb48a22e8248
+[15:53:51] INFO: 🔍 Qdrant response status: 200
+[15:53:51] INFO: 🔍 Found 1 project threads for project 3d6b8223-c650-4608-94b2-cb48a22e8248
+[15:53:51] INFO: 🔍 Using most recent project thread: 773a59c6-16c8-426a-9794-7e6556600d81
+[15:53:51] INFO: 🔍 Last activity: 2025-09-18T15:53:48.669290
+[15:53:51] INFO:    Project ID: 3d6b8223-c650-4608-94b2-cb48a22e8248
+[15:53:51] INFO:    Thread ID: 773a59c6-16c8-426a-9794-7e6556600d81
+[15:53:51] INFO:    Created: 2025-09-18T15:53:22.242579
+[15:53:51] INFO:    Last Activity: 2025-09-18T15:53:48.669290
+[15:53:51] INFO:    Total Events in Qdrant: 11
+[15:53:51] INFO:    Event breakdown: {'das_command': 2, 'ontology_modified': 3, 'das_question': 6}
+[15:53:51] INFO:    Event 1: [das_command] project_thread_created @ 2025-09-18T15:53:22.337060
+[15:53:51] INFO:    Event 2: [das_command] project_created @ 2025-09-18T15:53:22.424741
+[15:53:51] INFO:    Event 3: [ontology_modified] Created new ontology: default @ 2025-09-18T15:53:24.917060
+[15:53:51] INFO:    Event 4: [ontology_modified] Updated ontology with semantic changes @ 2025-09-18T15:53:27.416537
+[15:53:51] INFO:    Event 5: [ontology_modified] Updated ontology with semantic changes @ 2025-09-18T15:53:28.830161
+[15:53:51] INFO:    Event 6: [das_question] unknown @ 2025-09-18T15:53:39.333373
+[15:53:51] INFO:    Event 7: [das_question] unknown @ 2025-09-18T15:53:40.847115
+[15:53:51] INFO:    Event 8: [das_question] unknown @ 2025-09-18T15:53:42.692326
+[15:53:51] INFO:    Event 9: [das_question] unknown @ 2025-09-18T15:53:44.238999
+[15:53:51] INFO:    Event 10: [das_question] unknown @ 2025-09-18T15:53:45.825739
+[15:53:51] INFO:    Event 11: [das_question] unknown @ 2025-09-18T15:53:47.440772
+[15:53:51] INFO:    Expected events found: ['project_thread_created', 'project_created', 'ontology', 'ontology', 'ontology']
+[15:53:51] INFO: 🎉 ALL TESTS PASSED! Event capture pipeline is working correctly.
+[15:53:51] INFO: 📊 FINAL RESULTS:
+[15:53:51] INFO:    Project ID: 3d6b8223-c650-4608-94b2-cb48a22e8248
+[15:53:51] INFO:    Project Thread ID: 773a59c6-16c8-426a-9794-7e6556600d81
+[15:53:51] INFO:    Log File: logs/event_capture_test_test_1758225201.log

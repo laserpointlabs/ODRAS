@@ -24,8 +24,8 @@ def invalidate_session():
         # Clear all user tokens (this will force re-authentication)
         cur.execute(
             """
-            UPDATE public.users 
-            SET token = NULL, token_expires = NULL 
+            UPDATE public.users
+            SET token = NULL, token_expires = NULL
             WHERE token IS NOT NULL
         """
         )
@@ -51,3 +51,4 @@ def invalidate_session():
 
 if __name__ == "__main__":
     invalidate_session()
+

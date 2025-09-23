@@ -296,7 +296,7 @@ async def get_rag_query_status(
         async with httpx.AsyncClient(timeout=10) as client:
             # Try to get process instance status (active)
             r = await client.get(f"{camunda_rest}/process-instance/{process_instance_id}")
-            
+
             if r.status_code == 404:
                 # Process not found in active instances, try history
                 r = await client.get(f"{camunda_rest}/history/process-instance/{process_instance_id}")
@@ -326,11 +326,11 @@ async def get_rag_query_status(
                         var_name = var["name"]
                         var_value = var["value"]
                         var_type = var.get("type", "String")
-                        
+
                         # DEBUG: Show raw Camunda data for key variables
                         if var_name in ["sources", "chunks_found"]:
                             print(f"CAMUNDA RAW: {var_name} = {var_value} (type: {var_type})")
-                        
+
                         # Handle different Camunda variable types correctly
                         if var_type == "Json" and isinstance(var_value, str):
                             # JSON variables are stored as strings in history
@@ -347,7 +347,7 @@ async def get_rag_query_status(
                                 var_value = json.loads(var_value)
                             except:
                                 pass
-                        
+
                         variables[var_name] = {"value": var_value, "type": var_type}
                         print(f"WORKFLOWS: Extracted {var_name} = {type(var_value)} ({len(str(var_value))} chars)")
                 else:
@@ -407,10 +407,11 @@ async def get_rag_query_status(
                     print(f"WORKFLOWS RETURN: sources = list with {len(sources_data)} items")
                 else:
                     print(f"WORKFLOWS RETURN: sources = {type(sources_data)}")
-            
+
             return result
 
     except HTTPException:
         raise
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Failed to get RAG query status: {str(e)}")
+

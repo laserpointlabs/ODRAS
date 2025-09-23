@@ -34,10 +34,10 @@ def add_classes_to_ontology(ontology_name, token):
             GRAPH <{graph_iri}> {{
                 <{graph_iri}#Constraint> a <http://www.w3.org/2002/07/owl#Class> .
                 <{graph_iri}#Constraint> <http://www.w3.org/2000/01/rdf-schema#label> "Constraint" .
-                
+
                 <{graph_iri}#Requirement> a <http://www.w3.org/2002/07/owl#Class> .
                 <{graph_iri}#Requirement> <http://www.w3.org/2000/01/rdf-schema#label> "Requirement" .
-                
+
                 <{graph_iri}#Component> a <http://www.w3.org/2002/07/owl#Class> .
                 <{graph_iri}#Component> <http://www.w3.org/2000/01/rdf-schema#label> "Component" .
             }}
@@ -47,10 +47,10 @@ def add_classes_to_ontology(ontology_name, token):
             GRAPH <{graph_iri}> {{
                 <{graph_iri}#Constraint> a <http://www.w3.org/2002/07/owl#Class> .
                 <{graph_iri}#Constraint> <http://www.w3.org/2000/01/rdf-schema#label> "Constraint" .
-                
+
                 <{graph_iri}#Process> a <http://www.w3.org/2002/07/owl#Class> .
                 <{graph_iri}#Process> <http://www.w3.org/2000/01/rdf-schema#label> "Process" .
-                
+
                 <{graph_iri}#Function> a <http://www.w3.org/2002/07/owl#Class> .
                 <{graph_iri}#Function> <http://www.w3.org/2000/01/rdf-schema#label> "Function" .
             }}
@@ -146,3 +146,4 @@ def main():
 
 if __name__ == "__main__":
     main()
+

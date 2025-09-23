@@ -308,3 +308,4 @@ if __name__ == "__main__":
         print(f"🔍 Debug: Check http://localhost:8080 for process details")
 
     sys.exit(0 if success else 1)
+

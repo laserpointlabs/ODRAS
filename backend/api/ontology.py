@@ -109,6 +109,7 @@ async def get_ontology(
 @router.put("/", response_model=OntologyResponse)
 async def update_ontology(
     ontology_data: OntologyUpdate,
+    project_id: Optional[str] = None,
     user_id: str = "api_user",
     manager: OntologyManager = Depends(get_ontology_manager),
 ):
@@ -158,6 +159,57 @@ async def update_ontology(
     except Exception as e:
         logger.error(f"Failed to update ontology: {e}")
         raise HTTPException(status_code=500, detail=f"Failed to update ontology: {str(e)}")
+
+
+@router.post("/", response_model=OntologyResponse)
+async def create_ontology(
+    ontology_data: OntologyUpdate,
+    project_id: Optional[str] = None,
+    user_id: str = "api_user",
+    manager: OntologyManager = Depends(get_ontology_manager),
+):
+    """
+    Create a new ontology from JSON format.
+
+    Args:
+        ontology_data: The complete ontology structure
+        project_id: ID of the project this ontology belongs to
+        user_id: ID of the user creating the ontology
+
+    Returns:
+        Creation operation result
+    """
+    try:
+        # Convert Pydantic model to dict
+        ontology_dict = ontology_data.dict(exclude_none=True)
+
+        # Ensure we have basic structure for new ontology
+        if "metadata" not in ontology_dict:
+            raise HTTPException(status_code=400, detail="Metadata is required for new ontology")
+
+        # Set default empty arrays if not provided
+        ontology_dict.setdefault("classes", [])
+        ontology_dict.setdefault("object_properties", [])
+        ontology_dict.setdefault("datatype_properties", [])
+
+        result = manager.update_ontology_from_json(ontology_dict, user_id)
+
+        if result["success"]:
+            return OntologyResponse(
+                success=True,
+                message=f"Ontology '{ontology_dict['metadata'].get('name', 'Unnamed')}' created successfully",
+                data={
+                    "backup_id": result.get("backup_id"),
+                    "triples_count": result.get("triples_count"),
+                    "project_id": project_id,
+                },
+            )
+        else:
+            raise HTTPException(status_code=400, detail=result["error"])
+
+    except Exception as e:
+        logger.error(f"Failed to create ontology: {e}")
+        raise HTTPException(status_code=500, detail=f"Failed to create ontology: {str(e)}")
 
 
 @router.post("/classes", response_model=OntologyResponse)
