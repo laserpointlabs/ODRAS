@@ -59,8 +59,8 @@ class DatabaseSchemaManager:
     def __init__(self, project_root: Path = None):
         self.project_root = project_root or Path(__file__).parent.parent
         self.migrations_dir = self.project_root / "backend" / "migrations"
-        self.schema_info_file = self.project_root / "database_schema_info.json"
-        self.migration_order_file = self.project_root / "migration_order.txt"
+        self.schema_info_file = self.project_root / "backend" / "database_schema_info.json"
+        self.migration_order_file = self.project_root / "backend" / "migrations" / "migration_order.txt"
 
     def discover_migrations(self) -> List[MigrationFile]:
         """Discover all migration files in the migrations directory"""
@@ -619,4 +619,3 @@ def main():
 
 if __name__ == "__main__":
     main()
-

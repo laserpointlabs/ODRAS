@@ -1,0 +1,157 @@
+# Document History & Cleanup Log
+
+This document tracks all documentation changes, consolidations, and deletions to maintain historical record.
+
+## Document Cleanup - September 23, 2025
+
+**Branch:** `cleanup/repo-cleanup`  
+**Commit:** [Commit hash will be added after commit]  
+**Total Documents Before:** 74  
+**Total Documents After:** 27 (63% reduction)
+**Additional Cleanup:** Moved all top-level .md files to docs/ folder
+
+### 📋 Consolidation Strategy
+
+#### 1. DAS Documentation → `docs/architecture/DAS_COMPREHENSIVE_GUIDE.md`
+**Consolidated from 6 documents:**
+- `DAS_Architecture_and_Implementation_Plan.md`
+- `DAS_Current_Architecture_Documentation.md`
+- `DAS_MVP_Implementation_Summary.md`
+- `DAS_Tomorrow_Goals_Knowledge_and_API_Execution.md`
+- `Digital_Assistance_System_(DAS)_MVP_Specification.md`
+- `Session_Intelligence_and_Event_Capture_for_DAS.md`
+
+#### 2. Testing Documentation → `docs/development/TESTING_GUIDE.md`
+**Consolidated from 5 documents:**
+- `TESTING_AND_VALIDATION_GUIDE.md`
+- `TESTING_ENFORCEMENT_GUIDE.md`
+- `TESTING_ENFORCEMENT_SUMMARY.md`
+- `TESTING_IMPLEMENTATION_SUMMARY.md`
+- `architecture/DATABASE_SCHEMA_TESTING_GUIDE.md`
+
+#### 3. Ontology Workbench → `docs/features/ONTOLOGY_WORKBENCH_GUIDE.md`
+**Consolidated from 4 documents:**
+- `features/ontology_workbench_mvp.md`
+- `features/ontology_workbench_post_mvp.md`
+- `features/ontology-workbench-upgrade-plan.md`
+- `ontology_import_equivalence_system.md`
+
+#### 4. File Management → `docs/features/FILE_MANAGEMENT_GUIDE.md`
+**Consolidated from 3 documents:**
+- `features/file_management_workbench_mvp.md`
+- `features/file_management_status_2024.md`
+- `features/data_manager_workbench_spec.md`
+
+#### 5. Namespace Management → `docs/features/NAMESPACE_MANAGEMENT_GUIDE.md`
+**Consolidated from 5 documents:**
+- `namespace/Namespace_White_Paper.md`
+- `namespace/namespace_mvp.md`
+- `namespace/namespace_implementation_plan.md`
+- `namespace/installation_examples.md`
+- `namespace-organization-uri-design.md`
+
+### 🗑️ Documents Deleted
+
+#### Historical/Planning Documents (Completed Work)
+- `archive/mvp_week2_deliverables.md` - Historical planning document
+- `archive/mvp_week2_executive_summary.md` - Historical planning document
+- `archive/odras_mvp_updates_week2.md` - Historical planning document
+- `archive/todo_morning_next_steps.md` - Outdated todo list
+- `ODRAS_Heilmeier_Catechism.md` - Historical planning document
+- `ODRAS_Heilmeier_Executive_Summary.md` - Historical planning document
+- `project_todos.md` - Outdated project todos
+- `phase2_quick_reference.md` - Outdated phase planning
+- `REFACTORING_SUMMARY.md` - Work completed
+- `REVIEW_INTERFACE_IMPLEMENTATION.md` - Implementation completed
+
+#### Implementation Status Documents (Work Complete)
+- `archive/USER_TASK_IMPLEMENTATION_STATUS.md` - Implementation completed
+- `archive/USER_TASK_INTEGRATION.md` - Implementation completed
+- `archive/DEVELOPMENT_STATUS.md` - Outdated status document
+- `FEATURE_IMPLEMENTATION.md` - Work completed
+
+#### Experimental/Unused Features
+- `ProkOS/ProkOS.md` - Experimental feature not implemented
+- `ProkOS/build_prompt.md` - Experimental feature not implemented
+- `ProkOS/procos_spec.md` - Experimental feature not implemented
+- `ProkOS/why_this_works.md` - Experimental feature not implemented
+- `shacl_discussion.md` - Feature not implemented
+- `shacl_example.md` - Feature not implemented
+
+#### Concept Documents (Superseded by Implementation)
+- `archive/concept_need_reviewed.md` - Concept superseded
+- `archive/concept_needs.md` - Concept superseded
+- `archive/concept_tool_spec.md` - Concept superseded
+
+#### Testing Setup (Superseded by Current Testing)
+- `archive/test_data_setup_guide.md` - Superseded by current test framework
+- `archive/HOW_TO_TEST_CHANGES.md` - Superseded by current testing guide
+
+#### Miscellaneous
+- `archive/LABELS.md` - GitHub labels (not needed in docs)
+- `archive/OLLAMA_GPU_SETUP.md` - Specific setup guide (moved to deployment if needed)
+- `NDIA/meia_spec.md` - Specific client document (can be archived separately)
+
+### 📚 Documents Preserved
+
+#### Core Documentation (Kept as-is)
+- `README.md` - Main project documentation
+- `ROADMAP.md` - Future planning
+- `AUTHENTICATION_SYSTEM.md` - Current system documentation
+- `IRI_SYSTEM_OVERVIEW.md` - Current system documentation
+- `USER_MANAGEMENT_UI.md` - Current system documentation
+
+#### Architecture (Consolidated + Key Docs)
+- `architecture/DAS_COMPREHENSIVE_GUIDE.md` - **NEW CONSOLIDATED**
+- `architecture/DATABASE_SCHEMA_MANAGEMENT_SUMMARY.md` - Current system
+
+#### Deployment
+- `deployment/INSTALLATION_AND_IRI_SETUP.md` - Current deployment guide
+- `deployment/INSTALLATION_SPECIFIC_IRI_CONFIG.md` - Current configuration
+- `deployment/FEDERATED_ACCESS_QUICK_REFERENCE.md` - Current system
+
+#### Development (Consolidated + Key Docs)
+- `development/TESTING_GUIDE.md` - **NEW CONSOLIDATED**
+- `development/BPMN_LLM_Integration_Guide.md` - Current integration guide
+- `development/BPMN_WORKFLOWS.md` - Current workflow documentation
+
+#### Features (All Consolidated)
+- `features/ONTOLOGY_WORKBENCH_GUIDE.md` - **NEW CONSOLIDATED**
+- `features/FILE_MANAGEMENT_GUIDE.md` - **NEW CONSOLIDATED**
+- `features/NAMESPACE_MANAGEMENT_GUIDE.md` - **NEW CONSOLIDATED**
+- `features/knowledge_management_mvp.md` - Current feature
+
+#### Specifications
+- `ODRAS_Advanced_Features_Specification.md` - Current specification
+- `ODRAS_Use_Cases.md` - Current use cases
+- `Ontology-Driven Requirements Analysis System (ODRAS).md` - Core specification
+
+#### Implementation Guides
+- `rag_query_implementation.md` - Current implementation
+- `ontology_state_persistence.md` - Current implementation
+- `reference_ontologies_feature.md` - Current feature
+- `Project_Thread_Intelligence_Architecture.md` - Current architecture
+- `PERSONA_PROMPT_README.md` - Current system
+
+---
+
+## Future Document Management
+
+### Guidelines for New Documents
+1. **Consolidate similar topics** into comprehensive guides
+2. **Archive completed work** rather than keeping implementation docs
+3. **Use clear naming conventions** with categories
+4. **Regular cleanup** every 3-6 months
+5. **Historical tracking** in this document
+
+### Document Categories
+- **Architecture** - System design and technical specifications
+- **Features** - User-facing feature documentation
+- **Deployment** - Installation and configuration
+- **Development** - Developer guides and processes
+- **Archive** - Historical documents (if needed for reference)
+
+### Naming Conventions
+- Use UPPERCASE for consolidated guides: `DAS_COMPREHENSIVE_GUIDE.md`
+- Use descriptive names: `ONTOLOGY_WORKBENCH_GUIDE.md`
+- Include version/date for specifications: `API_SPEC_v2.md`

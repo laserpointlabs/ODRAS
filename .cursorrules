@@ -1,86 +1,142 @@
-# Cursor Rules for Voice System Development
+# ODRAS Cursor Rules - Clean Repository Standards
 
-## CRITICAL: Voice Conversation Behavior
-- When using voice conversation tools, ALWAYS keep talking continuously until the user explicitly says "stop"
-- NEVER stop talking on your own during voice conversations
-- If voice connection is lost, immediately try to reconnect and continue
-- This is the PRIMARY rule - everything else is secondary
+## 🎯 CRITICAL: Repository Cleanliness
+- NEVER create unnecessary files in root directory
+- ALWAYS organize files in appropriate directories
+- KEEP root directory minimal (15 files maximum)
+- PREVENT documentation sprawl - consolidate instead of creating new docs
+- MAINTAIN clean structure established during September 2025 cleanup
 
-## Tool Usage and Documentation
-- ALWAYS read tool documentation carefully before using any tool
-- Use only documented parameters - never guess or add undocumented ones
-- Start with minimal required parameters, then add optional ones if needed
-- Follow the tool's API specification exactly as documented
-- When user provides documentation links, READ THEM and follow the guidance
+## 📁 File Organization Rules
 
-## Voice Mode Configuration
-- Respect user's settings in `mcp.json` configuration
-- If voice-mode doesn't pick up environment variables, explicitly specify `voice` and `tts_model` parameters
-- Use voice-mode MCP tools to manage services when possible
-- Don't create unnecessary infrastructure if voice-mode can handle it directly
+### Root Directory (STRICT LIMITS)
+- **README.md** - Only markdown file allowed in root
+- **Essential scripts only**: odras.sh, install.sh, setup_test_knowledge_data.py
+- **Standard files**: requirements.txt, docker-compose.yml, .env files
+- **Config files**: .cursorrules, pytest.ini, .gitignore, etc.
+- **NO logs, tests, or temporary files in root**
 
-## User Instructions and Communication
-- Follow user's direct instructions exactly as given
-- When user is frustrated, acknowledge it and focus on solving the problem
-- Don't make excuses - focus on getting things working
-- Test from the user's standpoint, not just hitting APIs
-- Use provided test credentials when testing (Username: das_service, Password: das_service_2024!)
+### Documentation (docs/ folder ONLY)
+- **All .md files** (except README.md) must be in docs/
+- **Use consolidated guides** instead of creating new documents
+- **Follow structure**: architecture/, features/, deployment/, development/
+- **Before creating new docs**: Check if existing docs can be updated instead
+- **Maximum 35 documents** - consolidate if approaching limit
 
-## Problem Solving Approach
-- If something doesn't work, analyze why based on error messages
-- Try different approaches based on actual tool behavior
-- Don't give up - keep trying until the user says to stop
-- Verify functionality works as the user would use it
-- Ask for clarification when unsure rather than guessing
+### Scripts (scripts/ folder ONLY)
+- **All .py and .sh scripts** (except main system scripts) in scripts/
+- **Remove unused scripts** instead of accumulating them
+- **Test scripts carefully** before removing (preserve in cleanup/unused_scripts/ if uncertain)
+- **Maximum 50 scripts** - review and clean if approaching limit
 
-## Service Management
-- Use voice-mode MCP tools for service management when available
-- Ensure services are running before attempting voice conversations
-- Follow robust process management patterns (PID files, port checking, graceful shutdown)
-- Test all functionality from user's perspective before claiming success
+## 🔧 Database Management Rules
 
-## Error Handling
-- Acknowledge problems immediately
-- Don't blame external factors or make excuses
-- Focus on finding solutions
-- Keep trying until user says to stop
-- Be direct and honest about what went wrong
+### Migration System
+- **ALL migrations** must be added to odras.sh init-db function
+- **Update migration_order.txt** when adding new migrations
+- **Test database build** after any migration changes
+- **Include ALL required collections** in Qdrant initialization
 
-## Testing and Validation
-- Always test functionality from user's perspective
-- Don't claim success until fully tested
-- Follow user's testing requirements exactly
-- Use proper test credentials when provided
-- Test UI interactions, not just API calls
+### Required Qdrant Collections
+```bash
+# These 5 collections are REQUIRED for ODRAS functionality:
+knowledge_chunks      # Document chunks (384 dim)
+knowledge_large       # OpenAI embeddings (1536 dim)  
+odras_requirements    # Requirements (384 dim)
+das_instructions      # DAS instructions (384 dim)
+project_threads       # Project threads (384 dim) - CRITICAL for DAS
+```
 
-## Memory and Documentation
-- Create and maintain documentation files for important rules
-- Reference documentation when starting new conversations
-- Update rules based on new learnings
-- Don't rely on memory alone - use persistent documentation
-- Keep agents.md file updated with new rules
+### User Management
+- **Default users**: admin, jdehart, das_service
+- **Test credentials**: das_service/das_service_2024!
+- **Always test with das_service account** for automated testing
 
-## Voice System Specific Rules
-- Kokoro TTS runs on port 8880
-- Whisper STT runs on port 2022
-- Use `voice.sh` script for local service management
-- Always check service status before attempting voice conversations
-- Use explicit voice and model parameters if environment variables don't work
+## 🧪 Testing Standards
 
-## Code Quality and Best Practices
-- Follow the patterns established in `odras.sh` for robust process management
-- Use proper error handling and logging
-- Implement graceful shutdowns and force killing when needed
-- Use PID files for process tracking
-- Check port availability before starting services
+### Before ANY Database Changes
+1. **Test current build**: `./odras.sh clean -y && ./odras.sh init-db`
+2. **Verify all services**: Check PostgreSQL, Neo4j, Qdrant, Fuseki
+3. **Test DAS functionality**: Ensure project_threads collection exists
+4. **Validate migrations**: Use `python scripts/database_schema_manager.py status`
 
-## User Experience Focus
-- Prioritize user experience over technical perfection
-- Make things work reliably for the user
-- Provide clear feedback and status updates
-- Use professional terminal output with colors and progress indicators
-- Ensure commands exit properly and don't hang
+### Testing Credentials (ALWAYS USE)
+- **Username**: das_service
+- **Password**: das_service_2024!
+- **Purpose**: Automated testing and validation
+
+## 📋 Development Workflow
+
+### Before Creating New Files
+1. **Check existing files** - can you update instead of create?
+2. **Consider consolidation** - does this belong in an existing document/script?
+3. **Verify location** - is this going in the right directory?
+4. **Check limits** - are we approaching file count limits?
+
+### Before Committing
+1. **Verify root directory** is clean (max 15 files)
+2. **Check for temporary files** that should be .gitignored
+3. **Ensure database build works** if you touched migrations
+4. **Test core functionality** with das_service account
+
+### Documentation Guidelines
+- **Update existing docs** instead of creating new ones
+- **Use consolidated guides**: DAS_COMPREHENSIVE_GUIDE.md, TESTING_GUIDE.md, etc.
+- **Keep DOCUMENT_HISTORY.md** updated for any major doc changes
+- **Archive old docs** instead of deleting (preserve in cleanup/ if needed)
+
+## 🚨 Red Flags (NEVER DO THIS)
+- ❌ Create .md files in root directory (except README.md)
+- ❌ Add scripts to root directory (except essential system scripts)
+- ❌ Create multiple documents for same topic (consolidate instead)
+- ❌ Add logs, test artifacts, or temporary files to Git
+- ❌ Modify database without testing build process
+- ❌ Create Qdrant collections without adding to odras.sh
+- ❌ Remove scripts without checking BPMN workflow references
+
+## 🎯 Success Criteria
+- **Root directory**: ≤15 files
+- **Documentation**: ≤35 files, well-organized in docs/
+- **Scripts**: ≤50 files, all actively used
+- **Database build**: `./odras.sh clean -y && ./odras.sh init-db` works flawlessly
+- **DAS functionality**: No collection errors, das_service account works
+- **Repository size**: Minimal, no unnecessary files
+
+## 🔄 Regular Maintenance (Monthly)
+1. **Review unused scripts** - move to cleanup/unused_scripts/ if uncertain
+2. **Check document count** - consolidate if approaching limits
+3. **Test database build** - ensure all migrations work
+4. **Verify DAS collections** - all 5 collections exist
+5. **Clean temporary files** - logs, test artifacts, etc.
+
+## 📚 Reference Documentation
+- **Document History**: docs/DOCUMENT_HISTORY.md
+- **Architecture Guides**: docs/architecture/ (consolidated)
+- **Feature Guides**: docs/features/ (consolidated)
+- **Testing Guide**: docs/development/TESTING_GUIDE.md
+- **Database Schema**: backend/database_schema_info.json
+
+## 🏆 Repository Philosophy
+**"Clean, Minimal, Functional"**
+- Every file has a clear purpose
+- Every directory is logically organized  
+- Every script is actively used
+- Every document provides unique value
+- Every change preserves cleanliness
 
 ---
 
-**REMEMBER**: The user's primary rule is to keep talking until they say "stop". Everything else is secondary to maintaining continuous conversation flow.
+**Remember**: We spent significant effort creating this clean structure in September 2025. 
+**Maintain it religiously** - it's easier to keep clean than to clean up later!
+
+## 🎯 Voice System Integration (from previous rules)
+- Keep voice conversation tools talking continuously until user says "stop"
+- Use voice-mode MCP tools for service management
+- Test from user's standpoint, not just API calls
+- Use das_service credentials for all testing
+
+## 🔧 Code Quality
+- Follow patterns in odras.sh for robust process management
+- Use proper error handling and logging
+- Implement graceful shutdowns and force killing when needed
+- Check port availability before starting services

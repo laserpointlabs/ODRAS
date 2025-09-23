@@ -1,0 +1,237 @@
+{
+  "nodes": [
+    {
+      "data": {
+        "id": "Class1",
+        "label": "Component",
+        "type": "class",
+        "attrs": {
+          "creator": "jdehart",
+          "created_date": "2025-09-22",
+          "created_timestamp": "2025-09-22T15:30:03.539Z",
+          "last_modified_by": "jdehart",
+          "last_modified_date": "2025-09-23",
+          "last_modified_timestamp": "2025-09-23T13:34:53.105Z"
+        }
+      },
+      "position": {
+        "x": 137.9527681310839,
+        "y": 456.7528372626027
+      }
+    },
+    {
+      "data": {
+        "id": "Class2",
+        "label": "Process",
+        "type": "class",
+        "attrs": {
+          "creator": "jdehart",
+          "created_date": "2025-09-22",
+          "created_timestamp": "2025-09-22T15:30:05.356Z",
+          "last_modified_by": "jdehart",
+          "last_modified_date": "2025-09-23",
+          "last_modified_timestamp": "2025-09-23T13:34:53.106Z"
+        }
+      },
+      "position": {
+        "x": 134.45558057762813,
+        "y": 553.552981691182
+      }
+    },
+    {
+      "data": {
+        "id": "Class3",
+        "label": "Reliability Data",
+        "type": "class",
+        "attrs": {
+          "creator": "jdehart",
+          "created_date": "2025-09-22",
+          "created_timestamp": "2025-09-22T15:30:17.495Z",
+          "last_modified_by": "jdehart",
+          "last_modified_date": "2025-09-23",
+          "last_modified_timestamp": "2025-09-23T13:34:53.106Z"
+        }
+      },
+      "position": {
+        "x": 544.6105903729475,
+        "y": 321.65366378134274
+      }
+    },
+    {
+      "data": {
+        "id": "Class4",
+        "label": "Failure Mode",
+        "type": "class",
+        "attrs": {
+          "creator": "jdehart",
+          "created_date": "2025-09-22",
+          "created_timestamp": "2025-09-22T15:30:19.252Z",
+          "last_modified_by": "jdehart",
+          "last_modified_date": "2025-09-23",
+          "last_modified_timestamp": "2025-09-23T13:34:53.107Z"
+        }
+      },
+      "position": {
+        "x": 567.5733756543748,
+        "y": 491.56377446895794
+      }
+    },
+    {
+      "data": {
+        "id": "Class5",
+        "label": "Sustainment Data",
+        "type": "class",
+        "attrs": {
+          "creator": "jdehart",
+          "created_date": "2025-09-22",
+          "created_timestamp": "2025-09-22T15:30:22.808Z",
+          "last_modified_by": "jdehart",
+          "last_modified_date": "2025-09-23",
+          "last_modified_timestamp": "2025-09-23T13:34:53.107Z"
+        }
+      },
+      "position": {
+        "x": 525.1175198969089,
+        "y": 663.5584241892783
+      }
+    },
+    {
+      "data": {
+        "id": "Note1758555161293",
+        "label": "Note 1293",
+        "type": "note",
+        "attrs": {
+          "noteType": "Note",
+          "content": "Simple reliability and sustainment ontology.",
+          "creator": "jdehart",
+          "created_date": "2025-09-22",
+          "created_timestamp": "2025-09-22T15:32:41.293Z",
+          "last_modified_by": "jdehart",
+          "last_modified_date": "2025-09-23",
+          "last_modified_timestamp": "2025-09-23T13:34:53.107Z",
+          "author": "jdehart"
+        }
+      },
+      "position": {
+        "x": 108.69348598935622,
+        "y": 320.9643243618327
+      }
+    }
+  ],
+  "edges": [
+    {
+      "data": {
+        "id": "e1758555058916",
+        "source": "Class1",
+        "target": "Class3",
+        "predicate": "has_reliability_data",
+        "type": "objectProperty",
+        "attrs": {
+          "creator": "jdehart",
+          "created_date": "2025-09-22",
+          "created_timestamp": "2025-09-22T15:30:58.916Z",
+          "last_modified_by": "jdehart",
+          "last_modified_date": "2025-09-22",
+          "last_modified_timestamp": "2025-09-22T15:31:20.828Z",
+          "functional": false,
+          "inverse_functional": false
+        }
+      }
+    },
+    {
+      "data": {
+        "id": "e1758555061468",
+        "source": "Class1",
+        "target": "Class4",
+        "predicate": "has_failure_mode",
+        "type": "objectProperty",
+        "attrs": {
+          "creator": "jdehart",
+          "created_date": "2025-09-22",
+          "created_timestamp": "2025-09-22T15:31:01.468Z",
+          "last_modified_by": "jdehart",
+          "last_modified_date": "2025-09-22",
+          "last_modified_timestamp": "2025-09-22T15:31:43.064Z",
+          "functional": false,
+          "inverse_functional": false
+        }
+      }
+    },
+    {
+      "data": {
+        "id": "e1758555063482",
+        "source": "Class1",
+        "target": "Class5",
+        "predicate": "has_sustainment_data",
+        "type": "objectProperty",
+        "attrs": {
+          "creator": "jdehart",
+          "created_date": "2025-09-22",
+          "created_timestamp": "2025-09-22T15:31:03.482Z",
+          "last_modified_by": "jdehart",
+          "last_modified_date": "2025-09-22",
+          "last_modified_timestamp": "2025-09-22T15:32:09.010Z",
+          "functional": false,
+          "inverse_functional": false
+        }
+      }
+    },
+    {
+      "data": {
+        "id": "e1758555065968",
+        "source": "Class2",
+        "target": "Class3",
+        "predicate": "has_reliability_data",
+        "type": "objectProperty",
+        "attrs": {
+          "creator": "jdehart",
+          "created_date": "2025-09-22",
+          "created_timestamp": "2025-09-22T15:31:05.968Z",
+          "last_modified_by": "jdehart",
+          "last_modified_date": "2025-09-22",
+          "last_modified_timestamp": "2025-09-22T15:31:31.248Z",
+          "functional": false,
+          "inverse_functional": false
+        }
+      }
+    },
+    {
+      "data": {
+        "id": "e1758555067821",
+        "source": "Class2",
+        "target": "Class4",
+        "predicate": "has_failure_mode",
+        "type": "objectProperty",
+        "attrs": {
+          "creator": "jdehart",
+          "created_date": "2025-09-22",
+          "created_timestamp": "2025-09-22T15:31:07.821Z",
+          "last_modified_by": "jdehart",
+          "last_modified_date": "2025-09-22",
+          "last_modified_timestamp": "2025-09-22T15:31:48.287Z",
+          "functional": false,
+          "inverse_functional": false
+        }
+      }
+    },
+    {
+      "data": {
+        "id": "e1758555069656",
+        "source": "Class2",
+        "target": "Class5",
+        "predicate": "has_sustainment_data",
+        "type": "objectProperty",
+        "attrs": {
+          "creator": "jdehart",
+          "created_date": "2025-09-22",
+          "created_timestamp": "2025-09-22T15:31:09.656Z",
+          "last_modified_by": "jdehart",
+          "last_modified_date": "2025-09-22",
+          "last_modified_timestamp": "2025-09-22T15:32:31.096Z",
+          "functional": false,
+          "inverse_functional": false
+        }
+      }
+    }
+  ]
+}
