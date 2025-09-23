@@ -179,3 +179,4 @@ CREATE TRIGGER update_requirements_updated_at BEFORE UPDATE ON public.requiremen
 -- GRANT ALL PRIVILEGES ON ALL TABLES IN SCHEMA public TO your_app_user;
 
 COMMIT;
+

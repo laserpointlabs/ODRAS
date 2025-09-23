@@ -212,19 +212,19 @@ def _create_analysis_prompt(requirement: Dict, iteration: int) -> str:
 
     prompt = f"""
     Analyze the following requirement and extract key information:
-    
+
     Requirement: {requirement['text']}
     Category: {requirement.get('category', 'Unknown')}
     Source: {requirement.get('source_file', 'Unknown')}
     Iteration: {iteration + 1}
-    
+
     Please provide:
     1. Extracted entities (Components, Interfaces, Functions, Processes, Conditions)
     2. Constraints and dependencies
     3. Performance requirements
     4. Quality attributes
     5. Confidence level (0.0-1.0)
-    
+
     Format your response as JSON with the following structure:
     {{
         "extracted_entities": ["entity1", "entity2"],
@@ -378,3 +378,4 @@ def run_main():
 
 if __name__ == "__main__":
     run_main()
+

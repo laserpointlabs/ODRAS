@@ -37,7 +37,7 @@ CREATE TABLE IF NOT EXISTS knowledge_chunks (
   embedding_model VARCHAR(100),
   qdrant_point_id UUID, -- Reference to Qdrant vector
   created_at TIMESTAMPTZ DEFAULT NOW(),
-  
+
   UNIQUE(asset_id, sequence_number)
 );
 
@@ -60,7 +60,7 @@ CREATE TABLE IF NOT EXISTS knowledge_relationships (
   metadata JSONB DEFAULT '{}'::jsonb,
   neo4j_relationship_id BIGINT, -- Reference to Neo4j relationship
   created_at TIMESTAMPTZ DEFAULT NOW(),
-  
+
   UNIQUE(source_asset_id, target_asset_id, relationship_type)
 );
 
@@ -100,8 +100,8 @@ END;
 $$ language 'plpgsql';
 
 -- Trigger for auto-updating updated_at on knowledge_assets
-CREATE TRIGGER update_knowledge_assets_updated_at 
-    BEFORE UPDATE ON knowledge_assets 
+CREATE TRIGGER update_knowledge_assets_updated_at
+    BEFORE UPDATE ON knowledge_assets
     FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
 
 -- Comments for documentation
@@ -119,3 +119,4 @@ COMMENT ON COLUMN knowledge_chunks.token_count IS 'Number of tokens in the chunk
 
 COMMENT ON COLUMN knowledge_relationships.neo4j_relationship_id IS 'Reference to relationship ID in Neo4j graph';
 COMMENT ON COLUMN knowledge_relationships.confidence_score IS 'AI confidence score for relationship extraction (0.0-1.0)';
+

@@ -1,0 +1,86 @@
+# Cursor Rules for Voice System Development
+
+## CRITICAL: Voice Conversation Behavior
+- When using voice conversation tools, ALWAYS keep talking continuously until the user explicitly says "stop"
+- NEVER stop talking on your own during voice conversations
+- If voice connection is lost, immediately try to reconnect and continue
+- This is the PRIMARY rule - everything else is secondary
+
+## Tool Usage and Documentation
+- ALWAYS read tool documentation carefully before using any tool
+- Use only documented parameters - never guess or add undocumented ones
+- Start with minimal required parameters, then add optional ones if needed
+- Follow the tool's API specification exactly as documented
+- When user provides documentation links, READ THEM and follow the guidance
+
+## Voice Mode Configuration
+- Respect user's settings in `mcp.json` configuration
+- If voice-mode doesn't pick up environment variables, explicitly specify `voice` and `tts_model` parameters
+- Use voice-mode MCP tools to manage services when possible
+- Don't create unnecessary infrastructure if voice-mode can handle it directly
+
+## User Instructions and Communication
+- Follow user's direct instructions exactly as given
+- When user is frustrated, acknowledge it and focus on solving the problem
+- Don't make excuses - focus on getting things working
+- Test from the user's standpoint, not just hitting APIs
+- Use provided test credentials when testing (Username: das_service, Password: das_service_2024!)
+
+## Problem Solving Approach
+- If something doesn't work, analyze why based on error messages
+- Try different approaches based on actual tool behavior
+- Don't give up - keep trying until the user says to stop
+- Verify functionality works as the user would use it
+- Ask for clarification when unsure rather than guessing
+
+## Service Management
+- Use voice-mode MCP tools for service management when available
+- Ensure services are running before attempting voice conversations
+- Follow robust process management patterns (PID files, port checking, graceful shutdown)
+- Test all functionality from user's perspective before claiming success
+
+## Error Handling
+- Acknowledge problems immediately
+- Don't blame external factors or make excuses
+- Focus on finding solutions
+- Keep trying until user says to stop
+- Be direct and honest about what went wrong
+
+## Testing and Validation
+- Always test functionality from user's perspective
+- Don't claim success until fully tested
+- Follow user's testing requirements exactly
+- Use proper test credentials when provided
+- Test UI interactions, not just API calls
+
+## Memory and Documentation
+- Create and maintain documentation files for important rules
+- Reference documentation when starting new conversations
+- Update rules based on new learnings
+- Don't rely on memory alone - use persistent documentation
+- Keep agents.md file updated with new rules
+
+## Voice System Specific Rules
+- Kokoro TTS runs on port 8880
+- Whisper STT runs on port 2022
+- Use `voice.sh` script for local service management
+- Always check service status before attempting voice conversations
+- Use explicit voice and model parameters if environment variables don't work
+
+## Code Quality and Best Practices
+- Follow the patterns established in `odras.sh` for robust process management
+- Use proper error handling and logging
+- Implement graceful shutdowns and force killing when needed
+- Use PID files for process tracking
+- Check port availability before starting services
+
+## User Experience Focus
+- Prioritize user experience over technical perfection
+- Make things work reliably for the user
+- Provide clear feedback and status updates
+- Use professional terminal output with colors and progress indicators
+- Ensure commands exit properly and don't hang
+
+---
+
+**REMEMBER**: The user's primary rule is to keep talking until they say "stop". Everything else is secondary to maintaining continuous conversation flow.

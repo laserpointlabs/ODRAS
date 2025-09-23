@@ -14,7 +14,7 @@ try:
     cur.execute(
         """
         SELECT EXISTS (
-            SELECT FROM information_schema.tables 
+            SELECT FROM information_schema.tables
             WHERE table_name = 'namespace_registry'
         );
     """
@@ -45,3 +45,4 @@ try:
 except Exception as e:
     print(f"Error: {e}")
     sys.exit(1)
+

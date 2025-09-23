@@ -67,7 +67,7 @@ REQUIREMENT REQ-001: File Upload Automation
 The system shall automatically process all uploaded files for knowledge extraction
 without requiring manual user intervention.
 
-REQUIREMENT REQ-002: Intelligent Type Detection  
+REQUIREMENT REQ-002: Intelligent Type Detection
 The system shall automatically detect document types based on filename and content
 to apply appropriate processing strategies.
 
@@ -93,7 +93,7 @@ This manual provides guidance on using the ODRAS knowledge management system.
 2. Select your document
 3. File will be automatically processed for knowledge
 
-### Search Procedure  
+### Search Procedure
 1. Use the RAG query interface
 2. Enter your question in natural language
 3. System retrieves relevant knowledge chunks
@@ -245,3 +245,4 @@ if __name__ == "__main__":
         print("\n🚀 AUTOMATED KNOWLEDGE PIPELINE: SUCCESS! 🚀")
     else:
         print("\n❌ AUTOMATED KNOWLEDGE PIPELINE: FAILED")
+

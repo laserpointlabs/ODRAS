@@ -31,7 +31,7 @@ class SessionContext:
     current_workbench: str = "ontology"  # ontology, files, knowledge, etc.
     recent_documents: List[str] = None
     recent_analyses: List[str] = None
-    
+
     def __post_init__(self):
         if self.start_time is None:
             self.start_time = datetime.now()
@@ -47,14 +47,14 @@ class SessionContext:
         data = asdict(self)
         data['start_time'] = self.start_time.isoformat()
         data['last_activity'] = self.last_activity.isoformat()
-        
+
         # Convert None values to empty strings for Redis compatibility
         for key, value in data.items():
             if value is None:
                 data[key] = ""
             elif isinstance(value, list) and not value:
                 data[key] = "[]"
-        
+
         return data
 
     @classmethod
@@ -72,7 +72,7 @@ class SessionContext:
                     converted_data[key] = []
             else:
                 converted_data[key] = value
-        
+
         converted_data['start_time'] = datetime.fromisoformat(converted_data['start_time'])
         converted_data['last_activity'] = datetime.fromisoformat(converted_data['last_activity'])
         return cls(**converted_data)
@@ -118,14 +118,14 @@ class SessionManager:
         self.redis = redis_client
         self.event_queue = "session_events"
         self.session_prefix = "session"
-        
+
     async def create_session(self, user_id: str, project_id: Optional[str] = None) -> SessionContext:
         """
         Create a new session when user logs in
         """
         try:
             session_id = str(uuid.uuid4())
-            
+
             # Create session context
             session_context = SessionContext(
                 session_id=session_id,
@@ -134,10 +134,10 @@ class SessionManager:
                 start_time=datetime.now(),
                 last_activity=datetime.now()
             )
-            
+
             # Store session in Redis
             await self._store_session_context(session_context)
-            
+
             # Log session creation event
             await self.capture_event(
                 session_id=session_id,
@@ -148,10 +148,10 @@ class SessionManager:
                     "login_time": datetime.now().isoformat()
                 }
             )
-            
+
             logger.info(f"Created session {session_id} for user {user_id}")
             return session_context
-            
+
         except Exception as e:
             logger.error(f"Failed to create session for user {user_id}: {e}")
             raise
@@ -179,27 +179,27 @@ class SessionManager:
             if not session_context:
                 logger.warning(f"Session {session_id} not found for context update")
                 return False
-            
+
             # Update fields
             for key, value in updates.items():
                 if hasattr(session_context, key):
                     setattr(session_context, key, value)
-            
+
             session_context.last_activity = datetime.now()
-            
+
             # Store updated context
             await self._store_session_context(session_context)
-            
+
             # Log context update event
             await self.capture_event(
                 session_id=session_id,
                 event_type="context_update",
                 event_data=updates
             )
-            
+
             logger.info(f"Updated session context for {session_id}: {updates}")
             return True
-            
+
         except Exception as e:
             logger.error(f"Failed to update session context for {session_id}: {e}")
             return False
@@ -212,7 +212,7 @@ class SessionManager:
             # Get current session context for snapshot
             session_context = await self.get_session_context(session_id)
             context_snapshot = session_context.to_dict() if session_context else {}
-            
+
             # Create event
             event = SessionEvent(
                 event_id=str(uuid.uuid4()),
@@ -223,21 +223,21 @@ class SessionManager:
                 event_data=event_data,
                 context_snapshot=context_snapshot
             )
-            
+
             # Add to Redis queue for processing
             await self.redis.lpush(self.event_queue, json.dumps(event.to_dict()))
-            
+
             # Also publish for real-time DAS monitoring
             await self.redis.publish(f"das_watch:{session_id}", json.dumps(event.to_dict()))
-            
+
             # Update session last activity
             if session_context:
                 session_context.last_activity = datetime.now()
                 await self._store_session_context(session_context)
-            
+
             logger.debug(f"Captured event {event_type} for session {session_id}")
             return True
-            
+
         except Exception as e:
             logger.error(f"Failed to capture event {event_type} for session {session_id}: {e}")
             return False
@@ -261,7 +261,7 @@ class SessionManager:
             event_data_list = await self.redis.lrange(
                 f"{self.session_prefix}:{session_id}:events", 0, limit - 1
             )
-            
+
             events = []
             for event_data in event_data_list:
                 try:
@@ -269,9 +269,9 @@ class SessionManager:
                     events.append(SessionEvent.from_dict(event_dict))
                 except json.JSONDecodeError:
                     logger.warning(f"Failed to parse event data: {event_data}")
-            
+
             return events
-            
+
         except Exception as e:
             logger.error(f"Failed to get session events for {session_id}: {e}")
             return []
@@ -290,15 +290,15 @@ class SessionManager:
                     "duration": await self._calculate_session_duration(session_id)
                 }
             )
-            
+
             # Keep session data for analysis but mark as ended
             session_context = await self.get_session_context(session_id)
             if session_context:
                 await self.update_session_context(session_id, {"session_ended": True})
-            
+
             logger.info(f"Ended session {session_id}")
             return True
-            
+
         except Exception as e:
             logger.error(f"Failed to end session {session_id}: {e}")
             return False
@@ -372,10 +372,10 @@ class SessionManager:
         return success
 
     async def capture_document_upload(
-        self, 
-        session_id: str, 
-        document_id: str, 
-        filename: str, 
+        self,
+        session_id: str,
+        document_id: str,
+        filename: str,
         document_type: str = None,
         file_size: int = None
     ) -> bool:
@@ -395,9 +395,9 @@ class SessionManager:
         )
 
     async def capture_ontology_modification(
-        self, 
-        session_id: str, 
-        ontology_id: str, 
+        self,
+        session_id: str,
+        ontology_id: str,
         modification_type: str,
         details: Dict[str, Any] = None
     ) -> bool:
@@ -416,8 +416,8 @@ class SessionManager:
         )
 
     async def capture_analysis_started(
-        self, 
-        session_id: str, 
+        self,
+        session_id: str,
         analysis_type: str,
         target_id: str,
         target_type: str = "document"
@@ -437,8 +437,8 @@ class SessionManager:
         )
 
     async def capture_analysis_completed(
-        self, 
-        session_id: str, 
+        self,
+        session_id: str,
         analysis_type: str,
         target_id: str,
         results_summary: Dict[str, Any] = None
@@ -458,8 +458,8 @@ class SessionManager:
         )
 
     async def capture_das_interaction(
-        self, 
-        session_id: str, 
+        self,
+        session_id: str,
         interaction_type: str,
         user_input: str,
         das_response: str = None,
@@ -519,7 +519,7 @@ class SessionManager:
         """
         try:
             events = await self.get_session_events(session_id, limit)
-            
+
             # Categorize events
             activity_summary = {
                 "total_events": len(events),
@@ -529,7 +529,7 @@ class SessionManager:
                 "current_focus": None,
                 "activity_pattern": []
             }
-            
+
             for event in events:
                 if event.event_type == "document_uploaded":
                     activity_summary["recent_documents"].append({
@@ -537,26 +537,26 @@ class SessionManager:
                         "filename": event.event_data.get("filename"),
                         "upload_time": event.timestamp.isoformat()
                     })
-                
+
                 elif event.event_type == "ontology_selected":
                     activity_summary["recent_ontologies"].append({
                         "ontology_id": event.event_data.get("ontology_id"),
                         "ontology_name": event.event_data.get("ontology_name"),
                         "selection_time": event.timestamp.isoformat()
                     })
-                
+
                 elif event.event_type == "analysis_started":
                     activity_summary["recent_analyses"].append({
                         "analysis_type": event.event_data.get("analysis_type"),
                         "target_id": event.event_data.get("target_id"),
                         "start_time": event.timestamp.isoformat()
                     })
-                
+
                 activity_summary["activity_pattern"].append({
                     "event_type": event.event_type,
                     "timestamp": event.timestamp.isoformat()
                 })
-            
+
             # Determine current focus based on recent activity
             if activity_summary["recent_analyses"]:
                 activity_summary["current_focus"] = "analysis"
@@ -566,9 +566,9 @@ class SessionManager:
                 activity_summary["current_focus"] = "document_processing"
             else:
                 activity_summary["current_focus"] = "exploration"
-            
+
             return activity_summary
-            
+
         except Exception as e:
             logger.error(f"Failed to get activity summary for {session_id}: {e}")
             return {"error": str(e), "total_events": 0}
@@ -589,20 +589,20 @@ class SessionEventProcessor:
         Start processing session events from Redis queue
         """
         logger.info("Starting session event processor...")
-        
+
         while True:
             try:
                 # Blocking pop from queue (waits for events)
                 event_data = await self.redis.brpop(self.event_queue, timeout=1)
-                
+
                 if event_data:
                     event_json = event_data[1]
                     event_dict = json.loads(event_json)
                     event = SessionEvent.from_dict(event_dict)
-                    
+
                     # Process the event
                     await self._process_event(event)
-                    
+
             except Exception as e:
                 logger.error(f"Error processing session event: {e}")
                 await asyncio.sleep(1)
@@ -617,18 +617,18 @@ class SessionEventProcessor:
                 f"session:{event.session_id}:events",
                 json.dumps(event.to_dict())
             )
-            
+
             # Keep only last 100 events per session
             await self.redis.ltrim(f"session:{event.session_id}:events", 0, 99)
-            
+
             # Update session context based on event
             await self._update_context_from_event(event)
-            
+
             # Check for DAS intervention opportunities
             await self._check_das_opportunities(event)
-            
+
             logger.debug(f"Processed event {event.event_type} for session {event.session_id}")
-            
+
         except Exception as e:
             logger.error(f"Failed to process event {event.event_id}: {e}")
 
@@ -637,16 +637,16 @@ class SessionEventProcessor:
         Update session context based on event type
         """
         updates = {}
-        
+
         if event.event_type == "ontology_selected":
             updates["active_ontology"] = event.event_data.get("ontology_id")
-            
+
         elif event.event_type == "project_selected":
             updates["project_id"] = event.event_data.get("project_id")
-            
+
         elif event.event_type == "workbench_changed":
             updates["current_workbench"] = event.event_data.get("workbench")
-            
+
         elif event.event_type == "document_uploaded":
             # Add to recent documents list
             session_context = await self.session_manager.get_session_context(event.session_id)
@@ -654,7 +654,7 @@ class SessionEventProcessor:
                 recent_docs = session_context.recent_documents or []
                 recent_docs.insert(0, event.event_data.get("document_id"))
                 updates["recent_documents"] = recent_docs[:10]  # Keep last 10
-        
+
         if updates:
             await self.session_manager.update_session_context(event.session_id, updates)
 
@@ -664,21 +664,21 @@ class SessionEventProcessor:
         """
         # Simple rules for when DAS should speak up
         opportunities = []
-        
+
         if event.event_type == "document_uploaded":
             opportunities.append({
                 "type": "document_analysis_offer",
                 "message": "I can analyze that document and extract key requirements if you'd like.",
                 "confidence": 0.8
             })
-            
+
         elif event.event_type == "ontology_created":
             opportunities.append({
-                "type": "ontology_population_offer", 
+                "type": "ontology_population_offer",
                 "message": "I can help populate your ontology with standard classes and relationships.",
                 "confidence": 0.9
             })
-            
+
         elif event.event_type == "multiple_classes_created":
             if event.event_data.get("count", 0) >= 3:
                 opportunities.append({
@@ -686,7 +686,7 @@ class SessionEventProcessor:
                     "message": "I notice you've created several classes. Should I help establish relationships between them?",
                     "confidence": 0.7
                 })
-        
+
         # Store opportunities for DAS to present
         for opportunity in opportunities:
             await self.redis.lpush(
@@ -702,31 +702,32 @@ COMMON_EVENT_TYPES = {
     "session_start": "User logged in and started session",
     "session_end": "User ended session",
     "session_goals_set": "User provided session goals",
-    
+
     # Navigation and context
     "project_selected": "User selected a project",
-    "ontology_selected": "User selected an ontology to work with", 
+    "ontology_selected": "User selected an ontology to work with",
     "workbench_changed": "User switched to different workbench",
-    
+
     # Document operations
     "document_uploaded": "User uploaded a document",
     "document_analyzed": "User ran analysis on a document",
     "document_downloaded": "User downloaded a document",
-    
+
     # Ontology operations
     "ontology_created": "User created a new ontology",
     "class_created": "User created an ontology class",
     "relationship_created": "User created a relationship",
     "ontology_modified": "User modified ontology structure",
-    
+
     # Analysis operations
     "analysis_started": "User started an analysis workflow",
     "analysis_completed": "Analysis workflow completed",
     "query_executed": "User executed a query",
-    
+
     # DAS interactions
     "das_question": "User asked DAS a question",
     "das_command": "User gave DAS a command to execute",
     "das_suggestion_accepted": "User accepted a DAS suggestion",
     "das_autonomous_action": "DAS executed an autonomous action"
 }
+

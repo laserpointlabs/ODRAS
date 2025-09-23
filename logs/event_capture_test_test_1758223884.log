@@ -1,0 +1,60 @@
+[15:31:24] INFO: 🚀 Starting complete event capture pipeline test...
+[15:31:24] INFO:    Test Session: test_1758223884
+[15:31:24] INFO:    Log File: logs/event_capture_test_test_1758223884.log
+[15:31:24] INFO: ✅ Authentication successful
+[15:31:24] INFO: 🧪 TEST 1: Creating project and verifying project thread...
+[15:31:25] INFO: ✅ Project created: e4127ae1-3861-4936-871e-6d6ea616a879
+[15:31:25] INFO:    Name: Event Pipeline Test test_1758223884
+[15:31:27] INFO: 🔍 Querying Qdrant for project thread with project_id: e4127ae1-3861-4936-871e-6d6ea616a879
+[15:31:27] INFO: 🔍 Qdrant response status: 200
+[15:31:27] INFO: 🔍 Found 1 project threads for project e4127ae1-3861-4936-871e-6d6ea616a879
+[15:31:27] INFO: 🔍 Using most recent project thread: 52d7e52e-a99b-408f-97b4-11c17b43163a
+[15:31:27] INFO: 🔍 Last activity: 2025-09-18T15:31:25.452900
+[15:31:27] INFO: ✅ Project thread created: 52d7e52e-a99b-408f-97b4-11c17b43163a
+[15:31:27] INFO: 🔍 Verifying event: project_creation
+[15:31:27] INFO: 🔍 Querying Qdrant for project thread with project_id: e4127ae1-3861-4936-871e-6d6ea616a879
+[15:31:27] INFO: 🔍 Qdrant response status: 200
+[15:31:27] INFO: 🔍 Found 1 project threads for project e4127ae1-3861-4936-871e-6d6ea616a879
+[15:31:27] INFO: 🔍 Using most recent project thread: 52d7e52e-a99b-408f-97b4-11c17b43163a
+[15:31:27] INFO: 🔍 Last activity: 2025-09-18T15:31:25.452900
+[15:31:27] INFO: ✅ PASS: project_creation event found: project_created
+[15:31:27] INFO: 🧪 TEST 2: Creating ontology and verifying capture...
+[15:31:28] INFO: ✅ Ontology created successfully
+[15:31:28] INFO:    Backup ID: 73c9b6e2-7c36-4800-9da9-1dd7b7969189
+[15:31:28] INFO:    Triples: 3
+[15:31:30] INFO: 🔍 Verifying event: ontology_creation
+[15:31:30] INFO: 🔍 Querying Qdrant for project thread with project_id: e4127ae1-3861-4936-871e-6d6ea616a879
+[15:31:30] INFO: 🔍 Qdrant response status: 200
+[15:31:30] INFO: 🔍 Found 1 project threads for project e4127ae1-3861-4936-871e-6d6ea616a879
+[15:31:30] INFO: 🔍 Using most recent project thread: 52d7e52e-a99b-408f-97b4-11c17b43163a
+[15:31:30] INFO: 🔍 Last activity: 2025-09-18T15:31:28.072581
+[15:31:30] INFO: ✅ PASS: ontology_creation event found: Created new ontology: default
+[15:31:30] INFO: 🧪 TEST 3: Performing semantic operations...
+[15:31:30] INFO: ✅ Classes created: TestClass1, TestClass2
+[15:31:32] INFO: ✅ Added: relationship 'relatedTo', data property 'testName', renamed TestClass1
+[15:31:34] INFO: 🔍 Querying Qdrant for project thread with project_id: e4127ae1-3861-4936-871e-6d6ea616a879
+[15:31:34] INFO: 🔍 Qdrant response status: 200
+[15:31:34] INFO: 🔍 Found 1 project threads for project e4127ae1-3861-4936-871e-6d6ea616a879
+[15:31:34] INFO: 🔍 Using most recent project thread: 52d7e52e-a99b-408f-97b4-11c17b43163a
+[15:31:34] INFO: 🔍 Last activity: 2025-09-18T15:31:31.930870
+[15:31:34] INFO: ✅ Captured 3 semantic ontology events
+[15:31:34] INFO:    - Created new ontology: default
+[15:31:34] INFO:    - Updated ontology with semantic changes
+[15:31:34] INFO:    - Updated ontology with semantic changes
+[15:31:34] INFO: 🧪 TEST 3.5: Uploading knowledge files...
+[15:31:34] INFO: 📁 Uploading data/decision_matrix_template.md...
+[15:31:34] INFO: ✅ Uploaded decision_matrix_template.md - File ID: 18166f40-c778-4f30-ab10-3c436c357e4c
+[15:31:36] INFO: 📁 Uploading data/disaster_response_requirements.md...
+[15:31:37] INFO: ✅ Uploaded disaster_response_requirements.md - File ID: db259ccd-8102-4b16-86e1-0a822344413a
+[15:31:39] INFO: 📁 Uploading data/uas_specifications.md...
+[15:31:39] INFO: ✅ Uploaded uas_specifications.md - File ID: 69a3666e-d8b5-479e-b0a1-e46822a8cc85
+[15:31:41] INFO: ⏳ Monitoring Camunda knowledge processing workflows...
+[15:31:41] INFO: 🔍 Monitoring Camunda for active knowledge processing workflows...
+[15:31:41] INFO: ✅ No active knowledge processing workflows - processing complete!
+[15:31:41] INFO: ❌ Knowledge search failed for 'QuadCopter T4': 422
+[15:31:41] INFO: ❌ Knowledge search failed for 'TriVector VTOL': 422
+[15:31:41] INFO: ❌ Knowledge search failed for 'disaster response': 422
+[15:31:41] ERROR: ❌ No knowledge assets found - processing may have failed
+[15:31:41] ERROR: ❌ Knowledge assets not found after processing
+[15:31:41] ERROR: ❌ Knowledge processing failed or timed out
+[15:31:41] ERROR: ❌ Knowledge file upload failed

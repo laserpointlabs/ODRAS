@@ -252,7 +252,7 @@ def logout_all():
         with db.get_cursor() as cursor:
             cursor.execute("DELETE FROM auth_tokens")
             db.commit()
-        
+
         return {"message": "All users logged out successfully", "tokens_cleared": True}
     except Exception as e:
         logger.error(f"Failed to logout all users: {e}")
@@ -284,7 +284,7 @@ def list_projects(state: Optional[str] = None, user=Depends(get_user)):
 
 
 @app.post("/api/projects")
-def create_project(body: Dict, user=Depends(get_user)):
+async def create_project(body: Dict, user=Depends(get_user)):
     name = (body.get("name") or "").strip()
     namespace_id = body.get("namespace_id")
     domain = body.get("domain")
@@ -321,6 +321,41 @@ def create_project(body: Dict, user=Depends(get_user)):
             namespace_id=namespace_id,
             domain=domain,
         )
+
+        # Create project thread immediately with project context using existing DAS system
+        try:
+            from backend.api.das import das_engine
+            from backend.services.project_thread_manager import ProjectEventType
+            if das_engine and das_engine.project_manager:
+                # Create project thread with initial context
+                project_thread = await das_engine.project_manager.get_or_create_project_thread(
+                    project_id=proj["project_id"],
+                    user_id=user["user_id"]
+                )
+
+                # Add initial project context event
+                await das_engine.project_manager.capture_project_event(
+                    project_id=proj["project_id"],
+                    project_thread_id=project_thread.project_thread_id,
+                    user_id=user["user_id"],
+                    event_type=ProjectEventType.DAS_COMMAND,
+                    event_data={
+                        "action": "project_created",
+                        "project_name": name,
+                        "project_description": body.get("description"),
+                        "domain": domain,
+                        "namespace_id": namespace_id,
+                        "created_by": user["username"],
+                        "initial_context": f"Project '{name}' created in domain '{domain}'" +
+                                         (f" with description: {body.get('description')}" if body.get("description") else "")
+                    }
+                )
+
+                logger.info(f"Created project thread {project_thread.project_thread_id} for new project {proj['project_id']}")
+        except Exception as thread_error:
+            logger.warning(f"Could not create project thread: {thread_error}")
+            # Don't fail project creation if thread creation fails
+
         return {"project": proj}
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
@@ -336,7 +371,7 @@ def get_project(project_id: str, user=Depends(get_user)):
                 # Get project with namespace details and creator username
                 cur.execute(
                     """
-                    SELECT p.project_id, p.name, p.description, p.created_at, p.updated_at, 
+                    SELECT p.project_id, p.name, p.description, p.created_at, p.updated_at,
                            p.is_active, p.namespace_id, p.domain, p.created_by,
                            n.path as namespace_path, n.status as namespace_status,
                            u.username as created_by_username
@@ -355,7 +390,7 @@ def get_project(project_id: str, user=Depends(get_user)):
                 if not user.get("is_admin", False):
                     cur.execute(
                         """
-                        SELECT role FROM public.project_members 
+                        SELECT role FROM public.project_members
                         WHERE project_id = %s AND user_id = %s
                     """,
                         (project_id, user["user_id"]),
@@ -383,7 +418,7 @@ def get_project_namespace(project_id: str, user=Depends(get_user)):
                 # Get project with namespace details and creator username
                 cur.execute(
                     """
-                    SELECT p.project_id, p.name, p.description, p.created_at, p.updated_at, 
+                    SELECT p.project_id, p.name, p.description, p.created_at, p.updated_at,
                            p.is_active, p.namespace_id, p.domain, p.created_by,
                            n.path as namespace_path, n.status as namespace_status,
                            u.username as created_by_username
@@ -402,7 +437,7 @@ def get_project_namespace(project_id: str, user=Depends(get_user)):
                 if not user.get("is_admin", False):
                     cur.execute(
                         """
-                        SELECT role FROM public.project_members 
+                        SELECT role FROM public.project_members
                         WHERE project_id = %s AND user_id = %s
                     """,
                         (project_id, user["user_id"]),
@@ -437,7 +472,7 @@ def update_project(project_id: str, body: Dict, user=Depends(get_user)):
                 with conn.cursor() as cur:
                     cur.execute(
                         """
-                        SELECT role FROM public.project_members 
+                        SELECT role FROM public.project_members
                         WHERE project_id = %s AND user_id = %s
                     """,
                         (project_id, user["user_id"]),
@@ -473,7 +508,7 @@ def update_project(project_id: str, body: Dict, user=Depends(get_user)):
 
 
 @app.delete("/api/projects/{project_id}")
-def delete_project(project_id: str, user=Depends(get_user)):
+async def delete_project(project_id: str, user=Depends(get_user)):
     """Hard delete a project and memberships. Does NOT delete external artifacts.
 
     For now, we perform a hard delete from the DB (projects, memberships). Artifacts like ontologies are not deleted;
@@ -489,14 +524,77 @@ def delete_project(project_id: str, user=Depends(get_user)):
         conn = db._conn()
         try:
             with conn.cursor() as cur:
+                # Delete in order to respect foreign key constraints
+                # 1. Delete project members
                 cur.execute(
                     "DELETE FROM public.project_members WHERE project_id = %s",
                     (project_id,),
                 )
+
+                # 2. Delete knowledge assets (will cascade to chunks, relationships, jobs)
+                cur.execute(
+                    "DELETE FROM public.knowledge_assets WHERE project_id = %s",
+                    (project_id,),
+                )
+
+                # 3. Delete files associated with the project
+                cur.execute(
+                    "DELETE FROM public.files WHERE project_id = %s",
+                    (project_id,),
+                )
+
+                # 4. Finally delete the project itself
                 cur.execute("DELETE FROM public.projects WHERE project_id = %s", (project_id,))
+
                 conn.commit()
+                logger.info(f"Deleted project {project_id} and all associated data from PostgreSQL")
         finally:
             db._return(conn)
+
+        # Clean up project thread from Redis and vector store
+        try:
+            # Direct cleanup without depending on DAS engine
+            import redis.asyncio as redis
+            from backend.services.config import Settings
+
+            settings = Settings()
+            redis_client = redis.from_url(settings.redis_url)
+
+            # Get project thread ID from Redis index
+            project_thread_id = await redis_client.get(f"project_index:{project_id}")
+            if project_thread_id:
+                project_thread_id = project_thread_id.decode()
+
+                # Delete from Redis
+                await redis_client.delete(f"project_thread:{project_thread_id}")
+                await redis_client.delete(f"project_index:{project_id}")
+
+                # Delete from vector store using correct Qdrant API
+                try:
+                    import httpx
+                    async with httpx.AsyncClient() as client:
+                        response = await client.post(
+                            "http://localhost:6333/collections/project_threads/points/delete",
+                            headers={"Content-Type": "application/json"},
+                            json={"points": [project_thread_id]}
+                        )
+                        if response.status_code == 200:
+                            logger.info(f"Deleted project thread {project_thread_id} from vector store")
+                        else:
+                            logger.warning(f"Vector store deletion response: {response.status_code} {response.text}")
+                except Exception as vector_error:
+                    logger.warning(f"Could not delete from vector store: {vector_error}")
+
+                logger.info(f"Cleaned up project thread {project_thread_id} for deleted project {project_id}")
+            else:
+                logger.info(f"No project thread found for project {project_id}")
+
+            await redis_client.close()
+
+        except Exception as cleanup_error:
+            logger.warning(f"Could not clean up project thread: {cleanup_error}")
+            # Don't fail project deletion if thread cleanup fails
+
         return {"deleted": project_id}
     except HTTPException:
         raise
@@ -543,66 +641,76 @@ def restore_project(project_id: str, user=Depends(get_user)):
 async def on_startup():
     print("🔥 STARTUP EVENT TRIGGERED")
     logger.info("🔥 STARTUP EVENT TRIGGERED")
-    
+
     try:
         print("🔥 Step 1: Loading settings...")
         logger.info("🔥 Step 1: Loading settings...")
         Settings()  # loads env
         print("✅ Settings loaded")
-        
+
         print("🔥 Step 2: Starting DAS initialization...")
         logger.info("🚀 Starting DAS initialization...")
-        
+
         print("🔥 Step 3: Importing services...")
         from backend.api.das import initialize_das_engine
         from backend.services.rag_service import RAGService
         import redis.asyncio as redis
         print("✅ Services imported")
-        
+
         print("🔥 Step 4: Creating service instances...")
         logger.info("📦 Creating service instances...")
         settings = Settings()
         print("✅ Settings instance created")
-        
+
         print("🔥 Step 5: Creating RAG service...")
         rag_service = RAGService(settings)
         print("✅ RAG service created")
-        
+
         print("🔥 Step 6: Connecting to Redis...")
         logger.info("🔗 Connecting to Redis...")
         redis_client = redis.from_url(settings.redis_url if hasattr(settings, 'redis_url') else "redis://localhost:6379")
         print("✅ Redis client created")
-        
+
         print("🔥 Step 7: Initializing DAS...")
         logger.info("🤖 Initializing DAS...")
         await initialize_das_engine(settings, rag_service, db, redis_client)
         print("✅ DAS initialized")
-        
+
         print("🔥 Step 8: Configuring middleware...")
         logger.info("🔧 Configuring middleware...")
         from backend.middleware.session_capture import set_global_redis_client
         set_global_redis_client(redis_client)
-        print("✅ Middleware configured with global Redis client")
-        
+        print("✅ Middleware configured with Redis client")
+
         print("🔥 Step 9: Initializing semantic capture...")
         logger.info("📊 Initializing semantic capture...")
         from backend.services.semantic_event_capture import initialize_semantic_capture
         await initialize_semantic_capture(redis_client)
         print("✅ Semantic capture initialized")
-        
-        print("🔥 Step 10: Starting background processor...")
-        logger.info("⚙️ Starting background processor...")
-        from backend.services.session_thread_processor import start_session_thread_processor
-        from backend.api.das_simple import session_thread_service
-        if session_thread_service:
-            await start_session_thread_processor(settings, redis_client, session_thread_service)
-            print("✅ Background processor started")
-        else:
-            print("⚠️ session_thread_service not available")
-        
+
+        print("🔥 Step 10: Setting up middleware-to-DAS event routing...")
+        logger.info("🔗 Configuring middleware to route events to existing ProjectThreadManager...")
+        try:
+            # Configure middleware to route events directly to DAS
+            from backend.services.middleware_to_das_bridge import MiddlewareToDASBridge
+            global middleware_bridge
+            middleware_bridge = MiddlewareToDASBridge(redis_client)
+            print(f"✅ Middleware-to-DAS bridge configured")
+
+            # Store bridge instance globally for middleware access
+            import backend.middleware.session_capture as session_middleware
+            session_middleware.das_bridge = middleware_bridge
+            print("✅ Bridge connected to middleware")
+
+        except Exception as e:
+            print(f"❌ Error setting up middleware bridge: {e}")
+            logger.error(f"Middleware bridge error: {e}")
+            import traceback
+            traceback.print_exc()
+
         print("🎉 DAS INITIALIZATION COMPLETE!")
         logger.info("✅ DAS initialization complete!")
-        
+
     except Exception as e:
         print(f"💥 STARTUP FAILED: {e}")
         logger.error(f"❌ Failed to initialize DAS engine: {e}")
@@ -1334,18 +1442,18 @@ async def user_review_interface(
     <body>
         <div class="container">
             <h1>ODRAS - Ontology-Driven Requirements Analysis System</h1>
-            
+
             <form id="uploadForm">
                 <div class="form-group">
                     <label for="file">Select Document:</label>
                     <input type="file" id="file" name="file" accept=".txt,.md,.pdf" required>
                 </div>
-                
+
                 <div class="form-group">
                     <label for="iterations">Monte Carlo Iterations:</label>
                     <input type="number" id="iterations" name="iterations" value="10" min="1" max="100">
                 </div>
-                
+
                 <div class="form-group">
                     <label for="llm_provider">LLM Provider:</label>
                     <select id="llm_provider" name="llm_provider">
@@ -1353,42 +1461,42 @@ async def user_review_interface(
                         <option value="ollama">Ollama (Local)</option>
                     </select>
                 </div>
-                
+
                 <div class="form-group">
                     <label for="llm_model">LLM Model:</label>
                     <input type="text" id="llm_model" name="llm_model" value="gpt-4o-mini">
                 </div>
-                
+
                 <button type="submit">Start Analysis</button>
             </form>
-            
+
             <div id="status"></div>
-            
+
             <div id="results" style="display: none;">
                 <h2>Analysis Results</h2>
                 <div id="resultsContent"></div>
             </div>
-            
+
             <div id="userReview" class="hidden">
                 <h2>Requirements Review</h2>
                 <p>Please review the extracted requirements before proceeding to LLM analysis.</p>
-                
+
                 <div id="requirementsGrid" class="requirements-grid"></div>
-                
+
                 <div class="decision-buttons">
                     <h3>Make Your Decision:</h3>
                     <button class="btn-approve" onclick="completeUserTask('approve')">✅ Approve & Continue</button>
                     <button class="btn-edit" onclick="showEditInterface()">✏️ Edit Requirements</button>
                     <button class="btn-rerun" onclick="showRerunInterface()">🔄 Rerun Extraction</button>
                 </div>
-                
+
                 <div id="editInterface" class="hidden">
                     <h3>Edit Requirements</h3>
                     <div id="editForms"></div>
                     <button onclick="saveEdits()">Save Edits</button>
                     <button onclick="cancelEdit()">Cancel</button>
                 </div>
-                
+
                 <div id="rerunInterface" class="hidden">
                     <h3>Rerun Extraction with New Parameters</h3>
                     <div class="form-group">
@@ -1408,39 +1516,39 @@ async def user_review_interface(
                 </div>
             </div>
         </div>
-        
+
         <script>
             let currentProcessId = null;
             let currentRequirements = [];
-            
+
             document.getElementById('uploadForm').addEventListener('submit', async (e) => {
                 e.preventDefault();
-                
+
                 const formData = new FormData();
                 const fileInput = document.getElementById('file');
                 const iterationsInput = document.getElementById('iterations');
                 const llmProviderInput = document.getElementById('llm_provider');
                 const llmModelInput = document.getElementById('llm_model');
-                
+
                 formData.append('file', fileInput.files[0]);
                 formData.append('iterations', iterationsInput.value);
                 formData.append('llm_provider', llmProviderInput.value);
                 formData.append('llm_model', llmModelInput.value);
-                
+
                 const statusDiv = document.getElementById('status');
                 statusDiv.innerHTML = '<div class="status info">Starting analysis...</div>';
-                
+
                 try {
                     const response = await fetch('/api/upload', {
                         method: 'POST',
                         body: formData
                     });
-                    
+
                     if (response.ok) {
                         const result = await response.json();
                         currentProcessId = result.process_id;
                         statusDiv.innerHTML = `<div class="status success">Analysis started! Run ID: ${result.run_id}</div>`;
-                        
+
                         // Show results section
                         document.getElementById('results').style.display = 'block';
                         document.getElementById('resultsContent').innerHTML = `
@@ -1449,7 +1557,7 @@ async def user_review_interface(
                             <p><strong>Process ID:</strong> ${result.process_id}</p>
                             <p><a href="http://localhost:8080/cockpit/default/#/process-instance/${result.process_id}" target="_blank">View in Camunda Cockpit</a></p>
                         `;
-                        
+
                         // Start monitoring for user task
                         setTimeout(() => checkForUserTask(result.process_id), 2000);
                     } else {
@@ -1460,7 +1568,7 @@ async def user_review_interface(
                     statusDiv.innerHTML = `<div class="status error">Error: ${error.message}</div>`;
                 }
             });
-            
+
             async function checkForUserTask(processId) {
                 try {
                     const response = await fetch(`/api/user-tasks/${processId}/status`);
@@ -1479,13 +1587,13 @@ async def user_review_interface(
                 } catch (error) {
                     console.error('Error checking user task status:', error);
                 }
-                
+
                 // Continue monitoring if not complete
                 if (currentProcessId) {
                     setTimeout(() => checkForUserTask(processId), 2000);
                 }
             }
-            
+
             async function loadRequirementsForReview(processId) {
                 try {
                     const response = await fetch(`/api/user-tasks/${processId}/requirements`);
@@ -1498,18 +1606,18 @@ async def user_review_interface(
                     console.error('Error loading requirements:', error);
                 }
             }
-            
+
             function displayRequirements(requirements) {
                 const grid = document.getElementById('requirementsGrid');
                 grid.innerHTML = '';
-                
+
                 requirements.forEach(req => {
                     const card = document.createElement('div');
                     card.className = 'requirement-card';
-                    
-                    const confidenceClass = req.extraction_confidence >= 0.8 ? 'confidence-high' : 
+
+                    const confidenceClass = req.extraction_confidence >= 0.8 ? 'confidence-high' :
                                           req.extraction_confidence >= 0.6 ? 'confidence-medium' : 'confidence-low';
-                    
+
                     card.innerHTML = `
                         <div class="requirement-header">
                             <span class="requirement-id">${req.id}</span>
@@ -1517,8 +1625,8 @@ async def user_review_interface(
                         </div>
                         <div class="requirement-text">${req.text}</div>
                         <div class="requirement-meta">
-                            <strong>Category:</strong> ${req.category || 'General'} | 
-                            <strong>Pattern:</strong> ${req.pattern || 'Unknown'} | 
+                            <strong>Category:</strong> ${req.category || 'General'} |
+                            <strong>Pattern:</strong> ${req.pattern || 'Unknown'} |
                             <strong>Source:</strong> ${req.source_file || 'Unknown'}
                         </div>
                         <div class="edit-form" id="edit-${req.id}">
@@ -1527,29 +1635,29 @@ async def user_review_interface(
                             <input type="number" min="0" max="1" step="0.1" placeholder="Confidence" value="${req.extraction_confidence || 0.8}">
                         </div>
                     `;
-                    
+
                     grid.appendChild(card);
                 });
             }
-            
+
             function showEditInterface() {
                 document.getElementById('editInterface').classList.remove('hidden');
                 document.getElementById('rerunInterface').classList.add('hidden');
             }
-            
+
             function showRerunInterface() {
                 document.getElementById('rerunInterface').classList.remove('hidden');
                 document.getElementById('editInterface').classList.add('hidden');
             }
-            
+
             function cancelEdit() {
                 document.getElementById('editInterface').classList.add('hidden');
             }
-            
+
             function cancelRerun() {
                 document.getElementById('rerunInterface').classList.add('hidden');
             }
-            
+
             async function saveEdits() {
                 const edits = [];
                 currentRequirements.forEach(req => {
@@ -1557,8 +1665,8 @@ async def user_review_interface(
                     const textarea = editForm.querySelector('textarea');
                     const categoryInput = editForm.querySelector('input[type="text"]');
                     const confidenceInput = editForm.querySelector('input[type="number"]');
-                        
-                    if (textarea.value !== req.text || 
+
+                    if (textarea.value !== req.text ||
                         categoryInput.value !== (req.category || '') ||
                         confidenceInput.value !== (req.extraction_confidence || 0.8)) {
                         edits.push({
@@ -1585,7 +1693,7 @@ async def user_review_interface(
                         }
                     }
                 });
-                
+
                 if (edits.length > 0) {
                     await completeUserTask('edit', { user_edits: edits });
                 } else {
@@ -1593,24 +1701,24 @@ async def user_review_interface(
                     cancelEdit();
                 }
             }
-            
+
             async function rerunExtraction() {
                 const parameters = {
                     confidence_threshold: parseFloat(document.getElementById('confidenceThreshold').value),
                     min_text_length: parseInt(document.getElementById('minTextLength').value),
                     custom_patterns: document.getElementById('customPatterns').value.split('\\n').filter(p => p.trim())
                 };
-                
+
                 await completeUserTask('rerun', { extraction_parameters: parameters });
             }
-            
+
             async function completeUserTask(decision, additionalData = {}) {
                 try {
                     const userDecision = {
                         decision: decision,
                         ...additionalData
                     };
-                    
+
                     const response = await fetch(`/api/user-tasks/${currentProcessId}/complete`, {
                         method: 'POST',
                         headers: {
@@ -1618,12 +1726,12 @@ async def user_review_interface(
                         },
                         body: JSON.stringify(userDecision)
                     });
-                    
+
                     if (response.ok) {
                         const result = await response.json();
                         document.getElementById('status').innerHTML = `<div class="status success">User task completed: ${decision}</div>`;
                         document.getElementById('userReview').classList.add('hidden');
-                        
+
                         // Continue monitoring
                         setTimeout(() => checkForUserTask(currentProcessId), 2000);
                     } else {
@@ -1921,22 +2029,22 @@ async def index():
         .status.running { background: #dbeafe; color: #1e40af; }
         .status.completed { background: #dcfce7; color: #166534; }
         .status.error { background: #fee2e2; color: #dc2626; }
-        
+
         /* Tab Styles */
         .tabs { display: flex; border-bottom: 1px solid #e5e7eb; margin-bottom: 1rem; }
-        .tab-button { 
-          background: none; border: none; padding: 0.75rem 1.5rem; cursor: pointer; 
+        .tab-button {
+          background: none; border: none; padding: 0.75rem 1.5rem; cursor: pointer;
           border-bottom: 2px solid transparent; margin-right: 0.5rem;
         }
-        .tab-button.active { 
+        .tab-button.active {
           border-bottom-color: #3b82f6; color: #3b82f6; font-weight: 600;
         }
         .tab-button:hover { background: #f3f4f6; }
-        
+
         .tab-content { display: none; }
         .tab-content.active { display: block; }
-        
-        .persona-item, .prompt-item { 
+
+        .persona-item, .prompt-item {
           border: 1px solid #e5e7eb; border-radius: 6px; padding: 1rem; margin-bottom: 1rem;
           background: #f9fafb;
         }
@@ -1945,11 +2053,11 @@ async def index():
         .test-section { margin-top: 1rem; padding-top: 1rem; border-top: 1px solid #e5e7eb; }
         .test-input { margin-bottom: 0.5rem; }
         .test-result { background: #f1f5f9; padding: 0.5rem; border-radius: 4px; margin-top: 0.5rem; }
-        
+
         /* Compact status badges */
-        .status-badge { 
-          padding: 0.25rem 0.5rem; 
-          border-radius: 4px; 
+        .status-badge {
+          padding: 0.25rem 0.5rem;
+          border-radius: 4px;
           font-size: 0.875rem;
           background: #f3f4f6;
           border: 1px solid #e5e7eb;
@@ -1960,20 +2068,20 @@ async def index():
         .status-indicator {
           font-weight: 600;
         }
-        .status-badge.online { 
-          background: #dcfce7; 
+        .status-badge.online {
+          background: #dcfce7;
           border-color: #86efac;
           color: #166534;
         }
         .status-badge.online .status-indicator { color: #16a34a; }
-        .status-badge.offline { 
-          background: #fee2e2; 
+        .status-badge.offline {
+          background: #fee2e2;
           border-color: #fca5a5;
           color: #991b1b;
         }
         .status-badge.offline .status-indicator { color: #dc2626; }
-        .status-badge.warning { 
-          background: #fef3c7; 
+        .status-badge.warning {
+          background: #fef3c7;
           border-color: #fde047;
           color: #854d0e;
         }
@@ -1982,7 +2090,7 @@ async def index():
     </head>
     <body>
       <h1>ODRAS MVP - Camunda BPMN</h1>
-      
+
       <div class="card" style="padding: 0.75rem;">
         <div style="display: flex; align-items: center; gap: 1rem; flex-wrap: wrap;">
           <h4 style="margin: 0;">Services:</h4>
@@ -1991,7 +2099,7 @@ async def index():
           <span id="openai-status" class="status-badge">OpenAI: <span class="status-indicator">...</span></span>
         </div>
       </div>
-      
+
       <!-- Tab Navigation -->
       <div class="tabs">
         <button class="tab-button active" onclick='showTab("upload")'>Upload & Process</button>
@@ -2003,7 +2111,7 @@ async def index():
         </button>
         <button class="tab-button" onclick='showTab("files")'>Stored Files</button>
       </div>
-      
+
       <!-- Upload Tab -->
       <div id="upload-tab" class="tab-content active">
         <div class="card">
@@ -2028,7 +2136,7 @@ async def index():
           <div id="result"></div>
         </div>
       </div>
-      
+
       <!-- Personas Tab -->
       <div id="personas-tab" class="tab-content">
         <div class="card">
@@ -2043,7 +2151,7 @@ async def index():
           </div>
         </div>
       </div>
-      
+
       <!-- Prompts Tab -->
       <div id="prompts-tab" class="tab-content">
         <div class="card">
@@ -2058,7 +2166,7 @@ async def index():
           </div>
         </div>
       </div>
-      
+
       <!-- Runs Tab -->
       <div id="runs-tab" class="tab-content">
         <div class="card">
@@ -2087,7 +2195,7 @@ async def index():
           <div id="files-list">No files loaded</div>
         </div>
       </div>
-      
+
       <!-- User Tasks Tab -->
       <div id="tasks-tab" class="tab-content">
         <div class="card">
@@ -2103,13 +2211,13 @@ async def index():
           <button onclick="refreshUserTasks()" style="margin-top: 20px;">Refresh Tasks</button>
         </div>
       </div>
-      
+
       <script>
         const form = document.getElementById('upload-form');
         const result = document.getElementById('result');
         const providerSelect = document.querySelector('select[name="llm_provider"]');
         const modelSelect = document.getElementById('llm_model');
-        
+
         // Check all statuses on page load and set up auto-refresh
         console.log('Page loaded, checking status...');
         setTimeout(() => {
@@ -2122,28 +2230,28 @@ async def index():
           console.log('Refreshing runs...');
           refreshRuns();
         }, 200);
-        
+
         form.addEventListener('submit', async (e) => {
           e.preventDefault();
           const data = new FormData(form);
           result.innerHTML = '<div class="status running">Starting BPMN process...</div>';
-          
+
           const res = await fetch('/api/upload', { method: 'POST', body: data });
           const json = await res.json();
-          
-          if (!res.ok) { 
-            result.innerHTML = `<div class="status error">Error: ${JSON.stringify(json)}</div>`; 
-            return; 
+
+          if (!res.ok) {
+            result.innerHTML = `<div class="status error">Error: ${JSON.stringify(json)}</div>`;
+            return;
           }
-          
+
           result.innerHTML = `<div class="status running">BPMN process started: ${json.process_id}</div>`;
           refreshRuns();
-          
+
           // Poll for completion
           const interval = setInterval(async () => {
             const sres = await fetch(`/api/runs/${json.run_id}`);
             const sjson = await sres.json();
-            
+
             if (sjson.status === 'completed') {
               result.innerHTML = `<div class="status completed">Process completed! <a href="${sjson.camunda_url}" target="_blank">View in Camunda</a></div>`;
               clearInterval(interval);
@@ -2158,21 +2266,21 @@ async def index():
         providerSelect.addEventListener('change', async () => {
           console.log('Provider changed to:', providerSelect.value);
           const provider = providerSelect.value;
-          
+
           // Clear the select dropdown
           modelSelect.innerHTML = '<option value="">Loading models...</option>';
-          
+
           if (!provider) {
             modelSelect.innerHTML = '<option value="">Select a provider first...</option>';
             return;
           }
-          
+
           try {
             console.log('Fetching models for provider:', provider);
             const res = await fetch(`/api/models/${provider}`);
             const json = await res.json();
             console.log('Models response:', json);
-            
+
             // Extract model names based on provider format
             let modelNames = [];
             if (json.models && Array.isArray(json.models)) {
@@ -2190,18 +2298,18 @@ async def index():
                 }).filter(Boolean);
               }
             }
-            
+
             console.log('Available models:', modelNames);
-            
+
             // Clear and populate the select dropdown with all models
             modelSelect.innerHTML = '';
-            
+
             // Add a default option
             const defaultOption = document.createElement('option');
             defaultOption.value = '';
             defaultOption.textContent = 'Select a model...';
             modelSelect.appendChild(defaultOption);
-            
+
             // Add all model options
             modelNames.forEach(name => {
               const option = document.createElement('option');
@@ -2209,12 +2317,12 @@ async def index():
               option.textContent = name;
               modelSelect.appendChild(option);
             });
-            
+
             // Set a default value if models are available
             if (modelNames.length > 0) {
               // For OpenAI, prefer gpt-4o-mini or gpt-3.5-turbo
               if (provider === 'openai') {
-                const preferred = modelNames.find(m => m.includes('gpt-4o-mini')) || 
+                const preferred = modelNames.find(m => m.includes('gpt-4o-mini')) ||
                                 modelNames.find(m => m.includes('gpt-3.5-turbo')) ||
                                 modelNames[0];
                 modelSelect.value = preferred;
@@ -2237,10 +2345,10 @@ async def index():
           function updateStatus(elementId, serviceName, status, details = '') {
             const badge = document.getElementById(elementId);
             const indicator = badge.querySelector('.status-indicator');
-            
+
             // Remove all status classes
             badge.classList.remove('online', 'offline', 'warning');
-            
+
             if (status === 'running' || status === 'online') {
               badge.classList.add('online');
               indicator.textContent = '●';
@@ -2255,7 +2363,7 @@ async def index():
               badge.title = `${serviceName}: ${status}${details ? ' - ' + details : ''}`;
             }
           }
-          
+
           // Check Camunda status
           try {
             const res = await fetch('/api/camunda/status');
@@ -2264,7 +2372,7 @@ async def index():
           } catch (e) {
             updateStatus('camunda-status', 'Camunda', 'offline', 'Cannot connect');
           }
-          
+
           // Check Ollama status
           try {
             const res = await fetch('/api/ollama/status');
@@ -2274,8 +2382,8 @@ async def index():
           } catch (e) {
             updateStatus('ollama-status', 'Ollama', 'offline', 'Cannot check status');
           }
-          
-          // Check OpenAI status  
+
+          // Check OpenAI status
           try {
             const res = await fetch('/api/openai/status');
             const json = await res.json();
@@ -2285,8 +2393,8 @@ async def index():
             updateStatus('openai-status', 'OpenAI', 'offline', 'Cannot check status');
           }
         }
-        
-        // Keep backward compatibility  
+
+        // Keep backward compatibility
         window.checkCamundaStatus = checkAllStatuses;
 
         // Batch upload handler + drag & drop
@@ -2349,7 +2457,7 @@ async def index():
             const res = await fetch('/api/runs');
             const json = await res.json();
             if (json.runs && json.runs.length > 0) {
-              runsDiv.innerHTML = json.runs.map(run => 
+              runsDiv.innerHTML = json.runs.map(run =>
                 `<div class="status ${run.status}">${run.filename} - ${run.status} <a href="${run.camunda_url}" target="_blank">View</a></div>`
               ).join('');
             } else {
@@ -2359,21 +2467,21 @@ async def index():
             runsDiv.innerHTML = '<div class="status error">Error loading runs</div>';
           }
         }
-        
+
         // Refresh User Tasks
         window.refreshUserTasks = async function() {
           const tasksDiv = document.getElementById('user-tasks-list');
           const taskBadge = document.getElementById('task-count-badge');
-          
+
           try {
             const res = await fetch('/api/user-tasks');
             const json = await res.json();
-            
+
             if (json.tasks && json.tasks.length > 0) {
               // Update badge
               taskBadge.textContent = json.tasks.length;
               taskBadge.style.display = 'inline-block';
-              
+
               // Build task cards
               tasksDiv.innerHTML = json.tasks.map(task => `
                 <div style="border: 1px solid #007bff; border-radius: 8px; padding: 15px; margin-bottom: 15px; background: #f0f7ff;">
@@ -2383,13 +2491,13 @@ async def index():
                       ${task.taskDefinitionKey}
                     </span>
                   </div>
-                  
+
                   <div style="color: #666; margin-bottom: 10px;">
                     <strong>Process Instance:</strong> ${task.processInstanceId}<br/>
                     <strong>Created:</strong> ${new Date(task.created).toLocaleString()}<br/>
                     ${task.description ? `<strong>Description:</strong> ${task.description}<br/>` : ''}
                   </div>
-                  
+
                   <button onclick="reviewTask('${task.id}')" style="background: #007bff; color: white; padding: 8px 16px; border: none; border-radius: 4px; cursor: pointer;">
                     Review Requirements
                   </button>
@@ -2413,7 +2521,7 @@ async def index():
             taskBadge.style.display = 'none';
           }
         }
-        
+
         // Review a specific task
         window.reviewTask = async function(taskId) {
           // For now, redirect to the user-review page
@@ -2424,16 +2532,16 @@ async def index():
         // Tab Management - Make it global
         window.showTab = function(tabName) {
           console.log('showTab called with:', tabName);
-          
+
           try {
             // Hide all tab contents
             const tabContents = document.querySelectorAll('.tab-content');
             tabContents.forEach(content => content.classList.remove('active'));
-            
+
             // Remove active class from all tab buttons
             const tabButtons = document.querySelectorAll('.tab-button');
             tabButtons.forEach(button => button.classList.remove('active'));
-            
+
             // Show selected tab content
             const targetTab = document.getElementById(tabName + '-tab');
             if (targetTab) {
@@ -2442,7 +2550,7 @@ async def index():
             } else {
               console.error('Tab content not found:', tabName + '-tab');
             }
-            
+
             // Add active class to selected tab button
             const activeButton = document.querySelector(`[onclick='showTab("${tabName}")']`);
             if (activeButton) {
@@ -2451,7 +2559,7 @@ async def index():
             } else {
               console.error('Tab button not found for:', tabName);
             }
-            
+
             // Load content for specific tabs
             if (tabName === 'personas') {
               console.log('Loading personas...');
@@ -2479,7 +2587,7 @@ async def index():
           },
           {
             id: 'reviewer',
-            name: 'Reviewer', 
+            name: 'Reviewer',
             description: 'You validate and correct extracted JSON to fit the schema strictly.',
             system_prompt: 'You are a quality assurance specialist. Your role is to validate and correct extracted JSON to ensure it strictly conforms to the provided schema. Return ONLY JSON conforming to the schema.',
             is_active: true
@@ -2758,7 +2866,7 @@ async def index():
           } catch (e) {
             console.error('Error during initialization:', e);
           }
-          
+
           // Periodically check for updates
           setInterval(checkAllStatuses, 10000);  // Service status every 10 seconds
           setInterval(refreshUserTasks, 30000);  // User tasks every 30 seconds
@@ -3212,3 +3320,4 @@ def run():
 
 if __name__ == "__main__":
     run()
+

@@ -260,3 +260,4 @@ class DocumentProcessor:
             ],
             "storage_backends": ["local", "minio", "postgresql"],
         }
+

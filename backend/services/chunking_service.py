@@ -656,3 +656,4 @@ def chunk_text_simple(
 
     chunks = service.chunk_document(text, chunking_config=config)
     return [chunk.to_dict() for chunk in chunks]
+

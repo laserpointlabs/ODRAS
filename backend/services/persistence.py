@@ -192,3 +192,4 @@ class PersistenceLayer:
             sparql.query()
         except Exception as e:
             raise RuntimeError(f"Failed to write RDF to Fuseki: {e}")
+

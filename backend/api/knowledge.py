@@ -246,7 +246,7 @@ async def list_all_knowledge_assets_admin(
 ):
     """
     List ALL knowledge assets across all users (Admin only).
-    
+
     This endpoint allows admins to view and manage all knowledge assets
     in the system regardless of project ownership.
     """
@@ -260,23 +260,23 @@ async def list_all_knowledge_assets_admin(
         if project_id:
             where_clauses.append("ka.project_id = %s")
             params.append(project_id)
-            
+
         if document_type:
             where_clauses.append("ka.document_type = %s")
             params.append(document_type)
-            
+
         if status:
             where_clauses.append("ka.status = %s")
             params.append(status)
-            
+
         if user_id:
             where_clauses.append("f.created_by = %s")
             params.append(user_id)
-            
+
         if title_contains:
             where_clauses.append("ka.title ILIKE %s")
             params.append(f"%{title_contains}%")
-            
+
         if traceability_status:
             where_clauses.append("ka.traceability_status = %s")
             params.append(traceability_status)
@@ -289,7 +289,7 @@ async def list_all_knowledge_assets_admin(
             with conn.cursor() as cur:
                 # Get total count
                 count_sql = f"""
-                    SELECT COUNT(*) 
+                    SELECT COUNT(*)
                     FROM knowledge_assets ka
                     LEFT JOIN files f ON ka.source_file_id = f.id
                     LEFT JOIN public.users u ON f.created_by = u.user_id::text
@@ -317,7 +317,7 @@ async def list_all_knowledge_assets_admin(
                 for row in rows:
                     asset_dict = dict(zip([desc[0] for desc in cur.description], row))
                     asset_response = format_asset_response(asset_dict)
-                    
+
                     # Add owner information for admin view
                     asset_response.metadata = asset_response.metadata or {}
                     asset_response.metadata.update({
@@ -325,7 +325,7 @@ async def list_all_knowledge_assets_admin(
                         "owner_username": asset_dict.get("owner_username"),
                         "owner_display_name": asset_dict.get("owner_display_name")
                     })
-                    
+
                     assets.append(asset_response)
 
                 return KnowledgeListResponse(
@@ -512,7 +512,7 @@ async def create_knowledge_asset(
             with conn.cursor() as cur:
                 cur.execute(
                     """
-                    INSERT INTO knowledge_assets 
+                    INSERT INTO knowledge_assets
                     (id, source_file_id, project_id, title, document_type, content_summary, metadata, created_at, updated_at, status)
                     VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
                     RETURNING *
@@ -596,8 +596,8 @@ async def get_knowledge_asset(
                 if include_chunks:
                     cur.execute(
                         """
-                        SELECT * FROM knowledge_chunks 
-                        WHERE asset_id = %s 
+                        SELECT * FROM knowledge_chunks
+                        WHERE asset_id = %s
                         ORDER BY sequence_number
                     """,
                         (asset_id,),
@@ -857,8 +857,8 @@ async def get_knowledge_asset_content(
                 # Get all chunks for this asset
                 cur.execute(
                     """
-                    SELECT * FROM knowledge_chunks 
-                    WHERE asset_id = %s 
+                    SELECT * FROM knowledge_chunks
+                    WHERE asset_id = %s
                     ORDER BY sequence_number
                 """,
                     (asset_id,),
@@ -952,7 +952,7 @@ async def set_asset_public_status(
                 if public_request.is_public:
                     cur.execute(
                         """
-                        UPDATE knowledge_assets 
+                        UPDATE knowledge_assets
                         SET is_public = %s, made_public_at = %s, made_public_by = %s, updated_at = %s
                         WHERE id = %s
                         RETURNING *
@@ -962,7 +962,7 @@ async def set_asset_public_status(
                 else:
                     cur.execute(
                         """
-                        UPDATE knowledge_assets 
+                        UPDATE knowledge_assets
                         SET is_public = %s, made_public_at = NULL, made_public_by = NULL, updated_at = %s
                         WHERE id = %s
                         RETURNING *
@@ -1053,16 +1053,17 @@ async def cleanup_unknown_assets(
 ):
     """
     Clean up knowledge assets with unknown or problematic titles (Admin only).
-    
+
     This endpoint identifies and optionally deletes assets with:
     - title = "unknown"
     - title = ""
     - title is NULL
+    - source_file_id is NULL (orphaned knowledge assets)
     - document_type = "unknown" and title looks auto-generated
-    
+
     Args:
         dry_run: If true, only returns count without deleting
-    
+
     Returns:
         Summary of cleanup operation
     """
@@ -1074,27 +1075,28 @@ async def cleanup_unknown_assets(
             with conn.cursor() as cur:
                 # Find problematic assets
                 cleanup_sql = """
-                    SELECT ka.id, ka.title, ka.document_type, ka.project_id, 
+                    SELECT ka.id, ka.title, ka.document_type, ka.project_id,
                            f.filename as source_filename, f.created_by as file_owner,
                            u.username as owner_username
                     FROM knowledge_assets ka
                     LEFT JOIN files f ON ka.source_file_id = f.id
                     LEFT JOIN public.users u ON f.created_by = u.user_id::text
-                    WHERE 
-                        ka.title = 'unknown' OR 
-                        ka.title = '' OR 
+                    WHERE
+                        ka.title = 'unknown' OR
+                        ka.title = '' OR
                         ka.title IS NULL OR
+                        ka.source_file_id IS NULL OR
                         (ka.document_type = 'unknown' AND (
-                            ka.title LIKE 'Asset %' OR 
+                            ka.title LIKE 'Asset %' OR
                             ka.title LIKE 'Document %' OR
                             ka.title LIKE 'File %'
                         ))
                     ORDER BY ka.created_at DESC
                 """
-                
+
                 cur.execute(cleanup_sql)
                 problematic_assets = cur.fetchall()
-                
+
                 asset_details = []
                 for row in problematic_assets:
                     asset_dict = dict(zip([desc[0] for desc in cur.description], row))
@@ -1106,18 +1108,18 @@ async def cleanup_unknown_assets(
                         "source_filename": asset_dict["source_filename"],
                         "owner_username": asset_dict["owner_username"]
                     })
-                
+
                 deleted_count = 0
                 if not dry_run and problematic_assets:
                     # Actually delete the assets
                     asset_ids = [str(row[0]) for row in problematic_assets]
                     placeholders = ','.join(['%s'] * len(asset_ids))
                     delete_sql = f"DELETE FROM knowledge_assets WHERE id IN ({placeholders})"
-                    
+
                     cur.execute(delete_sql, asset_ids)
                     deleted_count = cur.rowcount
                     conn.commit()
-                    
+
                     logger.info(f"Deleted {deleted_count} problematic knowledge assets")
 
                 return {
@@ -1237,7 +1239,7 @@ async def list_processing_jobs(
             import httpx
             CAMUNDA_BASE_URL = "http://localhost:8080"
             CAMUNDA_REST_API = f"{CAMUNDA_BASE_URL}/engine-rest"
-            
+
             async with httpx.AsyncClient(timeout=10) as client:
                 # Query active process instances for knowledge processing workflows
                 response = await client.get(
@@ -1247,23 +1249,23 @@ async def list_processing_jobs(
                         "active": "true"
                     }
                 )
-                
+
                 if response.status_code == 200:
                     active_processes = response.json()
-                    
+
                     for process in active_processes:
                         try:
                             # Get process variables to extract file info
                             vars_response = await client.get(
                                 f"{CAMUNDA_REST_API}/process-instance/{process['id']}/variables"
                             )
-                            
+
                             if vars_response.status_code == 200:
                                 variables = vars_response.json()
                                 file_id = variables.get("file_id", {}).get("value", "unknown")
                                 filename = variables.get("filename", {}).get("value", "unknown")
                                 doc_type = variables.get("document_type", {}).get("value", "unknown")
-                                
+
                                 # Create a synthetic job response for the Camunda workflow
                                 camunda_job = ProcessingJobResponse(
                                     id=f"camunda-{process['id']}",
@@ -1287,14 +1289,14 @@ async def list_processing_jobs(
                         except Exception as e:
                             logger.warning(f"Failed to process Camunda workflow {process['id']}: {e}")
                             continue
-                            
+
         except Exception as e:
             logger.warning(f"Failed to query Camunda processes: {e}")
             # Continue without Camunda jobs if the query fails
 
         # Combine database jobs and Camunda jobs
         all_jobs = database_jobs + camunda_jobs
-        
+
         # Sort by created_at and limit
         all_jobs.sort(key=lambda x: x.created_at or "", reverse=True)
         return all_jobs[:limit]
@@ -1434,7 +1436,7 @@ async def search_knowledge(
                     placeholders = ",".join(["%s"] * len(chunk_ids))
                     cur.execute(
                         f"""
-                        SELECT 
+                        SELECT
                             kc.id as chunk_id,
                             kc.asset_id,
                             kc.content,
@@ -1567,29 +1569,29 @@ async def query_knowledge_base(request: RAGQueryRequest, user: Dict = Depends(ge
 async def query_knowledge_base_workflow(request: RAGQueryRequest, user: Dict = Depends(get_user)):
     """
     Query the knowledge base using RAG workflow (rag_query_process).
-    
+
     This endpoint uses the Camunda workflow engine to process RAG queries through
     the complete pipeline: Query Processing → Context Retrieval → LLM Generation → Response.
-    
+
     Args:
         request: RAG query request with question and parameters
-        
+
     Returns:
         Generated response with sources and metadata
     """
     import httpx
     import time
-    
+
     try:
         logger.info(f"Processing RAG workflow query from user {user.get('user_id')}: '{request.question}'")
-        
+
         # Get settings
         from ..services.config import Settings
         settings = Settings()
-        
+
         # Prepare workflow request
         from ..api.workflows import RAGQueryRequest as WorkflowRAGRequest
-        
+
         workflow_request = WorkflowRAGRequest(
             query=request.question,
             max_results=request.max_chunks,
@@ -1601,27 +1603,27 @@ async def query_knowledge_base_workflow(request: RAGQueryRequest, user: Dict = D
                 "user_id": user["user_id"]
             }
         )
-        
+
         # Start the workflow
         from ..api.workflows import start_rag_query
         workflow_response = await start_rag_query(workflow_request, authorization="Bearer dummy")
-        
+
         if not workflow_response.success:
             raise HTTPException(status_code=500, detail="Failed to start RAG workflow")
-        
+
         process_instance_id = workflow_response.process_instance_id
-        
+
         # Poll for completion with timeout
         max_wait_time = 120  # 120 seconds timeout
         poll_interval = 1   # Poll every second
         start_time = time.time()
-        
+
         while time.time() - start_time < max_wait_time:
             try:
                 # Get workflow status
                 from ..api.workflows import get_rag_query_status
                 status_response = await get_rag_query_status(process_instance_id, authorization="Bearer dummy")
-                
+
                 if status_response.get("status") == "completed":
                     # Extract final response
                     final_response = status_response.get("final_response")
@@ -1644,13 +1646,13 @@ async def query_knowledge_base_workflow(request: RAGQueryRequest, user: Dict = D
                                     "model_used": "workflow",
                                     "provider": "rag_query_process"
                                 }
-                        
+
                         # Extract metadata from workflow variables (properly extracted by workflows.py)
                         workflow_variables = status_response.get("variables", {})
                         sources = []
                         chunks_found = 0
                         confidence = "medium"  # Default
-                        
+
                         # Get confidence from properly extracted workflow variables
                         if "llm_confidence" in workflow_variables:
                             confidence = workflow_variables["llm_confidence"]
@@ -1660,20 +1662,20 @@ async def query_knowledge_base_workflow(request: RAGQueryRequest, user: Dict = D
                             print(f"API: Extracted confidence = {confidence}")
                         else:
                             print("API: confidence/llm_confidence not found in workflow_variables")
-                            
-                        # Get chunks_found from properly extracted workflow variables  
+
+                        # Get chunks_found from properly extracted workflow variables
                         if "chunks_found" in workflow_variables:
                             chunks_found = workflow_variables["chunks_found"]
                             print(f"API: Extracted chunks_found = {chunks_found}")
                         else:
                             print("API: chunks_found not found in workflow_variables")
-                            
+
                         # Get sources from properly extracted workflow variables
                         if "sources" in workflow_variables:
                             sources_data = workflow_variables["sources"]
                             if isinstance(sources_data, list):
                                 sources = sources_data
-                            
+
                         # Fallback: extract from response text if workflow variables don't work
                         if not chunks_found or not sources:
                             response_text = None
@@ -1681,13 +1683,13 @@ async def query_knowledge_base_workflow(request: RAGQueryRequest, user: Dict = D
                                 response_text = final_response.get("response") or final_response.get("final_response")
                             elif isinstance(final_response, str):
                                 response_text = final_response
-                                
+
                             if response_text:
                                 # Count contexts as fallback
                                 if not chunks_found:
                                     chunks_found = response_text.count('[Context ')
                                     print(f"API FALLBACK: Using text parsing for chunks_found={chunks_found}")
-                                
+
                                 # Extract sources from Sources section as fallback
                                 if not sources and 'Sources:' in response_text:
                                     import re
@@ -1701,7 +1703,7 @@ async def query_knowledge_base_workflow(request: RAGQueryRequest, user: Dict = D
                                             "relevance_score": 0.8,
                                         })
                                     print(f"API FALLBACK: Using text parsing for {len(sources)} sources")
-                        
+
                         # Ensure required fields
                         if not final_response.get("success"):
                             final_response["success"] = True
@@ -1712,7 +1714,7 @@ async def query_knowledge_base_workflow(request: RAGQueryRequest, user: Dict = D
                         # Set the extracted metadata
                         final_response["chunks_found"] = chunks_found
                         final_response["sources"] = sources
-                        
+
                         # Only set confidence if we actually got it from LLM, otherwise null
                         if confidence and confidence != "medium":  # medium is our default fallback
                             final_response["confidence"] = confidence
@@ -1722,25 +1724,25 @@ async def query_knowledge_base_workflow(request: RAGQueryRequest, user: Dict = D
                             final_response["model_used"] = "workflow"
                         if not final_response.get("provider"):
                             final_response["provider"] = "rag_query_process"
-                        
+
                         return RAGQueryResponse(**final_response)
                     else:
                         raise HTTPException(status_code=500, detail="Workflow completed but no response generated")
-                
+
                 elif status_response.get("status") == "failed":
                     error_msg = status_response.get("error", "Workflow failed")
                     raise HTTPException(status_code=500, detail=f"RAG workflow failed: {error_msg}")
-                
+
                 # Still running, wait and poll again
                 await asyncio.sleep(poll_interval)
-                
+
             except Exception as e:
                 logger.warning(f"Error polling workflow status: {str(e)}")
                 await asyncio.sleep(poll_interval)
-        
+
         # Timeout reached
         raise HTTPException(status_code=408, detail="RAG workflow timed out")
-        
+
     except HTTPException:
         raise
     except Exception as e:

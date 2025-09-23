@@ -278,3 +278,4 @@ class NamespaceURIGenerator:
         lines.append("")
 
         return "\n".join(lines)
+

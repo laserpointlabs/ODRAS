@@ -308,7 +308,7 @@ def update_namespace(
                 # Update namespace
                 cur.execute(
                     """
-                    UPDATE namespace_registry 
+                    UPDATE namespace_registry
                     SET status = %s, owners = %s, description = %s, updated_at = NOW()
                     WHERE id = %s
                     """,
@@ -494,8 +494,8 @@ def list_released_namespaces(db: DatabaseService = Depends(get_db)):
             with conn.cursor() as cur:
                 cur.execute(
                     """
-                    SELECT * FROM namespace_registry 
-                    WHERE status = 'released' 
+                    SELECT * FROM namespace_registry
+                    WHERE status = 'released'
                     ORDER BY path ASC
                 """
                 )
@@ -521,3 +521,4 @@ def list_released_namespaces(db: DatabaseService = Depends(get_db)):
     except Exception as e:
         logger.error(f"Error listing released namespaces: {e}")
         raise HTTPException(status_code=500, detail=str(e))
+

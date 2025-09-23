@@ -274,3 +274,4 @@ def delete_prefix(
     except Exception as e:
         logger.error(f"Error deleting prefix: {e}")
         raise HTTPException(status_code=500, detail=str(e))
+

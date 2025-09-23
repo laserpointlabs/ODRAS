@@ -214,3 +214,4 @@ async def get_test_status():
         ),
         "completed": sum(1 for p in TEST_PROCESSES.values() if p["status"].startswith("completed")),
     }
+

@@ -269,7 +269,7 @@ class ExternalTaskWorker:
                     variables[key] = {"value": value, "type": "Double"}
                 else:
                     variables[key] = {"value": str(value), "type": "String"}
-            
+
             # Debug logging for key variables
             if "sources" in result_variables:
                 print(f"COMPLETE_TASK: Setting sources variable with {len(result_variables['sources'])} items")
@@ -280,7 +280,7 @@ class ExternalTaskWorker:
                 print(f"COMPLETE_TASK: Setting llm_confidence = {result_variables['llm_confidence']}")
             if "confidence" in result_variables:
                 print(f"COMPLETE_TASK: Setting confidence = {result_variables['confidence']}")
-            
+
             # Debug: Show all variables being set
             print(f"COMPLETE_TASK: Setting {len(result_variables)} variables: {list(result_variables.keys())}")
 
@@ -693,16 +693,16 @@ Please provide a comprehensive answer based on the context provided. If the cont
             import asyncio
             import sys
             import os
-            
+
             # Add proper path for imports
             backend_path = os.path.join(os.path.dirname(__file__), "..")
             if backend_path not in sys.path:
                 sys.path.insert(0, backend_path)
-                
+
             from services.rag_service import get_rag_service
-            
+
             rag_service = get_rag_service()
-            
+
             # Create fake chunks from context for the LLM call
             fake_chunks = []
             if context_text:
@@ -715,7 +715,7 @@ Please provide a comprehensive answer based on the context provided. If the cont
                     },
                     "score": 0.8
                 })
-            
+
             # Call the ACTUAL LLM generation method from RAG service
             llm_result = asyncio.run(
                 rag_service._generate_response(
@@ -724,9 +724,9 @@ Please provide a comprehensive answer based on the context provided. If the cont
                     response_style="comprehensive"
                 )
             )
-            
+
             print(f"LLM CALL RESULT: {llm_result}")
-            
+
             if llm_result and "answer" in llm_result:
                 answer = llm_result["answer"]
                 confidence = llm_result.get("confidence", "medium")
@@ -736,7 +736,7 @@ Please provide a comprehensive answer based on the context provided. If the cont
                 answer = context_text.strip() if context_text else "I couldn't find relevant information."
                 confidence = "medium" if context_text else "low"
                 print(f"LLM FALLBACK: confidence={confidence}")
-                
+
         except Exception as e:
             print(f"LLM CALL FAILED: {e}")
             # Fallback to context text
@@ -753,7 +753,7 @@ Please provide a comprehensive answer based on the context provided. If the cont
                 "response_length": len(answer)
             }
         }
-        
+
         result = {
             "llm_response": json.dumps(structured_response),  # Embed confidence in response
             "generation_stats": {
@@ -765,21 +765,21 @@ Please provide a comprehensive answer based on the context provided. If the cont
             "processing_status": "success",
             "errors": [],
         }
-        
+
         print(f"LLM-GENERATION RETURNING: confidence={confidence}")
         print(f"LLM-GENERATION RESULT: {result}")
-        
+
         return result
 
     def handle_process_response(self, variables: Dict) -> Dict:
         """Handle response processing and formatting."""
         llm_response_raw = variables.get("llm_response", "")
         context_chunks = variables.get("reranked_context", variables.get("retrieved_chunks", []))
-        
+
         # Extract confidence from structured llm_response
         llm_confidence = None
         llm_response = ""
-        
+
         try:
             if llm_response_raw:
                 # Try to parse structured response
@@ -793,7 +793,7 @@ Please provide a comprehensive answer based on the context provided. If the cont
             # Fallback to raw response if not structured
             llm_response = llm_response_raw
             print("PROCESS-RESPONSE: Using raw llm_response (not structured)")
-        
+
         print(f"PROCESS-RESPONSE DEBUG: Available variables = {list(variables.keys())}")
         print(f"PROCESS-RESPONSE DEBUG: extracted confidence = {llm_confidence}")
 
@@ -803,28 +803,28 @@ Please provide a comprehensive answer based on the context provided. If the cont
         # Get actual asset titles from database for better citations
         citations = []
         seen_assets = set()  # Avoid duplicate sources
-        
+
         for i, chunk in enumerate(context_chunks[:3]):
             asset_id = chunk.get("asset_id", "unknown")
             if asset_id in seen_assets:
                 continue
-                
+
             # Try to get actual asset title from database
             asset_title = "Unknown Document"
             try:
                 from services.db import DatabaseService
                 from services.config import Settings
-                
+
                 settings = Settings()
                 db_service = DatabaseService(settings)
                 conn = db_service._conn()
-                
+
                 with conn.cursor() as cur:
                     cur.execute("SELECT title FROM knowledge_assets WHERE id = %s", (asset_id,))
                     result = cur.fetchone()
                     if result:
                         asset_title = result[0]
-                
+
                 db_service._return(conn)
             except Exception as e:
                 # Fallback to cleaned up asset ID if database lookup fails
@@ -832,7 +832,7 @@ Please provide a comprehensive answer based on the context provided. If the cont
                     asset_title = f"Knowledge Asset {asset_id[:8]}"
                 else:
                     asset_title = chunk.get("source_document", "Unknown Document")
-            
+
             citations.append({
                 "citation_id": f"[{len(citations)+1}]",
                 "source_document": asset_title,
@@ -875,11 +875,11 @@ Please provide a comprehensive answer based on the context provided. If the cont
             "processing_status": "success",
             "errors": [],
         }
-        
+
         print(f"PROCESS-RESPONSE INPUT: context_chunks={len(context_chunks)}, llm_confidence={llm_confidence}")
         print(f"PROCESS-RESPONSE OUTPUT: sources={len(sources)}, chunks_found={len(context_chunks)}")
         print(f"PROCESS-RESPONSE SOURCES: {sources}")
-        
+
         return result
 
     def simple_retrieval_fallback(self, processed_query: Dict, search_parameters: Dict, variables: Dict) -> Dict:
@@ -906,7 +906,7 @@ Please provide a comprehensive answer based on the context provided. If the cont
             project_id = query_metadata.get("project_id")
             similarity_threshold = float(query_metadata.get("similarity_threshold", 0.5))
             max_chunks = int(query_metadata.get("max_results", 3))
-            
+
             print(f"WORKFLOW RAG: Using user_id={user_id}, project_id={project_id}, threshold={similarity_threshold}")
 
             # Get the raw chunks with content (like the hard-coded query does)
@@ -927,7 +927,7 @@ Please provide a comprehensive answer based on the context provided. If the cont
             for chunk in chunks:
                 chunk_data = chunk.get("payload", {})
                 content = chunk_data.get("content", "")
-                
+
                 retrieved_chunks.append({
                     "chunk_id": chunk_data.get("chunk_id", "unknown"),
                     "content": content,
@@ -991,3 +991,4 @@ Please provide a comprehensive answer based on the context provided. If the cont
             "processing_status": "success",
             "errors": [],
         }
+

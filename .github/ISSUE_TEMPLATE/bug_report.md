@@ -9,8 +9,8 @@ labels: bug
 What happened and what should have happened.
 
 ## Steps to Reproduce
-1. 
-2. 
+1.
+2.
 
 ## Expected behavior
 
@@ -21,6 +21,7 @@ What happened and what should have happened.
 - Environment:
 
 ## Acceptance Criteria
-- 
-- 
+-
+-
+
 

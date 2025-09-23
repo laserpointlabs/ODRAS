@@ -2,16 +2,16 @@
 -- Implements installation-specific IRI structure for better military/government compliance
 
 -- Add IRI columns to existing tables
-ALTER TABLE files 
+ALTER TABLE files
 ADD COLUMN IF NOT EXISTS iri VARCHAR(1000) UNIQUE;
 
-ALTER TABLE knowledge_assets 
+ALTER TABLE knowledge_assets
 ADD COLUMN IF NOT EXISTS iri VARCHAR(1000) UNIQUE;
 
-ALTER TABLE public.projects 
+ALTER TABLE public.projects
 ADD COLUMN IF NOT EXISTS iri VARCHAR(1000) UNIQUE;
 
-ALTER TABLE public.users 
+ALTER TABLE public.users
 ADD COLUMN IF NOT EXISTS iri VARCHAR(1000) UNIQUE;
 
 -- Add installation configuration table
@@ -31,15 +31,15 @@ CREATE TABLE IF NOT EXISTS installation_config (
 
 -- Insert default installation config
 INSERT INTO installation_config (
-    installation_name, 
-    installation_type, 
-    top_level_domain, 
-    base_uri, 
+    installation_name,
+    installation_type,
+    top_level_domain,
+    base_uri,
     organization,
     program_office
 ) VALUES (
     'XMA-ADT',
-    'usn', 
+    'usn',
     'mil',
     'https://xma-adt.usn.mil',
     'U.S. Navy XMA-ADT',
@@ -64,7 +64,7 @@ BEGIN
     -- Check files
     IF EXISTS (SELECT 1 FROM files WHERE iri = target_iri) THEN
         RETURN QUERY
-        SELECT 'file'::VARCHAR(50), f.id, 
+        SELECT 'file'::VARCHAR(50), f.id,
                jsonb_build_object(
                    'type', 'file',
                    'id', f.id,
@@ -77,7 +77,7 @@ BEGIN
         FROM files f WHERE f.iri = target_iri;
         RETURN;
     END IF;
-    
+
     -- Check knowledge assets
     IF EXISTS (SELECT 1 FROM knowledge_assets WHERE iri = target_iri) THEN
         RETURN QUERY
@@ -95,7 +95,7 @@ BEGIN
         FROM knowledge_assets ka WHERE ka.iri = target_iri;
         RETURN;
     END IF;
-    
+
     -- Check projects
     IF EXISTS (SELECT 1 FROM public.projects WHERE iri = target_iri) THEN
         RETURN QUERY
@@ -112,7 +112,7 @@ BEGIN
         FROM public.projects p WHERE p.iri = target_iri;
         RETURN;
     END IF;
-    
+
     -- Check users
     IF EXISTS (SELECT 1 FROM public.users WHERE iri = target_iri) THEN
         RETURN QUERY
@@ -128,7 +128,7 @@ BEGIN
         FROM public.users u WHERE u.iri = target_iri;
         RETURN;
     END IF;
-    
+
     -- Resource not found
     RETURN;
 END;
@@ -141,5 +141,3 @@ COMMENT ON COLUMN knowledge_assets.iri IS 'Globally unique IRI for this knowledg
 COMMENT ON COLUMN public.projects.iri IS 'Globally unique IRI for this project';
 COMMENT ON COLUMN public.users.iri IS 'Globally unique IRI for this user';
 COMMENT ON FUNCTION resolve_iri IS 'Resolves an IRI to its resource type and metadata';
-
-

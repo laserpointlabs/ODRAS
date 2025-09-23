@@ -25,3 +25,4 @@ CREATE TRIGGER trigger_projects_updated_at
     BEFORE UPDATE ON projects
     FOR EACH ROW
     EXECUTE FUNCTION update_projects_updated_at();
+

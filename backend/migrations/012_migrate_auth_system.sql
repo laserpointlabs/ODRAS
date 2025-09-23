@@ -2,7 +2,7 @@
 -- Run this to upgrade from the current allowlist system to proper password authentication
 
 -- Add password and authentication fields to users table
-ALTER TABLE public.users 
+ALTER TABLE public.users
 ADD COLUMN IF NOT EXISTS password_hash VARCHAR(255),
 ADD COLUMN IF NOT EXISTS salt VARCHAR(255),
 ADD COLUMN IF NOT EXISTS is_admin BOOLEAN DEFAULT FALSE,
@@ -10,8 +10,8 @@ ADD COLUMN IF NOT EXISTS is_active BOOLEAN DEFAULT TRUE,
 ADD COLUMN IF NOT EXISTS updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW();
 
 -- Update existing users to be active
-UPDATE public.users 
-SET is_active = TRUE, updated_at = NOW() 
+UPDATE public.users
+SET is_active = TRUE, updated_at = NOW()
 WHERE is_active IS NULL;
 
 -- Create index for username lookups (if not exists)
@@ -32,9 +32,10 @@ $$ language 'plpgsql';
 
 -- Create trigger for users table
 DROP TRIGGER IF EXISTS update_users_updated_at ON public.users;
-CREATE TRIGGER update_users_updated_at 
+CREATE TRIGGER update_users_updated_at
     BEFORE UPDATE ON public.users
     FOR EACH ROW EXECUTE FUNCTION update_users_updated_at();
 
 -- Note: Existing users will need to have passwords set through the admin interface
 -- or password reset functionality
+

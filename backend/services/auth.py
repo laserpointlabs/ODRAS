@@ -144,7 +144,7 @@ def get_user(authorization: Optional[str] = Header(None)):
             cur.execute(
                 """
                 SELECT user_id, username, is_admin, expires_at, is_active
-                FROM public.auth_tokens 
+                FROM public.auth_tokens
                 WHERE token_hash = %s AND is_active = TRUE
             """,
                 (token_hash,),
@@ -207,3 +207,4 @@ def get_admin_user(authorization: Optional[str] = Header(None)):
 def is_user_admin(user: Dict) -> bool:
     """Check if user has admin privileges."""
     return user.get("is_admin", False)
+

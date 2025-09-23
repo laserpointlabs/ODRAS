@@ -29,3 +29,4 @@ NAVIGATION SYSTEM REQUIREMENTS
    - System startup time shall not exceed 10 seconds
    - Route calculation time shall not exceed 5 seconds for routes up to 500km
    - Battery life shall support continuous operation for 8 hours
+

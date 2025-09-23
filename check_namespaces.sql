@@ -7,3 +7,4 @@ SELECT COUNT(*) as namespace_count FROM namespace_registry;
 -- Show table structure if it exists
 \d namespace_registry
 
+

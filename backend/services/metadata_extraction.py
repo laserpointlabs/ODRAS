@@ -301,3 +301,4 @@ def get_metadata_extraction_service(
 ) -> MetadataExtractionService:
     """Get configured metadata extraction service instance."""
     return MetadataExtractionService(settings)
+

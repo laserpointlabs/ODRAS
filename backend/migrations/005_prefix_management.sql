@@ -15,7 +15,7 @@ CREATE TABLE prefix_registry (
 
 -- Add constraint to ensure prefix follows naming rules
 -- Lowercase letters and numbers only, start with letter, 2-20 characters
-ALTER TABLE prefix_registry ADD CONSTRAINT prefix_format_check 
+ALTER TABLE prefix_registry ADD CONSTRAINT prefix_format_check
 CHECK (prefix ~ '^[a-z][a-z0-9]{1,19}$');
 
 -- Create index for faster lookups
@@ -32,4 +32,5 @@ INSERT INTO prefix_registry (prefix, description, owner, created_by) VALUES
 ('nasa', 'NASA', 'admin@odras.local', 'admin@odras.local'),
 ('boeing', 'Boeing', 'admin@odras.local', 'admin@odras.local'),
 ('lockheed', 'Lockheed Martin', 'admin@odras.local', 'admin@odras.local');
+
 

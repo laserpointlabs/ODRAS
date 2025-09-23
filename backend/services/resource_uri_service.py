@@ -316,3 +316,4 @@ def get_resource_uri_service(
     if not db_service:
         db_service = DatabaseService(settings)
     return ResourceURIService(settings, db_service)
+

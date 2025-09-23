@@ -109,3 +109,4 @@ class BPMNWorkflowRunner:
                 et = e.get("type", "Unknown")
                 counts[et] = counts.get(et, 0) + 1
         return counts
+

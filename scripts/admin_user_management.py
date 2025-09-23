@@ -123,7 +123,7 @@ def change_password():
             with conn.cursor() as cur:
                 cur.execute(
                     """
-                    UPDATE public.users 
+                    UPDATE public.users
                     SET password_hash = %s, salt = %s, updated_at = NOW()
                     WHERE username = %s
                     """,
@@ -213,3 +213,4 @@ if __name__ == "__main__":
     except Exception as e:
         print(f"\n❌ Unexpected error: {e}")
         sys.exit(1)
+

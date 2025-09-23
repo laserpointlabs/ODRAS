@@ -27,7 +27,7 @@ TEST_DOCUMENTS = {
 - **REQ-NAV-003**: The system SHALL provide turn-by-turn guidance with voice prompts
 - **REQ-NAV-004**: The system SHALL support multiple coordinate systems (WGS84, UTM, local grid)
 
-### 1.2 User Interface Requirements  
+### 1.2 User Interface Requirements
 - **REQ-UI-001**: The navigation interface SHALL display current position, heading, and speed
 - **REQ-UI-002**: The system SHALL provide a map view with zoom levels from 1:100 to 1:50000
 - **REQ-UI-003**: The interface SHALL support both day and night display modes
@@ -128,7 +128,7 @@ TEST_DOCUMENTS = {
 
 ### 3.2 Safety Equipment Requirements
 - Personal protective equipment (PPE) required for all personnel
-- Emergency first aid kit available at all times  
+- Emergency first aid kit available at all times
 - Fire suppression equipment tested monthly
 - Emergency communication devices for all personnel
 
@@ -598,3 +598,4 @@ async def main():
 if __name__ == "__main__":
     success = asyncio.run(main())
     exit(0 if success else 1)
+

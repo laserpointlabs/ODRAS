@@ -1,0 +1,64 @@
+[15:37:35] INFO: 🚀 Starting complete event capture pipeline test...
+[15:37:35] INFO:    Test Session: test_1758224255
+[15:37:35] INFO:    Log File: logs/event_capture_test_test_1758224255.log
+[15:37:35] INFO: ✅ Authentication successful
+[15:37:35] INFO: 🧪 TEST 1: Creating project and verifying project thread...
+[15:37:36] INFO: ✅ Project created: 3392ff1a-3ff0-427e-a7f5-5bc2a7fc015a
+[15:37:36] INFO:    Name: Event Pipeline Test test_1758224255
+[15:37:38] INFO: 🔍 Querying Qdrant for project thread with project_id: 3392ff1a-3ff0-427e-a7f5-5bc2a7fc015a
+[15:37:38] INFO: 🔍 Qdrant response status: 200
+[15:37:38] INFO: 🔍 Found 1 project threads for project 3392ff1a-3ff0-427e-a7f5-5bc2a7fc015a
+[15:37:38] INFO: 🔍 Using most recent project thread: e31b5f26-8fe7-4a3c-99c9-4bbf8f24380f
+[15:37:38] INFO: 🔍 Last activity: 2025-09-18T15:37:36.521667
+[15:37:38] INFO: ✅ Project thread created: e31b5f26-8fe7-4a3c-99c9-4bbf8f24380f
+[15:37:38] INFO: 🔍 Verifying event: project_creation
+[15:37:38] INFO: 🔍 Querying Qdrant for project thread with project_id: 3392ff1a-3ff0-427e-a7f5-5bc2a7fc015a
+[15:37:38] INFO: 🔍 Qdrant response status: 200
+[15:37:38] INFO: 🔍 Found 1 project threads for project 3392ff1a-3ff0-427e-a7f5-5bc2a7fc015a
+[15:37:38] INFO: 🔍 Using most recent project thread: e31b5f26-8fe7-4a3c-99c9-4bbf8f24380f
+[15:37:38] INFO: 🔍 Last activity: 2025-09-18T15:37:36.521667
+[15:37:38] INFO: ✅ PASS: project_creation event found: project_created
+[15:37:38] INFO: 🧪 TEST 2: Creating ontology and verifying capture...
+[15:37:39] INFO: ✅ Ontology created successfully
+[15:37:39] INFO:    Backup ID: 1144a8e4-d804-4f02-b74e-85591428f550
+[15:37:39] INFO:    Triples: 3
+[15:37:41] INFO: 🔍 Verifying event: ontology_creation
+[15:37:41] INFO: 🔍 Querying Qdrant for project thread with project_id: 3392ff1a-3ff0-427e-a7f5-5bc2a7fc015a
+[15:37:41] INFO: 🔍 Qdrant response status: 200
+[15:37:41] INFO: 🔍 Found 2 project threads for project 3392ff1a-3ff0-427e-a7f5-5bc2a7fc015a
+[15:37:41] INFO: 🔍 Using most recent project thread: c62666c7-93d2-4c42-bbc3-8fcfbc1ca699
+[15:37:41] INFO: 🔍 Last activity: 2025-09-18T15:37:39.141947
+[15:37:41] INFO: ✅ PASS: ontology_creation event found: Created new ontology: default
+[15:37:41] INFO: 🧪 TEST 3: Performing semantic operations...
+[15:37:41] INFO: ✅ Classes created: TestClass1, TestClass2
+[15:37:43] INFO: ✅ Added: relationship 'relatedTo', data property 'testName', renamed TestClass1
+[15:37:45] INFO: 🔍 Querying Qdrant for project thread with project_id: 3392ff1a-3ff0-427e-a7f5-5bc2a7fc015a
+[15:37:45] INFO: 🔍 Qdrant response status: 200
+[15:37:45] INFO: 🔍 Found 4 project threads for project 3392ff1a-3ff0-427e-a7f5-5bc2a7fc015a
+[15:37:45] INFO: 🔍 Using most recent project thread: 6155cdf2-666c-4584-aafe-5452bedfe417
+[15:37:45] INFO: 🔍 Last activity: 2025-09-18T15:37:43.126987
+[15:37:45] INFO: ✅ Captured 1 semantic ontology events
+[15:37:45] INFO:    - Updated ontology with semantic changes
+[15:37:45] INFO: 🧪 TEST 3.5: Uploading knowledge files...
+[15:37:45] INFO: 📁 Uploading data/decision_matrix_template.md...
+[15:37:45] INFO: ✅ Uploaded decision_matrix_template.md - File ID: 22e0dff8-23b0-43a6-b358-23fc1d6c26bb
+[15:37:47] INFO: 📁 Uploading data/disaster_response_requirements.md...
+[15:37:48] INFO: ✅ Uploaded disaster_response_requirements.md - File ID: e7fab5bc-609d-4e0c-8fc9-e4722454965c
+[15:37:50] INFO: 📁 Uploading data/uas_specifications.md...
+[15:37:50] INFO: ✅ Uploaded uas_specifications.md - File ID: 13b4aaae-ea50-4201-bd37-34cd3435fad7
+[15:37:52] INFO: ⏳ Monitoring Camunda knowledge processing workflows...
+[15:37:52] INFO: ⚠️  Found 12 processes with incidents (not necessarily knowledge-related)
+[15:38:02] INFO: ✅ Knowledge processing completed in 10.0 seconds
+[15:38:03] INFO: ⚠️  Search for 'QuadCopter T4' found 0 chunks
+[15:38:03] INFO: ⚠️  Search for 'TriVector VTOL' found 0 chunks
+[15:38:03] INFO: ⚠️  Search for 'disaster response' found 0 chunks
+[15:38:03] ERROR: ❌ No knowledge assets found - processing may have failed
+[15:38:03] ERROR: ❌ Knowledge assets not searchable after processing
+[15:38:03] INFO: ⏳ Waiting additional time for knowledge indexing...
+[15:38:13] INFO: ⚠️  Search for 'QuadCopter T4' found 0 chunks
+[15:38:14] INFO: ⚠️  Search for 'TriVector VTOL' found 0 chunks
+[15:38:14] INFO: ⚠️  Search for 'disaster response' found 0 chunks
+[15:38:14] ERROR: ❌ No knowledge assets found - processing may have failed
+[15:38:14] ERROR: ❌ Knowledge assets still not found - processing may have failed
+[15:38:14] ERROR: ❌ Knowledge processing failed or timed out
+[15:38:14] ERROR: ❌ Knowledge file upload failed

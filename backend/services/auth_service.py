@@ -185,7 +185,7 @@ class AuthService:
                 # Update password
                 cur.execute(
                     """
-                    UPDATE public.users 
+                    UPDATE public.users
                     SET password_hash = %s, salt = %s, updated_at = NOW()
                     WHERE user_id = %s
                     """,
@@ -234,7 +234,7 @@ class AuthService:
             with conn.cursor() as cur:
                 cur.execute(
                     """
-                    UPDATE public.users 
+                    UPDATE public.users
                     SET is_admin = %s, updated_at = NOW()
                     WHERE user_id = %s
                     """,
@@ -252,7 +252,7 @@ class AuthService:
             with conn.cursor() as cur:
                 cur.execute(
                     """
-                    UPDATE public.users 
+                    UPDATE public.users
                     SET is_active = FALSE, updated_at = NOW()
                     WHERE user_id = %s
                     """,
@@ -270,7 +270,7 @@ class AuthService:
             with conn.cursor() as cur:
                 cur.execute(
                     """
-                    UPDATE public.users 
+                    UPDATE public.users
                     SET is_active = TRUE, updated_at = NOW()
                     WHERE user_id = %s
                     """,
@@ -280,3 +280,4 @@ class AuthService:
                 return cur.rowcount > 0
         finally:
             self.db._return(conn)
+

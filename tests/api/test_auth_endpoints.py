@@ -125,3 +125,4 @@ class TestAuthenticationEndpoints:
         # Verify token no longer works
         response = await client.get("/api/auth/me", headers=headers)
         assert response.status_code == 401
+

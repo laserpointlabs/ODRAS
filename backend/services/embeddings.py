@@ -103,8 +103,11 @@ class SentenceTransformersEmbedder(BaseEmbedder):
         if self._transformer is None:
             try:
                 from sentence_transformers import SentenceTransformer
+                import os
 
-                self._transformer = SentenceTransformer(self.model.name)
+                # Use local cache to avoid downloading model metadata from HuggingFace
+                cache_dir = os.path.join(os.path.dirname(os.path.dirname(os.path.dirname(__file__))), "models", "embeddings")
+                self._transformer = SentenceTransformer(self.model.name, cache_folder=cache_dir)
                 logger.info(f"Loaded SentenceTransformer model: {self.model.name}")
             except ImportError:
                 raise ImportError(

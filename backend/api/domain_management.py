@@ -322,8 +322,8 @@ def list_active_domains(db: DatabaseService = Depends(get_db)):
             with conn.cursor() as cur:
                 cur.execute(
                     """
-                    SELECT * FROM domain_registry 
-                    WHERE status = 'active' 
+                    SELECT * FROM domain_registry
+                    WHERE status = 'active'
                     ORDER BY domain ASC
                 """
                 )
@@ -347,3 +347,4 @@ def list_active_domains(db: DatabaseService = Depends(get_db)):
     except Exception as e:
         logger.error(f"Error listing active domains: {e}")
         raise HTTPException(status_code=500, detail=str(e))
+

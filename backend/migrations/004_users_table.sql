@@ -47,3 +47,4 @@ COMMENT ON TABLE public.projects IS 'Projects that users can work on';
 COMMENT ON TABLE public.project_members IS 'Membership relationships between users and projects';
 COMMENT ON COLUMN public.users.is_admin IS 'Whether the user has administrative privileges';
 COMMENT ON COLUMN public.project_members.role IS 'User role in the project (admin, member, viewer)';
+

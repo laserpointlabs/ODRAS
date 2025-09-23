@@ -325,7 +325,7 @@ async def update_namespace(
         params.append(namespace_id)
 
         query = f"""
-        UPDATE namespace_registry 
+        UPDATE namespace_registry
         SET {', '.join(update_fields)}
         WHERE id = ${param_count}
         """
@@ -465,7 +465,7 @@ async def create_class(
         # Get version details
         version_info = await db.fetch_one(
             """
-            SELECT nv.*, nr.path, nr.prefix 
+            SELECT nv.*, nr.path, nr.prefix
             FROM namespace_versions nv
             JOIN namespace_registry nr ON nv.namespace_id = nr.id
             WHERE nv.namespace_id = $1 AND nv.version = $2
@@ -641,7 +641,7 @@ async def update_class(
         params.extend([class_id, version_info["id"]])
 
         query = f"""
-        UPDATE namespace_classes 
+        UPDATE namespace_classes
         SET {', '.join(update_fields)}
         WHERE id = ${param_count} AND version_id = ${param_count + 1}
         """
@@ -717,7 +717,7 @@ async def release_version(
         # Update version status to released
         await db.execute(
             """
-            UPDATE namespace_versions 
+            UPDATE namespace_versions
             SET status = 'released', released_at = NOW()
             WHERE id = $1
             """,
@@ -789,7 +789,7 @@ async def list_public_classes(
         # Get version ID
         version_info = await db.fetch_one(
             """
-            SELECT nv.id 
+            SELECT nv.id
             FROM namespace_versions nv
             JOIN namespace_registry nr ON nv.namespace_id = nr.id
             WHERE nv.namespace_id = $1 AND nv.version = $2 AND nv.status = 'released' AND nr.status = 'released'
@@ -823,3 +823,4 @@ async def list_public_classes(
     except Exception as e:
         logger.error(f"Error listing public classes: {e}")
         raise HTTPException(status_code=500, detail=str(e))
+

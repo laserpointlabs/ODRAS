@@ -33,24 +33,24 @@ async def federated_download_file(
 ):
     """
     Download a public file via federated access.
-    
+
     Allows external systems to download files using just the file ID
     from an IRI, without authentication (public files only).
     """
     try:
         logger.info(f"Federated download request for file: {file_id}")
-        
+
         # Check if file is public
         file_metadata = await storage_service.get_file_metadata(file_id)
         if not file_metadata:
             raise HTTPException(status_code=404, detail="File not found")
-        
+
         if file_metadata.get("visibility") != "public":
             raise HTTPException(
-                status_code=403, 
+                status_code=403,
                 detail="File is private. Contact installation for access."
             )
-        
+
         # Retrieve file content
         file_data = await storage_service.retrieve_file(file_id)
         if file_data is None:
@@ -89,17 +89,17 @@ async def federated_get_file_metadata(
     """
     try:
         logger.info(f"Federated metadata request for file: {file_id}")
-        
+
         file_metadata = await storage_service.get_file_metadata(file_id)
         if not file_metadata:
             raise HTTPException(status_code=404, detail="File not found")
-        
+
         if file_metadata.get("visibility") != "public":
             raise HTTPException(
                 status_code=403,
                 detail="File metadata is private. Contact installation for access."
             )
-        
+
         # Return sanitized metadata (remove internal fields)
         public_metadata = {
             "file_id": file_metadata["file_id"],
@@ -115,7 +115,7 @@ async def federated_get_file_metadata(
                 "base_uri": get_installation_iri_service().installation_base_uri
             }
         }
-        
+
         return public_metadata
 
     except HTTPException:
@@ -132,12 +132,12 @@ async def federated_get_knowledge_content(
 ):
     """
     Get public knowledge asset content via federated access.
-    
+
     Enables external systems to access knowledge content and analysis results.
     """
     try:
         logger.info(f"Federated knowledge content request: {asset_id}")
-        
+
         conn = db._conn()
         try:
             with conn.cursor() as cur:
@@ -148,28 +148,28 @@ async def federated_get_knowledge_content(
                     LEFT JOIN files f ON ka.source_file_id = f.id
                     WHERE ka.id = %s AND ka.is_public = TRUE
                 """, (asset_id,))
-                
+
                 asset_row = cur.fetchone()
                 if not asset_row:
                     raise HTTPException(
-                        status_code=404, 
+                        status_code=404,
                         detail="Public knowledge asset not found"
                     )
-                
+
                 asset_dict = dict(zip([desc[0] for desc in cur.description], asset_row))
-                
+
                 # Get all chunks for this asset
                 cur.execute("""
                     SELECT content, chunk_type, sequence_number, token_count, metadata
-                    FROM knowledge_chunks 
-                    WHERE asset_id = %s 
+                    FROM knowledge_chunks
+                    WHERE asset_id = %s
                     ORDER BY sequence_number
                 """, (asset_id,))
-                
+
                 chunk_rows = cur.fetchall()
                 chunks = []
                 total_tokens = 0
-                
+
                 for chunk_row in chunk_rows:
                     content, chunk_type, seq_num, token_count, metadata = chunk_row
                     chunks.append({
@@ -180,10 +180,10 @@ async def federated_get_knowledge_content(
                         "metadata": metadata or {}
                     })
                     total_tokens += token_count or 0
-                
+
                 # Combine all chunk content
                 full_content = "\\n\\n".join([chunk["content"] for chunk in chunks])
-                
+
                 return {
                     "iri": asset_dict.get("iri"),
                     "asset_id": asset_id,
@@ -204,10 +204,10 @@ async def federated_get_knowledge_content(
                     },
                     "accessed_at": datetime.now().isoformat()
                 }
-                
+
         finally:
             db._return(conn)
-            
+
     except HTTPException:
         raise
     except Exception as e:
@@ -225,7 +225,7 @@ async def federated_get_knowledge_metadata(
     """
     try:
         logger.info(f"Federated knowledge metadata request: {asset_id}")
-        
+
         conn = db._conn()
         try:
             with conn.cursor() as cur:
@@ -237,16 +237,16 @@ async def federated_get_knowledge_metadata(
                     LEFT JOIN files f ON ka.source_file_id = f.id
                     WHERE ka.id = %s AND ka.is_public = TRUE
                 """, (asset_id,))
-                
+
                 result = cur.fetchone()
                 if not result:
                     raise HTTPException(
                         status_code=404,
                         detail="Public knowledge asset not found"
                     )
-                
+
                 asset_dict = dict(zip([desc[0] for desc in cur.description], result))
-                
+
                 return {
                     "asset_id": asset_id,
                     "iri": asset_dict.get("iri"),
@@ -264,10 +264,10 @@ async def federated_get_knowledge_metadata(
                     },
                     "accessed_at": datetime.now().isoformat()
                 }
-                
+
         finally:
             db._return(conn)
-            
+
     except HTTPException:
         raise
     except Exception as e:
@@ -279,13 +279,13 @@ async def federated_get_knowledge_metadata(
 async def discover_installation():
     """
     Installation discovery endpoint for federated systems.
-    
+
     Allows external systems to discover this installation's capabilities,
     supported resource types, and contact information.
     """
     try:
         iri_service = get_installation_iri_service()
-        
+
         return {
             "installation": {
                 "name": iri_service.settings.installation_name,
@@ -309,7 +309,8 @@ async def discover_installation():
             },
             "discovered_at": datetime.now().isoformat()
         }
-        
+
     except Exception as e:
         logger.error(f"Failed installation discovery: {e}")
         raise HTTPException(status_code=500, detail=f"Discovery failed: {str(e)}")
+

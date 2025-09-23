@@ -31,12 +31,12 @@ class NamespaceSyncService:
             PREFIX owl: <http://www.w3.org/2002/07/owl#>
             PREFIX rdfs: <http://www.w3.org/2000/01/rdf-schema#>
             PREFIX rdf: <http://www.w3.org/1999/02/22-rdf-syntax-ns#>
-            
+
             INSERT DATA {{
                 GRAPH <{graph_iri}> {{
                     <{class_data['iri']}> a owl:Class ;
                         rdfs:label "{class_data['label']}" .
-                    
+
                     {f'<{class_data["iri"]}> rdfs:comment "{class_data["comment"]}" .' if class_data.get('comment') else ''}
                 }}
             }}
@@ -91,7 +91,7 @@ class NamespaceSyncService:
             PREFIX owl: <http://www.w3.org/2002/07/owl#>
             PREFIX rdfs: <http://www.w3.org/2000/01/rdf-schema#>
             PREFIX rdf: <http://www.w3.org/1999/02/22-rdf-syntax-ns#>
-            
+
             INSERT DATA {{
                 GRAPH <{graph_iri}> {{
                     {''.join(class_triples)}
@@ -133,7 +133,7 @@ class NamespaceSyncService:
             sparql_query = f"""
             PREFIX owl: <http://www.w3.org/2002/07/owl#>
             PREFIX rdfs: <http://www.w3.org/2000/01/rdf-schema#>
-            
+
             SELECT ?class ?label ?comment WHERE {{
                 GRAPH <{graph_iri}> {{
                     ?class a owl:Class .
@@ -206,7 +206,7 @@ class NamespaceSyncService:
             # First delete existing label and comment
             delete_sparql = f"""
             PREFIX rdfs: <http://www.w3.org/2000/01/rdf-schema#>
-            
+
             DELETE {{
                 GRAPH <{graph_iri}> {{
                     <{class_iri}> rdfs:label ?old_label .
@@ -224,7 +224,7 @@ class NamespaceSyncService:
             # Then insert new label and comment
             insert_sparql = f"""
             PREFIX rdfs: <http://www.w3.org/2000/01/rdf-schema#>
-            
+
             INSERT DATA {{
                 GRAPH <{graph_iri}> {{
                     <{class_iri}> rdfs:label "{new_label}" .
@@ -277,7 +277,7 @@ class NamespaceSyncService:
             sparql_update = f"""
             PREFIX owl: <http://www.w3.org/2002/07/owl#>
             PREFIX rdfs: <http://www.w3.org/2000/01/rdf-schema#>
-            
+
             DELETE {{
                 GRAPH <{graph_iri}> {{
                     <{class_iri}> ?p ?o .
@@ -310,3 +310,4 @@ class NamespaceSyncService:
         except Exception as e:
             logger.error(f"Error deleting class from Fuseki: {e}")
             return False
+

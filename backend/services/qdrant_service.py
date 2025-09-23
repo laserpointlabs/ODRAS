@@ -473,3 +473,4 @@ def ensure_knowledge_collections(qdrant_service: QdrantService) -> bool:
     except Exception as e:
         logger.error(f"Failed to ensure knowledge collections: {str(e)}")
         return False
+
