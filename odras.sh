@@ -410,8 +410,13 @@ clean_databases() {
             curl -s -X PUT "http://localhost:6333/collections/das_instructions" \
                  -H "Content-Type: application/json" \
                  -d '{"vectors": {"size": 384, "distance": "Cosine"}}' >/dev/null 2>&1
+                 
+            # Create project_threads collection (384 dimensions for project thread management)
+            curl -s -X PUT "http://localhost:6333/collections/project_threads" \
+                 -H "Content-Type: application/json" \
+                 -d '{"vectors": {"size": 384, "distance": "Cosine"}}' >/dev/null 2>&1
             
-            print_success "✓ Recreated Qdrant collections"
+            print_success "✓ Recreated Qdrant collections: knowledge_chunks, knowledge_large, odras_requirements, das_instructions, project_threads"
         else
             print_warning "⚠ Could not connect to Qdrant to recreate collections"
         fi
@@ -1074,7 +1079,7 @@ init_databases() {
     if [[ -d "backend/migrations" ]]; then
         print_status "Running PostgreSQL migrations..."
         
-        # Run migrations in numerical order (000-013)
+        # Run migrations in numerical order (000-015)
         local migrations=(
             "000_files_table.sql"
             "001_knowledge_management.sql"
@@ -1090,6 +1095,8 @@ init_databases() {
             "011_add_service_namespace_type.sql"
             "012_migrate_auth_system.sql"
             "013_fix_projects_created_by_type.sql"
+            "014_orphaned_assets_management.sql"
+            "015_installation_specific_iris.sql"
         )
         
         for migration in "${migrations[@]}"; do
@@ -1111,12 +1118,22 @@ init_databases() {
     
     # Initialize Neo4j schema
     print_status "Initializing Neo4j schema..."
-    docker exec odras_neo4j cypher-shell -u neo4j -p testpassword "
-    // Create basic constraints
-    CREATE CONSTRAINT doc_id IF NOT EXISTS FOR (d:Document) REQUIRE d.id IS UNIQUE;
-    CREATE CONSTRAINT asset_id IF NOT EXISTS FOR (a:KnowledgeAsset) REQUIRE a.id IS UNIQUE;
-    CREATE CONSTRAINT chunk_id IF NOT EXISTS FOR (c:Chunk) REQUIRE c.id IS UNIQUE;
-    " >/dev/null 2>&1 || print_warning "  Neo4j initialization may have failed"
+    if [[ -f "backend/migrations/001_neo4j_knowledge_graph.cypher" ]]; then
+        print_status "  Running Neo4j knowledge graph migration..."
+        if cat "backend/migrations/001_neo4j_knowledge_graph.cypher" | docker exec -i odras_neo4j cypher-shell -u neo4j -p testpassword; then
+            print_success "    ✓ Neo4j migration completed"
+        else
+            print_warning "    ⚠ Neo4j migration may have failed or was already applied"
+        fi
+    else
+        print_warning "  Neo4j migration file not found, using basic schema"
+        docker exec odras_neo4j cypher-shell -u neo4j -p testpassword "
+        // Create basic constraints
+        CREATE CONSTRAINT doc_id IF NOT EXISTS FOR (d:Document) REQUIRE d.id IS UNIQUE;
+        CREATE CONSTRAINT asset_id IF NOT EXISTS FOR (a:KnowledgeAsset) REQUIRE a.id IS UNIQUE;
+        CREATE CONSTRAINT chunk_id IF NOT EXISTS FOR (c:Chunk) REQUIRE c.id IS UNIQUE;
+        " >/dev/null 2>&1 || print_warning "  Neo4j initialization may have failed"
+    fi
     
     # Initialize Fuseki RDF store
     print_status "Initializing Fuseki RDF store..."
@@ -1143,8 +1160,18 @@ init_databases() {
         curl -s -X PUT "http://localhost:6333/collections/odras_requirements" \
              -H "Content-Type: application/json" \
              -d '{"vectors": {"size": 384, "distance": "Cosine"}}' >/dev/null 2>&1
+             
+        # Create das_instructions collection (384 dimensions for DAS instruction embeddings)
+        curl -s -X PUT "http://localhost:6333/collections/das_instructions" \
+             -H "Content-Type: application/json" \
+             -d '{"vectors": {"size": 384, "distance": "Cosine"}}' >/dev/null 2>&1
+             
+        # Create project_threads collection (384 dimensions for project thread management)
+        curl -s -X PUT "http://localhost:6333/collections/project_threads" \
+             -H "Content-Type: application/json" \
+             -d '{"vectors": {"size": 384, "distance": "Cosine"}}' >/dev/null 2>&1
         
-        print_success "✓ Created Qdrant collections: knowledge_chunks, knowledge_large, odras_requirements, das_instructions"
+        print_success "✓ Created Qdrant collections: knowledge_chunks, knowledge_large, odras_requirements, das_instructions, project_threads"
     else
         print_warning "⚠ Could not connect to Qdrant to create collections"
     fi
@@ -1158,7 +1185,10 @@ init_databases() {
     # First create the basic user records
     if docker exec odras_postgres psql -U postgres -d odras -c "
     INSERT INTO users (username, display_name, is_admin, is_active) 
-    VALUES ('admin', 'Administrator', TRUE, TRUE), ('jdehart', 'J DeHart', TRUE, TRUE)
+    VALUES 
+        ('admin', 'Administrator', TRUE, TRUE), 
+        ('jdehart', 'J DeHart', TRUE, TRUE),
+        ('das_service', 'DAS Service Account', FALSE, TRUE)
     ON CONFLICT (username) DO UPDATE SET 
         display_name = EXCLUDED.display_name, 
         is_admin = EXCLUDED.is_admin,
@@ -1175,9 +1205,11 @@ init_databases() {
     if python scripts/setup_initial_users.py --ci; then
         print_success "✓ Created default users with password authentication"
         print_status "  Login credentials:"
-        print_status "    Username: admin  | Password: admin123!"
-        print_status "    Username: jdehart | Password: jdehart123!"
+        print_status "    Username: admin      | Password: admin123!"
+        print_status "    Username: jdehart    | Password: jdehart123!"
+        print_status "    Username: das_service | Password: das_service_2024!"
         print_status "  ⚠️  IMPORTANT: Change these passwords after first login!"
+        print_status "  💡 das_service account is used for testing and automation"
     else
         print_warning "⚠ Password setup failed - users created without passwords"
         print_status "  Run 'python scripts/setup_initial_users.py --ci' manually"
@@ -1309,7 +1341,8 @@ create_users() {
     INSERT INTO users (username, display_name, is_admin, is_active) 
     VALUES 
       ('admin', 'Administrator', TRUE, TRUE),
-      ('jdehart', 'J DeHart', TRUE, TRUE)
+      ('jdehart', 'J DeHart', TRUE, TRUE),
+      ('das_service', 'DAS Service Account', FALSE, TRUE)
     ON CONFLICT (username) DO UPDATE SET 
         display_name = EXCLUDED.display_name, 
         is_admin = EXCLUDED.is_admin,
@@ -1328,8 +1361,10 @@ create_users() {
         print_success "🎉 Users created successfully!"
         print_status ""
         print_status "📋 Login credentials:"
-        print_status "    Username: admin  | Password: admin123!"
-        print_status "    Username: jdehart | Password: jdehart123!"
+        print_status "    Username: admin      | Password: admin123!"
+        print_status "    Username: jdehart    | Password: jdehart123!"
+        print_status "    Username: das_service | Password: das_service_2024!"
+        print_status "💡 das_service account is used for testing and automation"
         print_status ""
         print_status "⚠️  IMPORTANT: Change these passwords after first login!"
         print_status "🌐 URL: http://localhost:8000/app"

@@ -1,0 +1,1757 @@
+{
+  "nodes": [
+    {
+      "data": {
+        "id": "Class1",
+        "label": "Project",
+        "type": "class",
+        "attrs": {
+          "creator": "jdehart",
+          "created_date": "2025-09-18",
+          "created_timestamp": "2025-09-18T15:48:30.348Z",
+          "last_modified_by": "jdehart",
+          "last_modified_date": "2025-09-23",
+          "last_modified_timestamp": "2025-09-23T12:47:24.216Z"
+        }
+      },
+      "position": {
+        "x": 594.950225915902,
+        "y": 166.97090404631763
+      }
+    },
+    {
+      "data": {
+        "id": "Class2",
+        "label": "Ontology",
+        "type": "class",
+        "attrs": {
+          "creator": "jdehart",
+          "created_date": "2025-09-18",
+          "created_timestamp": "2025-09-18T15:48:45.466Z",
+          "last_modified_by": "jdehart",
+          "last_modified_date": "2025-09-23",
+          "last_modified_timestamp": "2025-09-23T12:47:24.217Z",
+          "priority": "High",
+          "status": "Draft"
+        }
+      },
+      "position": {
+        "x": 462.47520813252345,
+        "y": 429.90516841563624
+      }
+    },
+    {
+      "data": {
+        "id": "Class3",
+        "label": "Digital Assistance Service (DAS)",
+        "type": "class",
+        "attrs": {
+          "creator": "jdehart",
+          "created_date": "2025-09-18",
+          "created_timestamp": "2025-09-18T15:48:52.398Z",
+          "last_modified_by": "jdehart",
+          "last_modified_date": "2025-09-23",
+          "last_modified_timestamp": "2025-09-23T12:47:24.217Z"
+        }
+      },
+      "position": {
+        "x": 1028.5155171024576,
+        "y": 428.8689317249701
+      }
+    },
+    {
+      "data": {
+        "id": "Class4",
+        "label": "Document",
+        "type": "class",
+        "attrs": {
+          "creator": "jdehart",
+          "created_date": "2025-09-18",
+          "created_timestamp": "2025-09-18T15:49:07.664Z",
+          "last_modified_by": "jdehart",
+          "last_modified_date": "2025-09-23",
+          "last_modified_timestamp": "2025-09-23T12:47:24.218Z"
+        }
+      },
+      "position": {
+        "x": 197.0110236692132,
+        "y": 311.5709136104952
+      }
+    },
+    {
+      "data": {
+        "id": "Class5",
+        "label": "Knowledge Document",
+        "type": "class",
+        "attrs": {
+          "creator": "jdehart",
+          "created_date": "2025-09-18",
+          "created_timestamp": "2025-09-18T15:49:29.641Z",
+          "last_modified_by": "jdehart",
+          "last_modified_date": "2025-09-23",
+          "last_modified_timestamp": "2025-09-23T12:47:24.218Z"
+        }
+      },
+      "position": {
+        "x": 16.94205403179251,
+        "y": 181.28735393215945
+      }
+    },
+    {
+      "data": {
+        "id": "Class6",
+        "label": "Requirements Document",
+        "type": "class",
+        "attrs": {
+          "creator": "jdehart",
+          "created_date": "2025-09-18",
+          "created_timestamp": "2025-09-18T15:49:39.266Z",
+          "last_modified_by": "jdehart",
+          "last_modified_date": "2025-09-23",
+          "last_modified_timestamp": "2025-09-23T12:47:24.218Z"
+        }
+      },
+      "position": {
+        "x": -18.597067610647613,
+        "y": 512.9476353956265
+      }
+    },
+    {
+      "data": {
+        "id": "Class7",
+        "label": "Specification Document",
+        "type": "class",
+        "attrs": {
+          "creator": "jdehart",
+          "created_date": "2025-09-18",
+          "created_timestamp": "2025-09-18T15:49:46.231Z",
+          "last_modified_by": "jdehart",
+          "last_modified_date": "2025-09-23",
+          "last_modified_timestamp": "2025-09-23T12:47:24.219Z"
+        }
+      },
+      "position": {
+        "x": -35.1474858035746,
+        "y": 320.50283207928885
+      }
+    },
+    {
+      "data": {
+        "id": "Class8",
+        "label": "ODRAS",
+        "type": "class",
+        "attrs": {
+          "creator": "jdehart",
+          "created_date": "2025-09-18",
+          "created_timestamp": "2025-09-18T15:50:02.987Z",
+          "last_modified_by": "jdehart",
+          "last_modified_date": "2025-09-23",
+          "last_modified_timestamp": "2025-09-23T12:47:24.219Z"
+        }
+      },
+      "position": {
+        "x": 773.8713021887718,
+        "y": 23.17931206548588
+      }
+    },
+    {
+      "data": {
+        "id": "Class9",
+        "label": "Entity",
+        "type": "class",
+        "attrs": {
+          "creator": "jdehart",
+          "created_date": "2025-09-18",
+          "created_timestamp": "2025-09-18T15:50:32.157Z",
+          "last_modified_by": "jdehart",
+          "last_modified_date": "2025-09-23",
+          "last_modified_timestamp": "2025-09-23T12:47:24.219Z"
+        }
+      },
+      "position": {
+        "x": 1180.4438671367705,
+        "y": 589.3346149039174
+      }
+    },
+    {
+      "data": {
+        "id": "Class11",
+        "label": "Class",
+        "type": "class",
+        "attrs": {
+          "creator": "jdehart",
+          "created_date": "2025-09-18",
+          "created_timestamp": "2025-09-18T15:51:07.099Z",
+          "last_modified_by": "jdehart",
+          "last_modified_date": "2025-09-23",
+          "last_modified_timestamp": "2025-09-23T12:47:24.220Z"
+        }
+      },
+      "position": {
+        "x": 1483.1584673997324,
+        "y": 514.4388128173372
+      }
+    },
+    {
+      "data": {
+        "id": "Class12",
+        "label": "Object Property",
+        "type": "class",
+        "attrs": {
+          "creator": "jdehart",
+          "created_date": "2025-09-18",
+          "created_timestamp": "2025-09-18T15:51:16.456Z",
+          "last_modified_by": "jdehart",
+          "last_modified_date": "2025-09-23",
+          "last_modified_timestamp": "2025-09-23T12:47:24.220Z"
+        }
+      },
+      "position": {
+        "x": 1475.482672878107,
+        "y": 597.258989576997
+      }
+    },
+    {
+      "data": {
+        "id": "Class13",
+        "label": "Note",
+        "type": "class",
+        "attrs": {
+          "creator": "jdehart",
+          "created_date": "2025-09-18",
+          "created_timestamp": "2025-09-18T15:51:25.483Z",
+          "last_modified_by": "jdehart",
+          "last_modified_date": "2025-09-23",
+          "last_modified_timestamp": "2025-09-23T12:47:24.221Z"
+        }
+      },
+      "position": {
+        "x": 1472.4005046283417,
+        "y": 676.5892741751799
+      }
+    },
+    {
+      "data": {
+        "id": "Class14",
+        "label": "Data Property",
+        "type": "class",
+        "attrs": {
+          "creator": "jdehart",
+          "created_date": "2025-09-18",
+          "created_timestamp": "2025-09-18T15:51:35.597Z",
+          "last_modified_by": "jdehart",
+          "last_modified_date": "2025-09-23",
+          "last_modified_timestamp": "2025-09-23T12:47:24.221Z"
+        }
+      },
+      "position": {
+        "x": 1375.90948770169,
+        "y": 314.2111473139577
+      }
+    },
+    {
+      "data": {
+        "id": "Class15",
+        "label": "Reference Document",
+        "type": "class",
+        "attrs": {
+          "creator": "jdehart",
+          "created_date": "2025-09-18",
+          "created_timestamp": "2025-09-18T15:56:11.332Z",
+          "last_modified_by": "jdehart",
+          "last_modified_date": "2025-09-23",
+          "last_modified_timestamp": "2025-09-23T12:47:24.222Z"
+        }
+      },
+      "position": {
+        "x": -25.934050091713104,
+        "y": 251.12015481302203
+      }
+    },
+    {
+      "data": {
+        "id": "Class16",
+        "label": "Knowledge Asset",
+        "type": "class",
+        "attrs": {
+          "creator": "jdehart",
+          "created_date": "2025-09-18",
+          "created_timestamp": "2025-09-18T15:56:43.685Z",
+          "last_modified_by": "jdehart",
+          "last_modified_date": "2025-09-23",
+          "last_modified_timestamp": "2025-09-23T12:47:24.222Z"
+        }
+      },
+      "position": {
+        "x": 346.74674664759607,
+        "y": 603.8602062467879
+      }
+    },
+    {
+      "data": {
+        "id": "Class17",
+        "label": "Annotation",
+        "type": "class",
+        "attrs": {
+          "creator": "jdehart",
+          "created_date": "2025-09-18",
+          "created_timestamp": "2025-09-18T15:59:08.497Z",
+          "last_modified_by": "jdehart",
+          "last_modified_date": "2025-09-23",
+          "last_modified_timestamp": "2025-09-23T12:47:24.222Z"
+        }
+      },
+      "position": {
+        "x": 1432.9324126931454,
+        "y": 758.7674777345387
+      }
+    },
+    {
+      "data": {
+        "id": "Class21",
+        "label": "Document Chunks",
+        "type": "class",
+        "attrs": {
+          "creator": "jdehart",
+          "created_date": "2025-09-22",
+          "created_timestamp": "2025-09-22T14:22:21.528Z",
+          "last_modified_by": "jdehart",
+          "last_modified_date": "2025-09-23",
+          "last_modified_timestamp": "2025-09-23T12:47:24.223Z"
+        }
+      },
+      "position": {
+        "x": 262.72899704016385,
+        "y": 455.6655299836463
+      }
+    },
+    {
+      "data": {
+        "id": "Class22",
+        "label": "Event",
+        "type": "class",
+        "attrs": {
+          "creator": "jdehart",
+          "created_date": "2025-09-22",
+          "created_timestamp": "2025-09-22T14:27:49.758Z",
+          "last_modified_by": "jdehart",
+          "last_modified_date": "2025-09-23",
+          "last_modified_timestamp": "2025-09-23T12:47:24.224Z"
+        }
+      },
+      "position": {
+        "x": 759.3579675931611,
+        "y": 285.23432294147733
+      }
+    },
+    {
+      "data": {
+        "id": "Class23",
+        "label": "Instance Table",
+        "type": "class",
+        "attrs": {
+          "creator": "jdehart",
+          "created_date": "2025-09-22",
+          "created_timestamp": "2025-09-22T14:30:11.045Z",
+          "last_modified_by": "jdehart",
+          "last_modified_date": "2025-09-23",
+          "last_modified_timestamp": "2025-09-23T12:47:24.224Z"
+        }
+      },
+      "position": {
+        "x": 493.9531431675348,
+        "y": 766.5961076910752
+      }
+    },
+    {
+      "data": {
+        "id": "Class24",
+        "label": "Requirement",
+        "type": "class",
+        "attrs": {
+          "creator": "jdehart",
+          "created_date": "2025-09-22",
+          "created_timestamp": "2025-09-22T14:30:58.623Z",
+          "last_modified_by": "jdehart",
+          "last_modified_date": "2025-09-23",
+          "last_modified_timestamp": "2025-09-23T12:47:24.224Z"
+        }
+      },
+      "position": {
+        "x": 162.15277764631435,
+        "y": 771.0401840875684
+      }
+    },
+    {
+      "data": {
+        "id": "Class25",
+        "label": "Assumptions",
+        "type": "class",
+        "attrs": {
+          "creator": "jdehart",
+          "created_date": "2025-09-22",
+          "created_timestamp": "2025-09-22T14:33:57.787Z",
+          "last_modified_by": "jdehart",
+          "last_modified_date": "2025-09-23",
+          "last_modified_timestamp": "2025-09-23T12:47:24.225Z"
+        }
+      },
+      "position": {
+        "x": 740.614752062704,
+        "y": 684.0072174139457
+      }
+    },
+    {
+      "data": {
+        "id": "Class26",
+        "label": "SME Feedback",
+        "type": "class",
+        "attrs": {
+          "creator": "jdehart",
+          "created_date": "2025-09-22",
+          "created_timestamp": "2025-09-22T14:34:21.552Z",
+          "last_modified_by": "jdehart",
+          "last_modified_date": "2025-09-23",
+          "last_modified_timestamp": "2025-09-23T12:47:24.227Z"
+        }
+      },
+      "position": {
+        "x": 762.3002993103098,
+        "y": 777.1494177048409
+      }
+    },
+    {
+      "data": {
+        "id": "Class27",
+        "label": "Add Knowledge",
+        "type": "class",
+        "attrs": {
+          "creator": "jdehart",
+          "created_date": "2025-09-22",
+          "created_timestamp": "2025-09-22T14:35:20.281Z",
+          "last_modified_by": "jdehart",
+          "last_modified_date": "2025-09-23",
+          "last_modified_timestamp": "2025-09-23T12:47:24.228Z"
+        }
+      },
+      "position": {
+        "x": 736.4500615842724,
+        "y": 866.7904071776088
+      }
+    },
+    {
+      "data": {
+        "id": "Class28",
+        "label": "Data",
+        "type": "class",
+        "attrs": {
+          "creator": "jdehart",
+          "created_date": "2025-09-22",
+          "created_timestamp": "2025-09-22T14:38:41.804Z",
+          "last_modified_by": "jdehart",
+          "last_modified_date": "2025-09-23",
+          "last_modified_timestamp": "2025-09-23T12:47:24.229Z"
+        }
+      },
+      "position": {
+        "x": 99.13016297248012,
+        "y": 113.37195171551306
+      }
+    },
+    {
+      "data": {
+        "id": "Class29",
+        "label": "Data Manager",
+        "type": "class",
+        "attrs": {
+          "creator": "jdehart",
+          "created_date": "2025-09-22",
+          "created_timestamp": "2025-09-22T14:39:16.976Z",
+          "last_modified_by": "jdehart",
+          "last_modified_date": "2025-09-23",
+          "last_modified_timestamp": "2025-09-23T12:47:24.230Z"
+        }
+      },
+      "position": {
+        "x": 1331.7581607914428,
+        "y": 175.66316324171677
+      }
+    },
+    {
+      "data": {
+        "id": "Class30",
+        "label": "Artifacts",
+        "type": "class",
+        "attrs": {
+          "creator": "jdehart",
+          "created_date": "2025-09-22",
+          "created_timestamp": "2025-09-22T14:39:45.133Z",
+          "last_modified_by": "jdehart",
+          "last_modified_date": "2025-09-23",
+          "last_modified_timestamp": "2025-09-23T12:47:24.231Z"
+        }
+      },
+      "position": {
+        "x": 442.57147706100943,
+        "y": 372.2061700042518
+      }
+    },
+    {
+      "data": {
+        "id": "Class31",
+        "label": "Tools Server",
+        "type": "class",
+        "attrs": {
+          "creator": "jdehart",
+          "created_date": "2025-09-22",
+          "created_timestamp": "2025-09-22T14:41:55.959Z",
+          "last_modified_by": "jdehart",
+          "last_modified_date": "2025-09-23",
+          "last_modified_timestamp": "2025-09-23T12:47:24.232Z"
+        }
+      },
+      "position": {
+        "x": 1385.3346314328014,
+        "y": 95.02283015310103
+      }
+    },
+    {
+      "data": {
+        "id": "Note1758552164830",
+        "label": "Note 4830",
+        "type": "note",
+        "attrs": {
+          "noteType": "Note",
+          "content": "Ontology Driven Requirements Analysis System: ODRAS captures ontologies and requirements, then estimates a system.",
+          "creator": "jdehart",
+          "created_date": "2025-09-22",
+          "created_timestamp": "2025-09-22T14:42:44.830Z",
+          "last_modified_by": "jdehart",
+          "last_modified_date": "2025-09-23",
+          "last_modified_timestamp": "2025-09-23T12:47:24.233Z",
+          "author": "jdehart"
+        }
+      },
+      "position": {
+        "x": 1049.0701640858865,
+        "y": 24.21728783945193
+      }
+    },
+    {
+      "data": {
+        "id": "Class32",
+        "label": "Ontology Estimation",
+        "type": "class",
+        "attrs": {
+          "creator": "jdehart",
+          "created_date": "2025-09-22",
+          "created_timestamp": "2025-09-22T14:43:59.817Z",
+          "last_modified_by": "jdehart",
+          "last_modified_date": "2025-09-23",
+          "last_modified_timestamp": "2025-09-23T12:47:24.234Z"
+        }
+      },
+      "position": {
+        "x": 553.9528627191728,
+        "y": 537.7524826399467
+      }
+    },
+    {
+      "data": {
+        "id": "Note1758552356565",
+        "label": "Note 6565",
+        "type": "note",
+        "attrs": {
+          "noteType": "Todo",
+          "content": "The ontology estimation is performed by DAS. By 'guessing' at what ontological instance may be capable of meeting a requirements needs. **This is the core capability of the demonstrator.**",
+          "creator": "jdehart",
+          "created_date": "2025-09-22",
+          "created_timestamp": "2025-09-22T14:45:56.565Z",
+          "last_modified_by": "jdehart",
+          "last_modified_date": "2025-09-23",
+          "last_modified_timestamp": "2025-09-23T12:47:24.234Z",
+          "author": "jdehart"
+        }
+      },
+      "position": {
+        "x": 179.10562500471264,
+        "y": 499.93279895772145
+      }
+    },
+    {
+      "data": {
+        "id": "Note1758552436662",
+        "label": "Note 6662",
+        "type": "note",
+        "attrs": {
+          "noteType": "Todo",
+          "content": "The instance table is auto-populated by the estimator but may also be edited and added to by the user.",
+          "creator": "jdehart",
+          "created_date": "2025-09-22",
+          "created_timestamp": "2025-09-22T14:47:16.662Z",
+          "last_modified_by": "jdehart",
+          "last_modified_date": "2025-09-23",
+          "last_modified_timestamp": "2025-09-23T12:47:24.234Z",
+          "author": "jdehart"
+        }
+      },
+      "position": {
+        "x": 327.0850178923007,
+        "y": 918.1322379129623
+      }
+    },
+    {
+      "data": {
+        "id": "Note1758552481868",
+        "label": "Note 1868",
+        "type": "note",
+        "attrs": {
+          "noteType": "Success",
+          "content": "KNowledge Assets are extracted and embedded from documents and requirements, these assets are used by DAS for semantic knowledge.",
+          "creator": "jdehart",
+          "created_date": "2025-09-22",
+          "created_timestamp": "2025-09-22T14:48:01.868Z",
+          "last_modified_by": "jdehart",
+          "last_modified_date": "2025-09-23",
+          "last_modified_timestamp": "2025-09-23T12:47:24.235Z",
+          "author": "jdehart"
+        }
+      },
+      "position": {
+        "x": 158.09933896244146,
+        "y": 446.01796612421174
+      }
+    },
+    {
+      "data": {
+        "id": "Note1758552537035",
+        "label": "Note 7035",
+        "type": "note",
+        "attrs": {
+          "noteType": "Todo",
+          "content": "The data manager automatically detects data objects and implements a templated data capture method than can be updated by the user of selected from a set of predefined templates. Update can occur automatically (chron) or by user request.",
+          "creator": "jdehart",
+          "created_date": "2025-09-22",
+          "created_timestamp": "2025-09-22T14:48:57.035Z",
+          "last_modified_by": "jdehart",
+          "last_modified_date": "2025-09-23",
+          "last_modified_timestamp": "2025-09-23T12:47:24.235Z",
+          "author": "jdehart"
+        }
+      },
+      "position": {
+        "x": 1668.4205562516293,
+        "y": 122.85464799545261
+      }
+    },
+    {
+      "data": {
+        "id": "Note1758552622712",
+        "label": "Note 2712",
+        "type": "note",
+        "attrs": {
+          "noteType": "Success",
+          "content": "DAS (Digital Assistance System) is semantically aware of project knowledge and project events and can interact with the user input.",
+          "creator": "jdehart",
+          "created_date": "2025-09-22",
+          "created_timestamp": "2025-09-22T14:50:22.712Z",
+          "last_modified_by": "jdehart",
+          "last_modified_date": "2025-09-23",
+          "last_modified_timestamp": "2025-09-23T12:47:24.235Z",
+          "author": "jdehart"
+        }
+      },
+      "position": {
+        "x": 1171.7324458671376,
+        "y": 203.99765859572832
+      }
+    },
+    {
+      "data": {
+        "id": "Note1758552688783",
+        "label": "Note 8783",
+        "type": "note",
+        "attrs": {
+          "noteType": "Todo",
+          "content": "Captures as a part of standard project activities. The goal is to test and formalize this capability on the WIRR program.",
+          "creator": "jdehart",
+          "created_date": "2025-09-22",
+          "created_timestamp": "2025-09-22T14:51:28.783Z",
+          "last_modified_by": "jdehart",
+          "last_modified_date": "2025-09-23",
+          "last_modified_timestamp": "2025-09-23T12:47:24.236Z",
+          "author": "jdehart"
+        }
+      },
+      "position": {
+        "x": 1041.812851742528,
+        "y": 771.726652324595
+      }
+    },
+    {
+      "data": {
+        "id": "Note1758552839416",
+        "label": "Note 9416",
+        "type": "note",
+        "attrs": {
+          "noteType": "Success",
+          "content": "Projects are intended to be atomic (small and focused) and hierarchal where main projects are fed information from lower project by import. **The goal is to have an project aware program**",
+          "creator": "jdehart",
+          "created_date": "2025-09-22",
+          "created_timestamp": "2025-09-22T14:53:59.416Z",
+          "last_modified_by": "jdehart",
+          "last_modified_date": "2025-09-23",
+          "last_modified_timestamp": "2025-09-23T12:47:24.236Z",
+          "author": "jdehart"
+        }
+      },
+      "position": {
+        "x": 437.3703674216432,
+        "y": 32.49338520854528
+      }
+    },
+    {
+      "data": {
+        "id": "Note1758552952415",
+        "label": "Note 2415",
+        "type": "note",
+        "attrs": {
+          "noteType": "Success",
+          "content": "Ontologies are a core capability and integration point for the ODRAS system, allowing semantic knowledge capture readable by human and machine.",
+          "creator": "jdehart",
+          "created_date": "2025-09-22",
+          "created_timestamp": "2025-09-22T14:55:52.415Z",
+          "last_modified_by": "jdehart",
+          "last_modified_date": "2025-09-23",
+          "last_modified_timestamp": "2025-09-23T12:47:24.237Z",
+          "author": "jdehart"
+        }
+      },
+      "position": {
+        "x": 361.7210693334982,
+        "y": 183.05364972906327
+      }
+    },
+    {
+      "data": {
+        "id": "Note1758553050020",
+        "label": "Note 0020",
+        "type": "note",
+        "attrs": {
+          "noteType": "Todo",
+          "content": "Artifacts are the primary output of the ODRAS tool, typically created by DAS after ontology creation, knowledge capture requirements extraction, and system estimation.",
+          "creator": "jdehart",
+          "created_date": "2025-09-22",
+          "created_timestamp": "2025-09-22T14:57:30.020Z",
+          "last_modified_by": "jdehart",
+          "last_modified_date": "2025-09-23",
+          "last_modified_timestamp": "2025-09-23T12:47:24.238Z",
+          "author": "jdehart"
+        }
+      },
+      "position": {
+        "x": 171.48749822644743,
+        "y": -74.487676286612
+      }
+    },
+    {
+      "data": {
+        "id": "Note1758553223704",
+        "label": "Note 3704",
+        "type": "note",
+        "attrs": {
+          "noteType": "Question",
+          "content": "We are assuming that ODRAS and the ontology are requirements based. This may or may not be the case.",
+          "creator": "jdehart",
+          "created_date": "2025-09-22",
+          "created_timestamp": "2025-09-22T15:00:23.704Z",
+          "last_modified_by": "jdehart",
+          "last_modified_date": "2025-09-23",
+          "last_modified_timestamp": "2025-09-23T12:47:24.238Z",
+          "author": "jdehart"
+        }
+      },
+      "position": {
+        "x": 146.02940071646543,
+        "y": 637.793576404236
+      }
+    }
+  ],
+  "edges": [
+    {
+      "data": {
+        "id": "e1758551129052",
+        "source": "Class13",
+        "target": "Class9",
+        "predicate": "clarifies_an",
+        "type": "objectProperty",
+        "attrs": {
+          "creator": "jdehart",
+          "created_date": "2025-09-22",
+          "created_timestamp": "2025-09-22T14:25:29.052Z",
+          "last_modified_by": "jdehart",
+          "last_modified_date": "2025-09-22",
+          "last_modified_timestamp": "2025-09-22T14:27:12.689Z",
+          "functional": false,
+          "inverse_functional": false
+        }
+      }
+    },
+    {
+      "data": {
+        "id": "e1758216761448",
+        "source": "Class3",
+        "target": "Class2",
+        "predicate": "understands",
+        "type": "objectProperty",
+        "attrs": {
+          "creator": "jdehart",
+          "created_date": "2025-09-18",
+          "created_timestamp": "2025-09-18T17:32:41.448Z",
+          "last_modified_by": "jdehart",
+          "last_modified_date": "2025-09-18",
+          "last_modified_timestamp": "2025-09-18T17:32:57.202Z",
+          "functional": false,
+          "inverse_functional": false
+        }
+      }
+    },
+    {
+      "data": {
+        "id": "e1758216758924",
+        "source": "Class3",
+        "target": "Class16",
+        "predicate": "utilizes_for_sematic_knowledge",
+        "type": "objectProperty",
+        "attrs": {
+          "creator": "jdehart",
+          "created_date": "2025-09-18",
+          "created_timestamp": "2025-09-18T17:32:38.924Z",
+          "last_modified_by": "jdehart",
+          "last_modified_date": "2025-09-22",
+          "last_modified_timestamp": "2025-09-22T14:29:35.915Z",
+          "functional": false,
+          "inverse_functional": false
+        }
+      }
+    },
+    {
+      "data": {
+        "id": "e1758210618216",
+        "source": "Class8",
+        "target": "Class1",
+        "predicate": "continas",
+        "type": "objectProperty",
+        "attrs": {
+          "creator": "jdehart",
+          "created_date": "2025-09-18",
+          "created_timestamp": "2025-09-18T15:50:18.216Z",
+          "last_modified_by": "jdehart",
+          "last_modified_date": "2025-09-18",
+          "last_modified_timestamp": "2025-09-18T17:33:08.966Z",
+          "functional": false,
+          "inverse_functional": false
+        }
+      }
+    },
+    {
+      "data": {
+        "id": "e1758210626466",
+        "source": "Class1",
+        "target": "Class2",
+        "predicate": "relatedTo",
+        "type": "objectProperty",
+        "attrs": {
+          "creator": "jdehart",
+          "created_date": "2025-09-18",
+          "created_timestamp": "2025-09-18T15:50:26.466Z",
+          "last_modified_by": "jdehart",
+          "last_modified_date": "2025-09-18",
+          "last_modified_timestamp": "2025-09-18T15:50:26.466Z"
+        }
+      }
+    },
+    {
+      "data": {
+        "id": "e1758210637527",
+        "source": "Class2",
+        "target": "Class9",
+        "predicate": "contains",
+        "type": "objectProperty",
+        "attrs": {
+          "creator": "jdehart",
+          "created_date": "2025-09-18",
+          "created_timestamp": "2025-09-18T15:50:37.527Z",
+          "last_modified_by": "jdehart",
+          "last_modified_date": "2025-09-22",
+          "last_modified_timestamp": "2025-09-22T14:29:15.670Z",
+          "functional": false,
+          "inverse_functional": false
+        }
+      }
+    },
+    {
+      "data": {
+        "id": "e1758216674564",
+        "source": "Class7",
+        "target": "Class4",
+        "predicate": "is_a",
+        "type": "objectProperty",
+        "attrs": {
+          "creator": "jdehart",
+          "created_date": "2025-09-18",
+          "created_timestamp": "2025-09-18T17:31:14.564Z",
+          "last_modified_by": "jdehart",
+          "last_modified_date": "2025-09-18",
+          "last_modified_timestamp": "2025-09-18T17:31:45.421Z",
+          "functional": false,
+          "inverse_functional": false
+        }
+      }
+    },
+    {
+      "data": {
+        "id": "e1758550982090",
+        "source": "Class21",
+        "target": "Class16",
+        "predicate": "embedded_as",
+        "type": "objectProperty",
+        "attrs": {
+          "creator": "jdehart",
+          "created_date": "2025-09-22",
+          "created_timestamp": "2025-09-22T14:23:02.090Z",
+          "last_modified_by": "jdehart",
+          "last_modified_date": "2025-09-22",
+          "last_modified_timestamp": "2025-09-22T14:23:16.928Z",
+          "functional": false,
+          "inverse_functional": false
+        }
+      }
+    },
+    {
+      "data": {
+        "id": "e1758550968032",
+        "source": "Class4",
+        "target": "Class21",
+        "predicate": "extracted_from",
+        "type": "objectProperty",
+        "attrs": {
+          "creator": "jdehart",
+          "created_date": "2025-09-22",
+          "created_timestamp": "2025-09-22T14:22:48.032Z",
+          "last_modified_by": "jdehart",
+          "last_modified_date": "2025-09-22",
+          "last_modified_timestamp": "2025-09-22T14:22:58.478Z",
+          "functional": false,
+          "inverse_functional": false
+        }
+      }
+    },
+    {
+      "data": {
+        "id": "e1758216672110",
+        "source": "Class6",
+        "target": "Class4",
+        "predicate": "is_a",
+        "type": "objectProperty",
+        "attrs": {
+          "creator": "jdehart",
+          "created_date": "2025-09-18",
+          "created_timestamp": "2025-09-18T17:31:12.110Z",
+          "last_modified_by": "jdehart",
+          "last_modified_date": "2025-09-18",
+          "last_modified_timestamp": "2025-09-18T17:31:40.337Z",
+          "functional": false,
+          "inverse_functional": false
+        }
+      }
+    },
+    {
+      "data": {
+        "id": "e1758210845733",
+        "source": "Class8",
+        "target": "Class3",
+        "predicate": "relatedTo",
+        "type": "objectProperty",
+        "attrs": {
+          "creator": "jdehart",
+          "created_date": "2025-09-18",
+          "created_timestamp": "2025-09-18T15:54:05.733Z",
+          "last_modified_by": "jdehart",
+          "last_modified_date": "2025-09-18",
+          "last_modified_timestamp": "2025-09-18T15:54:05.733Z"
+        }
+      }
+    },
+    {
+      "data": {
+        "id": "e1758210863395",
+        "source": "Class1",
+        "target": "Class4",
+        "predicate": "contains",
+        "type": "objectProperty",
+        "attrs": {
+          "creator": "jdehart",
+          "created_date": "2025-09-18",
+          "created_timestamp": "2025-09-18T15:54:23.395Z",
+          "last_modified_by": "jdehart",
+          "last_modified_date": "2025-09-18",
+          "last_modified_timestamp": "2025-09-18T17:31:58.046Z",
+          "functional": false,
+          "inverse_functional": false
+        }
+      }
+    },
+    {
+      "data": {
+        "id": "e1758211076698",
+        "source": "Class1",
+        "target": "Class16",
+        "predicate": "contains",
+        "type": "objectProperty",
+        "attrs": {
+          "creator": "jdehart",
+          "created_date": "2025-09-18",
+          "created_timestamp": "2025-09-18T15:57:56.698Z",
+          "last_modified_by": "jdehart",
+          "last_modified_date": "2025-09-18",
+          "last_modified_timestamp": "2025-09-18T17:32:05.881Z",
+          "functional": false,
+          "inverse_functional": false
+        }
+      }
+    },
+    {
+      "data": {
+        "id": "e1758216669788",
+        "source": "Class15",
+        "target": "Class4",
+        "predicate": "is_a",
+        "type": "objectProperty",
+        "attrs": {
+          "creator": "jdehart",
+          "created_date": "2025-09-18",
+          "created_timestamp": "2025-09-18T17:31:09.788Z",
+          "last_modified_by": "jdehart",
+          "last_modified_date": "2025-09-18",
+          "last_modified_timestamp": "2025-09-18T17:31:35.510Z",
+          "functional": false,
+          "inverse_functional": false
+        }
+      }
+    },
+    {
+      "data": {
+        "id": "e1758216667472",
+        "source": "Class5",
+        "target": "Class4",
+        "predicate": "is_a",
+        "type": "objectProperty",
+        "attrs": {
+          "creator": "jdehart",
+          "created_date": "2025-09-18",
+          "created_timestamp": "2025-09-18T17:31:07.472Z",
+          "last_modified_by": "jdehart",
+          "last_modified_date": "2025-09-18",
+          "last_modified_timestamp": "2025-09-18T17:31:24.065Z",
+          "functional": false,
+          "inverse_functional": false
+        }
+      }
+    },
+    {
+      "data": {
+        "id": "e1758551089115",
+        "source": "Class11",
+        "target": "Class9",
+        "predicate": "is_a",
+        "type": "objectProperty",
+        "attrs": {
+          "creator": "jdehart",
+          "created_date": "2025-09-22",
+          "created_timestamp": "2025-09-22T14:24:49.114Z",
+          "last_modified_by": "jdehart",
+          "last_modified_date": "2025-09-22",
+          "last_modified_timestamp": "2025-09-22T14:25:55.208Z",
+          "functional": false,
+          "inverse_functional": false
+        }
+      }
+    },
+    {
+      "data": {
+        "id": "e1758551091864",
+        "source": "Class12",
+        "target": "Class9",
+        "predicate": "is_a",
+        "type": "objectProperty",
+        "attrs": {
+          "creator": "jdehart",
+          "created_date": "2025-09-22",
+          "created_timestamp": "2025-09-22T14:24:51.864Z",
+          "last_modified_by": "jdehart",
+          "last_modified_date": "2025-09-22",
+          "last_modified_timestamp": "2025-09-22T14:25:47.367Z",
+          "functional": false,
+          "inverse_functional": false
+        }
+      }
+    },
+    {
+      "data": {
+        "id": "e1758551183441",
+        "source": "Class17",
+        "target": "Class9",
+        "predicate": "annotates_an",
+        "type": "objectProperty",
+        "attrs": {
+          "creator": "jdehart",
+          "created_date": "2025-09-22",
+          "created_timestamp": "2025-09-22T14:26:23.441Z",
+          "last_modified_by": "jdehart",
+          "last_modified_date": "2025-09-22",
+          "last_modified_timestamp": "2025-09-22T14:26:32.030Z",
+          "functional": false,
+          "inverse_functional": false
+        }
+      }
+    },
+    {
+      "data": {
+        "id": "e1758551208207",
+        "source": "Class14",
+        "target": "Class9",
+        "predicate": "captures_data_related_to",
+        "type": "objectProperty",
+        "attrs": {
+          "creator": "jdehart",
+          "created_date": "2025-09-22",
+          "created_timestamp": "2025-09-22T14:26:48.207Z",
+          "last_modified_by": "jdehart",
+          "last_modified_date": "2025-09-22",
+          "last_modified_timestamp": "2025-09-22T14:27:01.745Z",
+          "functional": false,
+          "inverse_functional": false
+        }
+      }
+    },
+    {
+      "data": {
+        "id": "e1758551276875",
+        "source": "Class1",
+        "target": "Class22",
+        "predicate": "logs",
+        "type": "objectProperty",
+        "attrs": {
+          "creator": "jdehart",
+          "created_date": "2025-09-22",
+          "created_timestamp": "2025-09-22T14:27:56.875Z",
+          "last_modified_by": "jdehart",
+          "last_modified_date": "2025-09-22",
+          "last_modified_timestamp": "2025-09-22T14:28:18.932Z",
+          "functional": false,
+          "inverse_functional": false
+        }
+      }
+    },
+    {
+      "data": {
+        "id": "e1758551302347",
+        "source": "Class22",
+        "target": "Class3",
+        "predicate": "situationally_informs",
+        "type": "objectProperty",
+        "attrs": {
+          "creator": "jdehart",
+          "created_date": "2025-09-22",
+          "created_timestamp": "2025-09-22T14:28:22.347Z",
+          "last_modified_by": "jdehart",
+          "last_modified_date": "2025-09-22",
+          "last_modified_timestamp": "2025-09-22T14:28:32.539Z",
+          "functional": false,
+          "inverse_functional": false
+        }
+      }
+    },
+    {
+      "data": {
+        "id": "e1758551427124",
+        "source": "Class1",
+        "target": "Class23",
+        "predicate": "can_contain_an",
+        "type": "objectProperty",
+        "attrs": {
+          "creator": "jdehart",
+          "created_date": "2025-09-22",
+          "created_timestamp": "2025-09-22T14:30:27.124Z",
+          "last_modified_by": "jdehart",
+          "last_modified_date": "2025-09-22",
+          "last_modified_timestamp": "2025-09-22T14:30:44.384Z",
+          "functional": false,
+          "inverse_functional": false
+        }
+      }
+    },
+    {
+      "data": {
+        "id": "e1758551467998",
+        "source": "Class24",
+        "target": "Class6",
+        "predicate": "is_extracted_from",
+        "type": "objectProperty",
+        "attrs": {
+          "creator": "jdehart",
+          "created_date": "2025-09-22",
+          "created_timestamp": "2025-09-22T14:31:07.998Z",
+          "last_modified_by": "jdehart",
+          "last_modified_date": "2025-09-22",
+          "last_modified_timestamp": "2025-09-22T14:31:17.524Z",
+          "functional": false,
+          "inverse_functional": false
+        }
+      }
+    },
+    {
+      "data": {
+        "id": "e1758551496816",
+        "source": "Class23",
+        "target": "Class2",
+        "predicate": "conforms_to",
+        "type": "objectProperty",
+        "attrs": {
+          "creator": "jdehart",
+          "created_date": "2025-09-22",
+          "created_timestamp": "2025-09-22T14:31:36.816Z",
+          "last_modified_by": "jdehart",
+          "last_modified_date": "2025-09-22",
+          "last_modified_timestamp": "2025-09-22T14:31:50.344Z",
+          "functional": false,
+          "inverse_functional": false
+        }
+      }
+    },
+    {
+      "data": {
+        "id": "e1758551521759",
+        "source": "Class24",
+        "target": "Class23",
+        "predicate": "is_listed_in",
+        "type": "objectProperty",
+        "attrs": {
+          "creator": "jdehart",
+          "created_date": "2025-09-22",
+          "created_timestamp": "2025-09-22T14:32:01.759Z",
+          "last_modified_by": "jdehart",
+          "last_modified_date": "2025-09-22",
+          "last_modified_timestamp": "2025-09-22T14:33:33.706Z",
+          "functional": false,
+          "inverse_functional": false
+        }
+      }
+    },
+    {
+      "data": {
+        "id": "e1758551650976",
+        "source": "Class23",
+        "target": "Class25",
+        "predicate": "captures",
+        "type": "objectProperty",
+        "attrs": {
+          "creator": "jdehart",
+          "created_date": "2025-09-22",
+          "created_timestamp": "2025-09-22T14:34:10.976Z",
+          "last_modified_by": "jdehart",
+          "last_modified_date": "2025-09-22",
+          "last_modified_timestamp": "2025-09-22T14:34:17.210Z",
+          "functional": false,
+          "inverse_functional": false
+        }
+      }
+    },
+    {
+      "data": {
+        "id": "e1758551671520",
+        "source": "Class23",
+        "target": "Class26",
+        "predicate": "captures",
+        "type": "objectProperty",
+        "attrs": {
+          "creator": "jdehart",
+          "created_date": "2025-09-22",
+          "created_timestamp": "2025-09-22T14:34:31.520Z",
+          "last_modified_by": "jdehart",
+          "last_modified_date": "2025-09-22",
+          "last_modified_timestamp": "2025-09-22T14:34:45.963Z",
+          "functional": false,
+          "inverse_functional": false
+        }
+      }
+    },
+    {
+      "data": {
+        "id": "e1758551739431",
+        "source": "Class23",
+        "target": "Class27",
+        "predicate": "captures",
+        "type": "objectProperty",
+        "attrs": {
+          "creator": "jdehart",
+          "created_date": "2025-09-22",
+          "created_timestamp": "2025-09-22T14:35:39.431Z",
+          "last_modified_by": "jdehart",
+          "last_modified_date": "2025-09-22",
+          "last_modified_timestamp": "2025-09-22T14:35:45.048Z",
+          "functional": false,
+          "inverse_functional": false
+        }
+      }
+    },
+    {
+      "data": {
+        "id": "e1758551868924",
+        "source": "Class3",
+        "target": "Class23",
+        "predicate": "relatedTo",
+        "type": "objectProperty",
+        "attrs": {
+          "creator": "jdehart",
+          "created_date": "2025-09-22",
+          "created_timestamp": "2025-09-22T14:37:48.924Z",
+          "last_modified_by": "jdehart",
+          "last_modified_date": "2025-09-22",
+          "last_modified_timestamp": "2025-09-22T14:37:48.924Z"
+        }
+      }
+    },
+    {
+      "data": {
+        "id": "e1758551932556",
+        "source": "Class28",
+        "target": "Class4",
+        "predicate": "is_a",
+        "type": "objectProperty",
+        "attrs": {
+          "creator": "jdehart",
+          "created_date": "2025-09-22",
+          "created_timestamp": "2025-09-22T14:38:52.556Z",
+          "last_modified_by": "jdehart",
+          "last_modified_date": "2025-09-22",
+          "last_modified_timestamp": "2025-09-22T14:39:02.180Z",
+          "functional": false,
+          "inverse_functional": false
+        }
+      }
+    },
+    {
+      "data": {
+        "id": "e1758551968969",
+        "source": "Class29",
+        "target": "Class14",
+        "predicate": "manages",
+        "type": "objectProperty",
+        "attrs": {
+          "creator": "jdehart",
+          "created_date": "2025-09-22",
+          "created_timestamp": "2025-09-22T14:39:28.969Z",
+          "last_modified_by": "jdehart",
+          "last_modified_date": "2025-09-22",
+          "last_modified_timestamp": "2025-09-22T14:39:36.884Z",
+          "functional": false,
+          "inverse_functional": false
+        }
+      }
+    },
+    {
+      "data": {
+        "id": "e1758551991646",
+        "source": "Class3",
+        "target": "Class30",
+        "predicate": "generated_by",
+        "type": "objectProperty",
+        "attrs": {
+          "creator": "jdehart",
+          "created_date": "2025-09-22",
+          "created_timestamp": "2025-09-22T14:39:51.646Z",
+          "last_modified_by": "jdehart",
+          "last_modified_date": "2025-09-22",
+          "last_modified_timestamp": "2025-09-22T14:40:02.099Z",
+          "functional": false,
+          "inverse_functional": false
+        }
+      }
+    },
+    {
+      "data": {
+        "id": "e1758552055524",
+        "source": "Class14",
+        "target": "Class2",
+        "predicate": "constrained_by",
+        "type": "objectProperty",
+        "attrs": {
+          "creator": "jdehart",
+          "created_date": "2025-09-22",
+          "created_timestamp": "2025-09-22T14:40:55.524Z",
+          "last_modified_by": "jdehart",
+          "last_modified_date": "2025-09-22",
+          "last_modified_timestamp": "2025-09-22T14:41:13.238Z",
+          "functional": false,
+          "inverse_functional": false
+        }
+      }
+    },
+    {
+      "data": {
+        "id": "e1758552085120",
+        "source": "Class3",
+        "target": "Class29",
+        "predicate": "accesses_data_from",
+        "type": "objectProperty",
+        "attrs": {
+          "creator": "jdehart",
+          "created_date": "2025-09-22",
+          "created_timestamp": "2025-09-22T14:41:25.120Z",
+          "last_modified_by": "jdehart",
+          "last_modified_date": "2025-09-22",
+          "last_modified_timestamp": "2025-09-22T14:41:37.927Z",
+          "functional": false,
+          "inverse_functional": false
+        }
+      }
+    },
+    {
+      "data": {
+        "id": "e1758552123897",
+        "source": "Class3",
+        "target": "Class31",
+        "predicate": "gets_deterministic_data_from",
+        "type": "objectProperty",
+        "attrs": {
+          "creator": "jdehart",
+          "created_date": "2025-09-22",
+          "created_timestamp": "2025-09-22T14:42:03.897Z",
+          "last_modified_by": "jdehart",
+          "last_modified_date": "2025-09-22",
+          "last_modified_timestamp": "2025-09-22T14:42:19.115Z",
+          "functional": false,
+          "inverse_functional": false
+        }
+      }
+    },
+    {
+      "data": {
+        "id": "enote1758552168191",
+        "source": "Note1758552164830",
+        "target": "Class8",
+        "predicate": "note_for",
+        "type": "note",
+        "attrs": {
+          "creator": "jdehart",
+          "created_date": "2025-09-22",
+          "created_timestamp": "2025-09-22T14:42:48.191Z",
+          "last_modified_by": "jdehart",
+          "last_modified_date": "2025-09-22",
+          "last_modified_timestamp": "2025-09-22T14:42:48.191Z"
+        }
+      }
+    },
+    {
+      "data": {
+        "id": "e1758552297972",
+        "source": "Class32",
+        "target": "Class3",
+        "predicate": "is_performed_by",
+        "type": "objectProperty",
+        "attrs": {
+          "creator": "jdehart",
+          "created_date": "2025-09-22",
+          "created_timestamp": "2025-09-22T14:44:57.972Z",
+          "last_modified_by": "jdehart",
+          "last_modified_date": "2025-09-22",
+          "last_modified_timestamp": "2025-09-22T14:45:06.634Z",
+          "functional": false,
+          "inverse_functional": false
+        }
+      }
+    },
+    {
+      "data": {
+        "id": "e1758552313176",
+        "source": "Class32",
+        "target": "Class23",
+        "predicate": "stores_results_in",
+        "type": "objectProperty",
+        "attrs": {
+          "creator": "jdehart",
+          "created_date": "2025-09-22",
+          "created_timestamp": "2025-09-22T14:45:13.176Z",
+          "last_modified_by": "jdehart",
+          "last_modified_date": "2025-09-22",
+          "last_modified_timestamp": "2025-09-22T14:45:31.384Z",
+          "functional": false,
+          "inverse_functional": false
+        }
+      }
+    },
+    {
+      "data": {
+        "id": "e1758552337687",
+        "source": "Class32",
+        "target": "Class2",
+        "predicate": "is_constrained_by",
+        "type": "objectProperty",
+        "attrs": {
+          "creator": "jdehart",
+          "created_date": "2025-09-22",
+          "created_timestamp": "2025-09-22T14:45:37.687Z",
+          "last_modified_by": "jdehart",
+          "last_modified_date": "2025-09-22",
+          "last_modified_timestamp": "2025-09-22T14:45:45.904Z",
+          "functional": false,
+          "inverse_functional": false
+        }
+      }
+    },
+    {
+      "data": {
+        "id": "enote1758552361680",
+        "source": "Note1758552356565",
+        "target": "Class32",
+        "predicate": "note_for",
+        "type": "note",
+        "attrs": {
+          "creator": "jdehart",
+          "created_date": "2025-09-22",
+          "created_timestamp": "2025-09-22T14:46:01.680Z",
+          "last_modified_by": "jdehart",
+          "last_modified_date": "2025-09-22",
+          "last_modified_timestamp": "2025-09-22T14:46:01.680Z"
+        }
+      }
+    },
+    {
+      "data": {
+        "id": "enote1758552438912",
+        "source": "Note1758552436662",
+        "target": "Class23",
+        "predicate": "note_for",
+        "type": "note",
+        "attrs": {
+          "creator": "jdehart",
+          "created_date": "2025-09-22",
+          "created_timestamp": "2025-09-22T14:47:18.912Z",
+          "last_modified_by": "jdehart",
+          "last_modified_date": "2025-09-22",
+          "last_modified_timestamp": "2025-09-22T14:47:18.912Z"
+        }
+      }
+    },
+    {
+      "data": {
+        "id": "enote1758552487006",
+        "source": "Note1758552481868",
+        "target": "Class16",
+        "predicate": "note_for",
+        "type": "note",
+        "attrs": {
+          "creator": "jdehart",
+          "created_date": "2025-09-22",
+          "created_timestamp": "2025-09-22T14:48:07.006Z",
+          "last_modified_by": "jdehart",
+          "last_modified_date": "2025-09-22",
+          "last_modified_timestamp": "2025-09-22T14:48:07.006Z"
+        }
+      }
+    },
+    {
+      "data": {
+        "id": "enote1758552538673",
+        "source": "Note1758552537035",
+        "target": "Class29",
+        "predicate": "note_for",
+        "type": "note",
+        "attrs": {
+          "creator": "jdehart",
+          "created_date": "2025-09-22",
+          "created_timestamp": "2025-09-22T14:48:58.673Z",
+          "last_modified_by": "jdehart",
+          "last_modified_date": "2025-09-22",
+          "last_modified_timestamp": "2025-09-22T14:48:58.673Z"
+        }
+      }
+    },
+    {
+      "data": {
+        "id": "enote1758552624503",
+        "source": "Note1758552622712",
+        "target": "Class3",
+        "predicate": "note_for",
+        "type": "note",
+        "attrs": {
+          "creator": "jdehart",
+          "created_date": "2025-09-22",
+          "created_timestamp": "2025-09-22T14:50:24.503Z",
+          "last_modified_by": "jdehart",
+          "last_modified_date": "2025-09-22",
+          "last_modified_timestamp": "2025-09-22T14:50:24.503Z"
+        }
+      }
+    },
+    {
+      "data": {
+        "id": "enote1758552691373",
+        "source": "Note1758552688783",
+        "target": "Class25",
+        "predicate": "note_for",
+        "type": "note",
+        "attrs": {
+          "creator": "jdehart",
+          "created_date": "2025-09-22",
+          "created_timestamp": "2025-09-22T14:51:31.373Z",
+          "last_modified_by": "jdehart",
+          "last_modified_date": "2025-09-22",
+          "last_modified_timestamp": "2025-09-22T14:51:31.373Z"
+        }
+      }
+    },
+    {
+      "data": {
+        "id": "enote1758552693303",
+        "source": "Note1758552688783",
+        "target": "Class26",
+        "predicate": "note_for",
+        "type": "note",
+        "attrs": {
+          "creator": "jdehart",
+          "created_date": "2025-09-22",
+          "created_timestamp": "2025-09-22T14:51:33.303Z",
+          "last_modified_by": "jdehart",
+          "last_modified_date": "2025-09-22",
+          "last_modified_timestamp": "2025-09-22T14:51:33.303Z"
+        }
+      }
+    },
+    {
+      "data": {
+        "id": "enote1758552695249",
+        "source": "Note1758552688783",
+        "target": "Class27",
+        "predicate": "note_for",
+        "type": "note",
+        "attrs": {
+          "creator": "jdehart",
+          "created_date": "2025-09-22",
+          "created_timestamp": "2025-09-22T14:51:35.249Z",
+          "last_modified_by": "jdehart",
+          "last_modified_date": "2025-09-22",
+          "last_modified_timestamp": "2025-09-22T14:51:35.249Z"
+        }
+      }
+    },
+    {
+      "data": {
+        "id": "enote1758552842054",
+        "source": "Note1758552839416",
+        "target": "Class1",
+        "predicate": "note_for",
+        "type": "note",
+        "attrs": {
+          "creator": "jdehart",
+          "created_date": "2025-09-22",
+          "created_timestamp": "2025-09-22T14:54:02.054Z",
+          "last_modified_by": "jdehart",
+          "last_modified_date": "2025-09-22",
+          "last_modified_timestamp": "2025-09-22T14:54:02.054Z"
+        }
+      }
+    },
+    {
+      "data": {
+        "id": "enote1758552954412",
+        "source": "Note1758552952415",
+        "target": "Class2",
+        "predicate": "note_for",
+        "type": "note",
+        "attrs": {
+          "creator": "jdehart",
+          "created_date": "2025-09-22",
+          "created_timestamp": "2025-09-22T14:55:54.412Z",
+          "last_modified_by": "jdehart",
+          "last_modified_date": "2025-09-22",
+          "last_modified_timestamp": "2025-09-22T14:55:54.412Z"
+        }
+      }
+    },
+    {
+      "data": {
+        "id": "enote1758553052367",
+        "source": "Note1758553050020",
+        "target": "Class30",
+        "predicate": "note_for",
+        "type": "note",
+        "attrs": {
+          "creator": "jdehart",
+          "created_date": "2025-09-22",
+          "created_timestamp": "2025-09-22T14:57:32.367Z",
+          "last_modified_by": "jdehart",
+          "last_modified_date": "2025-09-22",
+          "last_modified_timestamp": "2025-09-22T14:57:32.367Z"
+        }
+      }
+    },
+    {
+      "data": {
+        "id": "enote1758553257205",
+        "source": "Note1758553223704",
+        "target": "Class24",
+        "predicate": "note_for",
+        "type": "note",
+        "attrs": {
+          "creator": "jdehart",
+          "created_date": "2025-09-22",
+          "created_timestamp": "2025-09-22T15:00:57.205Z",
+          "last_modified_by": "jdehart",
+          "last_modified_date": "2025-09-22",
+          "last_modified_timestamp": "2025-09-22T15:00:57.205Z"
+        }
+      }
+    },
+    {
+      "data": {
+        "id": "e1758553491530",
+        "source": "Class1",
+        "target": "Class30",
+        "predicate": "outputs",
+        "type": "objectProperty",
+        "attrs": {
+          "creator": "jdehart",
+          "created_date": "2025-09-22",
+          "created_timestamp": "2025-09-22T15:04:51.530Z",
+          "last_modified_by": "jdehart",
+          "last_modified_date": "2025-09-22",
+          "last_modified_timestamp": "2025-09-22T15:05:00.314Z",
+          "functional": false,
+          "inverse_functional": false
+        }
+      }
+    },
+    {
+      "data": {
+        "id": "e1758554363210",
+        "source": "Class22",
+        "target": "Class2",
+        "predicate": "captured_from_building_a",
+        "type": "objectProperty",
+        "attrs": {
+          "creator": "jdehart",
+          "created_date": "2025-09-22",
+          "created_timestamp": "2025-09-22T15:19:23.210Z",
+          "last_modified_by": "jdehart",
+          "last_modified_date": "2025-09-22",
+          "last_modified_timestamp": "2025-09-22T15:20:01.316Z",
+          "functional": false,
+          "inverse_functional": false
+        }
+      }
+    }
+  ]
+}

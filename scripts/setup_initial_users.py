@@ -43,7 +43,11 @@ def setup_initial_users():
     print("🔐 Setting up initial users with password authentication...")
 
     # Default passwords (should be changed after first login)
-    default_passwords = {"admin": "admin123!", "jdehart": "jdehart123!"}
+    default_passwords = {
+        "admin": "admin123!",
+        "jdehart": "jdehart123!",
+        "das_service": "das_service_2024!"
+    }
 
     conn = get_connection()
     try:
@@ -91,7 +95,9 @@ def setup_initial_users():
             print("\n📋 Default credentials:")
             print("   admin / admin123!")
             print("   jdehart / jdehart123!")
+            print("   das_service / das_service_2024!")
             print("\n⚠️  IMPORTANT: Change these passwords after first login!")
+            print("💡 das_service account is used for testing and automation")
 
             return True
 
@@ -182,4 +188,3 @@ def main():
 
 if __name__ == "__main__":
     sys.exit(main())
-

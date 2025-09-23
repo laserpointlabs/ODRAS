@@ -1,0 +1,273 @@
+{
+  "nodes": [
+    {
+      "data": {
+        "id": "Class1",
+        "label": "Requirement",
+        "type": "class",
+        "attrs": {
+          "creator": "jdehart",
+          "created_date": "2025-09-22",
+          "created_timestamp": "2025-09-22T15:26:05.583Z",
+          "last_modified_by": "jdehart",
+          "last_modified_date": "2025-09-23",
+          "last_modified_timestamp": "2025-09-23T13:05:01.795Z"
+        }
+      },
+      "position": {
+        "x": 386.88375124597707,
+        "y": 450.540915122463
+      }
+    },
+    {
+      "data": {
+        "id": "Class2",
+        "label": "Component",
+        "type": "class",
+        "attrs": {
+          "creator": "jdehart",
+          "created_date": "2025-09-22",
+          "created_timestamp": "2025-09-22T15:26:07.455Z",
+          "last_modified_by": "jdehart",
+          "last_modified_date": "2025-09-23",
+          "last_modified_timestamp": "2025-09-23T13:05:01.796Z"
+        }
+      },
+      "position": {
+        "x": 388.1428568645443,
+        "y": 594.1620993812776
+      }
+    },
+    {
+      "data": {
+        "id": "Class3",
+        "label": "Constratint",
+        "type": "class",
+        "attrs": {
+          "creator": "jdehart",
+          "created_date": "2025-09-22",
+          "created_timestamp": "2025-09-22T15:26:09.261Z",
+          "last_modified_by": "jdehart",
+          "last_modified_date": "2025-09-23",
+          "last_modified_timestamp": "2025-09-23T13:05:01.797Z"
+        }
+      },
+      "position": {
+        "x": 684.3138113888942,
+        "y": 447.99594020549586
+      }
+    },
+    {
+      "data": {
+        "id": "Class4",
+        "label": "Interface",
+        "type": "class",
+        "attrs": {
+          "creator": "jdehart",
+          "created_date": "2025-09-22",
+          "created_timestamp": "2025-09-22T15:26:10.838Z",
+          "last_modified_by": "jdehart",
+          "last_modified_date": "2025-09-23",
+          "last_modified_timestamp": "2025-09-23T13:05:01.798Z"
+        }
+      },
+      "position": {
+        "x": 680.4782242429241,
+        "y": 587.8055907521143
+      }
+    },
+    {
+      "data": {
+        "id": "Class5",
+        "label": "Component",
+        "type": "class",
+        "attrs": {
+          "creator": "jdehart",
+          "created_date": "2025-09-22",
+          "created_timestamp": "2025-09-22T15:26:14.920Z",
+          "last_modified_by": "jdehart",
+          "last_modified_date": "2025-09-23",
+          "last_modified_timestamp": "2025-09-23T13:05:01.799Z"
+        }
+      },
+      "position": {
+        "x": 211.46647261104982,
+        "y": 773.372278786746
+      }
+    },
+    {
+      "data": {
+        "id": "Class6",
+        "label": "Process",
+        "type": "class",
+        "attrs": {
+          "creator": "jdehart",
+          "created_date": "2025-09-22",
+          "created_timestamp": "2025-09-22T15:26:16.550Z",
+          "last_modified_by": "jdehart",
+          "last_modified_date": "2025-09-23",
+          "last_modified_timestamp": "2025-09-23T13:05:01.800Z"
+        }
+      },
+      "position": {
+        "x": 577.5210786113727,
+        "y": 773.3675358561429
+      }
+    },
+    {
+      "data": {
+        "id": "Note1758554906620",
+        "label": "Note 6620",
+        "type": "note",
+        "attrs": {
+          "noteType": "Note",
+          "content": "Base Systems Ontology used to estimate a system to meet requirements.",
+          "creator": "jdehart",
+          "created_date": "2025-09-22",
+          "created_timestamp": "2025-09-22T15:28:26.620Z",
+          "last_modified_by": "jdehart",
+          "last_modified_date": "2025-09-23",
+          "last_modified_timestamp": "2025-09-23T13:05:01.801Z",
+          "author": "jdehart"
+        }
+      },
+      "position": {
+        "x": 144.05917091821783,
+        "y": 366.77728981097465
+      }
+    }
+  ],
+  "edges": [
+    {
+      "data": {
+        "id": "e1758554800552",
+        "source": "Class1",
+        "target": "Class3",
+        "predicate": "has_constraint",
+        "type": "objectProperty",
+        "attrs": {
+          "creator": "jdehart",
+          "created_date": "2025-09-22",
+          "created_timestamp": "2025-09-22T15:26:40.552Z",
+          "last_modified_by": "jdehart",
+          "last_modified_date": "2025-09-22",
+          "last_modified_timestamp": "2025-09-22T15:26:55.793Z",
+          "functional": false,
+          "inverse_functional": false
+        }
+      }
+    },
+    {
+      "data": {
+        "id": "e1758554818153",
+        "source": "Class2",
+        "target": "Class4",
+        "predicate": "presents",
+        "type": "objectProperty",
+        "attrs": {
+          "creator": "jdehart",
+          "created_date": "2025-09-22",
+          "created_timestamp": "2025-09-22T15:26:58.153Z",
+          "last_modified_by": "jdehart",
+          "last_modified_date": "2025-09-22",
+          "last_modified_timestamp": "2025-09-22T15:27:37.621Z",
+          "functional": false,
+          "inverse_functional": false
+        }
+      }
+    },
+    {
+      "data": {
+        "id": "e1758554825550",
+        "source": "Class2",
+        "target": "Class6",
+        "predicate": "performs",
+        "type": "objectProperty",
+        "attrs": {
+          "creator": "jdehart",
+          "created_date": "2025-09-22",
+          "created_timestamp": "2025-09-22T15:27:05.550Z",
+          "last_modified_by": "jdehart",
+          "last_modified_date": "2025-09-22",
+          "last_modified_timestamp": "2025-09-22T15:27:43.614Z",
+          "functional": false,
+          "inverse_functional": false
+        }
+      }
+    },
+    {
+      "data": {
+        "id": "e1758554827374",
+        "source": "Class6",
+        "target": "Class5",
+        "predicate": "realizes",
+        "type": "objectProperty",
+        "attrs": {
+          "creator": "jdehart",
+          "created_date": "2025-09-22",
+          "created_timestamp": "2025-09-22T15:27:07.374Z",
+          "last_modified_by": "jdehart",
+          "last_modified_date": "2025-09-22",
+          "last_modified_timestamp": "2025-09-22T15:27:50.701Z",
+          "functional": false,
+          "inverse_functional": false
+        }
+      }
+    },
+    {
+      "data": {
+        "id": "e1758554828887",
+        "source": "Class5",
+        "target": "Class2",
+        "predicate": "specifically_depends_upon",
+        "type": "objectProperty",
+        "attrs": {
+          "creator": "jdehart",
+          "created_date": "2025-09-22",
+          "created_timestamp": "2025-09-22T15:27:08.887Z",
+          "last_modified_by": "jdehart",
+          "last_modified_date": "2025-09-22",
+          "last_modified_timestamp": "2025-09-22T15:28:00.778Z",
+          "functional": false,
+          "inverse_functional": false
+        }
+      }
+    },
+    {
+      "data": {
+        "id": "e1758554832567",
+        "source": "Class1",
+        "target": "Class2",
+        "predicate": "deploys",
+        "type": "objectProperty",
+        "attrs": {
+          "creator": "jdehart",
+          "created_date": "2025-09-22",
+          "created_timestamp": "2025-09-22T15:27:12.567Z",
+          "last_modified_by": "jdehart",
+          "last_modified_date": "2025-09-22",
+          "last_modified_timestamp": "2025-09-22T15:27:21.642Z",
+          "functional": false,
+          "inverse_functional": false
+        }
+      }
+    },
+    {
+      "data": {
+        "id": "enote1758554940514",
+        "source": "Note1758554906620",
+        "target": "Class1",
+        "predicate": "note_for",
+        "type": "note",
+        "attrs": {
+          "creator": "jdehart",
+          "created_date": "2025-09-22",
+          "created_timestamp": "2025-09-22T15:29:00.514Z",
+          "last_modified_by": "jdehart",
+          "last_modified_date": "2025-09-22",
+          "last_modified_timestamp": "2025-09-22T15:29:00.514Z"
+        }
+      }
+    }
+  ]
+}
