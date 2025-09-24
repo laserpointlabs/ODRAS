@@ -2515,8 +2515,96 @@
           <div class="muted">Manage extraction BPMN processes.</div>
         </section>
         <section id="wb-thread" class="workbench">
-          <h2>Thread Workbench</h2>
-          <div class="muted">Chronological, project-scoped thread of tasks, user actions, and system events.</div>
+          <h2>Thread Manager</h2>
+          <div class="muted">Debug and manage DAS project threads, conversation history, and prompt context.</div>
+
+          <div
+            style="margin-top: 20px; display: grid; gap: 16px; max-height: calc(100vh - 120px); overflow-y: auto; padding-right: 8px;">
+            <!-- Thread Overview -->
+            <div class="card">
+              <h3>Current Project Thread</h3>
+              <div id="thread-overview" style="margin-top: 12px;">
+                <div class="muted">Select a project to view thread details</div>
+              </div>
+            </div>
+
+            <!-- Conversation History -->
+            <div class="card">
+              <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px;">
+                <h3>Conversation History</h3>
+                <button id="refresh-thread-btn" class="btn" style="padding: 4px 8px; font-size: 12px;">
+                  Refresh
+                </button>
+              </div>
+              <div id="conversation-list" style="max-height: 400px; overflow-y: auto;">
+                <div class="muted">No conversation history loaded</div>
+              </div>
+            </div>
+
+            <!-- Prompt Inspector -->
+            <div class="card">
+              <h3>Prompt Inspector</h3>
+              <div style="margin-top: 12px;">
+                <label style="display: block; margin-bottom: 4px; font-weight: 500;">
+                  Select conversation entry to inspect:
+                </label>
+                <select id="prompt-entry-select"
+                  style="width: 100%; padding: 8px; background: var(--panel-2); border: 1px solid var(--border); border-radius: 4px;">
+                  <option value="">Select conversation entry...</option>
+                </select>
+              </div>
+
+              <div id="prompt-details" style="margin-top: 16px; display: none;">
+                <div style="margin-bottom: 12px;">
+                  <label style="display: block; margin-bottom: 4px; font-weight: 500;">
+                    Full Prompt Sent to LLM:
+                  </label>
+                  <textarea id="prompt-content" readonly style="width: 100%; height: 300px; font-family: monospace; font-size: 12px;
+                           background: var(--panel-2); border: 1px solid var(--border); border-radius: 4px;
+                           padding: 12px; resize: vertical; color: var(--text) !important;"></textarea>
+                </div>
+
+                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-bottom: 12px;">
+                  <div>
+                    <label style="display: block; margin-bottom: 4px; font-weight: 500;">
+                      User Message:
+                    </label>
+                    <textarea id="user-message-edit" style="width: 100%; height: 80px; background: var(--panel-2); border: 1px solid var(--border);
+                             border-radius: 4px; padding: 8px; resize: vertical; color: var(--text);"></textarea>
+                  </div>
+                  <div>
+                    <label style="display: block; margin-bottom: 4px; font-weight: 500;">
+                      DAS Response:
+                    </label>
+                    <textarea id="das-response-edit" style="width: 100%; height: 80px; background: var(--panel-2); border: 1px solid var(--border);
+                             border-radius: 4px; padding: 8px; resize: vertical; color: var(--text);"></textarea>
+                  </div>
+                </div>
+
+                <div style="display: flex; gap: 12px; margin-bottom: 12px;">
+                  <button id="update-entry-btn" class="btn" style="background: var(--accent); color: white;">
+                    Update Entry
+                  </button>
+                  <button id="delete-entry-btn" class="btn" style="background: var(--err); color: white;">
+                    Delete Entry
+                  </button>
+                  <button id="test-prompt-btn" class="btn">
+                    Test Custom Prompt
+                  </button>
+                </div>
+
+                <!-- Context Inspector -->
+                <div style="margin-top: 16px;">
+                  <label style="display: block; margin-bottom: 4px; font-weight: 500;">
+                    RAG & Project Context:
+                  </label>
+                  <textarea id="context-details" readonly style="width: 100%; height: 150px; font-family: monospace; font-size: 12px;
+                           background: var(--panel-2); border: 1px solid var(--border); border-radius: 4px;
+                           padding: 12px; resize: vertical; color: var(--text) !important;"></textarea>
+                </div>
+              </div>
+            </div>
+          </div>
         </section>
         <section id="wb-playground" class="workbench">
           <h2>LLM Playground</h2>
@@ -5983,6 +6071,11 @@
         try {
           localStorage.setItem('active_project_id', pid);
           updateURL(pid); // Update URL with new project
+
+          // Update Thread Manager with new project
+          if (window.updateThreadManagerProject) {
+            window.updateThreadManagerProject(pid);
+          }
         } catch (_) { }
         const token = localStorage.getItem(tokenKey);
         // Save current ontology canvas before switching projects
@@ -6049,6 +6142,14 @@
         if (currentProjectId) {
           loadProjectInfo();
         }
+      } else if (wb === 'thread') {
+        // Initialize Thread Manager workbench
+        console.log('🧵 Activating Thread Manager workbench');
+        const currentProjectId = localStorage.getItem('active_project_id');
+        if (currentProjectId) {
+          updateThreadManagerProject(currentProjectId);
+        }
+        onThreadWorkbenchActivated();
       }
 
       // Persist selected workbench and update URL
@@ -18566,6 +18667,390 @@ def hello_world():
     } else {
       initializeOntologyMenus();
     }
+
+    // =============================================================================
+    // THREAD MANAGER FUNCTIONALITY
+    // =============================================================================
+
+    let threadManagerData = null;
+    let threadManagerProjectId = null;
+
+    // Initialize Thread Manager when workbench becomes active
+    function initializeThreadManager() {
+      console.log('🧵 Initializing Thread Manager...');
+
+      // Auto-detect current project from multiple sources
+      let detectedProjectId = threadManagerProjectId;
+
+      if (!detectedProjectId) {
+        detectedProjectId = localStorage.getItem('active_project_id');
+        console.log('🧵 Detected project from localStorage:', detectedProjectId);
+      }
+
+      if (!detectedProjectId) {
+        // Try to get from URL
+        const urlParams = new URLSearchParams(window.location.search);
+        detectedProjectId = urlParams.get('project');
+        console.log('🧵 Detected project from URL:', detectedProjectId);
+      }
+
+      if (detectedProjectId) {
+        console.log('🧵 Setting threadManagerProjectId to:', detectedProjectId);
+        threadManagerProjectId = detectedProjectId;
+      }
+
+      // Add event listeners
+      const refreshBtn = document.getElementById('refresh-thread-btn');
+      const entrySelect = document.getElementById('prompt-entry-select');
+      const updateBtn = document.getElementById('update-entry-btn');
+      const deleteBtn = document.getElementById('delete-entry-btn');
+      const testPromptBtn = document.getElementById('test-prompt-btn');
+
+      if (refreshBtn) {
+        refreshBtn.addEventListener('click', loadCurrentProjectThread);
+      }
+
+      if (entrySelect) {
+        entrySelect.addEventListener('change', displayConversationEntry);
+      }
+
+      if (updateBtn) {
+        updateBtn.addEventListener('click', updateConversationEntry);
+      }
+
+      if (deleteBtn) {
+        deleteBtn.addEventListener('click', deleteConversationEntry);
+      }
+
+      if (testPromptBtn) {
+        testPromptBtn.addEventListener('click', showCustomPromptModal);
+      }
+
+      // Auto-load thread for current project
+      if (threadManagerProjectId) {
+        console.log('🧵 Auto-loading thread for project:', threadManagerProjectId);
+        loadCurrentProjectThread();
+      } else {
+        console.log('🧵 No project available for Thread Manager');
+        document.getElementById('thread-overview').innerHTML = `
+          <div class="muted">No project selected. Please select a project first.</div>
+        `;
+      }
+    }
+
+    // Load project thread details
+    async function loadCurrentProjectThread() {
+      try {
+        if (!threadManagerProjectId) {
+          console.log('🧵 No project selected for Thread Manager');
+          return;
+        }
+
+        console.log('🧵 Loading project thread for:', threadManagerProjectId);
+
+        const response = await fetch(`/api/das2/project/${threadManagerProjectId}/thread`, {
+          headers: { ...authHeader() }
+        });
+
+        if (!response.ok) {
+          throw new Error(`Failed to load thread: ${response.status}`);
+        }
+
+        const threadInfo = await response.json();
+        console.log('🧵 Thread info:', threadInfo);
+
+        // Now get full thread details
+        const detailsResponse = await fetch(`/api/thread-manager/threads/${threadInfo.project_thread_id}`, {
+          headers: { ...authHeader() }
+        });
+
+        if (!detailsResponse.ok) {
+          throw new Error(`Failed to load thread details: ${detailsResponse.status}`);
+        }
+
+        threadManagerData = await detailsResponse.json();
+        console.log('🧵 Full thread data:', threadManagerData);
+
+        displayThreadOverview();
+        displayConversationHistory();
+
+      } catch (error) {
+        console.error('❌ Error loading thread:', error);
+        document.getElementById('thread-overview').innerHTML = `
+          <div style="color: var(--err);">Error loading thread: ${error.message}</div>
+        `;
+      }
+    }
+
+    // Display thread overview
+    function displayThreadOverview() {
+      const overviewDiv = document.getElementById('thread-overview');
+      if (!overviewDiv || !threadManagerData) return;
+
+      const projectDetails = threadManagerData.project_details || {};
+
+      overviewDiv.innerHTML = `
+        <div style="display: grid; gap: 8px; font-size: 14px;">
+          <div><strong>Project:</strong> ${projectDetails.name || 'Unknown'}</div>
+          <div><strong>Thread ID:</strong> <code style="font-size: 12px; background: var(--panel-2); padding: 2px 4px; border-radius: 3px;">${threadManagerData.project_thread_id}</code></div>
+          <div><strong>Created:</strong> ${new Date(threadManagerData.created_at).toLocaleString()}</div>
+          <div><strong>Last Activity:</strong> ${new Date(threadManagerData.last_activity).toLocaleString()}</div>
+          <div><strong>Conversations:</strong> ${threadManagerData.conversation_history.length}</div>
+          <div><strong>Project Events:</strong> ${threadManagerData.project_events.length}</div>
+          <div><strong>Current Workbench:</strong> ${threadManagerData.current_workbench || 'None'}</div>
+        </div>
+      `;
+    }
+
+    // Display conversation history
+    function displayConversationHistory() {
+      const listDiv = document.getElementById('conversation-list');
+      const selectElement = document.getElementById('prompt-entry-select');
+
+      if (!listDiv || !selectElement || !threadManagerData) return;
+
+      const conversations = threadManagerData.conversation_history || [];
+
+      if (conversations.length === 0) {
+        listDiv.innerHTML = '<div class="muted">No conversation history</div>';
+        selectElement.innerHTML = '<option value="">No conversations available</option>';
+        return;
+      }
+
+      // Populate conversation list
+      const conversationHtml = conversations.map((conv, index) => {
+        const timestamp = new Date(conv.timestamp).toLocaleString();
+        const hasPromptContext = conv.prompt_context ? '🎯' : '❌';
+
+        return `
+          <div class="card" style="margin-bottom: 8px; padding: 12px; background: var(--panel-2);">
+            <div style="display: flex; justify-content: space-between; align-items: start; margin-bottom: 8px;">
+              <span style="font-size: 12px; color: var(--muted);">${timestamp}</span>
+              <span style="font-size: 12px;" title="Has prompt context: ${conv.prompt_context ? 'Yes' : 'No'}">${hasPromptContext}</span>
+            </div>
+            <div style="margin-bottom: 6px;">
+              <strong>User:</strong> ${conv.user_message || 'No message'}
+            </div>
+            <div style="margin-bottom: 6px;">
+              <strong>DAS:</strong> ${(conv.das_response || 'No response').substring(0, 100)}${conv.das_response && conv.das_response.length > 100 ? '...' : ''}
+            </div>
+            ${conv.rag_context ? `<div style="font-size: 12px; color: var(--muted);">📚 ${conv.rag_context.chunks_found || 0} knowledge chunks found</div>` : ''}
+          </div>
+        `;
+      }).join('');
+
+      listDiv.innerHTML = conversationHtml;
+
+      // Populate select dropdown
+      const optionsHtml = conversations.map((conv, index) => {
+        const timestamp = new Date(conv.timestamp).toLocaleString();
+        const preview = conv.user_message ? conv.user_message.substring(0, 50) : 'No message';
+        return `<option value="${index}">${index + 1}. ${timestamp} - ${preview}${preview.length >= 50 ? '...' : ''}</option>`;
+      }).join('');
+
+      selectElement.innerHTML = `<option value="">Select conversation entry...</option>${optionsHtml}`;
+    }
+
+    // Display specific conversation entry details
+    function displayConversationEntry() {
+      const selectElement = document.getElementById('prompt-entry-select');
+      const promptDetails = document.getElementById('prompt-details');
+
+      if (!selectElement || !promptDetails || !threadManagerData) return;
+
+      const entryIndex = parseInt(selectElement.value);
+      if (isNaN(entryIndex)) {
+        promptDetails.style.display = 'none';
+        return;
+      }
+
+      const entry = threadManagerData.conversation_history[entryIndex];
+      if (!entry) return;
+
+      // Show prompt details
+      promptDetails.style.display = 'block';
+
+      // Fill in the data
+      document.getElementById('prompt-content').value = entry.prompt_context || 'No prompt context available';
+      document.getElementById('user-message-edit').value = entry.user_message || '';
+      document.getElementById('das-response-edit').value = entry.das_response || '';
+
+      // Context details
+      const contextInfo = [
+        `RAG Context: ${entry.rag_context ? JSON.stringify(entry.rag_context, null, 2) : 'None'}`,
+        `Project Context: ${entry.project_context ? JSON.stringify(entry.project_context, null, 2) : 'None'}`,
+        `Thread Metadata: ${entry.thread_metadata ? JSON.stringify(entry.thread_metadata, null, 2) : 'None'}`
+      ].join('\n\n');
+
+      document.getElementById('context-details').value = contextInfo;
+    }
+
+    // Update conversation entry
+    async function updateConversationEntry() {
+      const selectElement = document.getElementById('prompt-entry-select');
+      if (!selectElement || !threadManagerData) return;
+
+      const entryIndex = parseInt(selectElement.value);
+      if (isNaN(entryIndex)) {
+        toast('Please select a conversation entry to update', true);
+        return;
+      }
+
+      const userMessage = document.getElementById('user-message-edit').value;
+      const dasResponse = document.getElementById('das-response-edit').value;
+
+      try {
+        const response = await fetch(`/api/thread-manager/threads/${threadManagerData.project_thread_id}/conversation/${entryIndex}`, {
+          method: 'PUT',
+          headers: {
+            'Content-Type': 'application/json',
+            ...authHeader()
+          },
+          body: JSON.stringify({
+            user_message: userMessage,
+            das_response: dasResponse
+          })
+        });
+
+        if (!response.ok) {
+          throw new Error(`Update failed: ${response.status}`);
+        }
+
+        const result = await response.json();
+        console.log('✅ Updated conversation entry:', result);
+
+        toast('Conversation entry updated successfully');
+        loadCurrentProjectThread(); // Refresh
+
+      } catch (error) {
+        console.error('❌ Error updating entry:', error);
+        toast(`Error updating entry: ${error.message}`, true);
+      }
+    }
+
+    // Delete conversation entry
+    async function deleteConversationEntry() {
+      const selectElement = document.getElementById('prompt-entry-select');
+      if (!selectElement || !threadManagerData) return;
+
+      const entryIndex = parseInt(selectElement.value);
+      if (isNaN(entryIndex)) {
+        toast('Please select a conversation entry to delete', true);
+        return;
+      }
+
+      if (!confirm('Are you sure you want to delete this conversation entry?')) {
+        return;
+      }
+
+      try {
+        const response = await fetch(`/api/thread-manager/threads/${threadManagerData.project_thread_id}/conversation/${entryIndex}`, {
+          method: 'DELETE',
+          headers: { ...authHeader() }
+        });
+
+        if (!response.ok) {
+          throw new Error(`Delete failed: ${response.status}`);
+        }
+
+        const result = await response.json();
+        console.log('✅ Deleted conversation entry:', result);
+
+        toast('Conversation entry deleted successfully');
+        loadCurrentProjectThread(); // Refresh
+
+      } catch (error) {
+        console.error('❌ Error deleting entry:', error);
+        toast(`Error deleting entry: ${error.message}`, true);
+      }
+    }
+
+    // Show custom prompt test modal
+    function showCustomPromptModal() {
+      // This would show a modal for testing custom prompts
+      // For now, just show a simple prompt
+      const customPrompt = prompt('Enter custom prompt to test:');
+      if (customPrompt && threadManagerProjectId) {
+        testCustomPrompt(customPrompt);
+      }
+    }
+
+    // Test custom prompt
+    async function testCustomPrompt(customPrompt) {
+      try {
+        const response = await fetch(`/api/thread-manager/threads/${threadManagerData.project_thread_id}/test-prompt`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            ...authHeader()
+          },
+          body: JSON.stringify({
+            custom_prompt: customPrompt,
+            project_id: threadManagerProjectId,
+            simulate_only: true
+          })
+        });
+
+        if (!response.ok) {
+          throw new Error(`Test failed: ${response.status}`);
+        }
+
+        const result = await response.json();
+        console.log('🧪 Custom prompt test result:', result);
+
+        alert(`Custom prompt test:\n\nPrompt: ${result.custom_prompt}\n\nSimulated: ${result.simulated}`);
+
+      } catch (error) {
+        console.error('❌ Error testing prompt:', error);
+        toast(`Error testing prompt: ${error.message}`, true);
+      }
+    }
+
+    // Hook into project selection to update Thread Manager
+    function updateThreadManagerProject(projectId) {
+      threadManagerProjectId = projectId;
+
+      // If Thread Manager workbench is active, load the thread
+      const threadWorkbench = document.getElementById('wb-thread');
+      if (threadWorkbench && threadWorkbench.classList.contains('active')) {
+        loadCurrentProjectThread();
+      }
+    }
+
+    // Hook into workbench switching to initialize Thread Manager
+    function onThreadWorkbenchActivated() {
+      console.log('🧵 Thread Manager workbench activated');
+      initializeThreadManager();
+    }
+
+    // Initialize Thread Manager on page load if thread workbench is active
+    function initializeThreadManagerOnLoad() {
+      // Check if thread workbench is already active on page load
+      const threadWorkbench = document.getElementById('wb-thread');
+      if (threadWorkbench && threadWorkbench.classList.contains('active')) {
+        console.log('🧵 Thread Manager workbench already active on page load - initializing...');
+        const projectId = localStorage.getItem('active_project_id');
+        if (projectId) {
+          threadManagerProjectId = projectId;
+          console.log('🧵 Auto-detected project on page load:', projectId);
+          initializeThreadManager();
+        }
+      }
+    }
+
+    // Initialize on page load
+    if (document.readyState === 'loading') {
+      document.addEventListener('DOMContentLoaded', () => {
+        setTimeout(initializeThreadManagerOnLoad, 500); // Small delay for UI to be ready
+      });
+    } else {
+      setTimeout(initializeThreadManagerOnLoad, 500);
+    }
+
+    // Expose functions for global access
+    window.updateThreadManagerProject = updateThreadManagerProject;
+    window.onThreadWorkbenchActivated = onThreadWorkbenchActivated;
+    window.loadCurrentProjectThread = loadCurrentProjectThread;
 
   </script>
 </body>

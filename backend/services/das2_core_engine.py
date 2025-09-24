@@ -256,11 +256,26 @@ Be helpful and conversational."""
             print(response_text)
             print("="*80 + "\n")
 
-            # 6. Save conversation
+            # 6. Save conversation with complete context for debugging
             conversation_entry = {
                 "timestamp": datetime.now().isoformat(),
                 "user_message": message,
-                "das_response": response_text
+                "das_response": response_text,
+                "prompt_context": prompt,  # Full prompt sent to LLM for debugging
+                "rag_context": {
+                    "chunks_found": rag_response.get("chunks_found", 0),
+                    "sources": rag_response.get("sources", []),
+                    "success": rag_response.get("success", False)
+                },
+                "project_context": {
+                    "project_id": project_id,
+                    "project_name": project_details.get('name') if project_details else None,
+                    "has_comprehensive_details": project_details is not None
+                },
+                "thread_metadata": {
+                    "conversation_length": len(project_thread.conversation_history),
+                    "project_events_count": len(project_thread.project_events)
+                }
             }
             project_thread.conversation_history.append(conversation_entry)
             await self.project_manager._persist_project_thread(project_thread)
