@@ -41,7 +41,7 @@
 ```bash
 # These 5 collections are REQUIRED for ODRAS functionality:
 knowledge_chunks      # Document chunks (384 dim)
-knowledge_large       # OpenAI embeddings (1536 dim)  
+knowledge_large       # OpenAI embeddings (1536 dim)
 odras_requirements    # Requirements (384 dim)
 das_instructions      # DAS instructions (384 dim)
 project_threads       # Project threads (384 dim) - CRITICAL for DAS
@@ -78,6 +78,16 @@ project_threads       # Project threads (384 dim) - CRITICAL for DAS
 2. **Check for temporary files** that should be .gitignored
 3. **Ensure database build works** if you touched migrations
 4. **Test core functionality** with das_service account
+
+### Branch Management (CRITICAL)
+1. **After squash-merge**: ALWAYS delete the feature branch both locally and remotely
+2. **Clean branch structure**: Keep only active branches (main + current work)
+3. **Branch cleanup commands**:
+   ```bash
+   git branch -D feature/branch-name              # Delete local branch
+   git push origin --delete feature/branch-name   # Delete remote branch
+   ```
+4. **Never accumulate** old feature branches - clean as you go
 
 ### Documentation Guidelines
 - **Update existing docs** instead of creating new ones
@@ -119,14 +129,14 @@ project_threads       # Project threads (384 dim) - CRITICAL for DAS
 ## 🏆 Repository Philosophy
 **"Clean, Minimal, Functional"**
 - Every file has a clear purpose
-- Every directory is logically organized  
+- Every directory is logically organized
 - Every script is actively used
 - Every document provides unique value
 - Every change preserves cleanliness
 
 ---
 
-**Remember**: We spent significant effort creating this clean structure in September 2025. 
+**Remember**: We spent significant effort creating this clean structure in September 2025.
 **Maintain it religiously** - it's easier to keep clean than to clean up later!
 
 ## 🎯 Voice System Integration (from previous rules)
