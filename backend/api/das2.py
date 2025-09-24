@@ -1,6 +1,21 @@
 """
-DAS2 API - Simple Digital Assistant API
-NO complex intelligence, just context + LLM
+DAS2 API - Simple Digital Assistant API ✅ CURRENT ACTIVE VERSION
+
+This is the CURRENT and RECOMMENDED DAS implementation.
+Use this for all new development and projects.
+
+✅ Simple, clean architecture
+✅ Direct context + LLM approach
+✅ Easy to debug and maintain
+✅ Better performance than DAS1
+✅ NO complex intelligence layers, just context + LLM
+
+API Endpoints:
+- POST /api/das2/chat - Send message to DAS
+- GET /api/das2/project/{project_id}/thread - Get project thread
+- GET /api/das2/project/{project_id}/history - Get conversation history
+
+⚠️ DO NOT USE DAS1 (/api/das/*) - it's deprecated
 """
 
 import logging
@@ -169,7 +184,7 @@ async def initialize_das2_engine():
         project_manager = ProjectThreadManager(settings, redis_client, qdrant_service)
 
         # Create DAS2 engine
-        das2_engine = DAS2CoreEngine(settings, rag_service, project_manager)
+        das2_engine = DAS2CoreEngine(settings, rag_service, project_manager, db_service)
 
         logger.info("DAS2 Engine initialized successfully - SIMPLE APPROACH")
 

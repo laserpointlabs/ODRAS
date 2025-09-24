@@ -1,4 +1,20 @@
 """
+⚠️ DEPRECATED - DO NOT USE DAS1 CORE ENGINE ⚠️
+
+This is the original DAS Core Engine implementation.
+This version is DEPRECATED and should NOT be used for new development.
+
+🚀 USE DAS2 CORE ENGINE INSTEAD: backend/services/das2_core_engine.py
+
+DAS2CoreEngine provides the same functionality with a much cleaner, simpler architecture:
+- No complex intelligence layers
+- Direct context + LLM approach
+- Easier to debug and maintain
+- Better performance
+
+This file is kept for reference only and may be removed in future versions.
+
+=== ORIGINAL DOCUMENTATION (DEPRECATED) ===
 DAS Core Engine - Advanced Digital Assistant with RAG Integration and Session Learning
 
 This is the comprehensive DAS engine that provides advanced agent capabilities,
@@ -266,9 +282,25 @@ class DASCoreEngine:
                         context_parts.append(f"DAS: {das_resp}")
                         context_parts.append("")
 
-            # Add project context
+            # Add project context (including project name)
             context_parts.append("PROJECT CONTEXT:")
-            context_parts.append(f"Project ID: {project_id}")
+
+            # Get project details to include project name
+            project_details = None
+            try:
+                project_details = self.db_service.get_project(project_id)
+            except Exception as e:
+                logger.warning(f"Could not retrieve project details for {project_id}: {e}")
+
+            if project_details:
+                context_parts.append(f"Project: {project_details.get('name', 'Unknown')} (ID: {project_id})")
+                if project_details.get('description'):
+                    context_parts.append(f"Project description: {project_details.get('description')}")
+                if project_details.get('domain'):
+                    context_parts.append(f"Project domain: {project_details.get('domain')}")
+            else:
+                context_parts.append(f"Project ID: {project_id}")
+
             context_parts.append(f"Current workbench: {project_thread.current_workbench or 'unknown'}")
             if project_thread.project_goals:
                 context_parts.append(f"Project goals: {project_thread.project_goals}")

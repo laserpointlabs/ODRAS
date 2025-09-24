@@ -1,4 +1,20 @@
 """
+⚠️ DEPRECATED - DO NOT USE DAS1 ⚠️
+
+This is the original DAS (Digital Assistant System) implementation.
+This version is DEPRECATED and should NOT be used for new development.
+
+🚀 USE DAS2 INSTEAD: backend/api/das2.py
+🚀 USE DAS2 ENGINE: backend/services/das2_core_engine.py
+
+DAS2 provides the same functionality with a cleaner, simpler architecture.
+This file is kept for reference only and may be removed in future versions.
+
+For new projects, use:
+- API: /api/das2/chat
+- Engine: DAS2CoreEngine
+
+=== ORIGINAL DOCUMENTATION (DEPRECATED) ===
 DAS API endpoints for the Digital Assistance System
 
 Provides REST API endpoints for DAS functionality including chat, session management,

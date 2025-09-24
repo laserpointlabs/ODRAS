@@ -244,6 +244,63 @@ class DatabaseService:
         """Legacy method - use update_project instead."""
         return self.update_project(project_id, name=new_name)
 
+    def get_project(self, project_id: str) -> Optional[Dict[str, Any]]:
+        """Get project details by ID."""
+        conn = self._conn()
+        try:
+            with conn.cursor(cursor_factory=RealDictCursor) as cur:
+                cur.execute(
+                    """
+                    SELECT project_id, name, description, created_at, updated_at,
+                           created_by, is_active, namespace_id, domain
+                    FROM public.projects
+                    WHERE project_id = %s AND is_active = true
+                    """,
+                    (project_id,),
+                )
+                row = cur.fetchone()
+                return dict(row) if row else None
+        finally:
+            self._return(conn)
+
+    def get_project_comprehensive(self, project_id: str) -> Optional[Dict[str, Any]]:
+        """Get comprehensive project details including namespace, creator info, and URI."""
+        conn = self._conn()
+        try:
+            with conn.cursor(cursor_factory=RealDictCursor) as cur:
+                cur.execute(
+                    """
+                    SELECT p.project_id, p.name, p.description, p.created_at, p.updated_at,
+                           p.created_by, p.is_active, p.namespace_id, p.domain,
+                           u.username as created_by_username,
+                           n.path as namespace_path, n.name as namespace_name,
+                           n.description as namespace_description, n.status as namespace_status
+                    FROM public.projects p
+                    LEFT JOIN public.users u ON p.created_by = u.user_id
+                    LEFT JOIN public.namespace_registry n ON p.namespace_id = n.id
+                    WHERE p.project_id = %s AND p.is_active = true
+                    """,
+                    (project_id,),
+                )
+                row = cur.fetchone()
+                if row:
+                    project_data = dict(row)
+
+                    # Generate project URI using resource URI service
+                    try:
+                        from .resource_uri_service import ResourceURIService
+                        from .config import Settings
+                        settings = Settings()
+                        uri_service = ResourceURIService(settings, self)
+                        project_data['project_uri'] = uri_service.generate_project_uri(project_id)
+                    except Exception as e:
+                        project_data['project_uri'] = f"Error generating URI: {e}"
+
+                    return project_data
+                return None
+        finally:
+            self._return(conn)
+
     async def get_user_projects(self, user_id: str) -> List[Dict[str, Any]]:
         """Get all projects for a user, ordered by most recent activity."""
         conn = self._conn()
@@ -337,4 +394,3 @@ class DatabaseService:
                 return result is not None
         finally:
             self._return(conn)
-
