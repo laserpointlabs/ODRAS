@@ -76,9 +76,12 @@ app.include_router(files_router)
 app.include_router(workflows_router)
 app.include_router(embedding_models_router)
 app.include_router(knowledge_router)
-# DAS1 disabled - replaced by DAS2 simple implementation
-# app.include_router(das_router)
-app.include_router(das2_router)
+# ⚠️ DAS1 DEPRECATED - DO NOT ENABLE ⚠️
+# DAS1 (original DAS) has been replaced by DAS2 with cleaner architecture
+# DAS1 endpoints: /api/das/* (DEPRECATED - DO NOT USE)
+# DAS2 endpoints: /api/das2/* (CURRENT - USE THIS)
+# app.include_router(das_router)  # <-- DO NOT UNCOMMENT THIS LINE
+app.include_router(das2_router)    # <-- ACTIVE DAS IMPLEMENTATION
 
 # Import and include IRI resolution router
 from backend.api.iri_resolution import router as iri_router

@@ -1,10 +1,21 @@
 """
-DAS2 Core Engine - Simple Digital Assistant
-NO complex intelligence layers, just:
-1. Collect project_thread context
-2. Collect RAG context
-3. Send ALL to LLM with user question
-4. Return response with sources
+DAS2 Core Engine - Simple Digital Assistant ✅ CURRENT ACTIVE VERSION
+
+This is the CURRENT and RECOMMENDED DAS Core Engine implementation.
+Use this for all new development and projects.
+
+✅ Simple, clean architecture - NO complex intelligence layers
+✅ Straightforward workflow:
+   1. Collect project_thread context
+   2. Collect RAG context
+   3. Send ALL to LLM with user question
+   4. Return response with sources
+
+✅ Easy to debug and maintain
+✅ Better performance than DAS1
+✅ Direct context + LLM approach - no bullshit
+
+⚠️ DO NOT USE DASCoreEngine (backend/services/das_core_engine.py) - it's deprecated
 """
 
 import json
@@ -48,10 +59,11 @@ class DAS2CoreEngine:
     NO intelligence layers, NO complex logic, NO bullshit.
     """
 
-    def __init__(self, settings: Settings, rag_service: RAGService, project_manager: ProjectThreadManager):
+    def __init__(self, settings: Settings, rag_service: RAGService, project_manager: ProjectThreadManager, db_service=None):
         self.settings = settings
         self.rag_service = rag_service
         self.project_manager = project_manager
+        self.db_service = db_service
 
         logger.info("DAS2 Core Engine initialized - SIMPLE APPROACH")
 
@@ -111,9 +123,62 @@ class DAS2CoreEngine:
                         context_sections.append(f"DAS: {das_resp}")
                         context_sections.append("")
 
-            # Project context
+            # Project context (including project name)
             context_sections.append("PROJECT CONTEXT:")
-            context_sections.append(f"Project ID: {project_id}")
+
+            # Get comprehensive project details
+            project_details = None
+            if self.db_service:
+                try:
+                    project_details = self.db_service.get_project_comprehensive(project_id)
+                    print(f"DAS2_DEBUG: Retrieved comprehensive project details: {project_details}")
+                except Exception as e:
+                    logger.warning(f"Could not retrieve comprehensive project details for {project_id}: {e}")
+                    print(f"DAS2_DEBUG: Comprehensive query failed: {e}")
+                    # Fallback to basic project details
+                    try:
+                        project_details = self.db_service.get_project(project_id)
+                        print(f"DAS2_DEBUG: Retrieved basic project details: {project_details}")
+                    except Exception as e2:
+                        logger.warning(f"Could not retrieve basic project details for {project_id}: {e2}")
+                        print(f"DAS2_DEBUG: Basic query also failed: {e2}")
+            else:
+                print("DAS2_DEBUG: No db_service available!")
+
+            if project_details:
+                context_sections.append(f"Project: {project_details.get('name', 'Unknown')} (ID: {project_id})")
+
+                if project_details.get('description'):
+                    context_sections.append(f"Description: {project_details.get('description')}")
+
+                if project_details.get('domain'):
+                    context_sections.append(f"Domain: {project_details.get('domain')}")
+
+                # Creator information
+                if project_details.get('created_by_username'):
+                    creator_name = project_details.get('created_by_username')
+                    context_sections.append(f"Created by: {creator_name}")
+
+                # Timestamps
+                if project_details.get('created_at'):
+                    context_sections.append(f"Created: {project_details.get('created_at')}")
+                if project_details.get('updated_at'):
+                    context_sections.append(f"Last updated: {project_details.get('updated_at')}")
+
+                # Namespace information
+                if project_details.get('namespace_name'):
+                    context_sections.append(f"Namespace: {project_details.get('namespace_name')} ({project_details.get('namespace_path', 'N/A')})")
+                    if project_details.get('namespace_description'):
+                        context_sections.append(f"Namespace description: {project_details.get('namespace_description')}")
+                    if project_details.get('namespace_status'):
+                        context_sections.append(f"Namespace status: {project_details.get('namespace_status')}")
+
+                # Project URI
+                if project_details.get('project_uri'):
+                    context_sections.append(f"Project URI: {project_details.get('project_uri')}")
+            else:
+                context_sections.append(f"Project ID: {project_id} (details unavailable)")
+
             context_sections.append(f"Workbench: {project_thread.current_workbench or 'unknown'}")
             if project_thread.project_goals:
                 context_sections.append(f"Goals: {project_thread.project_goals}")
@@ -148,23 +213,48 @@ class DAS2CoreEngine:
             # 4. Build final prompt with EVERYTHING
             full_context = "\n".join(context_sections)
 
+            print(f"\n🔍 DAS2 CONTEXT SECTIONS BUILT:")
+            print(f"Total sections: {len(context_sections)}")
+            for i, section in enumerate(context_sections[:10]):  # Show first 10 lines
+                print(f"  {i+1}: {section[:100]}{'...' if len(section) > 100 else ''}")
+
             prompt = f"""You are DAS, a digital assistant for this project. Answer using ALL provided context.
+
+IMPORTANT: Always prioritize CURRENT PROJECT CONTEXT over conversation history. If there are conflicts between conversation history and current project facts, use the current project facts.
 
 {full_context}
 
 USER QUESTION: {message}
 
-Answer naturally using any relevant context above. For "what did I ask" questions, use conversation history. For technical questions, use document knowledge. Be helpful and conversational."""
+Answer naturally using the context above. PRIORITY ORDER:
+1. CURRENT PROJECT CONTEXT (always authoritative)
+2. KNOWLEDGE FROM DOCUMENTS (factual information)
+3. CONVERSATION HISTORY (for reference only, may contain outdated info)
 
-            print("DAS2_PROMPT:")
-            print("="*50)
+Be helpful and conversational."""
+
+            print("\n" + "="*80)
+            print("🤖 DAS2 PROMPT TO LLM")
+            print("="*80)
+            print(f"Project ID: {project_id}")
+            print(f"User Message: {message}")
+            print(f"RAG Chunks Found: {rag_response.get('chunks_found', 0)}")
+            print(f"Conversation History Entries: {len(project_thread.conversation_history)}")
+            print(f"Project Events: {len(project_thread.project_events)}")
+            print("-"*80)
+            print("FULL PROMPT:")
+            print("-"*80)
             print(prompt)
-            print("="*50)
+            print("="*80)
 
             # 5. Call LLM directly (simple HTTP call, not through LLMTeam)
             response_text = await self._call_llm_directly(prompt)
 
-            print(f"DAS2_RESPONSE: {response_text}")
+            print("\n" + "="*80)
+            print("🤖 DAS2 LLM RESPONSE")
+            print("="*80)
+            print(response_text)
+            print("="*80 + "\n")
 
             # 6. Save conversation
             conversation_entry = {
@@ -188,7 +278,7 @@ Answer naturally using any relevant context above. For "what did I ask" question
                 }
             )
 
-            # 8. Return with sources
+            # 8. Return with sources (put sources in metadata for frontend compatibility)
             return DAS2Response(
                 message=response_text,
                 sources=rag_response.get("sources", []),
@@ -196,7 +286,8 @@ Answer naturally using any relevant context above. For "what did I ask" question
                     "chunks_found": rag_response.get("chunks_found", 0),
                     "confidence": "medium",
                     "project_id": project_id,
-                    "project_thread_id": project_thread.project_thread_id
+                    "project_thread_id": project_thread.project_thread_id,
+                    "sources": rag_response.get("sources", [])  # Add sources here for frontend
                 }
             )
 
