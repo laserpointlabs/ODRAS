@@ -47,6 +47,7 @@ from backend.api.embedding_models import router as embedding_models_router
 from backend.api.knowledge import router as knowledge_router
 from backend.api.das import router as das_router
 from backend.api.das2 import router as das2_router
+from backend.api.thread_manager import router as thread_manager_router
 from backend.api.namespace_simple import (
     router as namespace_router,
     public_router as namespace_public_router,
@@ -82,6 +83,7 @@ app.include_router(knowledge_router)
 # DAS2 endpoints: /api/das2/* (CURRENT - USE THIS)
 # app.include_router(das_router)  # <-- DO NOT UNCOMMENT THIS LINE
 app.include_router(das2_router)    # <-- ACTIVE DAS IMPLEMENTATION
+app.include_router(thread_manager_router)  # <-- THREAD MANAGER FOR DEBUGGING
 
 # Import and include IRI resolution router
 from backend.api.iri_resolution import router as iri_router
