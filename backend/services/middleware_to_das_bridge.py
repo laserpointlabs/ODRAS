@@ -91,8 +91,11 @@ class MiddlewareToDASBridge:
                 logger.warning(f"Could not get user_id for username: {username}")
                 return False
 
-            # Get or create project thread
-            project_thread = await das_engine.project_manager.get_or_create_project_thread(project_id, user_id)
+            # Get existing project thread
+            project_thread = await das_engine.project_manager.get_project_thread_by_project_id(project_id)
+            if not project_thread:
+                logger.warning(f"No project thread found for project {project_id} - skipping event capture")
+                return False
 
             # Capture event in DAS system
             await das_engine.project_manager.capture_project_event(
@@ -206,4 +209,3 @@ async def initialize_middleware_bridge(redis_client):
     # Give the task a moment to start
     await asyncio.sleep(0.1)
     logger.info("Middleware-to-DAS bridge startup completed")
-

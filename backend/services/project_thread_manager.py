@@ -153,19 +153,40 @@ class ProjectThreadManager:
 
         logger.info(f"Project Thread Manager initialized - Vector store: Primary, Redis: {'Cache enabled' if redis_client else 'Cache disabled'}")
 
-    async def get_or_create_project_thread(self, project_id: str, user_id: str) -> ProjectThreadContext:
+    async def get_project_thread_by_project_id(self, project_id: str) -> Optional[ProjectThreadContext]:
         """
-        Get existing project thread or create new one
-        Each project has exactly one thread that persists across user sessions
+        Get existing project thread by project ID
+        Returns None if no thread exists for the project
         """
         try:
-            # First check if project thread already exists
+            # Check if project thread already exists
             existing_thread = await self._find_project_thread(project_id)
             if existing_thread:
                 # Update last activity and return
                 existing_thread.last_activity = datetime.now()
                 await self._persist_project_thread(existing_thread)
                 logger.info(f"Retrieved existing project thread {existing_thread.project_thread_id} for project {project_id}")
+                return existing_thread
+
+            logger.info(f"No project thread found for project {project_id}")
+            return None
+
+        except Exception as e:
+            logger.error(f"Error getting project thread for project {project_id}: {e}")
+            return None
+
+    async def create_project_thread(self, project_id: str, user_id: str) -> ProjectThreadContext:
+        """
+        Create new project thread - ONLY called during project creation
+        Each project should have exactly one thread created when the project is created
+        """
+        try:
+            # Check if thread already exists (safety check)
+            existing_thread = await self._find_project_thread(project_id)
+            if existing_thread:
+                logger.warning(f"Project thread already exists for project {project_id}, returning existing thread")
+                existing_thread.last_activity = datetime.now()
+                await self._persist_project_thread(existing_thread)
                 return existing_thread
 
             # Create new project thread
@@ -211,7 +232,7 @@ class ProjectThreadManager:
             return thread_context
 
         except Exception as e:
-            logger.error(f"Error getting/creating project thread for project {project_id}: {e}")
+            logger.error(f"Error creating project thread for project {project_id}: {e}")
             raise
 
     async def get_project_thread(self, project_thread_id: str) -> Optional[ProjectThreadContext]:
@@ -387,17 +408,30 @@ class ProjectThreadManager:
     async def _find_project_thread(self, project_id: str) -> Optional[ProjectThreadContext]:
         """Find existing project thread by project ID using vector store"""
         try:
-            # Search in vector store for project thread by project_id
-            search_results = await self.qdrant.search_similar_chunks(
-                query_text=f"project_id:{project_id}",
-                collection_name=self.collection_name,
-                limit=1,
-                score_threshold=0.1
+            # Use direct Qdrant filtering for exact project_id match instead of vector search
+            from qdrant_client.models import Filter, FieldCondition, MatchValue
+
+            # Create filter for exact project_id match
+            project_filter = Filter(
+                must=[
+                    FieldCondition(
+                        key="project_id",
+                        match=MatchValue(value=project_id)
+                    )
+                ]
             )
 
-            if search_results:
+            # Scroll through points with the filter
+            scroll_result = self.qdrant.client.scroll(
+                collection_name=self.collection_name,
+                scroll_filter=project_filter,
+                limit=1
+            )[0]  # Get the points from the tuple
+
+            if scroll_result:
                 # Found existing project thread
-                payload = search_results[0].get("payload", {})
+                point = scroll_result[0]  # First point
+                payload = point.payload
                 thread_data = payload.get("thread_data", {})
 
                 if thread_data and thread_data.get("project_id") == project_id:

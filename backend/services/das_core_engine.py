@@ -106,16 +106,16 @@ class DASCoreEngine:
 
         logger.info("DAS Core Engine initialized with comprehensive project intelligence")
 
-    async def get_or_create_project_thread(self, user_id: str, project_id: str) -> DASProjectThread:
-        """Get existing project thread or create new one"""
+    async def get_project_thread_by_project_id(self, project_id: str) -> Optional[DASProjectThread]:
+        """Get existing project thread by project ID. Returns None if no thread exists."""
         # First, try to find existing project thread for this project
         existing_thread = await self._find_project_thread_by_project_id(project_id)
         if existing_thread:
             logger.info(f"Found existing project thread {existing_thread.project_thread_id} for project {project_id}")
             return existing_thread
 
-        # No existing thread, create new one
-        return await self.start_project_thread(user_id, project_id)
+        logger.info(f"No project thread found for project {project_id}")
+        return None
 
     async def start_project_thread(self, user_id: str, project_id: str) -> DASProjectThread:
         """Start a new DAS project thread with full context awareness"""
@@ -163,7 +163,258 @@ class DASCoreEngine:
                 project_thread.last_activity = datetime.now()
                 return project_thread
 
+        # NEW: Also check the new ProjectThreadManager system (Qdrant vector store)
+        if self.project_manager:
+            try:
+                new_thread = await self.project_manager.get_project_thread(project_thread_id)
+                if new_thread:
+                    # Convert new system thread to legacy format for compatibility
+                    legacy_thread = DASProjectThread(
+                        project_thread_id=new_thread.project_thread_id,
+                        user_id=new_thread.created_by,
+                        project_id=new_thread.project_id,
+                        started_at=new_thread.created_at,
+                        last_activity=new_thread.last_activity,
+                        context={
+                            "project_id": new_thread.project_id,
+                            "conversation_history": new_thread.conversation_history,
+                            "project_events": new_thread.project_events,
+                            "active_ontologies": new_thread.active_ontologies,
+                            "current_workbench": new_thread.current_workbench,
+                            "project_goals": new_thread.project_goals
+                        }
+                    )
+                    # Cache in memory for future lookups
+                    self.project_threads[project_thread_id] = legacy_thread
+                    logger.info(f"Found thread {project_thread_id} in new system, converted to legacy format")
+                    return legacy_thread
+            except Exception as e:
+                logger.warning(f"Error checking new system for thread {project_thread_id}: {e}")
+
         return None
+
+    async def process_message_simple(
+        self,
+        project_id: str,
+        message: str,
+        user_id: str,
+        context: Optional[Dict[str, Any]] = None
+    ) -> DASResponse:
+        """
+        Process message with simple approach: project thread context + RAG, no hard-coded intelligence
+        """
+        try:
+            print(f"DAS_DEBUG_1: Entry - project_id={project_id}, message='{message[:50]}...'")
+
+            if not self.project_manager:
+                raise RuntimeError("ProjectThreadManager not initialized - check Redis connection")
+
+            print(f"DAS_DEBUG_2: Looking for project thread...")
+            # Get existing project thread
+            project_thread = await self.project_manager.get_project_thread_by_project_id(project_id)
+            if not project_thread:
+                logger.warning(f"No project thread found for project {project_id}")
+                return DASResponse(
+                    message="DAS is not available for this project. Project threads are created when projects are created. Please create a project first to use DAS functionality.",
+                    confidence=DASConfidence.HIGH,
+                    intent=DASIntent.UNKNOWN,
+                    metadata={"error": "no_project_thread", "project_id": project_id}
+                )
+
+            print(f"DAS_DEBUG_3: Found project thread {project_thread.project_thread_id} with {len(project_thread.conversation_history)} conversation entries")
+
+            # Convert project thread to dict for RAG context (no manipulation, just raw context)
+            project_thread_dict = project_thread.to_dict() if hasattr(project_thread, 'to_dict') else {
+                'project_id': project_thread.project_id,
+                'project_thread_id': project_thread.project_thread_id,
+                'created_at': project_thread.created_at.isoformat() if hasattr(project_thread.created_at, 'isoformat') else str(project_thread.created_at),
+                'last_activity': project_thread.last_activity.isoformat() if hasattr(project_thread.last_activity, 'isoformat') else str(project_thread.last_activity),
+                'conversation_history': project_thread.conversation_history,
+                'project_events': project_thread.project_events,
+                'active_ontologies': project_thread.active_ontologies,
+                'current_workbench': project_thread.current_workbench,
+                'project_goals': project_thread.project_goals
+            }
+
+            # Direct RAG query with raw message and full project context (no intelligence layers)
+            rag_response = await self.rag_service.query_knowledge_base(
+                question=message,  # Raw message, no enhancement
+                project_id=project_id,
+                project_thread_context=project_thread_dict,  # Full context
+                user_id=user_id,
+                max_chunks=5,
+                similarity_threshold=0.3,
+                include_metadata=True,
+                response_style="comprehensive"
+            )
+
+            # SIMPLE APPROACH: Build complete context and send ALL to LLM
+            print(f"DAS_DEBUG_4: Building complete context for LLM...")
+
+            # Build comprehensive context
+            context_parts = []
+
+            # Add conversation history
+            if project_thread.conversation_history:
+                context_parts.append("CONVERSATION HISTORY:")
+                for conv in project_thread.conversation_history[-10:]:
+                    user_msg = conv.get("user_message", "")
+                    das_resp = conv.get("das_response", "")
+                    timestamp = conv.get("timestamp", "")
+                    if user_msg and das_resp:
+                        context_parts.append(f"User: {user_msg}")
+                        context_parts.append(f"DAS: {das_resp}")
+                        context_parts.append("")
+
+            # Add project context
+            context_parts.append("PROJECT CONTEXT:")
+            context_parts.append(f"Project ID: {project_id}")
+            context_parts.append(f"Current workbench: {project_thread.current_workbench or 'unknown'}")
+            if project_thread.project_goals:
+                context_parts.append(f"Project goals: {project_thread.project_goals}")
+            if project_thread.active_ontologies:
+                context_parts.append(f"Active ontologies: {', '.join(project_thread.active_ontologies)}")
+            context_parts.append("")
+
+            # Add recent project events
+            if project_thread.project_events:
+                context_parts.append("RECENT PROJECT ACTIVITY:")
+                for event in project_thread.project_events[-5:]:
+                    event_type = event.get("event_type", "")
+                    summary = event.get("summary", "")
+                    if event_type and summary:
+                        context_parts.append(f"{event_type}: {summary}")
+                context_parts.append("")
+
+            # Add RAG knowledge if found
+            if rag_response.get("success") and rag_response.get("chunks_found", 0) > 0:
+                context_parts.append("KNOWLEDGE FROM DOCUMENTS:")
+                context_parts.append(rag_response.get("response", ""))
+
+                # Add sources
+                sources = rag_response.get("sources", [])
+                if sources:
+                    context_parts.append("\nSources:")
+                    for i, source in enumerate(sources, 1):
+                        title = source.get("title", "Unknown Document")
+                        doc_type = source.get("document_type", "document")
+                        context_parts.append(f"{i}. {title} ({doc_type})")
+                context_parts.append("")
+
+            # Build final prompt
+            all_context = "\n".join(context_parts)
+
+            full_prompt = f"""You are DAS (Digital Assistant System) for this project. Answer the user's question using ALL the context provided.
+
+{all_context}
+
+USER QUESTION: {message}
+
+Provide a natural, helpful response using whatever context is relevant. Reference conversation history for "what did I ask" type questions. Use knowledge from documents when relevant. Be conversational."""
+
+            print(f"DAS_DEBUG_5: Sending complete context to LLM...")
+            print("DAS_PROMPT_TO_LLM:")
+            print("="*80)
+            print(full_prompt)
+            print("="*80)
+
+            # Use RAG service's LLM approach but with our context
+            response_schema = {
+                "type": "object",
+                "properties": {
+                    "answer": {"type": "string", "description": "Natural response to user"},
+                    "confidence": {"type": "string", "enum": ["high", "medium", "low"]}
+                },
+                "required": ["answer"]
+            }
+
+            custom_personas = [{
+                "name": "DAS Assistant",
+                "system_prompt": "You are a helpful digital assistant. Provide natural conversational responses using the provided context.",
+                "is_active": True
+            }]
+
+            llm_response = await self.rag_service.llm_team.analyze_requirement(
+                requirement_text=full_prompt,
+                ontology_json_schema=response_schema,
+                custom_personas=custom_personas
+            )
+
+            print(f"DAS_LLM_RESPONSE: {json.dumps(llm_response, indent=2, default=str)}")
+
+            # Extract response
+            response_message = "I couldn't generate a response."
+            if isinstance(llm_response, dict) and 'personas' in llm_response:
+                personas = llm_response.get('personas', [])
+                if personas and len(personas) > 0:
+                    first_persona = personas[0]
+                    response_json = first_persona.get('response', {})
+                    response_message = response_json.get('answer', response_message)
+
+            print(f"DAS_DEBUG_6: Final response: {response_message[:100]}...")
+
+            # Extract sources/chunks for display (this is what was missing!)
+            sources = rag_response.get("sources", [])
+            chunks_found = rag_response.get("chunks_found", 0)
+
+            # Simple conversation history (no intent analysis, no contextual refs)
+            conversation_entry = {
+                "timestamp": datetime.now().isoformat(),
+                "user_message": message,
+                "das_response": response_message,
+                "project_context": context,
+                "sources": sources,  # Include sources in conversation history
+                "chunks_found": chunks_found
+            }
+
+            project_thread.conversation_history.append(conversation_entry)
+
+            # Persist the updated project thread
+            await self.project_manager._persist_project_thread(project_thread)
+            logger.info(f"Persisted conversation to project thread {project_thread.project_thread_id}")
+
+            # Simple project event capture
+            await self.project_manager.capture_project_event(
+                project_id=project_id,
+                project_thread_id=project_thread.project_thread_id,
+                user_id=user_id,
+                event_type=ProjectEventType.DAS_QUESTION,
+                event_data={
+                    "message": message,
+                    "response": response_message,
+                    "sources_count": len(sources),
+                    "chunks_found": chunks_found,
+                    "timestamp": datetime.now().isoformat()
+                }
+            )
+
+            # Build proper metadata with sources for frontend display
+            response_metadata = {
+                "sources": sources,
+                "chunks_found": chunks_found,
+                "confidence": rag_response.get("confidence", "medium"),
+                "query": message,
+                "generated_at": rag_response.get("generated_at"),
+                "model_used": rag_response.get("model_used"),
+                "provider": rag_response.get("provider")
+            }
+
+            return DASResponse(
+                message=response_message,
+                confidence=DASConfidence.MEDIUM,
+                intent=DASIntent.QUESTION,  # Simple default
+                metadata=response_metadata  # Now includes proper sources for frontend
+            )
+
+        except Exception as e:
+            logger.error(f"Error in simple DAS processing: {e}")
+            return DASResponse(
+                message=f"Sorry, I encountered an error processing your message: {str(e)}",
+                confidence=DASConfidence.LOW,
+                intent=DASIntent.UNKNOWN,
+                metadata={"error": str(e)}
+            )
+
 
     async def process_message_with_intelligence(
         self,
@@ -182,8 +433,16 @@ class DASCoreEngine:
             if not self.project_intelligence:
                 raise RuntimeError("ProjectIntelligenceService not initialized - check Redis/Qdrant connection")
 
-            # Get or create project thread using new system
-            project_thread = await self.project_manager.get_or_create_project_thread(project_id, user_id)
+            # Get existing project thread using new system
+            project_thread = await self.project_manager.get_project_thread_by_project_id(project_id)
+            if not project_thread:
+                logger.warning(f"No project thread found for project {project_id}")
+                return DASResponse(
+                    message="DAS is not available for this project. Project threads are created when projects are created. Please create a project first to use DAS functionality.",
+                    confidence=DASConfidence.HIGH,
+                    intent=DASIntent.UNKNOWN,
+                    metadata={"error": "no_project_thread", "project_id": project_id}
+                )
 
             # Resolve contextual references ("that class", "this ontology")
             contextual_ref = None

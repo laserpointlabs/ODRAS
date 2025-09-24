@@ -106,13 +106,11 @@ async def send_message(
         if request.project_thread_id:
             session = await engine.get_project_thread(request.project_thread_id)
             if not session:
-                # Project thread not found, create new one
-                if not request.project_id:
-                    raise HTTPException(
-                        status_code=status.HTTP_400_BAD_REQUEST,
-                        detail="Project ID required when project thread not found"
-                    )
-                session = await engine.get_or_create_project_thread(user_id, request.project_id)
+                # Project thread not found, return 404
+                raise HTTPException(
+                    status_code=status.HTTP_404_NOT_FOUND,
+                    detail=f"Project thread {request.project_thread_id} not found. Project threads are created when projects are created."
+                )
             else:
                 # Update project thread with current context if provided
                 if session_manager and (request.ontology_id or request.workbench):
@@ -126,14 +124,16 @@ async def send_message(
                         await session_manager.update_session_context(session.project_thread_id, context_updates)
                         logger.info(f"Updated DAS project thread context: {context_updates}")
         else:
-            # Create new project thread - project_id is required
+            # No project thread ID provided - need existing project with thread
             if not request.project_id:
                 raise HTTPException(
                     status_code=status.HTTP_400_BAD_REQUEST,
-                    detail="Project ID is required to start a new project thread"
+                    detail="Project ID is required to access DAS functionality"
                 )
 
-            session = await engine.get_or_create_project_thread(user_id, request.project_id)
+            # Try to get legacy session, but don't fail if not found
+            # The new intelligent processing will handle project threads properly
+            session = await engine.get_project_thread_by_project_id(request.project_id)
 
             # Set additional context if provided
             if session_manager and (request.ontology_id or request.workbench):
@@ -153,9 +153,9 @@ async def send_message(
             "workbench": request.workbench
         }
 
-        # Use new intelligent processing - NO FALLBACKS
-        response = await engine.process_message_with_intelligence(
-            request.project_id or session.project_id,
+        # Use simple processing - just project context + RAG, no hard-coded intelligence
+        response = await engine.process_message_simple(
+            request.project_id or (session.project_id if session else request.project_id),
             request.message,
             user_id,
             current_context
@@ -182,6 +182,9 @@ async def send_message(
             metadata=response.metadata or {}
         )
 
+    except HTTPException:
+        # Re-raise HTTPExceptions (like our 404s) without modification
+        raise
     except Exception as e:
         logger.error(f"Error processing chat message: {e}")
         raise HTTPException(
@@ -270,7 +273,12 @@ async def get_project_thread_by_project_id(
                     detail="Project intelligence not initialized - check Redis/Qdrant connections"
                 )
 
-            project_thread = await engine.project_manager.get_or_create_project_thread(project_id, user_id)
+            project_thread = await engine.project_manager.get_project_thread_by_project_id(project_id)
+            if not project_thread:
+                raise HTTPException(
+                    status_code=status.HTTP_404_NOT_FOUND,
+                    detail=f"No project thread found for project {project_id}. Project threads are created when projects are created."
+                )
 
             return ProjectThreadResponse(
                 project_thread_id=project_thread.project_thread_id,
@@ -281,7 +289,13 @@ async def get_project_thread_by_project_id(
             )
         else:
             # Legacy system fallback
-            session = await engine.get_or_create_project_thread(user_id, project_id)
+            session = await engine.get_project_thread_by_project_id(project_id)
+            if not session:
+                raise HTTPException(
+                    status_code=status.HTTP_404_NOT_FOUND,
+                    detail=f"No project thread found for project {project_id}. Project threads are created when projects are created."
+                )
+
             return ProjectThreadResponse(
                 project_thread_id=session.project_thread_id,
                 user_id=session.user_id,
@@ -290,6 +304,9 @@ async def get_project_thread_by_project_id(
                 status="active"
             )
 
+    except HTTPException:
+        # Re-raise HTTPExceptions (like our 404s) without modification
+        raise
     except Exception as e:
         logger.error(f"Error getting project thread for project {project_id}: {e}")
         raise HTTPException(
@@ -317,7 +334,12 @@ async def get_project_thread_history_by_project(
 
         # Get the project thread
         if hasattr(engine, 'process_message_with_intelligence') and engine.project_manager:
-            project_thread = await engine.project_manager.get_or_create_project_thread(project_id, user_id)
+            project_thread = await engine.project_manager.get_project_thread_by_project_id(project_id)
+            if not project_thread:
+                raise HTTPException(
+                    status_code=status.HTTP_404_NOT_FOUND,
+                    detail=f"No project thread found for project {project_id}. Project threads are created when projects are created."
+                )
 
             # Build conversation history from both conversation_history AND project_events
             history = []
@@ -384,6 +406,9 @@ async def get_project_thread_history_by_project(
                 detail="Project intelligence not available"
             )
 
+    except HTTPException:
+        # Re-raise HTTPExceptions (like our 404s) without modification
+        raise
     except Exception as e:
         logger.error(f"Error getting project thread history for project {project_id}: {e}")
         raise HTTPException(
@@ -1063,7 +1088,12 @@ async def remove_last_message_from_thread(
 
         # Get the project thread
         if hasattr(engine, 'project_manager') and engine.project_manager:
-            project_thread = await engine.project_manager.get_or_create_project_thread(project_id, user_id)
+            project_thread = await engine.project_manager.get_project_thread_by_project_id(project_id)
+            if not project_thread:
+                raise HTTPException(
+                    status_code=status.HTTP_404_NOT_FOUND,
+                    detail=f"No project thread found for project {project_id}. Project threads are created when projects are created."
+                )
 
             # Remove last conversation entry if it exists
             if project_thread.conversation_history:
@@ -1088,6 +1118,9 @@ async def remove_last_message_from_thread(
                 detail="Project intelligence not available"
             )
 
+    except HTTPException:
+        # Re-raise HTTPExceptions (like our 404s) without modification
+        raise
     except Exception as e:
         logger.error(f"Error removing last message from project thread: {e}")
         raise HTTPException(

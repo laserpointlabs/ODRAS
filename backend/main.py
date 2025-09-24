@@ -46,6 +46,7 @@ from backend.api.workflows import router as workflows_router
 from backend.api.embedding_models import router as embedding_models_router
 from backend.api.knowledge import router as knowledge_router
 from backend.api.das import router as das_router
+from backend.api.das2 import router as das2_router
 from backend.api.namespace_simple import (
     router as namespace_router,
     public_router as namespace_public_router,
@@ -75,7 +76,9 @@ app.include_router(files_router)
 app.include_router(workflows_router)
 app.include_router(embedding_models_router)
 app.include_router(knowledge_router)
-app.include_router(das_router)
+# DAS1 disabled - replaced by DAS2 simple implementation
+# app.include_router(das_router)
+app.include_router(das2_router)
 
 # Import and include IRI resolution router
 from backend.api.iri_resolution import router as iri_router
@@ -261,12 +264,18 @@ def logout_all():
 
 @app.on_event("startup")
 async def startup_event():
-    """Clean up expired tokens on startup."""
+    """Clean up expired tokens and initialize DAS2 on startup."""
     try:
         cleanup_expired_tokens()
         logger.info("Cleaned up expired tokens on startup")
+
+        # Initialize DAS2 engine
+        from backend.api.das2 import initialize_das2_engine
+        await initialize_das2_engine()
+        logger.info("DAS2 engine initialized on startup")
+
     except Exception as e:
-        logger.error(f"Error cleaning up expired tokens on startup: {e}")
+        logger.error(f"Error during startup: {e}")
 
 
 @app.get("/api/projects")
@@ -328,7 +337,7 @@ async def create_project(body: Dict, user=Depends(get_user)):
             from backend.services.project_thread_manager import ProjectEventType
             if das_engine and das_engine.project_manager:
                 # Create project thread with initial context
-                project_thread = await das_engine.project_manager.get_or_create_project_thread(
+                project_thread = await das_engine.project_manager.create_project_thread(
                     project_id=proj["project_id"],
                     user_id=user["user_id"]
                 )
@@ -3320,4 +3329,3 @@ def run():
 
 if __name__ == "__main__":
     run()
-
