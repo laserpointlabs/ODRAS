@@ -1,6 +1,14 @@
 """
 Namespace URI Generator Service for ODRAS
-Generates proper organizational URIs based on installation configuration
+Generates proper organizational URIs based on installation configuration.
+
+Standards Compliance:
+- RFC 3987: Internationalized Resource Identifiers (IRIs)
+- W3C Semantic Web Best Practices
+- DoD Domain Naming Conventions
+
+Generates RFC 3987-compliant IRIs for organizational namespace structures
+in government, defense, and industry contexts.
 """
 
 import logging

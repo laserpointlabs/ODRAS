@@ -1,6 +1,12 @@
 """
 Resource URI Service for ODRAS
 Provides consistent, namespace-aware URI generation for all resource types.
+
+Standards Compliance:
+- RFC 3987: Internationalized Resource Identifiers (IRIs)
+- W3C Semantic Web Best Practices
+- ODRAS Installation-Specific IRI Design Document
+
 Follows the organizational URI design document specifications.
 """
 

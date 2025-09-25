@@ -1,6 +1,15 @@
 """
 IRI Resolution API for ODRAS
 Makes installation-specific IRIs dereferenceable by providing resource metadata and content.
+
+Standards Compliance:
+- RFC 3987: Internationalized Resource Identifiers (IRIs) - Core specification
+- W3C Architecture of the World Wide Web, Volume One
+- W3C Cool URIs for the Semantic Web
+- IETF RFC 3986: Uniform Resource Identifier (URI): Generic Syntax
+
+Implementation follows RFC 3987 syntax rules for proper IRI generation,
+validation, and resolution in semantic web applications.
 """
 
 import logging
