@@ -88,12 +88,12 @@ _id_generator = StableIDGenerator()
 def generate_id() -> str:
     """
     UNIFIED ID GENERATOR - Use this everywhere instead of UUID generation.
-    
+
     This is the main function that should replace:
-    - PostgreSQL: gen_random_uuid()  
+    - PostgreSQL: gen_random_uuid()
     - Python: uuid.uuid4()
     - Any other UUID generation
-    
+
     Returns:
         8-digit ID like "B459-34TY"
     """
@@ -114,7 +114,7 @@ def generate_8_digit_id() -> str:
 def validate_id(id_string: str) -> bool:
     """
     Validate ODRAS ID format.
-    
+
     Args:
         id_string: String to validate
 
@@ -127,7 +127,7 @@ def validate_id(id_string: str) -> bool:
 def is_valid_id(id_string: str) -> bool:
     """
     Check if string is a valid ODRAS ID.
-    
+
     Args:
         id_string: String to check
 
@@ -138,7 +138,7 @@ def is_valid_id(id_string: str) -> bool:
 
 
 # ==============================================================================
-# LEGACY/COMPATIBILITY FUNCTIONS 
+# LEGACY/COMPATIBILITY FUNCTIONS
 # ==============================================================================
 
 def validate_8_digit_id(id_string: str) -> bool:
@@ -151,7 +151,7 @@ def validate_8_digit_id(id_string: str) -> bool:
 
 def is_8_digit_id(id_string: str) -> bool:
     """
-    Legacy function - use is_valid_id() instead.  
+    Legacy function - use is_valid_id() instead.
     Kept for backward compatibility.
     """
     return is_valid_id(id_string)

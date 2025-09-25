@@ -56,7 +56,7 @@ CREATE TABLE my_table (
 
 ### What We've Changed
 
-1. **Python Services**: 
+1. **Python Services**:
    - ✅ `backend/services/db.py` - Updated to use `generate_id()`
    - ✅ `backend/services/qdrant_service.py` - Updated to use `generate_id()`
    - ✅ `scripts/step_store_vector_chunks.py` - Updated to use `generate_id()`
@@ -102,7 +102,7 @@ CREATE TABLE my_table (
 ### Examples of Valid IDs
 
 - `B459-34TY`
-- `X7R9-M2K8` 
+- `X7R9-M2K8`
 - `F1A3-9Z5B`
 - `9ABC-DEF0`
 - `ZZZZ-9999`
@@ -141,7 +141,7 @@ backend/migrations/017_unified_id_generation.sql  # Database functions
 The unified ID system has been tested:
 
 - ✅ PostgreSQL functions generate valid 8-digit IDs
-- ✅ Python module generates valid 8-digit IDs  
+- ✅ Python module generates valid 8-digit IDs
 - ✅ Validation functions work correctly
 - ✅ Integration with existing services (Qdrant, database)
 
