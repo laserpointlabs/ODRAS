@@ -46,12 +46,18 @@ services:
     image: ollama/ollama:latest
     container_name: odras_ollama
     restart: unless-stopped
+    runtime: nvidia
     environment:
       - OLLAMA_KEEP_ALIVE=1h
+      - NVIDIA_VISIBLE_DEVICES=all
+      - NVIDIA_DRIVER_CAPABILITIES=compute,utility
+      - CUDA_VISIBLE_DEVICES=0
     ports:
       - "11434:11434"
     volumes:
       - ollama_data:/root/.ollama
+      # Mount WSL2 NVIDIA drivers directly
+      - /usr/lib/wsl/drivers:/usr/lib/wsl/drivers:ro
 
   camunda7:
     image: camunda/camunda-bpm-platform:run-latest
@@ -128,8 +134,3 @@ volumes:
   minio_data:
   postgres_data:
   redis_data:
-
-
-
-
-

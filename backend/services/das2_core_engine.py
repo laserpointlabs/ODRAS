@@ -186,14 +186,36 @@ class DAS2CoreEngine:
                 context_sections.append(f"Ontologies: {', '.join(project_thread.active_ontologies)}")
             context_sections.append("")
 
-            # Project events
+            # Project events (ALL context comes from here - no hard-coded calls)
             if project_thread.project_events:
                 context_sections.append("RECENT PROJECT ACTIVITY:")
-                for event in project_thread.project_events[-5:]:  # Last 5
+                for event in project_thread.project_events[-10:]:  # Last 10 events
                     event_type = event.get("event_type", "")
                     summary = event.get("summary", "")
-                    if event_type:
-                        context_sections.append(f"{event_type}: {summary or 'No summary'}")
+                    semantic_summary = event.get("key_data", {}).get("semantic_summary", "")
+                    event_timestamp = event.get("timestamp", "")
+
+                    # Use rich summary from EventCapture2 if available (includes user attribution)
+                    if semantic_summary:
+                        # Add timestamp for context
+                        if event_timestamp:
+                            try:
+                                from datetime import datetime
+                                dt = datetime.fromisoformat(event_timestamp.replace('Z', '+00:00'))
+                                time_str = dt.strftime("%H:%M")
+                                context_sections.append(f"• [{time_str}] {semantic_summary}")
+                            except:
+                                context_sections.append(f"• {semantic_summary}")
+                        else:
+                            context_sections.append(f"• {semantic_summary}")
+                    elif summary:
+                        context_sections.append(f"• {event_type}: {summary}")
+                    else:
+                        context_sections.append(f"• {event_type}: event")
+                context_sections.append("")
+            else:
+                context_sections.append("RECENT PROJECT ACTIVITY:")
+                context_sections.append("• No project events captured yet")
                 context_sections.append("")
 
             # Knowledge/RAG context
