@@ -1099,6 +1099,7 @@ init_databases() {
             "015_installation_specific_iris.sql"
             "016_add_stable_ids.sql"
             "017_unified_id_generation.sql"
+            "018_convert_all_tables_to_8digit_ids.sql"
         )
 
         for migration in "${migrations[@]}"; do

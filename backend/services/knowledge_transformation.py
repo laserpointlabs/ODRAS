@@ -114,6 +114,11 @@ class KnowledgeTransformationService:
             Asset ID
         """
         asset_id = str(uuid4())
+
+        # Generate stable ID for IRIs and user-facing references
+        from .stable_id_generator import generate_id
+        asset_stable_id = generate_id()
+
         now = datetime.now(timezone.utc)
 
         # Generate installation-specific IRI
@@ -132,8 +137,8 @@ class KnowledgeTransformationService:
                     """
                     INSERT INTO knowledge_assets
                     (id, source_file_id, project_id, title, document_type, status,
-                     created_at, updated_at, metadata, iri)
-                    VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
+                     created_at, updated_at, metadata, iri, stable_id)
+                    VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
                 """,
                     (
                         asset_id,
@@ -146,6 +151,7 @@ class KnowledgeTransformationService:
                         now,
                         json.dumps(processing_options or {}),
                         asset_iri,
+                        asset_stable_id,
                     ),
                 )
                 conn.commit()
@@ -712,4 +718,3 @@ async def transform_file_to_knowledge_asset(
     """
     service = get_knowledge_transformation_service()
     return await service.transform_file_to_knowledge(file_id, project_id, processing_options)
-

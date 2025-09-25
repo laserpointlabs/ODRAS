@@ -181,10 +181,38 @@ class ProjectThreadManager:
         Each project should have exactly one thread created when the project is created
         """
         try:
+            # Look up project's stable_id for clean thread references
+            project_stable_id = None
+            try:
+                # Get project stable_id from database
+                from .db import DatabaseService
+                from .config import Settings
+                db_service = DatabaseService(Settings())
+                conn = db_service._conn()
+                try:
+                    with conn.cursor() as cur:
+                        cur.execute(
+                            "SELECT stable_id FROM projects WHERE project_id = %s",
+                            (project_id,)
+                        )
+                        result = cur.fetchone()
+                        if result:
+                            project_stable_id = result[0]
+                            logger.info(f"Found stable_id {project_stable_id} for project {project_id}")
+                        else:
+                            logger.warning(f"No stable_id found for project {project_id}")
+                finally:
+                    db_service._return(conn)
+            except Exception as e:
+                logger.error(f"Failed to lookup project stable_id: {e}")
+            
+            # Use stable_id if available, fallback to UUID if needed
+            thread_project_id = project_stable_id if project_stable_id else project_id
+            
             # Check if thread already exists (safety check)
-            existing_thread = await self._find_project_thread(project_id)
+            existing_thread = await self._find_project_thread(thread_project_id)
             if existing_thread:
-                logger.warning(f"Project thread already exists for project {project_id}, returning existing thread")
+                logger.warning(f"Project thread already exists for project {thread_project_id}, returning existing thread")
                 existing_thread.last_activity = datetime.now()
                 await self._persist_project_thread(existing_thread)
                 return existing_thread
@@ -194,7 +222,7 @@ class ProjectThreadManager:
 
             thread_context = ProjectThreadContext(
                 project_thread_id=project_thread_id,
-                project_id=project_id,
+                project_id=thread_project_id,  # Use stable_id (XXXX-XXXX) instead of UUID
                 created_by=user_id,
                 created_at=datetime.now(),
                 last_activity=datetime.now(),
@@ -217,7 +245,7 @@ class ProjectThreadManager:
 
             # Capture thread creation event
             await self.capture_project_event(
-                project_id=project_id,
+                project_id=thread_project_id,  # Use stable_id for events
                 project_thread_id=project_thread_id,
                 user_id=user_id,
                 event_type=ProjectEventType.DAS_COMMAND,

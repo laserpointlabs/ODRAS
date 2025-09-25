@@ -389,7 +389,10 @@ async def create_project(body: Dict, user=Depends(get_user)):
                     project_details={
                         "description": body.get("description"),
                         "domain": domain,
-                        "namespace_id": namespace_id
+                        "namespace_id": namespace_id,
+                        "project_uuid": proj["project_id"],  # 32-char UUID for internal reference
+                        "project_stable_id": proj["stable_id"],  # XXXX-XXXX for IRIs and display
+                        "project_iri_id": proj["stable_id"]  # Alternative name for clarity
                     }
                 )
         except Exception as e:
@@ -962,10 +965,10 @@ async def create_ontology(body: Dict, user=Depends(get_user)):
             )
         else:
             # Use standard project-based URI even for reference ontologies
-            graph_iri = uri_service.generate_ontology_uri(project, name)
+            graph_iri = uri_service.generate_ontology_iri(project, name)
     else:
         # For working ontologies, use the new centralized URI service
-        graph_iri = uri_service.generate_ontology_uri(project, name)
+        graph_iri = uri_service.generate_ontology_iri(project, name)
 
         logger.info(f"Generated ontology URI: {graph_iri} for project: {project}, name: {name}")
         logger.info(f"Installation base URI: {settings.installation_base_uri}")
@@ -1094,19 +1097,20 @@ async def get_uri_diagnostics(user=Depends(get_user)):
 
         try:
             sample_uris = {
-                "project_uri": uri_service.generate_project_uri(sample_project_id),
-                "ontology_uri": uri_service.generate_ontology_uri(
+                "project_uri": uri_service.generate_project_iri(sample_project_id),
+                "ontology_uri": uri_service.generate_ontology_iri(
                     sample_project_id, "sample-ontology"
                 ),
-                "entity_uri": uri_service.generate_ontology_entity_uri(
+                "entity_uri": uri_service.generate_entity_iri(
                     sample_project_id, "sample-ontology", "SampleClass"
                 ),
-                "file_uri": uri_service.generate_file_uri(sample_project_id, "requirements.pdf"),
-                "knowledge_uri": uri_service.generate_knowledge_uri(
+                "file_uri": uri_service.generate_file_iri(sample_project_id, "requirements.pdf"),
+                "knowledge_uri": uri_service.generate_knowledge_asset_iri(
                     sample_project_id, "threat-analysis"
                 ),
-                "admin_uri": uri_service.generate_admin_uri("configs", "fuseki-settings"),
-                "shared_uri": uri_service.generate_shared_uri("libraries", "common-vocabularies"),
+                # Admin and shared URIs not implemented yet
+                # "admin_uri": uri_service.generate_admin_uri("configs", "fuseki-settings"),
+                # "shared_uri": uri_service.generate_shared_uri("libraries", "common-vocabularies"),
             }
         except Exception as e:
             logger.warning(f"Failed to generate sample URIs: {e}")

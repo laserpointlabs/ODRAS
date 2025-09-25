@@ -57,6 +57,7 @@ class FileMetadata:
         visibility: str = "private",  # "private" or "public"
         created_by: Optional[str] = None,  # User ID of file owner
         iri: Optional[str] = None,  # Installation-specific IRI
+        stable_id: Optional[str] = None,  # XXXX-XXXX stable ID for IRIs
     ):
         self.file_id = file_id
         self.filename = filename
@@ -72,6 +73,7 @@ class FileMetadata:
         self.visibility = visibility
         self.created_by = created_by
         self.iri = iri
+        self.stable_id = stable_id
 
     def to_dict(self) -> Dict[str, Any]:
         return {
@@ -88,6 +90,7 @@ class FileMetadata:
             "tags": self.tags,
             "visibility": self.visibility,
             "created_by": self.created_by,
+            "stable_id": self.stable_id,
             "iri": self.iri,
         }
 
@@ -497,8 +500,8 @@ class PostgreSQLBackend(StorageBackend):
                     """
                     INSERT INTO files
                     (id, filename, content_type, file_size, hash_md5, hash_sha256,
-                     storage_path, project_id, tags, created_at, updated_at, created_by, iri)
-                    VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
+                     storage_path, project_id, tags, created_at, updated_at, created_by, iri, stable_id)
+                    VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
                     ON CONFLICT (id) DO UPDATE SET
                         filename = EXCLUDED.filename,
                         content_type = EXCLUDED.content_type,
@@ -521,6 +524,7 @@ class PostgreSQLBackend(StorageBackend):
                         metadata.updated_at,
                         metadata.created_by,
                         metadata.iri,
+                        metadata.stable_id,
                     ),
                 )
 
@@ -996,6 +1000,10 @@ class FileStorageService:
             # Generate unique file ID
             file_id = str(uuid.uuid4())
 
+            # Generate stable ID for IRIs and user-facing references
+            from .stable_id_generator import generate_id
+            file_stable_id = generate_id()
+
             # Generate installation-specific IRI
             file_iri = None
             if project_id:
@@ -1031,6 +1039,7 @@ class FileStorageService:
                 visibility="private",  # All files are private by default
                 created_by=created_by,
                 iri=file_iri,
+                stable_id=file_stable_id,
             )
 
             # Store file using backend
@@ -1405,4 +1414,3 @@ def get_file_storage_service() -> FileStorageService:
         settings = Settings()
         _file_storage_service = FileStorageService(settings)
     return _file_storage_service
-
