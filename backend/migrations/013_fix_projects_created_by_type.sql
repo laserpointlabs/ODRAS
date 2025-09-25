@@ -25,12 +25,19 @@ BEGIN
 END
 $$;
 
--- Add foreign key constraint to users table
-ALTER TABLE public.projects
-ADD CONSTRAINT fk_projects_created_by
-FOREIGN KEY (created_by) REFERENCES public.users(user_id) ON DELETE SET NULL;
+-- Add foreign key constraint to users table (only if it doesn't exist)
+DO $$
+BEGIN
+    IF NOT EXISTS (
+        SELECT 1 FROM information_schema.table_constraints
+        WHERE constraint_name = 'fk_projects_created_by'
+        AND table_name = 'projects'
+    ) THEN
+        ALTER TABLE public.projects
+        ADD CONSTRAINT fk_projects_created_by
+        FOREIGN KEY (created_by) REFERENCES public.users(user_id) ON DELETE SET NULL;
+    END IF;
+END $$;
 
 -- Add index for efficient lookups
 CREATE INDEX IF NOT EXISTS idx_projects_created_by_uuid ON projects(created_by);
-
-

@@ -55,9 +55,19 @@ BEGIN
 END;
 $$ language 'plpgsql';
 
-CREATE TRIGGER update_files_updated_at
-    BEFORE UPDATE ON files
-    FOR EACH ROW EXECUTE FUNCTION update_files_updated_at();
+-- Create trigger only if it doesn't exist
+DO $$
+BEGIN
+    IF NOT EXISTS (
+        SELECT 1 FROM information_schema.triggers
+        WHERE trigger_name = 'update_files_updated_at'
+        AND event_object_table = 'files'
+    ) THEN
+        CREATE TRIGGER update_files_updated_at
+            BEFORE UPDATE ON files
+            FOR EACH ROW EXECUTE FUNCTION update_files_updated_at();
+    END IF;
+END $$;
 
 -- Comments for documentation
 COMMENT ON TABLE files IS 'Core files table compatible with knowledge management system';
@@ -66,4 +76,3 @@ COMMENT ON COLUMN files.metadata IS 'File processing metadata and custom attribu
 COMMENT ON COLUMN files.tags IS 'User-defined tags including docType and classification';
 COMMENT ON COLUMN files.storage_key IS 'Key/path for cloud storage backends (S3, MinIO, etc)';
 COMMENT ON COLUMN files.storage_path IS 'Local filesystem path for local backend';
-

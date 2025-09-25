@@ -99,10 +99,19 @@ BEGIN
 END;
 $$ language 'plpgsql';
 
--- Trigger for auto-updating updated_at on knowledge_assets
-CREATE TRIGGER update_knowledge_assets_updated_at
-    BEFORE UPDATE ON knowledge_assets
-    FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
+-- Trigger for auto-updating updated_at on knowledge_assets (only if it doesn't exist)
+DO $$
+BEGIN
+    IF NOT EXISTS (
+        SELECT 1 FROM information_schema.triggers
+        WHERE trigger_name = 'update_knowledge_assets_updated_at'
+        AND event_object_table = 'knowledge_assets'
+    ) THEN
+        CREATE TRIGGER update_knowledge_assets_updated_at
+            BEFORE UPDATE ON knowledge_assets
+            FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
+    END IF;
+END $$;
 
 -- Comments for documentation
 COMMENT ON TABLE knowledge_assets IS 'Core knowledge assets derived from uploaded files';
@@ -119,4 +128,3 @@ COMMENT ON COLUMN knowledge_chunks.token_count IS 'Number of tokens in the chunk
 
 COMMENT ON COLUMN knowledge_relationships.neo4j_relationship_id IS 'Reference to relationship ID in Neo4j graph';
 COMMENT ON COLUMN knowledge_relationships.confidence_score IS 'AI confidence score for relationship extraction (0.0-1.0)';
-

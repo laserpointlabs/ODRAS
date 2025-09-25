@@ -9,6 +9,12 @@ if str(ROOT) not in sys.path:
 import uuid
 import types
 import pytest
+import sys
+from pathlib import Path
+
+# Add backend to path for unified ID generator
+sys.path.append(str(Path(__file__).parent.parent))
+from backend.services.stable_id_generator import generate_id
 
 
 class InMemoryDB:
@@ -28,7 +34,7 @@ class InMemoryDB:
     ):
         # Return a minimal dict compatible with main.login expectations
         return {
-            "user_id": str(uuid.uuid4()),  # Generate proper UUID
+            "user_id": generate_id(),  # Generate ODRAS ID
             "username": username,
             "display_name": display_name or username,
             "is_admin": is_admin,
@@ -36,7 +42,7 @@ class InMemoryDB:
 
     # Projects
     def create_project(self, name: str, owner_user_id: str, description=None, namespace_id=None, domain=None):
-        pid = str(uuid.uuid4())
+        pid = generate_id()
         proj = {
             "project_id": pid,
             "name": name,

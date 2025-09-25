@@ -6,6 +6,7 @@ import psycopg2.pool
 from psycopg2.extras import RealDictCursor
 
 from .config import Settings
+from .stable_id_generator import generate_id, generate_8_digit_id
 
 
 logger = logging.getLogger(__name__)
@@ -86,13 +87,11 @@ class DatabaseService:
         namespace_id: Optional[str] = None,
         domain: Optional[str] = None,
     ) -> Dict[str, Any]:
-        from .stable_id_generator import generate_8_digit_id
-
         conn = self._conn()
         try:
             with conn.cursor(cursor_factory=RealDictCursor) as cur:
                 # Generate stable 8-digit ID for the project
-                stable_id = generate_8_digit_id()
+                stable_id = generate_id()
 
                 cur.execute(
                     "INSERT INTO public.projects (name, description, created_by, namespace_id, domain, stable_id) VALUES (%s, %s, %s, %s, %s, %s) RETURNING project_id, name, description, created_at, updated_at, created_by, is_active, namespace_id, domain, stable_id",

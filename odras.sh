@@ -1098,6 +1098,7 @@ init_databases() {
             "014_orphaned_assets_management.sql"
             "015_installation_specific_iris.sql"
             "016_add_stable_ids.sql"
+            "017_unified_id_generation.sql"
         )
 
         for migration in "${migrations[@]}"; do

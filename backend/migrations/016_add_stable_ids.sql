@@ -113,38 +113,70 @@ BEGIN
     RAISE NOTICE 'Successfully generated stable IDs for existing projects and ontologies';
 END $$;
 
--- Add constraints to ensure stable_id format is correct
-ALTER TABLE projects ADD CONSTRAINT projects_stable_id_format
-    CHECK (stable_id ~ '^[A-Z0-9]{4}-[A-Z0-9]{4}$');
-
-ALTER TABLE ontologies_registry ADD CONSTRAINT ontologies_stable_id_format
-    CHECK (stable_id ~ '^[A-Z0-9]{4}-[A-Z0-9]{4}$');
-
--- Add similar constraints to other tables if they exist
+-- Add constraints to ensure stable_id format is correct (only if not exists)
 DO $$
 BEGIN
-    IF EXISTS (SELECT FROM information_schema.tables WHERE table_name = 'files') THEN
-        ALTER TABLE files ADD CONSTRAINT files_stable_id_format
+    -- Add constraint to projects table if not exists
+    IF NOT EXISTS (
+        SELECT 1 FROM information_schema.table_constraints
+        WHERE constraint_name = 'projects_stable_id_format'
+        AND table_name = 'projects'
+    ) THEN
+        ALTER TABLE projects ADD CONSTRAINT projects_stable_id_format
             CHECK (stable_id ~ '^[A-Z0-9]{4}-[A-Z0-9]{4}$');
+    END IF;
+
+    -- Add constraint to ontologies_registry table if not exists
+    IF NOT EXISTS (
+        SELECT 1 FROM information_schema.table_constraints
+        WHERE constraint_name = 'ontologies_stable_id_format'
+        AND table_name = 'ontologies_registry'
+    ) THEN
+        ALTER TABLE ontologies_registry ADD CONSTRAINT ontologies_stable_id_format
+            CHECK (stable_id ~ '^[A-Z0-9]{4}-[A-Z0-9]{4}$');
+    END IF;
+
+    -- Add similar constraints to other tables if they exist
+    IF EXISTS (SELECT FROM information_schema.tables WHERE table_name = 'files') THEN
+        IF NOT EXISTS (
+            SELECT 1 FROM information_schema.table_constraints
+            WHERE constraint_name = 'files_stable_id_format'
+            AND table_name = 'files'
+        ) THEN
+            ALTER TABLE files ADD CONSTRAINT files_stable_id_format
+                CHECK (stable_id ~ '^[A-Z0-9]{4}-[A-Z0-9]{4}$');
+        END IF;
     END IF;
 
     IF EXISTS (SELECT FROM information_schema.tables WHERE table_name = 'knowledge_assets') THEN
-        ALTER TABLE knowledge_assets ADD CONSTRAINT knowledge_assets_stable_id_format
-            CHECK (stable_id ~ '^[A-Z0-9]{4}-[A-Z0-9]{4}$');
+        IF NOT EXISTS (
+            SELECT 1 FROM information_schema.table_constraints
+            WHERE constraint_name = 'knowledge_assets_stable_id_format'
+            AND table_name = 'knowledge_assets'
+        ) THEN
+            ALTER TABLE knowledge_assets ADD CONSTRAINT knowledge_assets_stable_id_format
+                CHECK (stable_id ~ '^[A-Z0-9]{4}-[A-Z0-9]{4}$');
+        END IF;
     END IF;
 
     IF EXISTS (SELECT FROM information_schema.tables WHERE table_name = 'requirements') THEN
-        ALTER TABLE requirements ADD CONSTRAINT requirements_stable_id_format
-            CHECK (stable_id ~ '^[A-Z0-9]{4}-[A-Z0-9]{4}$');
+        IF NOT EXISTS (
+            SELECT 1 FROM information_schema.table_constraints
+            WHERE constraint_name = 'requirements_stable_id_format'
+            AND table_name = 'requirements'
+        ) THEN
+            ALTER TABLE requirements ADD CONSTRAINT requirements_stable_id_format
+                CHECK (stable_id ~ '^[A-Z0-9]{4}-[A-Z0-9]{4}$');
+        END IF;
     END IF;
 END $$;
 
--- Create view for easy lookups by stable_id
+-- Create view for easy lookups by stable_id (with correct column names)
 CREATE OR REPLACE VIEW stable_id_lookup AS
 SELECT
     'project' as resource_type,
     stable_id,
-    project_id as internal_id,
+    project_id::text as internal_id,  -- Cast UUID to text for consistency
     name as resource_name,
     description as resource_description,
     created_at
@@ -156,9 +188,9 @@ UNION ALL
 SELECT
     'ontology' as resource_type,
     stable_id,
-    id::text as internal_id,
-    name as resource_name,
-    description as resource_description,
+    id::text as internal_id,  -- Cast UUID to text for consistency
+    label as resource_name,  -- Fixed: ontologies_registry has 'label' not 'name'
+    NULL as resource_description,  -- ontologies_registry doesn't have description
     created_at
 FROM ontologies_registry
 WHERE stable_id IS NOT NULL;

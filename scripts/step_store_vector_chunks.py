@@ -13,6 +13,12 @@ import os
 import asyncio
 import json
 import uuid
+import sys
+from pathlib import Path
+
+# Add backend to path so we can import our unified ID generator
+sys.path.append(str(Path(__file__).parent.parent))
+from backend.services.stable_id_generator import generate_id
 from pathlib import Path
 
 # Add project root to Python path
@@ -62,8 +68,8 @@ async def store_vector_chunks_in_qdrant(file_id: str, knowledge_asset_id: str):
         # Prepare vectors in Qdrant format
         vectors_to_store = []
         for chunk_data in embeddings_data:
-            # Generate proper UUID for Qdrant point ID
-            point_id = str(uuid.uuid4())
+            # Generate ODRAS ID for Qdrant point ID
+            point_id = generate_id()
 
             vector_data = {
                 "id": point_id,

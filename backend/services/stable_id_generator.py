@@ -1,11 +1,20 @@
 """
-Stable ID Generator for ODRAS
-Generates RFC 3987-compliant 8-digit stable identifiers for all resources.
+Unified ID Generator for ODRAS
+Generates RFC 3987-compliant 8-digit stable identifiers for ALL resources.
+
+This is the SINGLE SOURCE OF TRUTH for ID generation across ODRAS.
+Replaces all UUID generation (both PostgreSQL gen_random_uuid() and Python uuid.uuid4()).
 
 Standards Compliance:
 - RFC 3987: Uses only URL-safe characters (A-Z, 0-9, hyphen)
 - W3C Cool URIs: IDs never change regardless of label changes
 - 8-digit format: XXXX-XXXX (1.6 billion unique combinations)
+- Consistent across database and application layers
+
+Usage:
+- Database: Use generate_odras_id() function in PostgreSQL
+- Python: Use generate_id() from this module
+- IRIs: Use generate_8_digit_id() for IRI fragments
 """
 
 import logging
@@ -72,40 +81,80 @@ class StableIDGenerator:
 _id_generator = StableIDGenerator()
 
 
-def generate_8_digit_id() -> str:
-    """
-    Convenience function to generate 8-digit stable ID.
+# ==============================================================================
+# UNIFIED ID GENERATION - USE THESE FUNCTIONS EVERYWHERE
+# ==============================================================================
 
+def generate_id() -> str:
+    """
+    UNIFIED ID GENERATOR - Use this everywhere instead of UUID generation.
+    
+    This is the main function that should replace:
+    - PostgreSQL: gen_random_uuid()  
+    - Python: uuid.uuid4()
+    - Any other UUID generation
+    
     Returns:
         8-digit ID like "B459-34TY"
     """
     return _id_generator.generate_8_digit_id()
 
 
-def validate_8_digit_id(id_string: str) -> bool:
+def generate_8_digit_id() -> str:
     """
-    Convenience function to validate 8-digit ID format.
+    Generate 8-digit stable ID - alias for generate_id().
+    Kept for backward compatibility with existing IRI generation code.
 
+    Returns:
+        8-digit ID like "B459-34TY"
+    """
+    return generate_id()
+
+
+def validate_id(id_string: str) -> bool:
+    """
+    Validate ODRAS ID format.
+    
     Args:
         id_string: String to validate
 
     Returns:
-        True if valid 8-digit ID format
+        True if valid ODRAS ID format
     """
     return _id_generator.validate_8_digit_id(id_string)
 
 
-def is_8_digit_id(id_string: str) -> bool:
+def is_valid_id(id_string: str) -> bool:
     """
-    Convenience function to check if string is 8-digit ID.
-
+    Check if string is a valid ODRAS ID.
+    
     Args:
         id_string: String to check
 
     Returns:
-        True if valid 8-digit ID format
+        True if valid ODRAS ID format
     """
-    return _id_generator.is_8_digit_id(id_string)
+    return validate_id(id_string)
+
+
+# ==============================================================================
+# LEGACY/COMPATIBILITY FUNCTIONS 
+# ==============================================================================
+
+def validate_8_digit_id(id_string: str) -> bool:
+    """
+    Legacy function - use validate_id() instead.
+    Kept for backward compatibility.
+    """
+    return validate_id(id_string)
+
+
+def is_8_digit_id(id_string: str) -> bool:
+    """
+    Legacy function - use is_valid_id() instead.  
+    Kept for backward compatibility.
+    """
+    return is_valid_id(id_string)
 
 
 # For testing and debugging

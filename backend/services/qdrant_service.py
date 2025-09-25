@@ -10,7 +10,8 @@ Provides high-level interface for vector operations including:
 
 import logging
 from typing import Dict, List, Optional, Any, Tuple
-from uuid import UUID, uuid4
+from uuid import UUID
+from .stable_id_generator import generate_id
 import json
 
 try:
@@ -148,7 +149,7 @@ class QdrantService:
 
             for vector_data in vectors:
                 # Generate ID if not provided
-                point_id = vector_data.get("id", str(uuid4()))
+                point_id = vector_data.get("id", generate_id())
                 point_ids.append(point_id)
 
                 # Create point structure

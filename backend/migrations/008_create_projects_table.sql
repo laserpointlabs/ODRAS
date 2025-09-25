@@ -21,8 +21,17 @@ BEGIN
 END;
 $$ LANGUAGE plpgsql;
 
-CREATE TRIGGER trigger_projects_updated_at
-    BEFORE UPDATE ON projects
-    FOR EACH ROW
-    EXECUTE FUNCTION update_projects_updated_at();
-
+-- Create trigger only if it doesn't exist
+DO $$
+BEGIN
+    IF NOT EXISTS (
+        SELECT 1 FROM information_schema.triggers
+        WHERE trigger_name = 'trigger_projects_updated_at'
+        AND event_object_table = 'projects'
+    ) THEN
+        CREATE TRIGGER trigger_projects_updated_at
+            BEFORE UPDATE ON projects
+            FOR EACH ROW
+            EXECUTE FUNCTION update_projects_updated_at();
+    END IF;
+END $$;
