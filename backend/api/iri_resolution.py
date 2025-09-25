@@ -389,4 +389,3 @@ async def get_public_artifact_metadata(
     except Exception as e:
         logger.error(f"Failed to get public artifact metadata: {e}")
         raise HTTPException(status_code=500, detail=f"Failed to get artifact metadata: {str(e)}")
-

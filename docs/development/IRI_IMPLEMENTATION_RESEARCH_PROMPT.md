@@ -14,7 +14,7 @@
 5. **IRI Documentation**: `docs/IRI_SYSTEM_OVERVIEW.md` and related docs
 
 ### 🚫 What's BROKEN (From Documentation Analysis)
-1. **Double "odras" Path Bug**: 
+1. **Double "odras" Path Bug**:
    ```
    Generated: https://xma-adt.usnc.mil/odras/odras/core/d6392b43.../
    Should Be: https://xma-adt.usnc.mil/program/core/project/d6392b43.../
@@ -177,7 +177,7 @@ curl "http://localhost:8000/iri/validate?iri=$PROJECT_IRI"
 - ✅ **Normalization**: IRIs properly normalized per specification
 - ✅ **URI Mapping**: Correct IRI-to-URI conversion when needed
 
-### ODRAS Functionality  
+### ODRAS Functionality
 - ✅ **Dereferenceable IRIs**: All project/ontology/file IRIs resolve to metadata
 - ✅ **Correct Path Structure**: Follow installation specification patterns
 - ✅ **Database Persistence**: IRIs stored and retrievable from database
@@ -193,7 +193,7 @@ curl "http://localhost:8000/iri/validate?iri=$PROJECT_IRI"
 ## 🚀 Next Steps
 
 1. **Research RFC 3987 thoroughly** - Understand all syntax and processing requirements
-2. **Audit current ODRAS IRI implementation** against RFC 3987 requirements  
+2. **Audit current ODRAS IRI implementation** against RFC 3987 requirements
 3. **Fix critical path generation bugs** identified in documentation
 4. **Implement RFC 3987-compliant validation** for all generated IRIs
 5. **Add comprehensive testing** for standards compliance
