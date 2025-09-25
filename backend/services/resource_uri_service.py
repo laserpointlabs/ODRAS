@@ -1,56 +1,131 @@
 """
-Resource URI Service for ODRAS
-Provides consistent, namespace-aware URI generation for all resource types.
+Dynamic Resource URI Service for ODRAS
+Provides completely flexible, namespace-driven URI generation for all resource types.
+
+Key Features:
+- No hardcoded resource types - all from namespace configuration
+- Uses 8-digit stable IDs instead of UUIDs
+- Configurable installation prefix (no hardcoded "odras")
+- Dynamic namespace paths from admin-created namespaces
 
 Standards Compliance:
 - RFC 3987: Internationalized Resource Identifiers (IRIs)
 - W3C Semantic Web Best Practices
-- ODRAS Installation-Specific IRI Design Document
-
-Follows the organizational URI design document specifications.
+- W3C Cool URIs: Stable identifiers that never change
 """
 
 import logging
-import uuid
 from typing import Dict, List, Optional, Tuple
 from urllib.parse import quote
 
 from .config import Settings
 from .db import DatabaseService
+from .stable_id_generator import generate_8_digit_id, is_8_digit_id
 
 logger = logging.getLogger(__name__)
 
 
 class ResourceURIService:
     """
-    Centralized URI generation service that follows namespace organization best practices.
+    Dynamic URI generation service using admin-configured namespace paths.
 
-    All ODRAS resource URIs follow this pattern:
-    {installation_base_uri}/{namespace_path}/{project_uuid}/{resource_type}/{resource_name}
+    All ODRAS resource IRIs follow this dynamic pattern:
+    {base_uri}/{installation_prefix}/{namespace_path}/{resource_ids...}#{entity_id}
 
-    Supports multi-tenant deployment and consistent namespace management.
+    Examples:
+    - https://xma-adt.usn.mil/usn/gov/dod/usn/project/23RT-56TW/45GH-34TG#B459-34TY
+    - https://company.com/industry/boeing/core/67GH-89TY/12AB-34CD#X459-89QW
+    - https://base.mil/gov/dod/usaf/domain/89JK-12LM/34EF-56GH#Z789-12AB
+
+    No hardcoded resource types - everything comes from namespace configuration.
     """
 
     def __init__(self, settings: Settings, db_service: Optional[DatabaseService] = None):
         self.settings = settings
         self.db_service = db_service or DatabaseService(settings)
 
-        # Installation base should be organizational domain only
+        # Installation base domain (customer-configurable)
         self.installation_base_uri = settings.installation_base_uri.rstrip("/")
 
-        # Validate installation base URI doesn't include project paths
-        if "/usn/" in self.installation_base_uri or "/adt/" in self.installation_base_uri:
-            logger.warning(
-                f"Installation base URI appears to include namespace paths: {self.installation_base_uri}. "
-                "This should be just the organizational domain (e.g., https://ontology.navy.mil)"
-            )
+        # Installation prefix (configurable, can be empty)
+        self.installation_prefix = settings.installation_prefix or ""
 
-    def _get_project_namespace_info(self, project_id: str) -> Tuple[Optional[str], Optional[str]]:
+        logger.info(f"Initialized ResourceURIService with base: {self.installation_base_uri}")
+        if self.installation_prefix:
+            logger.info(f"Using installation prefix: '{self.installation_prefix}'")
+        else:
+            logger.info("No installation prefix configured - using clean URLs")
+
+    def generate_dynamic_iri(
+        self,
+        namespace_path: str,
+        resource_ids: List[str],
+        entity_id: Optional[str] = None
+    ) -> str:
         """
-        Get project namespace information from database.
+        Generate IRI using dynamic namespace path and 8-digit resource IDs.
+
+        Args:
+            namespace_path: Admin-created namespace path (e.g., "gov/dod/usn/project")
+            resource_ids: List of 8-digit resource IDs (e.g., ["23RT-56TW", "45GH-34TG"])
+            entity_id: Optional 8-digit entity ID (e.g., "B459-34TY")
 
         Returns:
-            Tuple of (namespace_path, project_name) or (None, None) if not found
+            Complete IRI like: https://base.mil/gov/dod/usn/project/23RT-56TW/45GH-34TG#B459-34TY
+        """
+        # Build prefix path (configurable)
+        prefix_path = f"/{self.installation_prefix}" if self.installation_prefix else ""
+
+        # Build complete path: prefix + namespace + resource IDs
+        path_parts = [namespace_path] + resource_ids
+        full_path = "/".join(path_parts)
+
+        # Build base IRI
+        base_iri = f"{self.installation_base_uri}{prefix_path}/{full_path}"
+
+        # Add entity fragment if provided
+        if entity_id:
+            return f"{base_iri}#{entity_id}"
+        else:
+            return f"{base_iri}/"
+
+    def get_namespace_path(self, namespace_id: str) -> Optional[str]:
+        """
+        Get namespace path from namespace registry.
+
+        Args:
+            namespace_id: UUID of namespace in registry
+
+        Returns:
+            Namespace path like "gov/dod/usn/project" or None if not found
+        """
+        try:
+            conn = self.db_service._conn()
+            try:
+                with conn.cursor() as cur:
+                    cur.execute(
+                        "SELECT path FROM public.namespace_registry WHERE id = %s",
+                        (namespace_id,)
+                    )
+                    result = cur.fetchone()
+                    if result:
+                        return result[0]
+                    return None
+            finally:
+                self.db_service._return(conn)
+        except Exception as e:
+            logger.error(f"Failed to get namespace path for {namespace_id}: {e}")
+            return None
+
+    def get_project_namespace_path(self, project_id: str) -> Optional[str]:
+        """
+        Get namespace path for a project.
+
+        Args:
+            project_id: Project's 8-digit ID
+
+        Returns:
+            Namespace path like "gov/dod/usn/project" or None if not found
         """
         try:
             conn = self.db_service._conn()
@@ -58,154 +133,327 @@ class ResourceURIService:
                 with conn.cursor() as cur:
                     cur.execute(
                         """
-                        SELECT p.name as project_name, n.path as namespace_path
+                        SELECT n.path
                         FROM public.projects p
-                        LEFT JOIN public.namespace_registry n ON n.id = p.namespace_id
-                        WHERE p.project_id = %s
+                        JOIN public.namespace_registry n ON n.id = p.namespace_id
+                        WHERE p.stable_id = %s OR p.project_id = %s
                         """,
-                        (project_id,),
+                        (project_id, project_id)
                     )
                     result = cur.fetchone()
                     if result:
-                        project_name, namespace_path = result
-                        return namespace_path, project_name
-                    return None, None
+                        return result[0]
+                    return None
             finally:
                 self.db_service._return(conn)
         except Exception as e:
-            logger.warning(f"Failed to get project namespace info for {project_id}: {e}")
-            return None, None
+            logger.error(f"Failed to get project namespace path for {project_id}: {e}")
+            return None
 
-    def generate_project_uri(self, project_id: str) -> str:
+    def generate_project_iri(self, project_id: str) -> str:
         """
-        Generate project base URI.
-        Format: {base_uri}/odras/{namespace_path}/{project_uuid}/
-        Example: https://xma-adt.usnc.mil/odras/core/7e43e3b4-0f60-4b52-ad72-1295b288645a/
+        Generate project IRI using dynamic namespace.
+
+        Args:
+            project_id: Project's 8-digit stable ID
+
+        Returns:
+            Project IRI like: https://base.mil/gov/dod/usn/project/23RT-56TW/
         """
-        namespace_path, project_name = self._get_project_namespace_info(project_id)
+        namespace_path = self.get_project_namespace_path(project_id)
+        if not namespace_path:
+            logger.warning(f"No namespace found for project {project_id}, using fallback")
+            namespace_path = "projects"  # Minimal fallback
 
-        # Ensure base URI is properly formatted with https and full domain
-        base_uri = self.installation_base_uri
+        return self.generate_dynamic_iri(
+            namespace_path=namespace_path,
+            resource_ids=[project_id]
+        )
 
-        # Add odras prefix to the path structure
-        if namespace_path:
-            return f"{base_uri}/odras/{namespace_path}/{project_id}/"
-        else:
-            # Fallback for projects without namespace
-            return f"{base_uri}/odras/projects/{project_id}/"
-
-    def generate_ontology_uri(self, project_id: str, ontology_name: str) -> str:
+    def generate_ontology_iri(self, project_id: str, ontology_id: str) -> str:
         """
-        Generate ontology URI.
-        Format: {base_uri}/{namespace_path}/{project_uuid}/ontologies/{name}
+        Generate ontology IRI using dynamic namespace.
+
+        Args:
+            project_id: Project's 8-digit stable ID
+            ontology_id: Ontology's 8-digit stable ID
+
+        Returns:
+            Ontology IRI like: https://base.mil/gov/dod/usn/project/23RT-56TW/45GH-34TG/
         """
-        namespace_path, project_name = self._get_project_namespace_info(project_id)
+        namespace_path = self.get_project_namespace_path(project_id)
+        if not namespace_path:
+            logger.warning(f"No namespace found for project {project_id}, using fallback")
+            namespace_path = "ontologies"
 
-        # Sanitize ontology name for URI
-        safe_name = self._sanitize_name(ontology_name)
+        return self.generate_dynamic_iri(
+            namespace_path=namespace_path,
+            resource_ids=[project_id, ontology_id]
+        )
 
-        if namespace_path:
-            return (
-                f"{self.installation_base_uri}/odras/{namespace_path}/{project_id}/ontologies/{safe_name}"
-            )
-        else:
-            # Fallback for projects without namespace
-            return f"{self.installation_base_uri}/odras/projects/{project_id}/ontologies/{safe_name}"
-
-    def generate_ontology_entity_uri(
-        self, project_id: str, ontology_name: str, entity_name: str
+    def generate_entity_iri(
+        self,
+        project_id: str,
+        ontology_id: str,
+        entity_id: str
     ) -> str:
         """
-        Generate ontology entity URI (class, property, individual).
-        Format: {base_uri}/{namespace_path}/{project_uuid}/ontologies/{name}#{entity}
-        """
-        ontology_uri = self.generate_ontology_uri(project_id, ontology_name)
-        safe_entity = self._sanitize_name(entity_name)
-        return f"{ontology_uri}#{safe_entity}"
+        Generate ontology entity IRI using dynamic namespace.
 
-    def generate_file_uri(
-        self, project_id: str, file_name: str, file_id: Optional[str] = None
-    ) -> str:
-        """
-        Generate file URI.
-        Format: {base_uri}/{namespace_path}/{project_uuid}/files/{name}
-        """
-        namespace_path, project_name = self._get_project_namespace_info(project_id)
+        Args:
+            project_id: Project's 8-digit stable ID
+            ontology_id: Ontology's 8-digit stable ID
+            entity_id: Entity's 8-digit stable ID
 
-        # Use file_id if provided, otherwise sanitized filename
-        resource_name = file_id if file_id else self._sanitize_name(file_name)
-
-        if namespace_path:
-            return (
-                f"{self.installation_base_uri}/odras/{namespace_path}/{project_id}/files/{resource_name}"
-            )
-        else:
-            return f"{self.installation_base_uri}/odras/projects/{project_id}/files/{resource_name}"
-
-    def generate_knowledge_uri(
-        self, project_id: str, asset_name: str, asset_id: Optional[str] = None
-    ) -> str:
+        Returns:
+            Entity IRI like: https://base.mil/gov/dod/usn/project/23RT-56TW/45GH-34TG#B459-34TY
         """
-        Generate knowledge asset URI.
-        Format: {base_uri}/{namespace_path}/{project_uuid}/knowledge/{name}
-        """
-        namespace_path, project_name = self._get_project_namespace_info(project_id)
+        namespace_path = self.get_project_namespace_path(project_id)
+        if not namespace_path:
+            logger.warning(f"No namespace found for project {project_id}, using fallback")
+            namespace_path = "entities"
 
-        # Use asset_id if provided, otherwise sanitized asset name
-        resource_name = asset_id if asset_id else self._sanitize_name(asset_name)
+        return self.generate_dynamic_iri(
+            namespace_path=namespace_path,
+            resource_ids=[project_id, ontology_id],
+            entity_id=entity_id
+        )
 
-        if namespace_path:
-            return f"{self.installation_base_uri}/odras/{namespace_path}/{project_id}/knowledge/{resource_name}"
-        else:
-            return f"{self.installation_base_uri}/odras/projects/{project_id}/knowledge/{resource_name}"
+    def generate_file_iri(self, project_id: str, file_id: str) -> str:
+        """
+        Generate file IRI using dynamic namespace.
 
-    def generate_admin_uri(self, resource_type: str, resource_name: str) -> str:
-        """
-        Generate admin resource URI.
-        Format: {base_uri}/admin/{resource_type}/{resource_name}
-        """
-        safe_type = self._sanitize_name(resource_type)
-        safe_name = self._sanitize_name(resource_name)
-        return f"{self.installation_base_uri}/admin/{safe_type}/{safe_name}"
+        Args:
+            project_id: Project's 8-digit stable ID
+            file_id: File's 8-digit stable ID
 
-    def generate_shared_uri(self, resource_type: str, resource_name: str) -> str:
+        Returns:
+            File IRI like: https://base.mil/gov/dod/usn/project/23RT-56TW/files/67GH-89TY
         """
-        Generate shared resource URI.
-        Format: {base_uri}/shared/{resource_type}/{resource_name}
-        """
-        safe_type = self._sanitize_name(resource_type)
-        safe_name = self._sanitize_name(resource_name)
-        return f"{self.installation_base_uri}/shared/{safe_type}/{safe_name}"
+        namespace_path = self.get_project_namespace_path(project_id)
+        if not namespace_path:
+            namespace_path = "files"
 
-    def parse_project_from_uri(self, uri: str) -> Optional[str]:
+        # For files, we might want to add a "files" segment to the path
+        # This could be configurable based on namespace configuration
+        return self.generate_dynamic_iri(
+            namespace_path=f"{namespace_path}/files",
+            resource_ids=[project_id, file_id]
+        )
+
+    def generate_knowledge_asset_iri(self, project_id: str, asset_id: str) -> str:
         """
-        Extract project UUID from a resource URI.
-        Handles both namespaced and non-namespaced URIs.
+        Generate knowledge asset IRI using dynamic namespace.
+
+        Args:
+            project_id: Project's 8-digit stable ID
+            asset_id: Asset's 8-digit stable ID
+
+        Returns:
+            Knowledge asset IRI like: https://base.mil/gov/dod/usn/project/23RT-56TW/knowledge/89JK-12LM
+        """
+        namespace_path = self.get_project_namespace_path(project_id)
+        if not namespace_path:
+            namespace_path = "knowledge"
+
+        return self.generate_dynamic_iri(
+            namespace_path=f"{namespace_path}/knowledge",
+            resource_ids=[project_id, asset_id]
+        )
+
+    def generate_simulation_iri(self, project_id: str, simulation_id: str) -> str:
+        """
+        Generate simulation IRI using dynamic namespace.
+
+        Args:
+            project_id: Project's 8-digit stable ID
+            simulation_id: Simulation's 8-digit stable ID
+
+        Returns:
+            Simulation IRI like: https://base.mil/gov/dod/usn/project/23RT-56TW/simulations/45QR-67ST
+        """
+        namespace_path = self.get_project_namespace_path(project_id)
+        if not namespace_path:
+            namespace_path = "simulations"
+
+        return self.generate_dynamic_iri(
+            namespace_path=f"{namespace_path}/simulations",
+            resource_ids=[project_id, simulation_id]
+        )
+
+    def generate_analysis_iri(self, project_id: str, analysis_id: str) -> str:
+        """
+        Generate analysis IRI using dynamic namespace.
+        """
+        namespace_path = self.get_project_namespace_path(project_id)
+        if not namespace_path:
+            namespace_path = "analysis"
+
+        return self.generate_dynamic_iri(
+            namespace_path=f"{namespace_path}/analysis",
+            resource_ids=[project_id, analysis_id]
+        )
+
+    def generate_decision_iri(self, project_id: str, decision_id: str) -> str:
+        """
+        Generate decision record IRI using dynamic namespace.
+        """
+        namespace_path = self.get_project_namespace_path(project_id)
+        if not namespace_path:
+            namespace_path = "decisions"
+
+        return self.generate_dynamic_iri(
+            namespace_path=f"{namespace_path}/decisions",
+            resource_ids=[project_id, decision_id]
+        )
+
+    def generate_event_iri(self, project_id: str, event_id: str) -> str:
+        """
+        Generate event IRI using dynamic namespace.
+        """
+        namespace_path = self.get_project_namespace_path(project_id)
+        if not namespace_path:
+            namespace_path = "events"
+
+        return self.generate_dynamic_iri(
+            namespace_path=f"{namespace_path}/events",
+            resource_ids=[project_id, event_id]
+        )
+
+    def generate_requirement_iri(self, project_id: str, requirement_id: str) -> str:
+        """
+        Generate requirement IRI using dynamic namespace.
+        """
+        namespace_path = self.get_project_namespace_path(project_id)
+        if not namespace_path:
+            namespace_path = "requirements"
+
+        return self.generate_dynamic_iri(
+            namespace_path=f"{namespace_path}/requirements",
+            resource_ids=[project_id, requirement_id]
+        )
+
+    def generate_data_iri(self, project_id: str, data_id: str) -> str:
+        """
+        Generate data asset IRI using dynamic namespace.
+        """
+        namespace_path = self.get_project_namespace_path(project_id)
+        if not namespace_path:
+            namespace_path = "data"
+
+        return self.generate_dynamic_iri(
+            namespace_path=f"{namespace_path}/data",
+            resource_ids=[project_id, data_id]
+        )
+
+    def generate_model_iri(self, project_id: str, model_id: str) -> str:
+        """
+        Generate model IRI using dynamic namespace.
+        """
+        namespace_path = self.get_project_namespace_path(project_id)
+        if not namespace_path:
+            namespace_path = "models"
+
+        return self.generate_dynamic_iri(
+            namespace_path=f"{namespace_path}/models",
+            resource_ids=[project_id, model_id]
+        )
+
+    def parse_iri_components(self, iri: str) -> Dict[str, Optional[str]]:
+        """
+        Parse an IRI into its components.
+
+        Args:
+            iri: Complete IRI to parse
+
+        Returns:
+            Dict with parsed components: installation_base, namespace_path, resource_ids, entity_id
         """
         try:
             # Remove base URI
-            if not uri.startswith(self.installation_base_uri):
-                return None
+            if not iri.startswith(self.installation_base_uri):
+                return {"error": "IRI doesn't match this installation"}
 
-            path = uri[len(self.installation_base_uri) :].strip("/")
-            parts = path.split("/")
+            remaining = iri[len(self.installation_base_uri):].strip("/")
 
-            # Look for UUID pattern in path segments
+            # Remove installation prefix if present
+            if self.installation_prefix and remaining.startswith(self.installation_prefix + "/"):
+                remaining = remaining[len(self.installation_prefix + "/"):]
+
+            # Split on fragment first
+            if "#" in remaining:
+                path_part, entity_id = remaining.split("#", 1)
+            else:
+                path_part = remaining.rstrip("/")
+                entity_id = None
+
+            # Parse path parts
+            parts = path_part.split("/")
+
+            # Identify 8-digit IDs vs namespace components
+            resource_ids = []
+            namespace_parts = []
+
             for part in parts:
-                if self._is_uuid(part):
-                    return part
+                if is_8_digit_id(part):
+                    resource_ids.append(part)
+                else:
+                    # Only add to namespace if no resource IDs found yet
+                    if not resource_ids:
+                        namespace_parts.append(part)
 
-            return None
+            namespace_path = "/".join(namespace_parts) if namespace_parts else None
+
+            return {
+                "installation_base": self.installation_base_uri,
+                "installation_prefix": self.installation_prefix,
+                "namespace_path": namespace_path,
+                "resource_ids": resource_ids,
+                "entity_id": entity_id,
+                "full_path": path_part
+            }
+
         except Exception as e:
-            logger.warning(f"Failed to parse project from URI {uri}: {e}")
-            return None
+            logger.error(f"Failed to parse IRI {iri}: {e}")
+            return {"error": str(e)}
 
-    def get_namespace_info(self, project_id: str) -> Dict[str, Optional[str]]:
+    def validate_installation_config(self) -> List[str]:
         """
-        Get complete namespace information for a project.
+        Validate the installation configuration.
 
         Returns:
-            Dict containing namespace_path, project_name, domain, etc.
+            List of validation issues/warnings
+        """
+        issues = []
+
+        base_uri = self.installation_base_uri
+
+        # Check base URI format
+        if not base_uri.startswith("http"):
+            issues.append("Installation base URI should start with http:// or https://")
+
+        # Check for proper domain format
+        if not any(tld in base_uri for tld in [".mil", ".gov", ".com", ".org", ".edu", ".local"]):
+            issues.append("Installation base URI should be a proper domain")
+
+        # Check installation prefix
+        if self.installation_prefix:
+            if "/" in self.installation_prefix:
+                issues.append("Installation prefix should not contain slashes")
+            if not self.installation_prefix.isalnum():
+                issues.append("Installation prefix should only contain alphanumeric characters")
+
+        return issues
+
+    def get_namespace_info(self, namespace_id: str) -> Dict:
+        """
+        Get complete namespace information.
+
+        Args:
+            namespace_id: UUID of namespace
+
+        Returns:
+            Dict with namespace details
         """
         try:
             conn = self.db_service._conn()
@@ -213,116 +461,41 @@ class ResourceURIService:
                 with conn.cursor() as cur:
                     cur.execute(
                         """
-                        SELECT p.project_id, p.name as project_name, p.domain,
-                               n.path as namespace_path, n.name as namespace_name,
-                               n.status as namespace_status
-                        FROM public.projects p
-                        LEFT JOIN public.namespace_registry n ON n.id = p.namespace_id
-                        WHERE p.project_id = %s
+                        SELECT id, name, type, path, prefix, status, description, owners
+                        FROM public.namespace_registry
+                        WHERE id = %s
                         """,
-                        (project_id,),
+                        (namespace_id,)
                     )
                     result = cur.fetchone()
                     if result:
-                        (
-                            project_id,
-                            project_name,
-                            domain,
-                            namespace_path,
-                            namespace_name,
-                            namespace_status,
-                        ) = result
+                        id, name, type, path, prefix, status, description, owners = result
                         return {
-                            "project_id": project_id,
-                            "project_name": project_name,
-                            "domain": domain,
-                            "namespace_path": namespace_path,
-                            "namespace_name": namespace_name,
-                            "namespace_status": namespace_status,
-                            "project_base_uri": self.generate_project_uri(project_id),
+                            "id": id,
+                            "name": name,
+                            "type": type,
+                            "path": path,
+                            "prefix": prefix,
+                            "status": status,
+                            "description": description,
+                            "owners": owners
                         }
-                    return {"project_id": project_id}
+                    return {"error": "Namespace not found"}
             finally:
                 self.db_service._return(conn)
         except Exception as e:
-            logger.error(f"Failed to get namespace info for project {project_id}: {e}")
-            return {"project_id": project_id, "error": str(e)}
-
-    def _sanitize_name(self, name: str) -> str:
-        """
-        Sanitize a name for use in URIs.
-        Follows URI-safe naming conventions.
-        """
-        if not name:
-            return "unnamed"
-
-        # Convert to lowercase and replace spaces/special chars with hyphens
-        sanitized = name.lower().strip()
-        sanitized = sanitized.replace(" ", "-")
-        sanitized = sanitized.replace("_", "-")
-
-        # Remove any characters that aren't alphanumeric or hyphens
-        import re
-
-        sanitized = re.sub(r"[^a-z0-9\-]", "", sanitized)
-
-        # Remove multiple consecutive hyphens
-        sanitized = re.sub(r"-+", "-", sanitized)
-
-        # Remove leading/trailing hyphens
-        sanitized = sanitized.strip("-")
-
-        # Ensure it's not empty
-        if not sanitized:
-            sanitized = "unnamed"
-
-        return sanitized
-
-    def _is_uuid(self, value: str) -> bool:
-        """Check if a string is a valid UUID."""
-        try:
-            uuid.UUID(value)
-            return True
-        except ValueError:
-            return False
-
-    def validate_installation_config(self) -> List[str]:
-        """
-        Validate the installation configuration for best practices.
-
-        Returns:
-            List of warnings/issues found
-        """
-        issues = []
-
-        # Check base URI format
-        base_uri = self.installation_base_uri
-
-        if not base_uri.startswith("http"):
-            issues.append("Installation base URI should start with http:// or https://")
-
-        # Check for common misconfigurations
-        problematic_paths = ["/usn/", "/adt/", "/core/", "/projects/"]
-        for path in problematic_paths:
-            if path in base_uri:
-                issues.append(
-                    f"Installation base URI contains namespace path '{path}'. "
-                    "It should be just the organizational domain (e.g., https://ontology.navy.mil)"
-                )
-
-        # Check if it ends with domain-like pattern
-        if not any(tld in base_uri for tld in [".mil", ".gov", ".com", ".org", ".edu"]):
-            issues.append("Installation base URI should be an organizational domain")
-
-        return issues
+            logger.error(f"Failed to get namespace info for {namespace_id}: {e}")
+            return {"error": str(e)}
 
 
 # Convenience function for getting URI service instance
 def get_resource_uri_service(
-    settings: Settings = None, db_service: DatabaseService = None
+    settings: Settings = None,
+    db_service: DatabaseService = None
 ) -> ResourceURIService:
     """Get a ResourceURIService instance with proper dependencies."""
     if not settings:
+        from .config import Settings
         settings = Settings()
     if not db_service:
         db_service = DatabaseService(settings)

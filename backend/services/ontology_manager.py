@@ -41,7 +41,7 @@ class OntologyManager:
         # Initialize namespace URI generator
         self.namespace_generator = NamespaceURIGenerator(settings)
 
-        # Initialize resource URI service for proper namespace-aware URIs
+        # Initialize resource URI service for dynamic namespace-aware IRIs
         if db_service:
             self.uri_service = ResourceURIService(settings, db_service)
         else:
@@ -1054,41 +1054,40 @@ class OntologyManager:
 
     def mint_unique_iri(self, base_name: str, entity_type: str, graph_iri: str = None) -> str:
         """
-        Mint a unique IRI for a new entity, ensuring no conflicts exist.
+        Generate stable IRI using 8-digit ID system.
+
+        This method now uses stable 8-digit IDs instead of name-based conflict resolution.
+        The IRI structure follows W3C "Cool URIs" principle - never changes regardless
+        of label changes.
 
         Args:
-            base_name: Base name for the entity
+            base_name: Base name for the entity (used for debugging/logging only)
             entity_type: Type of entity ('class', 'objectProperty', 'datatypeProperty')
-            graph_iri: Optional graph IRI to check within
+            graph_iri: Optional graph IRI - uses ontology URI if provided
 
         Returns:
-            Unique IRI string
+            Stable IRI with 8-digit ID: {base_uri}#{stable_id}
         """
-        # Clean the base name to be IRI-safe
-        safe_name = self._sanitize_iri_name(base_name)
+        from .stable_id_generator import generate_8_digit_id
 
-        # Use the graph IRI as base if provided, otherwise use default
+        # Generate stable 8-digit ID - no conflicts possible
+        stable_id = generate_8_digit_id()
+
+        # Use the graph IRI as base if provided, otherwise use current base_uri
         if graph_iri:
-            base_uri = graph_iri
+            base_uri = graph_iri.rstrip('#').rstrip('/')
         else:
-            base_uri = self.base_uri
+            base_uri = self.base_uri.rstrip('#').rstrip('/')
 
-        # Try the base name first
-        candidate_iri = f"{base_uri}#{safe_name}"
-        if not self._iri_exists(candidate_iri, entity_type, graph_iri):
-            return candidate_iri
+        # Generate stable IRI
+        stable_iri = f"{base_uri}#{stable_id}"
 
-        # If base name exists, try with numbers
-        counter = 1
-        while counter < 1000:  # Prevent infinite loop
-            candidate_iri = f"{base_uri}#{safe_name}_{counter}"
-            if not self._iri_exists(candidate_iri, entity_type, graph_iri):
-                return candidate_iri
-            counter += 1
+        logger.debug(
+            f"Generated stable IRI: {stable_iri} "
+            f"(type: {entity_type}, label: '{base_name}')"
+        )
 
-        # Fallback to UUID if all else fails
-        unique_id = str(uuid.uuid4())[:8]
-        return f"{base_uri}#{safe_name}_{unique_id}"
+        return stable_iri
 
     def _sanitize_iri_name(self, name: str) -> str:
         """
@@ -1242,4 +1241,3 @@ class OntologyManager:
                 "errors": [f"Validation failed: {str(e)}"],
                 "entity_count": 0,
             }
-

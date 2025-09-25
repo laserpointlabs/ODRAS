@@ -86,20 +86,28 @@ class DatabaseService:
         namespace_id: Optional[str] = None,
         domain: Optional[str] = None,
     ) -> Dict[str, Any]:
+        from .stable_id_generator import generate_8_digit_id
+
         conn = self._conn()
         try:
             with conn.cursor(cursor_factory=RealDictCursor) as cur:
+                # Generate stable 8-digit ID for the project
+                stable_id = generate_8_digit_id()
+
                 cur.execute(
-                    "INSERT INTO public.projects (name, description, created_by, namespace_id, domain) VALUES (%s, %s, %s, %s, %s) RETURNING project_id, name, description, created_at, updated_at, created_by, is_active, namespace_id, domain",
-                    (name, description or None, owner_user_id, namespace_id, domain),
+                    "INSERT INTO public.projects (name, description, created_by, namespace_id, domain, stable_id) VALUES (%s, %s, %s, %s, %s, %s) RETURNING project_id, name, description, created_at, updated_at, created_by, is_active, namespace_id, domain, stable_id",
+                    (name, description or None, owner_user_id, namespace_id, domain, stable_id),
                 )
                 proj = dict(cur.fetchone())
+
                 # add membership as owner
                 cur.execute(
                     "INSERT INTO public.project_members (project_id, user_id, role) VALUES (%s, %s, 'owner') ON CONFLICT DO NOTHING",
                     (proj["project_id"], owner_user_id),
                 )
                 conn.commit()
+
+                logger.info(f"Created project '{name}' with stable_id: {stable_id}")
                 return proj
         finally:
             self._return(conn)
