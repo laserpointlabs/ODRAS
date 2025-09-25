@@ -301,6 +301,31 @@ async def upload_file(
                     # Don't fail the upload if processing fails
                     pass
 
+            # EventCapture2: Capture file upload event
+            try:
+                from ..services.eventcapture2 import get_event_capture
+                event_capture = get_event_capture()
+                if event_capture:
+                    await event_capture.capture_file_operation(
+                        operation_type="uploaded",
+                        filename=metadata["filename"],
+                        project_id=project_id,
+                        user_id=user["user_id"],
+                        username=user.get("username", "unknown"),
+                        file_details={
+                            "file_id": file_id,
+                            "size": metadata["size"],
+                            "content_type": metadata["content_type"],
+                            "hash_md5": metadata.get("hash_md5"),
+                            "knowledge_processing": bool(process_instance_id),
+                            "workflow_id": process_instance_id
+                        }
+                    )
+                    print(f"🔥 DIRECT: EventCapture2 file upload captured - {metadata['filename']} ({metadata['size']} bytes)")
+            except Exception as e:
+                print(f"🔥 DIRECT: EventCapture2 file upload failed: {e}")
+                logger.warning(f"EventCapture2 file upload failed: {e}")
+
             # Build response
             if process_instance_id:
                 response_message = f"File uploaded and BPMN knowledge processing started (workflow: {process_instance_id})"
@@ -1227,4 +1252,3 @@ async def update_file_visibility(
     except Exception as e:
         logger.error(f"Failed to update file visibility: {e}")
         raise HTTPException(status_code=500, detail=f"Update failed: {str(e)}")
-

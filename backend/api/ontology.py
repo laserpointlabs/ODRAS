@@ -13,6 +13,7 @@ from pydantic import BaseModel, Field
 from ..services.config import Settings
 from ..services.db import DatabaseService
 from ..services.ontology_manager import OntologyManager
+from ..services.auth import get_user
 
 logger = logging.getLogger(__name__)
 
@@ -217,6 +218,7 @@ async def add_class(
     class_data: OntologyClass,
     graph: Optional[str] = None,
     manager: OntologyManager = Depends(get_ontology_manager),
+    user: dict = Depends(get_user),
 ):
     """
     Add a new class to the ontology.
@@ -242,6 +244,36 @@ async def add_class(
         result = manager.add_class(class_data.dict())
 
         if result["success"]:
+            # EventCapture2: Capture class creation event
+            try:
+                from ..services.eventcapture2 import get_event_capture
+                event_capture = get_event_capture()
+                if event_capture and graph:
+                    # Extract project_id and ontology_name from graph URI
+                    project_id = manager.uri_service.parse_project_from_uri(graph) if hasattr(manager, "uri_service") else None
+                    ontology_name = graph.split("/")[-1] if "/" in graph else "unknown"
+
+                    if project_id:
+                        await event_capture.capture_ontology_operation(
+                            operation_type="modified",
+                            ontology_name=ontology_name,
+                            project_id=project_id,
+                            user_id=user["user_id"],
+                            username=user.get("username", "unknown"),
+                            operation_details={
+                                "class_name": class_data.name,
+                                "class_label": class_data.label,
+                                "class_comment": class_data.comment,
+                                "subclass_of": class_data.subclass_of,
+                                "operation": "class_added",
+                                "graph_uri": graph
+                            }
+                        )
+                        print(f"🔥 DIRECT: EventCapture2 class creation captured - {class_data.name} in {ontology_name}")
+            except Exception as e:
+                print(f"🔥 DIRECT: EventCapture2 class creation failed: {e}")
+                logger.warning(f"EventCapture2 class creation failed: {e}")
+
             return OntologyResponse(
                 success=True,
                 message=result["message"],

@@ -48,6 +48,7 @@ from backend.api.knowledge import router as knowledge_router
 from backend.api.das import router as das_router
 from backend.api.das2 import router as das2_router
 from backend.api.thread_manager import router as thread_manager_router
+from backend.api.project_threads import router as project_threads_router
 from backend.api.namespace_simple import (
     router as namespace_router,
     public_router as namespace_public_router,
@@ -84,6 +85,7 @@ app.include_router(knowledge_router)
 # app.include_router(das_router)  # <-- DO NOT UNCOMMENT THIS LINE
 app.include_router(das2_router)    # <-- ACTIVE DAS IMPLEMENTATION
 app.include_router(thread_manager_router)  # <-- THREAD MANAGER FOR DEBUGGING
+app.include_router(project_threads_router)  # <-- PROJECT THREAD CREATION (UI ONLY)
 
 # Import and include IRI resolution router
 from backend.api.iri_resolution import router as iri_router
@@ -279,8 +281,34 @@ async def startup_event():
         await initialize_das2_engine()
         logger.info("DAS2 engine initialized on startup")
 
+        # Initialize EventCapture2 with background worker
+        from backend.services.eventcapture2 import initialize_event_capture
+        from backend.services.eventcapture2_worker import start_eventcapture2_worker
+        try:
+            import redis.asyncio as redis
+            redis_client = redis.from_url("redis://localhost:6379")
+            await redis_client.ping()
+            initialize_event_capture(redis_client)
+            # Start background worker to process queued events
+            await start_eventcapture2_worker(redis_client)
+            logger.info("EventCapture2 initialized with Redis and background worker")
+        except Exception as e:
+            logger.warning(f"EventCapture2 initialized without Redis: {e}")
+            initialize_event_capture(None)
+
     except Exception as e:
         logger.error(f"Error during startup: {e}")
+
+
+@app.on_event("shutdown")
+async def shutdown_event():
+    """Clean up EventCapture2 worker on shutdown."""
+    try:
+        from backend.services.eventcapture2_worker import stop_eventcapture2_worker
+        await stop_eventcapture2_worker()
+        logger.info("EventCapture2 worker stopped on shutdown")
+    except Exception as e:
+        logger.error(f"Error during shutdown: {e}")
 
 
 @app.get("/api/projects")
@@ -336,39 +364,36 @@ async def create_project(body: Dict, user=Depends(get_user)):
             domain=domain,
         )
 
-        # Create project thread immediately with project context using existing DAS system
+        # Create project thread automatically (NOT via DAS - via direct service call)
         try:
-            from backend.api.das import das_engine
-            from backend.services.project_thread_manager import ProjectEventType
-            if das_engine and das_engine.project_manager:
-                # Create project thread with initial context
-                project_thread = await das_engine.project_manager.create_project_thread(
-                    project_id=proj["project_id"],
-                    user_id=user["user_id"]
-                )
+            from backend.api.project_threads import _create_thread_with_das2
+            thread_result = await _create_thread_with_das2(proj["project_id"], user["user_id"], user.get("username", "unknown"), name)
+            if thread_result["success"]:
+                logger.info(f"Created project thread automatically for project '{name}' - {thread_result['message']}")
+            else:
+                logger.warning(f"Could not create project thread: {thread_result.get('error', 'Unknown error')}")
+        except Exception as thread_error:
+            logger.warning(f"Project thread creation failed: {thread_error}")
+            # Don't fail project creation if thread creation fails
 
-                # Add initial project context event
-                await das_engine.project_manager.capture_project_event(
+        # EventCapture2: Capture project creation event directly
+        try:
+            from backend.services.eventcapture2 import get_event_capture
+            event_capture = get_event_capture()
+            if event_capture:
+                await event_capture.capture_project_created(
                     project_id=proj["project_id"],
-                    project_thread_id=project_thread.project_thread_id,
+                    project_name=name,
                     user_id=user["user_id"],
-                    event_type=ProjectEventType.DAS_COMMAND,
-                    event_data={
-                        "action": "project_created",
-                        "project_name": name,
-                        "project_description": body.get("description"),
+                    username=user.get("username", "unknown"),
+                    project_details={
+                        "description": body.get("description"),
                         "domain": domain,
-                        "namespace_id": namespace_id,
-                        "created_by": user["username"],
-                        "initial_context": f"Project '{name}' created in domain '{domain}'" +
-                                         (f" with description: {body.get('description')}" if body.get("description") else "")
+                        "namespace_id": namespace_id
                     }
                 )
-
-                logger.info(f"Created project thread {project_thread.project_thread_id} for new project {proj['project_id']}")
-        except Exception as thread_error:
-            logger.warning(f"Could not create project thread: {thread_error}")
-            # Don't fail project creation if thread creation fails
+        except Exception as e:
+            logger.warning(f"EventCapture2 project creation failed: {e}")
 
         return {"project": proj}
     except Exception as e:
@@ -984,6 +1009,32 @@ async def create_ontology(body: Dict, user=Depends(get_user)):
                 )
             except Exception:
                 pass
+
+            # EventCapture2: Capture ontology creation event directly
+            try:
+                from backend.services.eventcapture2 import get_event_capture
+                event_capture = get_event_capture()
+                if event_capture:
+                    await event_capture.capture_ontology_operation(
+                        operation_type="created",
+                        ontology_name=name,
+                        project_id=project,
+                        user_id=user["user_id"],
+                        username=user.get("username", "unknown"),
+                        operation_details={
+                            "label": label,
+                            "is_reference": is_reference,
+                            "graph_iri": graph_iri,
+                            "classes_count": 0,
+                            "properties_count": 0,
+                            "created_via": "gui"
+                        }
+                    )
+                    print(f"🔥 DIRECT: EventCapture2 ontology creation captured for {name}")
+            except Exception as e:
+                print(f"🔥 DIRECT: EventCapture2 ontology creation failed: {e}")
+                logger.warning(f"EventCapture2 ontology creation failed: {e}")
+
             return {"graphIri": graph_iri, "label": label}
         raise HTTPException(
             status_code=500, detail=f"Fuseki returned {resp.status_code}: {resp.text}"

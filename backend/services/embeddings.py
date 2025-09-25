@@ -105,10 +105,27 @@ class SentenceTransformersEmbedder(BaseEmbedder):
                 from sentence_transformers import SentenceTransformer
                 import os
 
-                # Use local cache to avoid downloading model metadata from HuggingFace
-                cache_dir = os.path.join(os.path.dirname(os.path.dirname(os.path.dirname(__file__))), "models", "embeddings")
-                self._transformer = SentenceTransformer(self.model.name, cache_folder=cache_dir)
-                logger.info(f"Loaded SentenceTransformer model: {self.model.name}")
+                # Set offline environment variables to avoid HuggingFace API calls
+                os.environ['TRANSFORMERS_OFFLINE'] = '1'
+                os.environ['HF_HUB_OFFLINE'] = '1'
+
+                # Use the exact cached model path to avoid internet calls
+                if self.model.name == "sentence-transformers/all-MiniLM-L6-v2":
+                    # Use the cached model directly
+                    cached_model_path = os.path.expanduser("~/.cache/torch/sentence_transformers/sentence-transformers_all-MiniLM-L6-v2")
+                    if os.path.exists(cached_model_path):
+                        self._transformer = SentenceTransformer(cached_model_path)
+                        logger.info(f"Loaded cached SentenceTransformer model from: {cached_model_path}")
+                    else:
+                        # Fallback to original method if cached model not found
+                        cache_dir = os.path.join(os.path.dirname(os.path.dirname(os.path.dirname(__file__))), "models", "embeddings")
+                        self._transformer = SentenceTransformer(self.model.name, cache_folder=cache_dir)
+                        logger.info(f"Loaded SentenceTransformer model: {self.model.name}")
+                else:
+                    # For other models, use original method
+                    cache_dir = os.path.join(os.path.dirname(os.path.dirname(os.path.dirname(__file__))), "models", "embeddings")
+                    self._transformer = SentenceTransformer(self.model.name, cache_folder=cache_dir)
+                    logger.info(f"Loaded SentenceTransformer model: {self.model.name}")
             except ImportError:
                 raise ImportError(
                     "sentence-transformers not installed. Run: pip install sentence-transformers"

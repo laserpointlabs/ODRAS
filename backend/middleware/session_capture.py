@@ -1,7 +1,8 @@
 """
-Session Capture Middleware - Proper FastAPI middleware implementation
+Session Capture Middleware - Enhanced with EventCapture2
 
-Captures API calls with semantic meaning for session thread intelligence.
+Captures API calls with rich, semantic meaning using EventCapture2 system.
+Features rich event summaries instead of generic ones.
 """
 
 import json
@@ -33,6 +34,17 @@ class SessionCaptureMiddleware(BaseHTTPMiddleware):
 
         # Debug: Log that middleware is being called
         print(f"🔥 MIDDLEWARE: {request.method} {request.url.path}")
+
+        # CRITICAL: Capture request body BEFORE processing request (body gets consumed)
+        request_body = None
+        if request.method in ["POST", "PUT", "PATCH"]:
+            try:
+                request_body = await request.body()
+                # Store in request for later use
+                request._body = request_body
+                print(f"🔥 MIDDLEWARE: Captured request body ({len(request_body)} bytes)")
+            except Exception as e:
+                print(f"🔥 MIDDLEWARE: Could not capture request body: {e}")
 
         # Process the request
         response = await call_next(request)
@@ -85,60 +97,48 @@ class SessionCaptureMiddleware(BaseHTTPMiddleware):
         return meaningful_operations
 
     async def _capture_semantic_event(self, request: Request, response: Response, start_time: float, redis_client):
-        """Extract semantic meaning and queue event"""
+        """Capture events using EventCapture2 with rich context"""
         try:
             # Extract user info from auth header
-            username = await self._get_username_from_request(request)
-            if not username:
+            user_info = await self._get_user_info_from_request(request)
+            if not user_info:
                 return
 
-            # Extract semantic meaning with request/response body analysis
-            semantic_data = await self._extract_semantics(request, response)
+            username = user_info["username"]
+            user_id = user_info["user_id"]
 
-            # Skip event if semantic extraction returned None (filtered out)
-            if semantic_data is None:
-                print(f"🔥 MIDDLEWARE: Event filtered out - not capturing")
+            # Get EventCapture2 instance
+            from backend.services.eventcapture2 import get_event_capture
+            event_capture = get_event_capture()
+
+            if not event_capture:
+                print(f"🔥 MIDDLEWARE: EventCapture2 not initialized")
                 return
 
-            # Create clean event
-            event = {
-                "event_id": f"api_{int(time.time() * 1000)}",
-                "username": username,
-                "timestamp": datetime.now().isoformat(),
-                "semantic_action": semantic_data["action"],
-                "context": semantic_data["context"],
-                "metadata": semantic_data["metadata"],
-                "response_time": time.time() - start_time,
-                "success": True
-            }
+            # Extract event details and route to appropriate EventCapture2 method
+            response_time = time.time() - start_time
+            captured = await self._route_to_eventcapture2(
+                request, response, user_id, username, response_time, event_capture
+            )
 
-            # Route directly to DAS bridge if available, otherwise queue
-            das_bridge = getattr(sys.modules[__name__], 'das_bridge', None)
-            if das_bridge:
-                print(f"🔥 CAPTURE: Routing event directly to DAS: {event['semantic_action']}")
-                try:
-                    success = await das_bridge._route_event_to_das(event)
-                    print(f"🔥 CAPTURE: DAS routing {'SUCCESS' if success else 'FAILED'}")
-                except Exception as das_error:
-                    print(f"🔥 CAPTURE: DAS routing FAILED: {das_error}")
-                    # Fallback to queue
-                    result = await redis_client.lpush("api_events", json.dumps(event))
-                    print(f"🔥 CAPTURE: Fallback queued, result: {result}")
+            if captured:
+                print(f"🔥 EVENTCAPTURE2: Successfully captured rich event for {username}")
             else:
-                print(f"🔥 CAPTURE: No DAS bridge, queuing event: {event['semantic_action']}")
-                try:
-                    result = await redis_client.lpush("api_events", json.dumps(event))
-                    print(f"🔥 CAPTURE: Event queued successfully, result: {result}")
-                except Exception as redis_error:
-                    print(f"🔥 CAPTURE: Redis write FAILED: {redis_error}")
-                    raise redis_error
-            logger.debug(f"Captured: {semantic_data['action']} for {username}")
+                print(f"🔥 EVENTCAPTURE2: Event not captured (filtered or no project context)")
 
         except Exception as e:
-            logger.error(f"Error capturing semantic event: {e}")
+            logger.error(f"EventCapture2 middleware error: {e}")
+            print(f"🔥 EVENTCAPTURE2: Error - {e}")
+            import traceback
+            print(f"🔥 EVENTCAPTURE2: Traceback - {traceback.format_exc()}")
 
     async def _get_username_from_request(self, request: Request) -> Optional[str]:
         """Extract username from request using proper auth system"""
+        user_info = await self._get_user_info_from_request(request)
+        return user_info["username"] if user_info else None
+
+    async def _get_user_info_from_request(self, request: Request) -> Optional[Dict[str, str]]:
+        """Extract user info (username and user_id) from request"""
         try:
             auth_header = request.headers.get("authorization", "")
             if not auth_header or not auth_header.startswith("Bearer "):
@@ -148,13 +148,90 @@ class SessionCaptureMiddleware(BaseHTTPMiddleware):
             from backend.services.auth import get_user
             try:
                 user = get_user(auth_header)
-                return user.get("username")
+                return {
+                    "username": user.get("username"),
+                    "user_id": user.get("user_id")
+                }
             except Exception:
                 # If auth fails, don't capture event (user not authenticated)
                 return None
         except Exception:
             pass
             return None
+
+    async def _route_to_eventcapture2(
+        self,
+        request: Request,
+        response: Response,
+        user_id: str,
+        username: str,
+        response_time: float,
+        event_capture
+    ) -> bool:
+        """Route API calls to appropriate EventCapture2 methods for rich event summaries"""
+        method = request.method
+        path = str(request.url.path)
+        query_params = dict(request.query_params)
+
+        try:
+            # Project operations
+            if path == "/api/projects" and method == "POST":
+                return await self._capture_project_created(request, user_id, username, response_time, event_capture)
+
+            elif path.startswith("/api/projects/") and method == "PUT":
+                return await self._capture_project_updated(request, path, user_id, username, response_time, event_capture)
+
+            # Ontology operations - DISABLED (using direct endpoint capture instead)
+            # elif path == "/api/ontologies" and method == "POST":
+            #     return await self._capture_ontology_created_gui(request, user_id, username, response_time, event_capture)
+
+            elif path == "/api/ontology/" and method == "PUT":
+                return await self._capture_ontology_modified(request, query_params, user_id, username, response_time, event_capture)
+
+            elif "ontology/save" in path and method == "POST":
+                return await self._capture_ontology_saved(request, query_params, user_id, username, response_time, event_capture)
+
+            elif "ontology/layout" in path and method == "PUT":
+                return await self._capture_ontology_layout_modified(request, query_params, user_id, username, response_time, event_capture)
+
+            # File operations
+            elif "/api/files/upload" in path and method == "POST":
+                return await self._capture_file_uploaded(request, query_params, user_id, username, response_time, event_capture)
+
+            elif path.startswith("/api/files/") and method == "DELETE":
+                return await self._capture_file_deleted(request, path, user_id, username, response_time, event_capture)
+
+            # Workflow operations
+            elif "/api/workflows/start" in path and method == "POST":
+                return await self._capture_workflow_started(request, user_id, username, response_time, event_capture)
+
+            # DAS interactions
+            elif "/api/das2/chat" in path and method == "POST":
+                return await self._capture_das_interaction(request, user_id, username, response_time, event_capture)
+
+            # Knowledge operations
+            elif "/api/knowledge/assets" in path and method == "POST" and not path.endswith(('public', 'content')):
+                return await self._capture_knowledge_asset_created(request, user_id, username, response_time, event_capture)
+
+            elif "/api/knowledge/assets/" in path and method == "PUT" and path.endswith("/public"):
+                return await self._capture_knowledge_asset_published(request, path, user_id, username, response_time, event_capture)
+
+            elif "/api/knowledge/assets/" in path and method == "PUT" and not path.endswith("/public"):
+                return await self._capture_knowledge_asset_updated(request, path, user_id, username, response_time, event_capture)
+
+            elif "/api/knowledge/search" in path and method == "POST":
+                return await self._capture_knowledge_search(request, user_id, username, response_time, event_capture)
+
+            elif "/api/knowledge/query" in path and method == "POST":
+                return await self._capture_knowledge_rag_query(request, user_id, username, response_time, event_capture)
+
+            else:
+                # Not a tracked event type
+                return False
+
+        except Exception as e:
+            logger.error(f"Error routing to EventCapture2: {e}")
+            return False
 
     def _extract_project_id_from_graph(self, graph_url: str) -> Optional[str]:
         """Extract project ID from ontology graph URL"""
@@ -528,13 +605,555 @@ class SessionCaptureMiddleware(BaseHTTPMiddleware):
                 "metadata": {"type": "das_session_start"}
             }
 
-        # Default - still capture for analysis
+                # Default - still capture for analysis
         else:
             return {
                 "action": f"{method} {path}",
                 "context": {},
                 "metadata": {"type": "api_call", "method": method, "path": path}
             }
+
+    # EventCapture2 specific capture methods for rich context extraction
+
+    async def _capture_project_created(self, request: Request, user_id: str, username: str, response_time: float, event_capture) -> bool:
+        """Capture project creation with rich context"""
+        try:
+            # Extract project details from request body
+            body = await self._get_request_body(request)
+            if not body:
+                return False
+
+            project_name = body.get("name", "Unknown Project")
+            project_details = {
+                "description": body.get("description"),
+                "domain": body.get("domain"),
+                "namespace_id": body.get("namespace_id")
+            }
+
+            # We don't have project_id yet (it's created by the endpoint), so we'll use a placeholder
+            # The actual project_id will be available when the event is processed
+            return await event_capture.capture_project_created(
+                project_id="pending",  # Will be resolved later
+                project_name=project_name,
+                user_id=user_id,
+                username=username,
+                project_details=project_details,
+                response_time=response_time
+            )
+
+        except Exception as e:
+            logger.error(f"Error capturing project creation: {e}")
+            return False
+
+    async def _capture_project_updated(self, request: Request, path: str, user_id: str, username: str, response_time: float, event_capture) -> bool:
+        """Capture project updates with rich context"""
+        try:
+            # Extract project ID from path
+            project_id = path.split("/")[3] if len(path.split("/")) > 3 else "unknown"
+
+            # Extract updated fields
+            body = await self._get_request_body(request)
+            if not body:
+                return False
+
+            # For now, just capture as a generic project event
+            # This could be enhanced to show what fields were updated
+            return await event_capture.capture_project_created(
+                project_id=project_id,
+                project_name=body.get("name", "Updated Project"),
+                user_id=user_id,
+                username=username,
+                project_details={
+                    "operation": "update",
+                    "updated_fields": list(body.keys())
+                },
+                response_time=response_time
+            )
+
+        except Exception as e:
+            logger.error(f"Error capturing project update: {e}")
+            return False
+
+    async def _capture_ontology_created(self, request: Request, query_params: dict, user_id: str, username: str, response_time: float, event_capture) -> bool:
+        """Capture ontology creation with rich context"""
+        try:
+            project_id = query_params.get("project_id")
+            if not project_id:
+                return False
+
+            # Extract ontology details
+            body = await self._get_request_body(request)
+            ontology_name = "default"
+
+            if body and body.get("metadata", {}).get("name"):
+                ontology_name = body["metadata"]["name"]
+
+            operation_details = {
+                "is_reference": body.get("is_reference", False) if body else False,
+                "classes_count": len(body.get("classes", [])) if body else 0,
+                "properties_count": len(body.get("object_properties", [])) + len(body.get("datatype_properties", [])) if body else 0
+            }
+
+            return await event_capture.capture_ontology_operation(
+                operation_type="created",
+                ontology_name=ontology_name,
+                project_id=project_id,
+                user_id=user_id,
+                username=username,
+                operation_details=operation_details,
+                response_time=response_time
+            )
+
+        except Exception as e:
+            logger.error(f"Error capturing ontology creation: {e}")
+            return False
+
+    async def _capture_ontology_created_gui(self, request: Request, user_id: str, username: str, response_time: float, event_capture) -> bool:
+        """Capture ontology creation from GUI (/api/ontologies endpoint)"""
+        try:
+            print(f"🔥 DEBUG: Starting GUI ontology capture")
+            body = await self._get_request_body(request)
+            print(f"🔥 DEBUG: Body extracted: {body}")
+            if not body:
+                print(f"🔥 DEBUG: No body found - returning False")
+                return False
+
+            project_id = body.get('project', '')  # Note: this endpoint uses 'project' not 'project_id'
+            print(f"🔥 DEBUG: Project ID: {project_id}")
+            if not project_id:
+                print(f"🔥 DEBUG: No project ID found - returning False")
+                return False
+
+            ontology_name = body.get('name', 'Unknown Ontology')
+            ontology_label = body.get('label', ontology_name)
+            is_reference = body.get('is_reference', False)
+
+            print(f"🔥 DEBUG: Ontology details - name: {ontology_name}, label: {ontology_label}")
+
+            operation_details = {
+                'name': ontology_name,
+                'label': ontology_label,
+                'is_reference': is_reference,
+                'classes_count': 0,  # New ontology starts empty
+                'properties_count': 0,
+                'created_via': 'gui'
+            }
+
+            print(f"🔥 DEBUG: Calling event_capture.capture_ontology_operation")
+            result = await event_capture.capture_ontology_operation(
+                operation_type="created",
+                ontology_name=ontology_name,
+                project_id=project_id,
+                user_id=user_id,
+                username=username,
+                operation_details=operation_details,
+                response_time=response_time
+            )
+            print(f"🔥 DEBUG: EventCapture2 result: {result}")
+            return result
+
+        except Exception as e:
+            print(f"🔥 DEBUG: Exception in GUI ontology capture: {e}")
+            logger.error(f"Error capturing GUI ontology creation: {e}")
+            return False
+
+    async def _capture_ontology_modified(self, request: Request, query_params: dict, user_id: str, username: str, response_time: float, event_capture) -> bool:
+        """Capture ontology modifications with rich context"""
+        try:
+            project_id = query_params.get("project_id")
+            if not project_id:
+                return False
+
+            # Extract ontology details
+            body = await self._get_request_body(request)
+            ontology_name = "default"
+
+            if body and body.get("metadata", {}).get("name"):
+                ontology_name = body["metadata"]["name"]
+
+            operation_details = {
+                "classes_count": len(body.get("classes", [])) if body else 0,
+                "properties_count": len(body.get("object_properties", [])) + len(body.get("datatype_properties", [])) if body else 0,
+                "relationships_modified": bool(body.get("object_properties")) if body else False
+            }
+
+            return await event_capture.capture_ontology_operation(
+                operation_type="modified",
+                ontology_name=ontology_name,
+                project_id=project_id,
+                user_id=user_id,
+                username=username,
+                operation_details=operation_details,
+                response_time=response_time
+            )
+
+        except Exception as e:
+            logger.error(f"Error capturing ontology modification: {e}")
+            return False
+
+    async def _capture_ontology_saved(self, request: Request, query_params: dict, user_id: str, username: str, response_time: float, event_capture) -> bool:
+        """Capture ontology saves with rich context"""
+        try:
+            graph = query_params.get("graph", "")
+            project_id = self._extract_project_id_from_graph(graph)
+
+            if not project_id:
+                return False
+
+            ontology_name = graph.split("/")[-1] if graph else "unknown"
+
+            return await event_capture.capture_ontology_operation(
+                operation_type="saved",
+                ontology_name=ontology_name,
+                project_id=project_id,
+                user_id=user_id,
+                username=username,
+                operation_details={"graph_uri": graph},
+                response_time=response_time
+            )
+
+        except Exception as e:
+            logger.error(f"Error capturing ontology save: {e}")
+            return False
+
+    async def _capture_ontology_layout_modified(self, request: Request, query_params: dict, user_id: str, username: str, response_time: float, event_capture) -> bool:
+        """Capture ontology layout modifications (only semantic ones)"""
+        try:
+            graph = query_params.get("graph", "")
+            project_id = self._extract_project_id_from_graph(graph)
+
+            if not project_id:
+                return False
+
+            # Analyze layout changes to determine if they're semantic
+            layout_analysis = await self._extract_layout_changes(request)
+
+            # Skip pure layout changes (positioning only)
+            if layout_analysis and layout_analysis.get("is_layout_only", False):
+                return False
+
+            # Only capture semantic changes
+            if not (layout_analysis and layout_analysis.get("is_semantic", False)):
+                return False
+
+            ontology_name = graph.split("/")[-1] if graph else "unknown"
+
+            operation_details = {
+                "layout_changes": layout_analysis.get("description"),
+                "is_semantic": True,
+                "graph_uri": graph
+            }
+
+            return await event_capture.capture_ontology_operation(
+                operation_type="modified",
+                ontology_name=ontology_name,
+                project_id=project_id,
+                user_id=user_id,
+                username=username,
+                operation_details=operation_details,
+                response_time=response_time
+            )
+
+        except Exception as e:
+            logger.error(f"Error capturing ontology layout modification: {e}")
+            return False
+
+    async def _capture_file_uploaded(self, request: Request, query_params: dict, user_id: str, username: str, response_time: float, event_capture) -> bool:
+        """Capture file uploads with rich context"""
+        try:
+            project_id = query_params.get("project_id")
+            if not project_id:
+                return False
+
+            # Try to extract filename and file details from form data or headers
+            filename = "uploaded_file"
+            file_details = {}
+
+            # This is approximate - actual file details would need to be extracted differently
+            content_type = request.headers.get("content-type", "")
+            if "multipart/form-data" in content_type:
+                # File upload via form data
+                filename = "document"  # Would need actual form parsing
+                file_details = {"content_type": content_type}
+
+            return await event_capture.capture_file_operation(
+                operation_type="uploaded",
+                filename=filename,
+                project_id=project_id,
+                user_id=user_id,
+                username=username,
+                file_details=file_details,
+                response_time=response_time
+            )
+
+        except Exception as e:
+            logger.error(f"Error capturing file upload: {e}")
+            return False
+
+    async def _capture_file_deleted(self, request: Request, path: str, user_id: str, username: str, response_time: float, event_capture) -> bool:
+        """Capture file deletions with rich context"""
+        try:
+            file_id = path.split("/")[3] if len(path.split("/")) > 3 else "unknown"
+
+            return await event_capture.capture_file_operation(
+                operation_type="deleted",
+                filename=f"file_{file_id}",
+                project_id="unknown",  # Would need to be resolved
+                user_id=user_id,
+                username=username,
+                file_details={"file_id": file_id},
+                response_time=response_time
+            )
+
+        except Exception as e:
+            logger.error(f"Error capturing file deletion: {e}")
+            return False
+
+    async def _capture_workflow_started(self, request: Request, user_id: str, username: str, response_time: float, event_capture) -> bool:
+        """Capture workflow starts with rich context"""
+        try:
+            body = await self._get_request_body(request)
+            if not body:
+                return False
+
+            process_key = body.get("processKey", "unknown")
+            project_id = body.get("projectId")
+
+            workflow_details = {
+                "fileIds": body.get("fileIds", []),
+                "params": body.get("params", {}),
+                "businessKey": body.get("businessKey")
+            }
+
+            return await event_capture.capture_workflow_started(
+                process_key=process_key,
+                project_id=project_id,
+                user_id=user_id,
+                username=username,
+                workflow_details=workflow_details,
+                response_time=response_time
+            )
+
+        except Exception as e:
+            logger.error(f"Error capturing workflow start: {e}")
+            return False
+
+    async def _capture_das_interaction(self, request: Request, user_id: str, username: str, response_time: float, event_capture) -> bool:
+        """Capture DAS interactions with rich context"""
+        try:
+            body = await self._get_request_body(request)
+            if not body:
+                return False
+
+            project_id = body.get("project_id")
+            if not project_id:
+                return False
+
+            message = body.get("message", "")
+
+            interaction_details = {
+                "message": message,
+                "project_thread_id": body.get("project_thread_id"),
+                "interaction_type": "question"
+            }
+
+            return await event_capture.capture_das_interaction(
+                interaction_type="question",
+                project_id=project_id,
+                user_id=user_id,
+                username=username,
+                interaction_details=interaction_details,
+                response_time=response_time
+            )
+
+        except Exception as e:
+            logger.error(f"Error capturing DAS interaction: {e}")
+            return False
+
+    async def _get_request_body(self, request: Request) -> Optional[Dict[str, Any]]:
+        """Safely extract request body as JSON"""
+        try:
+            # Try to get body from request (may have been consumed already)
+            if hasattr(request, '_body'):
+                body_bytes = request._body
+            else:
+                try:
+                    body_bytes = await request.body()
+                except:
+                    return None
+
+            if body_bytes:
+                body_str = body_bytes.decode('utf-8')
+                return json.loads(body_str)
+
+            return None
+
+        except Exception as e:
+            logger.debug(f"Could not extract request body: {e}")
+            return None
+
+    # Knowledge event capture methods
+
+    async def _capture_knowledge_asset_created(self, request: Request, user_id: str, username: str, response_time: float, event_capture) -> bool:
+        """Capture knowledge asset creation with rich context"""
+        try:
+            body = await self._get_request_body(request)
+            if not body:
+                return False
+
+            title = body.get('title', 'Unknown Asset')
+
+            # Extract project_id from request or body
+            project_id = body.get('project_id')
+            if not project_id:
+                # Try to get from query params if not in body
+                return False
+
+            asset_details = {
+                'document_type': body.get('document_type', 'unknown'),
+                'source_file_id': body.get('source_file_id'),
+                'content_summary': body.get('content_summary'),
+                'metadata': body.get('metadata', {})
+            }
+
+            return await event_capture.capture_knowledge_asset_created(
+                asset_id="pending",  # Will be assigned by the endpoint
+                title=title,
+                project_id=project_id,
+                user_id=user_id,
+                username=username,
+                asset_details=asset_details,
+                response_time=response_time
+            )
+
+        except Exception as e:
+            logger.error(f"Error capturing knowledge asset creation: {e}")
+            return False
+
+    async def _capture_knowledge_asset_updated(self, request: Request, path: str, user_id: str, username: str, response_time: float, event_capture) -> bool:
+        """Capture knowledge asset updates with rich context"""
+        try:
+            asset_id = path.split("/")[-1] if "/" in path else "unknown"
+
+            body = await self._get_request_body(request)
+            if not body:
+                return False
+
+            # For knowledge asset updates, we don't always have project_id in the request
+            # We'll use "unknown" and let the system try to resolve it later
+            project_id = body.get('project_id', 'unknown')
+
+            update_details = {
+                'title': body.get('title'),
+                'document_type': body.get('document_type'),
+                'content_summary': body.get('content_summary'),
+                'status': body.get('status'),
+                'metadata': body.get('metadata')
+            }
+
+            return await event_capture.capture_knowledge_asset_updated(
+                asset_id=asset_id,
+                project_id=project_id,
+                user_id=user_id,
+                username=username,
+                update_details=update_details,
+                response_time=response_time
+            )
+
+        except Exception as e:
+            logger.error(f"Error capturing knowledge asset update: {e}")
+            return False
+
+    async def _capture_knowledge_asset_published(self, request: Request, path: str, user_id: str, username: str, response_time: float, event_capture) -> bool:
+        """Capture knowledge asset publishing with rich context"""
+        try:
+            # Extract asset_id from path like /api/knowledge/assets/{asset_id}/public
+            path_parts = path.split("/")
+            asset_id = path_parts[-2] if len(path_parts) > 2 else "unknown"
+
+            # We don't have project_id or asset_title from the request, so we'll use placeholders
+            project_id = "unknown"  # Would need to be resolved from asset_id
+            asset_title = f"Asset {asset_id}"  # Would need to be resolved from database
+
+            return await event_capture.capture_knowledge_asset_published(
+                asset_id=asset_id,
+                asset_title=asset_title,
+                project_id=project_id,
+                user_id=user_id,
+                username=username,
+                response_time=response_time
+            )
+
+        except Exception as e:
+            logger.error(f"Error capturing knowledge asset publishing: {e}")
+            return False
+
+    async def _capture_knowledge_search(self, request: Request, user_id: str, username: str, response_time: float, event_capture) -> bool:
+        """Capture knowledge search with rich context"""
+        try:
+            body = await self._get_request_body(request)
+            if not body:
+                return False
+
+            search_query = body.get('query', '') or body.get('search_term', '')
+            if not search_query:
+                return False
+
+            project_id = body.get('project_id')  # May be None for global searches
+
+            # We don't have search results from the middleware, so we'll use placeholders
+            search_results = {
+                'results_count': 0,  # Would need to be extracted from response
+                'search_filters': body.get('filters', {}),
+                'search_scope': body.get('scope', 'all')
+            }
+
+            return await event_capture.capture_knowledge_search(
+                search_query=search_query,
+                project_id=project_id,
+                user_id=user_id,
+                username=username,
+                search_results=search_results,
+                response_time=response_time
+            )
+
+        except Exception as e:
+            logger.error(f"Error capturing knowledge search: {e}")
+            return False
+
+    async def _capture_knowledge_rag_query(self, request: Request, user_id: str, username: str, response_time: float, event_capture) -> bool:
+        """Capture RAG knowledge queries with rich context"""
+        try:
+            body = await self._get_request_body(request)
+            if not body:
+                return False
+
+            query = body.get('question', '') or body.get('query', '')
+            if not query:
+                return False
+
+            project_id = body.get('project_id')
+
+            # We don't have query results from the middleware, so we'll use placeholders
+            query_results = {
+                'chunks_found': 0,  # Would need to be extracted from response
+                'max_chunks': body.get('max_chunks', 5),
+                'similarity_threshold': body.get('similarity_threshold', 0.7),
+                'sources': []  # Would need to be extracted from response
+            }
+
+            return await event_capture.capture_knowledge_rag_query(
+                query=query,
+                project_id=project_id,
+                user_id=user_id,
+                username=username,
+                query_results=query_results,
+                response_time=response_time
+            )
+
+        except Exception as e:
+            logger.error(f"Error capturing RAG query: {e}")
+            return False
 
 
 def set_global_redis_client(redis_client):

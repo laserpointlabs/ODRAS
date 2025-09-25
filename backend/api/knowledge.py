@@ -536,6 +536,31 @@ async def create_knowledge_asset(
                 conn.commit()
 
                 logger.info(f"Created knowledge asset {asset_id} successfully")
+
+                # EventCapture2: Capture knowledge asset creation event
+                try:
+                    from ..services.eventcapture2 import get_event_capture
+                    event_capture = get_event_capture()
+                    if event_capture:
+                        await event_capture.capture_knowledge_asset_created(
+                            asset_id=asset_id,
+                            title=asset_data.title,
+                            project_id=project_id,
+                            user_id=user["user_id"],
+                            username=user.get("username", "unknown"),
+                            asset_details={
+                                "document_type": asset_data.document_type,
+                                "source_file_id": asset_data.source_file_id,
+                                "content_summary": asset_data.content_summary,
+                                "metadata": asset_data.metadata,
+                                "status": "active"
+                            }
+                        )
+                        print(f"🔥 DIRECT: EventCapture2 knowledge asset creation captured - {asset_data.title}")
+                except Exception as e:
+                    print(f"🔥 DIRECT: EventCapture2 knowledge asset creation failed: {e}")
+                    logger.warning(f"EventCapture2 knowledge asset creation failed: {e}")
+
                 return format_asset_response(asset_dict)
 
         finally:
