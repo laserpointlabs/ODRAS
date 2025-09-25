@@ -205,10 +205,10 @@ class ProjectThreadManager:
                     db_service._return(conn)
             except Exception as e:
                 logger.error(f"Failed to lookup project stable_id: {e}")
-            
+
             # Use stable_id if available, fallback to UUID if needed
             thread_project_id = project_stable_id if project_stable_id else project_id
-            
+
             # Check if thread already exists (safety check)
             existing_thread = await self._find_project_thread(thread_project_id)
             if existing_thread:
