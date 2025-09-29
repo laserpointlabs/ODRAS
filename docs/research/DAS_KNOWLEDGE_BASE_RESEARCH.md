@@ -2229,3 +2229,4 @@ The field continues to evolve rapidly, with emerging trends in neurosymbolic int
 **Keywords**: Digital Assistant Systems, Knowledge Bases, Retrieval-Augmented Generation, Ontology Creation, Hybrid AI Architectures, Action-Oriented AI, Reasoning Systems, ODRAS
 **Correspondence**: ODRAS Research Team, Ontology-Driven Requirements Analysis System Project
 **Funding**: This research was conducted as part of the ODRAS project development effort
+
