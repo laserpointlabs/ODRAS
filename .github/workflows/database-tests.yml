@@ -1,0 +1,240 @@
+name: Database Integrity Tests
+
+on:
+    push:
+        paths:
+            - "backend/migrations/**"
+            - "backend/database/**"
+            - "odras.sh"
+            - ".github/workflows/database-tests.yml"
+    pull_request:
+        paths:
+            - "backend/migrations/**"
+            - "backend/database/**"
+            - "odras.sh"
+    workflow_dispatch:
+        inputs:
+            full_test:
+                description: "Run full database rebuild test"
+                required: false
+                type: boolean
+                default: true
+
+jobs:
+    database-tests:
+        name: Database Schema and Migration Tests
+        runs-on: ubuntu-latest
+
+        services:
+            postgres:
+                image: postgres:15
+                env:
+                    POSTGRES_USER: odras_user
+                    POSTGRES_PASSWORD: test_password
+                    POSTGRES_DB: odras_db
+                options: >-
+                    --health-cmd pg_isready
+                    --health-interval 10s
+                    --health-timeout 5s
+                    --health-retries 5
+                ports:
+                    - 5432:5432
+
+            neo4j:
+                image: neo4j:5.9.0
+                env:
+                    NEO4J_AUTH: neo4j/test_password
+                    NEO4J_PLUGINS: '["apoc"]'
+                ports:
+                    - 7687:7687
+
+            qdrant:
+                image: qdrant/qdrant:latest
+                ports:
+                    - 6333:6333
+
+        steps:
+            - name: Checkout code
+              uses: actions/checkout@v4
+
+            - name: Set up Python
+              uses: actions/setup-python@v4
+              with:
+                  python-version: "3.11"
+
+            - name: Install dependencies
+              run: |
+                  sudo apt-get update
+                  sudo apt-get install -y postgresql-client
+                  pip install psycopg2-binary neo4j qdrant-client pytest
+
+            - name: Test odras.sh exists and is valid
+              run: |
+                  test -f odras.sh
+                  test -x odras.sh
+                  bash -n odras.sh  # Syntax check
+
+            - name: Validate migration files
+              run: |
+                  echo "Checking migration files..."
+
+                  # Check migration directory exists
+                  test -d backend/migrations
+
+                  # Check migration_order.txt exists
+                  test -f backend/migrations/migration_order.txt
+
+                  # Validate all migrations in order file exist
+                  cd backend/migrations
+                  while IFS= read -r migration; do
+                    if [[ -n "$migration" ]]; then
+                      test -f "$migration" || (echo "Missing migration: $migration" && exit 1)
+                      echo "✓ Found: $migration"
+                    fi
+                  done < migration_order.txt
+
+                  # Check for orphaned migrations
+                  for sql_file in *.sql; do
+                    if ! grep -q "^$sql_file$" migration_order.txt; then
+                      echo "WARNING: $sql_file not in migration_order.txt"
+                    fi
+                  done
+
+            - name: Test database build from scratch
+              env:
+                  PGPASSWORD: test_password
+              run: |
+                  echo "Running migrations in order..."
+                  cd backend/migrations
+
+                  while IFS= read -r migration; do
+                    if [[ -n "$migration" ]]; then
+                      echo "Applying: $migration"
+                      psql -h localhost -U odras_user -d odras_db -f "$migration"
+                    fi
+                  done < migration_order.txt
+
+            - name: Verify all tables exist
+              env:
+                  PGPASSWORD: test_password
+              run: |
+                  # Expected tables
+                  EXPECTED_TABLES=(
+                    "users"
+                    "projects"
+                    "project_members"
+                    "files"
+                    "knowledge_documents"
+                    "knowledge_chunks"
+                    "knowledge_entities"
+                    "knowledge_topics"
+                    "knowledge_summaries"
+                    "knowledge_public_assets"
+                    "auth_tokens"
+                    "namespaces"
+                    "namespace_members"
+                    "das_projects"
+                    "das_threads"
+                    "das_messages"
+                    "das_instructions"
+                    "project_threads"
+                  )
+
+                  # Get actual tables
+                  ACTUAL_TABLES=$(psql -h localhost -U odras_user -d odras_db -t -c "SELECT table_name FROM information_schema.tables WHERE table_schema = 'public' ORDER BY table_name;")
+
+                  # Check each expected table
+                  for table in "${EXPECTED_TABLES[@]}"; do
+                    if echo "$ACTUAL_TABLES" | grep -q "$table"; then
+                      echo "✓ Table exists: $table"
+                    else
+                      echo "✗ Missing table: $table"
+                      exit 1
+                    fi
+                  done
+
+            - name: Test Qdrant collections creation
+              run: |
+                  python -c "
+                  from qdrant_client import QdrantClient
+                  from qdrant_client.models import Distance, VectorParams
+
+                  client = QdrantClient(host='localhost', port=6333)
+
+                  # Required collections
+                  collections = [
+                      ('knowledge_chunks', 384),
+                      ('knowledge_large', 1536),
+                      ('odras_requirements', 384),
+                      ('das_instructions', 384),
+                      ('project_threads', 384)
+                  ]
+
+                  # Create collections
+                  for name, dim in collections:
+                      client.create_collection(
+                          collection_name=name,
+                          vectors_config=VectorParams(size=dim, distance=Distance.COSINE)
+                      )
+                      print(f'✓ Created collection: {name} (dim={dim})')
+
+                  # Verify all collections exist
+                  existing = {c.name for c in client.get_collections().collections}
+                  for name, _ in collections:
+                      assert name in existing, f'Collection {name} not found!'
+
+                  print('\\n✓ All required Qdrant collections verified')
+                  "
+
+            - name: Create and verify test users
+              env:
+                  PGPASSWORD: test_password
+              run: |
+                  # Create users with known password hashes
+                  psql -h localhost -U odras_user -d odras_db << EOF
+                  INSERT INTO users (username, email, display_name, password_hash, is_admin)
+                  VALUES
+                    ('das_service', 'das@test.com', 'DAS Service Account', '\$2b\$12\$LQv3c1yqBWVHxkd0LHAkCOYz6TtxMQJqhN8/LewYpfQB.2s3oj8UK', false),
+                    ('admin', 'admin@test.com', 'Administrator', '\$2b\$12\$LQv3c1yqBWVHxkd0LHAkCOYz6TtxMQJqhN8/LewYpfQB.2s3oj8UK', true)
+                  ON CONFLICT (username) DO NOTHING;
+                  EOF
+
+                  # Verify users exist
+                  USER_COUNT=$(psql -h localhost -U odras_user -d odras_db -t -c "SELECT COUNT(*) FROM users WHERE username IN ('das_service', 'admin');")
+                  if [ "$USER_COUNT" -ge 2 ]; then
+                    echo "✓ Test users created successfully"
+                  else
+                    echo "✗ Failed to create test users"
+                    exit 1
+                  fi
+
+            - name: Run database schema tests
+              run: |
+                  export POSTGRES_HOST=localhost
+                  export POSTGRES_PORT=5432
+                  export POSTGRES_DB=odras_db
+                  export POSTGRES_USER=odras_user
+                  export POSTGRES_PASSWORD=test_password
+
+                  pytest tests/database/test_database_schema.py -v
+
+            - name: Database summary report
+              if: always()
+              env:
+                  PGPASSWORD: test_password
+              run: |
+                  echo "=== Database Summary Report ==="
+                  echo ""
+                  echo "PostgreSQL Tables:"
+                  psql -h localhost -U odras_user -d odras_db -c "SELECT table_name, pg_size_pretty(pg_total_relation_size(quote_ident(table_name))) as size FROM information_schema.tables WHERE table_schema = 'public' ORDER BY table_name;"
+
+                  echo ""
+                  echo "Table Row Counts:"
+                  for table in users projects files knowledge_documents; do
+                    COUNT=$(psql -h localhost -U odras_user -d odras_db -t -c "SELECT COUNT(*) FROM $table;")
+                    echo "$table: $COUNT rows"
+                  done
+
+                  echo ""
+                  echo "Qdrant Collections:"
+                  curl -s http://localhost:6333/collections | python -m json.tool || echo "Failed to get Qdrant collections"
