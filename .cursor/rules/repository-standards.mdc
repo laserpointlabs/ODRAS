@@ -1,0 +1,25 @@
+---
+alwaysApply: true
+---
+# ODRAS Repository Standards
+
+## File Organization
+- Test files go in `tests/` NOT `scripts/`
+- Scripts in `scripts/` are utilities, not pytest tests
+- Root directory must stay clean (≤15 files)
+- All .md files except README.md go in `docs/`
+
+## Database Management
+- ALL migrations must be added to [odras.sh](mdc:odras.sh) init-db function
+- Required Qdrant collections: knowledge_chunks, knowledge_large, odras_requirements, das_instructions, project_threads
+- Always test with: `./odras.sh clean -y && ./odras.sh init-db`
+
+## Git Practices
+- After squash-merge: DELETE the feature branch locally and remotely
+- Keep clean branch structure (main + current work only)
+
+## Never Do
+- Create .md files in root (except README.md)
+- Add scripts to root directory
+- Create multiple documents for same topic
+- Remove scripts without checking BPMN workflow references

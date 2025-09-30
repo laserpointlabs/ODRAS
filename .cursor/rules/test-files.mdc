@@ -1,0 +1,34 @@
+---
+globs: tests/**/*.py
+---
+# ODRAS Test File Standards
+
+## Test Structure
+- Use `httpx.AsyncClient` with `base_url="http://localhost:8000"`
+- Always set `timeout=30.0` for client connections
+- Test against the REAL running API, not mocks
+
+## Required Fixtures
+```python
+@pytest.fixture
+async def client(self):
+    async with AsyncClient(base_url="http://localhost:8000", timeout=30.0) as client:
+        yield client
+
+@pytest.fixture
+async def auth_headers(self, client):
+    response = await client.post(
+        "/api/auth/login",
+        json={"username": "das_service", "password": "das_service_2024!"}
+    )
+    assert response.status_code == 200
+    return {"Authorization": f"Bearer {response.json()['token']}"}
+```
+
+## Test Categories
+- Project CRUD: [test_project_crud.py](mdc:tests/api/test_project_crud.py)
+- Ontology CRUD: [test_ontology_crud.py](mdc:tests/api/test_ontology_crud.py)
+- File CRUD: [test_file_crud.py](mdc:tests/api/test_file_crud.py)
+- Knowledge CRUD: [test_knowledge_crud.py](mdc:tests/api/test_knowledge_crud.py)
+- Event CRUD: [test_event_crud.py](mdc:tests/api/test_event_crud.py)
+- Admin CRUD: [test_admin_crud.py](mdc:tests/api/test_admin_crud.py)

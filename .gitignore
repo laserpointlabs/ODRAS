@@ -32,7 +32,7 @@ logs/
 # Test artifacts
 api_validation_results*.json
 test_*.html
-test_*.py
+# test_*.py  # Commented out - we WANT to track test files!
 test_*.txt
 
 # Temporary files
@@ -55,7 +55,3 @@ fuseki_data/
 cleanup/deleted_docs/
 cleanup/removed_files/
 # Keep unused_scripts as safety net: cleanup/unused_scripts/
-
-
-
-

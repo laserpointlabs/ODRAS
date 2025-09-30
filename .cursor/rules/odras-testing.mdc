@@ -1,0 +1,26 @@
+---
+alwaysApply: true
+---
+# ODRAS Testing Requirements
+
+## Critical Testing Context
+- ODRAS tests are **INTEGRATION TESTS** that require the FULL STACK running
+- Tests connect to the REAL API at http://localhost:8000
+- Required services: PostgreSQL, Neo4j, Qdrant, Redis, Fuseki, ODRAS API
+- Test credentials: Username: `das_service`, Password: `das_service_2024!`
+
+## Test Execution
+- All services must be running via `docker-compose up -d`
+- ODRAS API must be running via `./odras.sh start`
+- Tests will be SLOW (8+ seconds for some operations) - this is EXPECTED
+- Use 30-second timeouts for HTTP clients
+
+## CI/CD Requirements
+- GitHub Actions must spin up the complete stack
+- The [ci.yml](mdc:.github/workflows/ci.yml) includes service definitions
+- Tests run against real databases, not mocks
+
+## Do NOT
+- Create unit tests with mocked dependencies unless explicitly requested
+- Use ASGITransport or in-memory test clients
+- Apologize for slow tests - they test the real system
