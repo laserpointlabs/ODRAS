@@ -36,26 +36,31 @@ jobs:
                   run_quick_validation()
                   "
 
-            - name: Test critical endpoints
+            - name: Test critical API test files
               run: |
-                  # This would test against a deployed instance
-                  # For now, we'll just validate the test files exist
-                  test -f tests/test_comprehensive_suite.py
+                  # Check our actual API test files exist
+                  test -f tests/api/test_core_functionality.py
+                  test -f tests/api/test_complete_lifecycle.py
+                  test -f tests/api/test_project_crud.py
                   test -f tests/api/test_auth_endpoints.py
-                  test -f tests/database/test_database_schema.py
+                  test -f tests/api/README.md
 
-                  echo "✓ All critical test files present"
+                  echo "✓ All critical API test files present"
 
             - name: Validate project structure
               run: |
-                  # Check critical files and directories
+                  # Check critical files and directories for CURRENT structure
                   CRITICAL_PATHS=(
                     "odras.sh"
                     "requirements.txt"
                     "backend/main.py"
-                    "backend/migrations/migration_order.txt"
+                    "backend/odras_schema.sql"
+                    "backend/database_schema_info.json"
                     "tests/test_comprehensive_suite.py"
+                    "tests/conftest.py"
+                    "tests/api/"
                     ".github/workflows/ci.yml"
+                    ".github/workflows/ci-simple.yml"
                   )
 
                   for path in "${CRITICAL_PATHS[@]}"; do
@@ -69,3 +74,25 @@ jobs:
 
                   echo ""
                   echo "✓ All critical project files verified"
+
+            - name: Validate consolidated schema
+              run: |
+                  # Check that our consolidated schema file is substantial
+                  if [ -s "backend/odras_schema.sql" ]; then
+                    echo "✓ Consolidated schema file exists and has content"
+                    echo "Schema file size: $(wc -c < backend/odras_schema.sql) bytes"
+                  else
+                    echo "✗ Consolidated schema file missing or empty"
+                    exit 1
+                  fi
+
+            - name: Validate test structure
+              run: |
+                  # Check that our test structure is complete
+                  if [ -d "tests/api" ] && [ $(ls tests/api/*.py | wc -l) -gt 20 ]; then
+                    echo "✓ API test directory exists with comprehensive test files"
+                    echo "API test files count: $(ls tests/api/*.py | wc -l)"
+                  else
+                    echo "✗ API test directory missing or incomplete"
+                    exit 1
+                  fi
