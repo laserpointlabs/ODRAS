@@ -6,8 +6,7 @@ Tests for all authentication-related endpoints including login, logout, and user
 
 import pytest
 import json
-from httpx import AsyncClient, ASGITransport
-from backend.main import app
+from httpx import AsyncClient
 
 
 class TestAuthenticationEndpoints:
@@ -15,9 +14,8 @@ class TestAuthenticationEndpoints:
 
     @pytest.fixture
     async def client(self):
-        """Create test client"""
-        transport = ASGITransport(app=app)
-        async with AsyncClient(transport=transport, base_url="http://test") as client:
+        """Create test client connecting to real API"""
+        async with AsyncClient(base_url="http://localhost:8000", timeout=30.0) as client:
             yield client
 
     @pytest.mark.asyncio
@@ -125,4 +123,3 @@ class TestAuthenticationEndpoints:
         # Verify token no longer works
         response = await client.get("/api/auth/me", headers=headers)
         assert response.status_code == 401
-
