@@ -2653,6 +2653,105 @@
             </div>
           </div>
 
+          <!-- RAG Implementation Configuration Section -->
+          <div class="section">
+            <div class="section-header" onclick="toggleSection(this)"
+              style="cursor: pointer; padding: 12px 16px; background: var(--panel); border: 1px solid var(--border); border-radius: 8px; margin-bottom: 16px; display: flex; justify-content: space-between; align-items: center;">
+              <div>
+                <h3 style="margin: 0; color: var(--text); font-size: 16px;">RAG Implementation</h3>
+                <div style="font-size: 12px; color: var(--muted); margin-top: 2px;">Configure how DAS processes
+                  knowledge queries</div>
+              </div>
+              <span class="section-toggle" style="font-size: 14px;">▶</span>
+            </div>
+            <div class="section-content" style="display: none;">
+              <div id="ragConfig"
+                style="background: var(--panel); border: 1px solid var(--border); border-radius: 8px; padding: 20px;">
+
+                <!-- Current Status -->
+                <div style="margin-bottom: 24px;">
+                  <h4 style="margin: 0 0 12px 0; color: var(--text); font-size: 14px; font-weight: 600;">Current
+                    Configuration</h4>
+                  <div style="display: flex; gap: 24px; flex-wrap: wrap;">
+                    <div style="min-width: 200px;">
+                      <div style="font-size: 12px; color: var(--muted); margin-bottom: 4px;">Implementation</div>
+                      <div id="currentRagImplementation" class="muted" style="font-weight: 500;">Loading...</div>
+                    </div>
+                    <div id="currentBpmnModelDisplay" style="min-width: 200px; display: none;">
+                      <div style="font-size: 12px; color: var(--muted); margin-bottom: 4px;">BPMN Model</div>
+                      <div id="currentRagBpmnModel" class="muted" style="font-weight: 500;">-</div>
+                    </div>
+                    <div id="currentModelVersionDisplay" style="min-width: 120px; display: none;">
+                      <div style="font-size: 12px; color: var(--muted); margin-bottom: 4px;">Version</div>
+                      <div id="currentRagModelVersion" class="muted" style="font-weight: 500;">-</div>
+                    </div>
+                  </div>
+                </div>
+
+                <!-- Configuration Form -->
+                <div style="border-top: 1px solid var(--border); padding-top: 20px;">
+                  <h4 style="margin: 0 0 16px 0; color: var(--text); font-size: 14px; font-weight: 600;">Update
+                    Configuration</h4>
+
+                  <div
+                    style="display: grid; grid-template-columns: 1fr 1fr 1fr auto; gap: 16px; align-items: end; margin-bottom: 16px;">
+                    <div>
+                      <label
+                        style="display: block; font-size: 12px; color: var(--text); margin-bottom: 6px; font-weight: 500;">Implementation
+                        Type</label>
+                      <select id="ragImplementationSelect" onchange="toggleBpmnOptions()"
+                        style="width: 100%; padding: 10px; border: 1px solid var(--border); border-radius: 6px; background: var(--bg); color: var(--text); font-size: 14px;">
+                        <option value="hardcoded">Hardcoded RAG</option>
+                        <option value="bpmn">BPMN RAG</option>
+                      </select>
+                    </div>
+
+                    <div id="bpmnModelSelect" style="display: none;">
+                      <label
+                        style="display: block; font-size: 12px; color: var(--text); margin-bottom: 6px; font-weight: 500;">BPMN
+                        Model</label>
+                      <select id="ragBpmnModelSelect" onchange="updateModelVersions()"
+                        style="width: 100%; padding: 10px; border: 1px solid var(--border); border-radius: 6px; background: var(--bg); color: var(--text); font-size: 14px;">
+                        <option value="">Select Model...</option>
+                      </select>
+                    </div>
+
+                    <div id="modelVersionSelect" style="display: none;">
+                      <label
+                        style="display: block; font-size: 12px; color: var(--text); margin-bottom: 6px; font-weight: 500;">Version</label>
+                      <select id="ragModelVersionSelect"
+                        style="width: 100%; padding: 10px; border: 1px solid var(--border); border-radius: 6px; background: var(--bg); color: var(--text); font-size: 14px;">
+                        <option value="">Select Version...</option>
+                      </select>
+                    </div>
+
+                    <button class="btn" onclick="updateRagImplementation()"
+                      style="height: 42px; padding: 0 20px; white-space: nowrap;">
+                      Update
+                    </button>
+                  </div>
+
+                  <!-- Model Description -->
+                  <div id="modelDescription"
+                    style="margin-top: 16px; padding: 12px; background: rgba(59, 130, 246, 0.08); border: 1px solid rgba(59, 130, 246, 0.2); border-radius: 6px; font-size: 13px; color: var(--text); display: none;">
+                    <div id="modelDescriptionText"></div>
+                  </div>
+                </div>
+
+                <!-- Help Text -->
+                <div
+                  style="margin-top: 20px; padding: 12px; background: var(--bg); border: 1px solid var(--border); border-radius: 6px;">
+                  <div style="font-size: 12px; color: var(--muted); line-height: 1.5;">
+                    <div style="margin-bottom: 8px;"><strong>Hardcoded RAG:</strong> Direct service calls for fast,
+                      simple responses</div>
+                    <div><strong>BPMN RAG:</strong> Workflow-based processing with advanced features and configurable
+                      models</div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+
           <!-- Prefix Management Section -->
           <div class="section collapsed">
             <div class="section-header" onclick="toggleSection(this)"
@@ -3004,7 +3103,7 @@
     }
 
     // Load config on page load
-    loadInstallationConfig();
+    loadInstallationConfig().then(() => loadRagConfig());
 
     // Update installation config display
     function updateInstallationConfigDisplay() {
@@ -3022,6 +3121,342 @@
       if (installType) installType.textContent = INSTALLATION_CONFIG.type || 'development';
       if (installOffice) installOffice.textContent = INSTALLATION_CONFIG.programOffice || '';
       document.getElementById('configProgramOffice').textContent = INSTALLATION_CONFIG.programOffice || 'N/A';
+    }
+
+    // RAG Configuration Management
+    let CURRENT_RAG_CONFIG = null;
+    let AVAILABLE_BPMN_MODELS = {};
+
+    // Load RAG configuration from API
+    async function loadRagConfig() {
+      try {
+        const token = localStorage.getItem('odras_token');
+        if (!token) {
+          console.warn('⚠️ No authentication token found - RAG config requires admin access');
+          document.getElementById('currentRagImplementation').textContent = 'Login required';
+          return;
+        }
+
+        const response = await fetch('/api/admin/rag-config', {
+          headers: {
+            'Authorization': `Bearer ${token}`
+          }
+        });
+
+        if (response.ok) {
+          const config = await response.json();
+          CURRENT_RAG_CONFIG = config;
+          console.log('🔧 Loaded RAG config:', CURRENT_RAG_CONFIG);
+          await loadBpmnModels(); // Load BPMN models after config
+          updateRagConfigDisplay();
+        } else {
+          console.error('Failed to load RAG config:', response.status, response.statusText);
+          if (response.status === 401 || response.status === 403) {
+            document.getElementById('currentRagImplementation').textContent = 'Admin access required';
+          } else {
+            document.getElementById('currentRagImplementation').textContent = 'Error loading configuration';
+          }
+        }
+      } catch (error) {
+        console.warn('⚠️ Failed to load RAG config:', error);
+        document.getElementById('currentRagImplementation').textContent = 'Error loading configuration';
+      }
+    }
+
+    // Load RAG configuration for DAS (public endpoint, no admin required)
+    async function loadRagConfigForDAS() {
+      try {
+        const response = await fetch('/api/rag-config', {
+          headers: {
+            ...authHeader(),
+            'Content-Type': 'application/json'
+          }
+        });
+
+        if (response.ok) {
+          const config = await response.json();
+          CURRENT_RAG_CONFIG = config;
+          console.log('🔧 DAS loaded RAG config:', CURRENT_RAG_CONFIG);
+          console.log('🔧 DAS RAG implementation:', CURRENT_RAG_CONFIG?.rag_implementation);
+          console.log('🔧 DAS will use workflow:', CURRENT_RAG_CONFIG?.rag_implementation === 'bpmn');
+        } else {
+          console.error('🔧 DAS failed to load RAG config:', response.status);
+          // Fallback to hardcoded if API fails
+          CURRENT_RAG_CONFIG = {
+            success: true,
+            rag_implementation: 'hardcoded',
+            rag_bpmn_model: null,
+            rag_model_version: null
+          };
+        }
+      } catch (error) {
+        console.error('🔧 DAS error loading RAG config:', error);
+        // Fallback to hardcoded if API fails
+        CURRENT_RAG_CONFIG = {
+          success: true,
+          rag_implementation: 'hardcoded',
+          rag_bpmn_model: null,
+          rag_model_version: null
+        };
+      }
+    }
+
+    // Load BPMN models from Camunda
+    async function loadBpmnModels() {
+      try {
+        const token = localStorage.getItem('odras_token');
+        if (!token) return;
+
+        const response = await fetch('/api/admin/bpmn-models', {
+          headers: {
+            'Authorization': `Bearer ${token}`
+          }
+        });
+
+        if (response.ok) {
+          const data = await response.json();
+          AVAILABLE_BPMN_MODELS = {};
+          data.models.forEach(model => {
+            AVAILABLE_BPMN_MODELS[model.key] = model;
+          });
+          console.log('🔧 Loaded BPMN models:', AVAILABLE_BPMN_MODELS);
+          populateBpmnModelOptions();
+        } else {
+          console.error('Failed to load BPMN models:', response.status, response.statusText);
+        }
+      } catch (error) {
+        console.warn('⚠️ Failed to load BPMN models:', error);
+      }
+    }
+
+    // Populate BPMN model options
+    function populateBpmnModelOptions() {
+      const modelSelect = document.getElementById('ragBpmnModelSelect');
+      modelSelect.innerHTML = '<option value="">Select Model...</option>';
+
+      for (const [key, model] of Object.entries(AVAILABLE_BPMN_MODELS)) {
+        const option = document.createElement('option');
+        option.value = key;
+        option.textContent = model.name;
+        modelSelect.appendChild(option);
+      }
+    }
+
+    // Update RAG configuration display
+    function updateRagConfigDisplay() {
+      if (CURRENT_RAG_CONFIG) {
+        const implementation = CURRENT_RAG_CONFIG.rag_implementation;
+        const bpmnModel = CURRENT_RAG_CONFIG.rag_bpmn_model;
+        const modelVersion = CURRENT_RAG_CONFIG.rag_model_version;
+
+        // Update current display
+        const displayText = implementation === 'hardcoded' ? 'Hardcoded RAG (Direct Service)' : 'BPMN RAG (Workflow-based)';
+        document.getElementById('currentRagImplementation').textContent = displayText;
+
+        // Show/hide BPMN model info
+        const bpmnModelDisplay = document.getElementById('currentBpmnModelDisplay');
+        const versionDisplay = document.getElementById('currentModelVersionDisplay');
+
+        if (implementation === 'bpmn') {
+          bpmnModelDisplay.style.display = 'block';
+          versionDisplay.style.display = 'block';
+          const modelInfo = AVAILABLE_BPMN_MODELS[bpmnModel];
+          document.getElementById('currentRagBpmnModel').textContent = modelInfo ? modelInfo.name : bpmnModel;
+          document.getElementById('currentRagModelVersion').textContent = modelVersion;
+        } else {
+          bpmnModelDisplay.style.display = 'none';
+          versionDisplay.style.display = 'none';
+        }
+
+        // Update form controls
+        document.getElementById('ragImplementationSelect').value = implementation;
+        document.getElementById('ragBpmnModelSelect').value = bpmnModel;
+        updateModelVersions(); // This will set the version dropdown
+        toggleBpmnOptions(); // This will show/hide BPMN options
+      }
+    }
+
+    // Toggle BPMN options visibility
+    function toggleBpmnOptions() {
+      const implementation = document.getElementById('ragImplementationSelect').value;
+      const bpmnModelDiv = document.getElementById('bpmnModelSelect');
+      const versionDiv = document.getElementById('modelVersionSelect');
+      const descriptionDiv = document.getElementById('modelDescription');
+
+      if (implementation === 'bpmn') {
+        bpmnModelDiv.style.display = 'block';
+        versionDiv.style.display = 'block';
+        updateModelVersions();
+      } else {
+        bpmnModelDiv.style.display = 'none';
+        versionDiv.style.display = 'none';
+        descriptionDiv.style.display = 'none';
+      }
+    }
+
+    // Update model versions based on selected model
+    function updateModelVersions() {
+      const selectedModel = document.getElementById('ragBpmnModelSelect').value;
+      const versionSelect = document.getElementById('ragModelVersionSelect');
+      const descriptionDiv = document.getElementById('modelDescription');
+      const descriptionText = document.getElementById('modelDescriptionText');
+
+      versionSelect.innerHTML = '<option value="">Select Version...</option>';
+
+      if (selectedModel && AVAILABLE_BPMN_MODELS[selectedModel]) {
+        const model = AVAILABLE_BPMN_MODELS[selectedModel];
+
+        // Populate versions
+        model.versions.forEach(version => {
+          const option = document.createElement('option');
+          option.value = version;
+          option.textContent = `v${version}`;
+          versionSelect.appendChild(option);
+        });
+
+        // Set current version if available
+        if (CURRENT_RAG_CONFIG && CURRENT_RAG_CONFIG.rag_bpmn_model === selectedModel) {
+          versionSelect.value = CURRENT_RAG_CONFIG.rag_model_version;
+        }
+
+        // Show description
+        descriptionText.textContent = model.description;
+        descriptionDiv.style.display = 'block';
+      } else {
+        descriptionDiv.style.display = 'none';
+      }
+    }
+
+    // Update RAG implementation
+    async function updateRagImplementation() {
+      const selectedImplementation = document.getElementById('ragImplementationSelect').value;
+      const updateButton = document.querySelector('button[onclick="updateRagImplementation()"]');
+
+      if (!selectedImplementation) {
+        showNotification('Please select an implementation type', 'warning');
+        return;
+      }
+
+      // Validate BPMN-specific fields when BPMN is selected
+      let selectedModel = null;
+      let selectedVersion = null;
+
+      if (selectedImplementation === 'bpmn') {
+        selectedModel = document.getElementById('ragBpmnModelSelect').value;
+        selectedVersion = document.getElementById('ragModelVersionSelect').value;
+
+        if (!selectedModel) {
+          showNotification('Please select a BPMN model', 'warning');
+          return;
+        }
+        if (!selectedVersion) {
+          showNotification('Please select a model version', 'warning');
+          return;
+        }
+      }
+
+      const token = localStorage.getItem('odras_token');
+      if (!token) {
+        showNotification('Authentication required - please login as admin', 'error');
+        return;
+      }
+
+      // Show loading state
+      const originalText = updateButton.textContent;
+      updateButton.textContent = 'Updating...';
+      updateButton.disabled = true;
+
+      try {
+        const requestBody = {
+          rag_implementation: selectedImplementation
+        };
+
+        // Add BPMN-specific parameters when using BPMN
+        if (selectedImplementation === 'bpmn') {
+          requestBody.rag_bpmn_model = selectedModel;
+          requestBody.rag_model_version = selectedVersion;
+        }
+
+        const response = await fetch('/api/admin/rag-config', {
+          method: 'PUT',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${token}`
+          },
+          body: JSON.stringify(requestBody)
+        });
+
+        if (response.ok) {
+          const result = await response.json();
+          showNotification(`RAG configuration updated successfully! ${result.message}`, 'success');
+          console.log('✅ RAG configuration updated:', result);
+          await loadRagConfig(); // Refresh the display
+        } else {
+          const error = await response.json();
+          if (response.status === 401 || response.status === 403) {
+            showNotification('Admin access required to update RAG configuration', 'error');
+          } else {
+            showNotification(`Failed to update RAG configuration: ${error.detail || 'Unknown error'}`, 'error');
+          }
+          console.error('Failed to update RAG config:', response.status, error);
+        }
+      } catch (error) {
+        console.error('Error updating RAG config:', error);
+        showNotification('Error updating RAG configuration. Check console for details.', 'error');
+      } finally {
+        // Restore button state
+        updateButton.textContent = originalText;
+        updateButton.disabled = false;
+      }
+    }
+
+    // Show notification (simple implementation)
+    function showNotification(message, type = 'info') {
+      // Create notification element
+      const notification = document.createElement('div');
+      notification.style.cssText = `
+        position: fixed;
+        top: 20px;
+        right: 20px;
+        padding: 12px 16px;
+        border-radius: 6px;
+        color: white;
+        font-size: 14px;
+        font-weight: 500;
+        z-index: 10000;
+        max-width: 400px;
+        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+        transition: all 0.3s ease;
+      `;
+
+      // Set color based on type
+      switch (type) {
+        case 'success':
+          notification.style.background = '#10b981';
+          break;
+        case 'warning':
+          notification.style.background = '#f59e0b';
+          break;
+        case 'error':
+          notification.style.background = '#ef4444';
+          break;
+        default:
+          notification.style.background = '#3b82f6';
+      }
+
+      notification.textContent = message;
+      document.body.appendChild(notification);
+
+      // Auto remove after 4 seconds
+      setTimeout(() => {
+        notification.style.opacity = '0';
+        notification.style.transform = 'translateX(100%)';
+        setTimeout(() => {
+          if (notification.parentNode) {
+            notification.parentNode.removeChild(notification);
+          }
+        }, 300);
+      }, 4000);
     }
 
     // Load namespaces for project ontology creation
@@ -5580,6 +6015,7 @@
           loadPrefixes();
           loadDomains();
           loadUsers(); // Load user management data
+          loadRagConfig(); // Load RAG configuration
           // Only load namespaces if user is authenticated
           const token = localStorage.getItem('odras_token');
           if (token) {
@@ -12184,6 +12620,12 @@
         adminIcon.style.display = isAdmin ? 'grid' : 'none';
       }
 
+      // Hide/show RAG configuration section (admin only)
+      const ragConfigSection = document.getElementById('ragConfig');
+      if (ragConfigSection) {
+        ragConfigSection.parentElement.style.display = isAdmin ? 'block' : 'none';
+      }
+
       // If admin workbench is currently active but user is not admin, switch to ontology workbench
       const adminWorkbench = document.querySelector('#wb-admin');
       if (!isAdmin && adminWorkbench && adminWorkbench.classList.contains('active')) {
@@ -12207,6 +12649,11 @@
           // Update localStorage
           localStorage.setItem('active_workbench', 'ontology');
         }
+      }
+
+      // Load RAG configuration if user is admin and admin workbench is active
+      if (isAdmin && adminWorkbench && adminWorkbench.classList.contains('active')) {
+        loadRagConfig();
       }
     }
     function renderBasicMarkdown(src) {
@@ -12438,6 +12885,9 @@
             currentProjectThreadId = data.project_thread_id;
 
             updateDASStatus('Ready');
+
+            // Load RAG configuration for DAS
+            await loadRagConfigForDAS();
 
             // Load conversation history for this project (with delay to ensure UI is ready)
             setTimeout(async () => {
@@ -13586,6 +14036,7 @@ def hello_world():
           loadPrefixes();
           loadDomains();
           loadUsers(); // Load user management data
+          loadRagConfig(); // Load RAG configuration
           // Only load namespaces if user is authenticated
           const token = localStorage.getItem('odras_token');
           if (token) {
@@ -13851,10 +14302,18 @@ def hello_world():
 
         const question = queryInput.value.trim();
         const responseStyle = styleSelect?.value || 'comprehensive';
-        const useWorkflow = useWorkflowCheckbox?.checked || false;
+
+        // HARDCODED FOR TESTING: Always use BPMN workflow
+        const useWorkflow = true;
+
+        console.log('🔍 DAS RAG Query - HARDCODED BPMN MODE:', {
+          question: question,
+          useWorkflow: useWorkflow,
+          endpoint: '/api/knowledge/query-workflow'
+        });
 
         // Show loading state
-        statusDiv.textContent = useWorkflow ? 'Processing via workflow...' : 'Thinking...';
+        statusDiv.textContent = 'Processing via BPMN workflow...';
         responseContent.innerHTML = `
           <div style="display:flex; align-items:center; justify-content:center; padding:40px;">
             <div style="display:flex; flex-direction:column; align-items:center; gap:16px;">

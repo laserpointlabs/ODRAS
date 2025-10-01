@@ -95,16 +95,64 @@ class DAS2CoreEngine:
 
             print(f"DAS2_DEBUG: Found project thread {project_thread.project_thread_id}")
 
-            # 2. Get RAG context (knowledge + sources)
-            rag_response = await self.rag_service.query_knowledge_base(
-                question=message,
-                project_id=project_id,
-                user_id=user_id,
-                max_chunks=5,
-                similarity_threshold=0.3,
-                include_metadata=True,
-                response_style="comprehensive"
-            )
+            # 2. Get RAG context (knowledge + sources) - DYNAMIC RAG MODE
+            print(f"DAS2_DEBUG: Getting RAG configuration...")
+
+            # Get the current RAG configuration from the database
+            import httpx
+            from datetime import datetime
+
+            async with httpx.AsyncClient() as client:
+                # First get an auth token
+                auth_response = await client.post(
+                    "http://localhost:8000/api/auth/login",
+                    json={"username": "das_service", "password": "das_service_2024!"},
+                    timeout=10.0
+                )
+                auth_data = auth_response.json()
+                auth_token = auth_data.get("token")
+
+                # Get RAG configuration
+                rag_config_response = await client.get(
+                    "http://localhost:8000/api/rag-config",
+                    headers={"Authorization": f"Bearer {auth_token}"},
+                    timeout=10.0
+                )
+                rag_config = rag_config_response.json()
+                rag_implementation = rag_config.get("rag_implementation", "hardcoded")
+
+                print(f"DAS2_DEBUG: RAG implementation: {rag_implementation}")
+                print(f"🚀 DAS QUERY START: RAG Mode = {rag_implementation.upper()} | Project = {project_id} | User = {user_id}")
+
+                if rag_implementation == "bpmn":
+                    print(f"🔵 DAS RAG: Using BPMN WORKFLOW for question: '{message[:50]}{'...' if len(message) > 50 else ''}'")
+                    # Use BPMN workflow
+                    rag_response = await client.post(
+                        "http://localhost:8000/api/knowledge/query-workflow",
+                        headers={"Authorization": f"Bearer {auth_token}"},
+                        json={
+                            "question": message,
+                            "project_id": project_id,
+                            "response_style": "comprehensive"
+                        },
+                        timeout=30.0
+                    )
+                    print(f"🔵 DAS RAG: BPMN workflow completed with status: {rag_response.status_code}")
+                    rag_response = rag_response.json()
+                    print(f"🔵 DAS RAG: BPMN response - model_used: {rag_response.get('model_used', 'unknown')}, provider: {rag_response.get('provider', 'unknown')}")
+                else:
+                    print(f"🟡 DAS RAG: Using HARDCODED RAG for question: '{message[:50]}{'...' if len(message) > 50 else ''}'")
+                    # Use hardcoded RAG
+                    rag_response = await self.rag_service.query_knowledge_base(
+                        question=message,
+                        project_id=project_id,
+                        user_id=user_id,
+                        max_chunks=5,
+                        similarity_threshold=0.3,
+                        include_metadata=True,
+                        response_style="comprehensive"
+                    )
+                    print(f"🟡 DAS RAG: Hardcoded RAG completed - chunks_found: {rag_response.get('chunks_found', 0)}")
 
             print(f"DAS2_DEBUG: RAG returned {rag_response.get('chunks_found', 0)} chunks")
 

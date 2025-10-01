@@ -1078,6 +1078,196 @@ async def get_installation_config():
         raise HTTPException(status_code=500, detail=str(e))
 
 
+@app.get("/api/admin/rag-config")
+async def get_rag_config(user: Dict = Depends(get_admin_user)):
+    """Get current RAG implementation configuration (Admin only)."""
+    try:
+        conn = db._conn()
+        try:
+            with conn.cursor() as cur:
+                cur.execute("""
+                    SELECT rag_implementation, rag_bpmn_model, rag_model_version
+                    FROM installation_config
+                    WHERE is_active = TRUE
+                    LIMIT 1
+                """)
+                result = cur.fetchone()
+                if not result:
+                    raise HTTPException(status_code=404, detail="Installation configuration not found")
+
+                return {
+                    "rag_implementation": result[0],
+                    "rag_bpmn_model": result[1],
+                    "rag_model_version": result[2],
+                    "available_implementations": ["hardcoded", "bpmn"]
+                }
+        finally:
+            conn.close()
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Failed to get RAG configuration: {str(e)}")
+        raise HTTPException(status_code=500, detail=f"Failed to retrieve RAG configuration: {str(e)}")
+
+
+@app.put("/api/admin/rag-config")
+async def update_rag_config(
+    config: Dict[str, str],
+    user: Dict = Depends(get_admin_user)
+):
+    """Update RAG implementation configuration (Admin only)."""
+    try:
+        rag_implementation = config.get("rag_implementation")
+        rag_bpmn_model = config.get("rag_bpmn_model")
+        rag_model_version = config.get("rag_model_version")
+
+        if not rag_implementation or rag_implementation not in ["hardcoded", "bpmn"]:
+            raise HTTPException(
+                status_code=400,
+                detail="rag_implementation must be either 'hardcoded' or 'bpmn'"
+            )
+
+        # Validate BPMN-specific fields when BPMN is selected
+        if rag_implementation == "bpmn":
+            if not rag_bpmn_model:
+                raise HTTPException(
+                    status_code=400,
+                    detail="rag_bpmn_model is required when using BPMN implementation"
+                )
+            if not rag_model_version:
+                raise HTTPException(
+                    status_code=400,
+                    detail="rag_model_version is required when using BPMN implementation"
+                )
+
+        conn = db._conn()
+        try:
+            with conn.cursor() as cur:
+                cur.execute("""
+                    UPDATE installation_config
+                    SET rag_implementation = %s, rag_bpmn_model = %s, rag_model_version = %s, updated_at = NOW()
+                    WHERE is_active = TRUE
+                """, (rag_implementation, rag_bpmn_model, rag_model_version))
+
+                if cur.rowcount == 0:
+                    raise HTTPException(status_code=404, detail="Installation configuration not found")
+
+                conn.commit()
+                logger.info(f"RAG configuration updated to '{rag_implementation}' (model: {rag_bpmn_model}, version: {rag_model_version}) by admin {user.get('username')}")
+
+                return {
+                    "success": True,
+                    "rag_implementation": rag_implementation,
+                    "rag_bpmn_model": rag_bpmn_model,
+                    "rag_model_version": rag_model_version,
+                    "message": f"RAG configuration updated to {rag_implementation}"
+                }
+        finally:
+            conn.close()
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Failed to update RAG configuration: {str(e)}")
+        raise HTTPException(status_code=500, detail=f"Failed to update RAG configuration: {str(e)}")
+
+
+@app.get("/api/admin/bpmn-models")
+async def get_bpmn_models(user: Dict = Depends(get_admin_user)):
+    """Get available BPMN models and versions from Camunda (Admin only)."""
+    try:
+        import httpx
+
+        settings = Settings()
+        camunda_rest = f"{settings.camunda_base_url.rstrip('/')}/engine-rest"
+
+        async with httpx.AsyncClient(timeout=30) as client:
+            # Get all process definitions
+            response = await client.get(f"{camunda_rest}/process-definition")
+
+            if response.status_code != 200:
+                raise HTTPException(status_code=500, detail="Failed to fetch BPMN models from Camunda")
+
+            process_definitions = response.json()
+
+            # Group by process key and collect versions
+            models = {}
+            for pd in process_definitions:
+                key = pd.get('key', '')
+                version = pd.get('version', 1)
+                name = pd.get('name', key)
+
+                if key not in models:
+                    models[key] = {
+                        'key': key,
+                        'name': name,
+                        'versions': [],
+                        'description': f"BPMN Process: {name}"
+                    }
+
+                models[key]['versions'].append(version)
+
+            # Sort versions for each model
+            for model in models.values():
+                model['versions'] = sorted(model['versions'], reverse=True)
+
+            return {
+                "models": list(models.values()),
+                "total_models": len(models)
+            }
+
+    except httpx.TimeoutException:
+        raise HTTPException(status_code=504, detail="Camunda request timeout")
+    except httpx.ConnectError:
+        raise HTTPException(status_code=503, detail="Camunda service unavailable")
+    except Exception as e:
+        logger.error(f"Failed to fetch BPMN models: {str(e)}")
+        raise HTTPException(status_code=500, detail=f"Failed to fetch BPMN models: {str(e)}")
+
+
+@app.get("/api/rag-config")
+async def get_rag_config(current_user: dict = Depends(get_user)):
+    """Get current RAG configuration (public endpoint for DAS dock)"""
+    try:
+        # Query installation config using the global db instance
+        conn = db._conn()
+        try:
+            with conn.cursor() as cur:
+                cur.execute("""
+                    SELECT rag_implementation, rag_bpmn_model, rag_model_version
+                    FROM installation_config
+                    WHERE is_active = true
+                    LIMIT 1
+                """)
+
+                result = cur.fetchone()
+
+                if not result:
+                    return {
+                        "success": True,
+                        "rag_implementation": "hardcoded",
+                        "rag_bpmn_model": None,
+                        "rag_model_version": None
+                    }
+
+                return {
+                    "success": True,
+                    "rag_implementation": result[0] or "hardcoded",
+                    "rag_bpmn_model": result[1],
+                    "rag_model_version": result[2]
+                }
+        finally:
+            conn.close()
+
+    except Exception as e:
+        logger.error(f"Failed to get RAG config: {str(e)}")
+        return {
+            "success": True,
+            "rag_implementation": "hardcoded",
+            "rag_bpmn_model": None,
+            "rag_model_version": None
+        }
+
+
 @app.get("/api/installation/uri-diagnostics")
 async def get_uri_diagnostics(user=Depends(get_user)):
     """Diagnostic endpoint for URI generation issues."""
