@@ -57,6 +57,9 @@ CREATE TABLE IF NOT EXISTS installation_config (
     organization VARCHAR(255) NOT NULL,                -- 'U.S. Navy XMA-ADT'
     program_office VARCHAR(255),                       -- 'Naval Air Systems Command'
     authority_contact VARCHAR(255),                    -- Responsible authority
+    rag_implementation VARCHAR(20) DEFAULT 'hardcoded' NOT NULL, -- 'hardcoded' or 'bpmn'
+    rag_bpmn_model VARCHAR(100),                       -- Selected BPMN model key
+    rag_model_version VARCHAR(20),                     -- Selected model version
     is_active BOOLEAN DEFAULT TRUE,
     created_at TIMESTAMPTZ DEFAULT NOW(),
     updated_at TIMESTAMPTZ DEFAULT NOW()
@@ -571,14 +574,18 @@ INSERT INTO installation_config (
     top_level_domain,
     base_uri,
     organization,
-    program_office
+    program_office,
+    rag_implementation
 ) VALUES (
     'XMA-ADT',
     'usn',
     'mil',
     'https://xma-adt.usn.mil',
     'U.S. Navy XMA-ADT',
-    'Naval Air Systems Command'
+    'Naval Air Systems Command',
+    'hardcoded',
+    NULL,
+    NULL
 ) ON CONFLICT (base_uri) DO NOTHING;
 
 -- Insert default prefixes
