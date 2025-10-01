@@ -552,6 +552,7 @@ CREATE TRIGGER trigger_projects_updated_at
     FOR EACH ROW EXECUTE FUNCTION update_projects_updated_at();
 
 -- Trigger for domain registry updated_at
+DROP TRIGGER IF EXISTS trigger_domain_registry_updated_at ON domain_registry;
 CREATE TRIGGER trigger_domain_registry_updated_at
     BEFORE UPDATE ON domain_registry
     FOR EACH ROW EXECUTE FUNCTION update_domain_registry_updated_at();
@@ -575,7 +576,9 @@ INSERT INTO installation_config (
     base_uri,
     organization,
     program_office,
-    rag_implementation
+    rag_implementation,
+    rag_bpmn_model,
+    rag_model_version
 ) VALUES (
     'XMA-ADT',
     'usn',
