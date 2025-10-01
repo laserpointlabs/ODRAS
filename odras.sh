@@ -1078,6 +1078,27 @@ init_databases() {
     # Apply consolidated PostgreSQL schema
     if [[ -f "backend/odras_schema.sql" ]]; then
         print_status "Applying consolidated PostgreSQL schema..."
+
+        # First, handle any existing partial tables by dropping and recreating them
+        print_status "  Cleaning up any partial table states..."
+        docker exec odras_postgres psql -U postgres -d odras -c "
+        -- Drop users table if it exists but is incomplete
+        DO \$\$
+        BEGIN
+            -- Check if users table exists but is missing required columns
+            IF EXISTS (SELECT 1 FROM information_schema.tables WHERE table_name = 'users') AND
+               NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'users' AND column_name = 'password_hash') THEN
+                DROP TABLE IF EXISTS users CASCADE;
+            END IF;
+
+            -- Check if projects table exists but is missing required columns
+            IF EXISTS (SELECT 1 FROM information_schema.tables WHERE table_name = 'projects') AND
+               NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'projects' AND column_name = 'iri') THEN
+                DROP TABLE IF EXISTS projects CASCADE;
+            END IF;
+        END \$\$;
+        " >/dev/null 2>&1
+
         if cat "backend/odras_schema.sql" | docker exec -i odras_postgres psql -U postgres -d odras; then
             print_success "✓ PostgreSQL schema applied successfully"
         else
@@ -1206,6 +1227,22 @@ init_databases() {
     # Wait a moment for database to be ready after migrations
     sleep 2
 
+    # Ensure users table has all required columns (fix for partial schema application)
+    print_status "Verifying users table schema..."
+    docker exec odras_postgres psql -U postgres -d odras -c "
+    -- Add missing columns if they don't exist (idempotent)
+    ALTER TABLE public.users
+    ADD COLUMN IF NOT EXISTS password_hash VARCHAR(255),
+    ADD COLUMN IF NOT EXISTS salt VARCHAR(255),
+    ADD COLUMN IF NOT EXISTS is_admin BOOLEAN DEFAULT FALSE,
+    ADD COLUMN IF NOT EXISTS is_active BOOLEAN DEFAULT TRUE,
+    ADD COLUMN IF NOT EXISTS iri VARCHAR(1000),
+    ADD COLUMN IF NOT EXISTS updated_at TIMESTAMPTZ DEFAULT NOW();
+
+    -- Create unique constraint on iri if it doesn't exist
+    ALTER TABLE public.users ADD CONSTRAINT users_iri_key UNIQUE (iri);
+    " >/dev/null 2>&1 || print_status "  Schema verification completed (some constraints may already exist)"
+
     # First create the basic user records
     if docker exec odras_postgres psql -U postgres -d odras -c "
     INSERT INTO users (username, display_name, is_admin, is_active)
@@ -1246,7 +1283,128 @@ init_databases() {
     print_status "🌐 URL: http://localhost:8000/app"
 }
 
-# Create demo content with navigation system knowledge for Default Project
+# Complete nuclear option - destroy everything including Docker images
+nuke_everything() {
+    local confirmed=false
+
+    # Check for auto-confirmation
+    if [[ "$1" == "-y" ]]; then
+        confirmed=true
+    else
+        print_warning "⚠️  NUCLEAR OPTION: This will destroy EVERYTHING!"
+        print_warning "   • All ODRAS containers and volumes"
+        print_warning "   • All Docker images used by ODRAS (from docker-compose.yml)"
+        print_warning "   • All ODRAS-named Docker images"
+        print_warning "   • All local ODRAS data and logs"
+        print_warning "   • All cached models and storage"
+        print_warning ""
+        print_error "🚨 THIS CANNOT BE UNDONE! 🚨"
+        print_warning ""
+        read -p "Are you absolutely sure? Type 'NUKE' to confirm: " confirmation
+
+        if [[ "$confirmation" == "NUKE" ]]; then
+            confirmed=true
+        else
+            print_status "Nuclear destruction cancelled"
+            return 0
+        fi
+    fi
+
+    if [[ "$confirmed" == true ]]; then
+        print_status "🚨 INITIATING NUCLEAR DESTRUCTION 🚨"
+        print_status "This will take a few minutes..."
+
+        # Stop everything first
+        print_status "Stopping all ODRAS processes..."
+        stop_application >/dev/null 2>&1 || true
+
+        # Clean all data
+        print_status "Cleaning all databases and data..."
+        clean_all -y >/dev/null 2>&1 || true
+
+        # Stop and remove all containers
+        print_status "Destroying all Docker containers..."
+        docker-compose down --remove-orphans >/dev/null 2>&1 || true
+
+        # Remove all volumes
+        print_status "Destroying all Docker volumes..."
+        docker volume ls -q | grep -E "(odras|postgres|neo4j|qdrant|redis|minio|fuseki|ollama)" | xargs -r docker volume rm -f >/dev/null 2>&1 || true
+
+        # Remove all networks
+        print_status "Destroying Docker networks..."
+        docker network ls -q | grep odras | xargs -r docker network rm >/dev/null 2>&1 || true
+
+        # Remove all ODRAS-related images (dynamically from docker-compose.yml)
+        print_status "Destroying ODRAS Docker images..."
+
+        # Extract image names from docker-compose.yml
+        if [[ -f "docker-compose.yml" ]]; then
+            print_status "  Reading images from docker-compose.yml..."
+
+            # Extract all image names from docker-compose.yml
+            local compose_images=$(grep -E "^\s*image:\s*" docker-compose.yml | sed 's/.*image:\s*//' | sed 's/[[:space:]]*$//' | sort -u)
+
+            if [[ -n "$compose_images" ]]; then
+                while IFS= read -r image; do
+                    if [[ -n "$image" ]]; then
+                        # Check if image exists locally
+                        if docker images -q "$image" >/dev/null 2>&1; then
+                            print_status "  Removing ODRAS image: $image"
+                            docker rmi -f "$image" >/dev/null 2>&1 || true
+                        else
+                            print_status "  Image not found locally: $image"
+                        fi
+                    fi
+                done <<< "$compose_images"
+            else
+                print_warning "  No images found in docker-compose.yml"
+            fi
+        else
+            print_warning "  docker-compose.yml not found, skipping image cleanup"
+        fi
+
+        # Also remove any images with 'odras' in the name
+        local odras_named_images=$(docker images --format "{{.Repository}}:{{.Tag}}" | grep -i odras || true)
+        if [[ -n "$odras_named_images" ]]; then
+            while IFS= read -r image; do
+                if [[ -n "$image" ]]; then
+                    print_status "  Removing ODRAS-named image: $image"
+                    docker rmi -f "$image" >/dev/null 2>&1 || true
+                fi
+            done <<< "$odras_named_images"
+        fi
+
+        # Clean up local files
+        print_status "Destroying local data and logs..."
+        rm -rf /tmp/odras_*.log >/dev/null 2>&1 || true
+        rm -rf /tmp/clear_odras_storage.html >/dev/null 2>&1 || true
+        rm -rf ~/.cache/huggingface/transformers/ >/dev/null 2>&1 || true
+        rm -rf models/ >/dev/null 2>&1 || true
+
+        # Clean Docker system
+        print_status "Cleaning Docker system..."
+        docker system prune -a -f --volumes >/dev/null 2>&1 || true
+
+        print_success "💥 NUCLEAR DESTRUCTION COMPLETE! 💥"
+        print_status ""
+        print_status "🔥 Everything has been obliterated:"
+        print_status "   ✓ All containers destroyed"
+        print_status "   ✓ All volumes destroyed"
+        print_status "   ✓ All images removed"
+        print_status "   ✓ All networks cleaned"
+        print_status "   ✓ All local data purged"
+        print_status "   ✓ Docker system cleaned"
+        print_status ""
+        print_status "🌱 Ready for completely fresh installation:"
+        print_status "   1. ./odras.sh up     # Pull fresh images and start services"
+        print_status "   2. ./odras.sh init-db # Initialize fresh databases"
+        print_status "   3. ./odras.sh start   # Start the application"
+        print_status ""
+        print_warning "⚠️  You will need to re-download all Docker images (~2-3GB)"
+    else
+        print_status "Nuclear destruction cancelled"
+    fi
+}
 create_demo_content() {
     print_status "Creating demo content with navigation system knowledge for Default Project..."
 
@@ -1425,6 +1583,8 @@ show_help() {
     echo "  clean -y       Clean all database data without confirmation prompt"
     echo "  clean-all      DESTROY everything - containers, volumes, and data"
     echo "  clean-all -y   DESTROY everything without confirmation prompt"
+    echo "  nuke           🚨 NUCLEAR OPTION: Destroy EVERYTHING including ODRAS Docker images"
+    echo "  nuke -y        Nuclear destruction without confirmation (DANGEROUS!)"
     echo "  init-db        Initialize databases with schema and default project"
     echo "  create-users   Create initial users (admin/admin123!, jdehart/jdehart123!)"
     echo "  -cu            Short form of create-users"
@@ -1441,6 +1601,7 @@ show_help() {
     echo "  $0 init-db     # Initialize databases with default project"
     echo "  $0 -cu         # Create initial users after init-db"
     echo "  $0 clean-all   # DANGER: Destroy everything and start over"
+    echo "  $0 nuke        # 🚨 NUCLEAR: Destroy everything including ODRAS Docker images"
 }
 
 # Main script logic
@@ -1485,6 +1646,10 @@ main() {
         clean-all)
             shift  # Remove 'clean-all' from arguments
             clean_all "$@"  # Pass remaining arguments (like -y)
+            ;;
+        nuke)
+            shift  # Remove 'nuke' from arguments
+            nuke_everything "$@"  # Pass remaining arguments (like -y)
             ;;
         init-db)
             init_databases
