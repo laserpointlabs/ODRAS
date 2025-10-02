@@ -38,7 +38,13 @@ class IngestionWorker:
         self.settings = settings or Settings()
         self.storage = FileStorageService(self.settings)
         self.embedding_service = EmbeddingService()
-        self.persistence = PersistenceLayer(self.settings)
+        self.persistence = PersistenceLayer(self.settings)  # Keep for backward compatibility
+
+        # Add SQL-first RAG storage services
+        from .db import DatabaseService
+        from .store import RAGStoreService
+        self.db_service = DatabaseService(self.settings)
+        self.rag_store = RAGStoreService(self.settings)
 
     async def ingest_files(self, file_ids: List[str], params: Dict[str, Any]) -> Dict[str, Any]:
         """Process multiple files with chunking and embedding.
@@ -191,37 +197,111 @@ class IngestionWorker:
                     "embeddings_created": 0,
                 }
 
-            # Prepare payloads for vector store
-            payloads = []
-            tags = meta.get("tags") or {}
-            for idx, (ctext, _off) in enumerate(chunks):
-                payloads.append(
-                    {
-                        "id": f"{file_id}_{idx}",
-                        "file_id": file_id,
-                        "chunk_index": idx,
-                        "text": ctext,
-                        "doc_type": tags.get("docType"),
-                        "status": tags.get("status"),
-                        "source_filename": filename,
-                        "embedding_model": embedding.modelId,
-                        "chunk_params": chunking.__dict__,
-                        "token_count": len(ctext.split()),  # Rough estimate
-                    }
-                )
-
-            # Upsert into vector store
+            # SQL-first RAG storage: Store document and chunks in SQL, then vectors with IDs-only
+            print(f"🔍 INGESTION_DEBUG: Starting SQL-first storage for file {file_id}")
             try:
-                self.persistence.upsert_vector_records(embeddings=embeddings, payloads=payloads)
-                logger.info(f"Successfully stored {len(payloads)} vectors for file {file_id}")
+                # Get project_id from file metadata
+                project_id = meta.get("project_id")
+                print(f"🔍 INGESTION_DEBUG: Project ID from metadata: {project_id}")
+
+                if not project_id:
+                    logger.warning(f"No project_id found for file {file_id}, using file_id as project_id")
+                    project_id = file_id
+                    print(f"⚠️ INGESTION_DEBUG: Using file_id as project_id: {project_id}")
+
+                # Get file hash for document versioning
+                file_hash = meta.get("hash_sha256") or meta.get("sha256") or "unknown"
+                print(f"🔍 INGESTION_DEBUG: File hash: {file_hash}")
+
+                # Get database connection
+                print(f"🔍 INGESTION_DEBUG: Getting database connection...")
+                conn = self.db_service._conn()
+                print(f"✅ INGESTION_DEBUG: Database connection obtained")
+                try:
+                    # Step 1: Create document record in SQL
+                    from backend.db.queries import insert_doc
+                    doc_id = insert_doc(
+                        conn=conn,
+                        project_id=project_id,
+                        filename=filename,
+                        version=1,
+                        sha256=file_hash
+                    )
+                    logger.info(f"Created document record {doc_id} for file {file_id}")
+
+                    # Step 2: Prepare chunks data for bulk storage
+                    chunks_data = []
+                    for idx, (ctext, offset_info) in enumerate(chunks):
+                        chunk_data = {
+                            'text': ctext,
+                            'index': idx,
+                            'page': None,  # Could be extracted from offset_info if available
+                            'start': None,  # Could be extracted from offset_info if available
+                            'end': None     # Could be extracted from offset_info if available
+                        }
+                        chunks_data.append(chunk_data)
+
+                    # Step 3: Store chunks in SQL and vectors (dual-write) using bulk method
+                    print(f"🔍 INGESTION_DEBUG: Calling bulk_store_chunks_and_vectors...")
+                    print(f"   Project ID: {project_id}")
+                    print(f"   Doc ID: {doc_id}")
+                    print(f"   Chunks count: {len(chunks_data)}")
+
+                    chunk_ids = self.rag_store.bulk_store_chunks_and_vectors(
+                        conn=conn,
+                        project_id=project_id,
+                        doc_id=doc_id,
+                        chunks_data=chunks_data,
+                        version=1,
+                        embedding_model=embedding.modelId
+                    )
+
+                    print(f"✅ INGESTION_DEBUG: SQL-first bulk storage succeeded!")
+                    print(f"   Chunk IDs: {[cid[:8] + '...' for cid in chunk_ids]}")
+                    logger.info(f"Successfully stored {len(chunk_ids)} chunks with SQL-first approach for file {file_id}")
+
+                finally:
+                    self.db_service._return(conn)
+
             except Exception as e:
-                logger.error(f"Vector store upsert failed for file {file_id}: {e}")
-                return {
-                    "success": False,
-                    "error": f"Vector store failed: {str(e)}",
-                    "chunks_created": len(chunks),
-                    "embeddings_created": len(embeddings),
-                }
+                print(f"❌ INGESTION_DEBUG: SQL-first storage FAILED for file {file_id}: {e}")
+                logger.error(f"SQL-first storage failed for file {file_id}: {e}")
+                import traceback
+                traceback.print_exc()
+
+                # Fallback to legacy vector storage for backward compatibility
+                print(f"⚠️ INGESTION_DEBUG: Falling back to legacy vector storage for file {file_id}")
+                logger.info(f"Falling back to legacy vector storage for file {file_id}")
+                try:
+                    payloads = []
+                    tags = meta.get("tags") or {}
+                    for idx, (ctext, _off) in enumerate(chunks):
+                        payloads.append(
+                            {
+                                "id": f"{file_id}_{idx}",
+                                "file_id": file_id,
+                                "chunk_index": idx,
+                                "text": ctext,
+                                "doc_type": tags.get("docType"),
+                                "status": tags.get("status"),
+                                "source_filename": filename,
+                                "embedding_model": embedding.modelId,
+                                "chunk_params": chunking.__dict__,
+                                "token_count": len(ctext.split()),
+                            }
+                        )
+
+                    self.persistence.upsert_vector_records(embeddings=embeddings, payloads=payloads)
+                    logger.info(f"Fallback: Successfully stored {len(payloads)} vectors for file {file_id}")
+
+                except Exception as fallback_error:
+                    logger.error(f"Both SQL-first and fallback storage failed for file {file_id}: {fallback_error}")
+                    return {
+                        "success": False,
+                        "error": f"Storage failed: SQL-first error: {str(e)}, Fallback error: {str(fallback_error)}",
+                        "chunks_created": len(chunks),
+                        "embeddings_created": len(embeddings),
+                    }
 
             return {
                 "success": True,
@@ -318,4 +398,3 @@ class IngestionWorker:
             if start == 0 and end == n:
                 break
         return chunks
-

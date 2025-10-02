@@ -30,6 +30,11 @@ class RAGService:
         self.llm_team = LLMTeam(settings)
         self.db_service = DatabaseService(settings)
 
+        # Feature flags for SQL-first RAG
+        self.sql_read_through = getattr(settings, 'rag_sql_read_through', 'true').lower() == 'true'
+        if self.sql_read_through:
+            logger.info("RAG service initialized with SQL read-through enabled")
+
     async def query_knowledge_base(
         self,
         question: str,
@@ -122,6 +127,7 @@ class RAGService:
     ) -> List[Dict[str, Any]]:
         """
         Retrieve relevant knowledge chunks using vector similarity search.
+        With SQL read-through enabled, fetches actual text content from SQL.
         """
         try:
             # Perform vector search in the knowledge_chunks collection
@@ -138,14 +144,181 @@ class RAGService:
                 if await self._has_chunk_access(chunk, project_id, user_id):
                     accessible_chunks.append(chunk)
 
+            # PREFER SQL-first chunks over legacy chunks
+            print(f"🔍 RAG_FILTER_DEBUG: Found {len(accessible_chunks)} accessible chunks")
+            sql_first_chunks = []
+            legacy_chunks = []
+
+            for chunk in accessible_chunks:
+                payload = chunk.get('payload', {})
+                has_chunk_id = 'chunk_id' in payload
+                has_content = 'content' in payload
+
+                if has_chunk_id and not has_content:
+                    sql_first_chunks.append(chunk)
+                    print(f"✅ RAG_FILTER_DEBUG: SQL-first chunk found - {payload['chunk_id'][:8]}...")
+                else:
+                    legacy_chunks.append(chunk)
+                    print(f"❌ RAG_FILTER_DEBUG: Legacy chunk found - score {chunk.get('score', 0):.3f}")
+
+            # Use SQL-first chunks if available, otherwise fall back to legacy
+            if sql_first_chunks:
+                print(f"🎯 RAG_FILTER_DEBUG: Using {len(sql_first_chunks)} SQL-first chunks")
+                filtered_chunks = sql_first_chunks[:max_chunks]
+            else:
+                print(f"⚠️ RAG_FILTER_DEBUG: No SQL-first chunks, using {len(legacy_chunks)} legacy chunks")
+                filtered_chunks = legacy_chunks[:max_chunks]
+
             # Deduplicate sources - keep only the best chunk per asset/document
-            deduplicated_chunks = self._deduplicate_sources(accessible_chunks, max_chunks)
+            deduplicated_chunks = self._deduplicate_sources(filtered_chunks, max_chunks)
+
+            # SQL read-through: fetch actual text content from SQL if enabled
+            if self.sql_read_through:
+                deduplicated_chunks = await self._enrich_chunks_with_sql_content(deduplicated_chunks)
 
             return deduplicated_chunks
 
         except Exception as e:
             logger.error(f"Failed to retrieve relevant chunks: {str(e)}")
             return []
+
+    async def _enrich_chunks_with_sql_content(self, chunks: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
+        """
+        Enrich vector search results with actual text content from SQL.
+
+        Args:
+            chunks: List of chunks from vector search with payloads
+
+        Returns:
+            List of chunks with SQL text content added to payload
+        """
+        try:
+            # Extract chunk IDs from vector payloads
+            chunk_ids = []
+            chunk_id_to_vector_chunk = {}
+
+            for chunk in chunks:
+                payload = chunk.get("payload", {})
+                chunk_id = payload.get("chunk_id")
+
+                if chunk_id:
+                    chunk_ids.append(chunk_id)
+                    chunk_id_to_vector_chunk[chunk_id] = chunk
+                else:
+                    logger.warning(f"No chunk_id found in payload: {payload}")
+
+            if not chunk_ids:
+                logger.warning("No chunk_ids found in vector search results for SQL read-through")
+                return chunks  # Return original chunks if no IDs
+
+            logger.debug(f"Fetching {len(chunk_ids)} chunks from SQL for read-through")
+
+            # Fetch actual text content from SQL
+            conn = self.db_service._conn()
+            try:
+                from backend.db.queries import get_chunks_by_ids
+                sql_chunks = get_chunks_by_ids(conn, chunk_ids)
+                logger.debug(f"Retrieved {len(sql_chunks)} chunks from SQL")
+
+                # Create mapping of chunk_id to SQL text
+                chunk_id_to_sql_text = {
+                    chunk['chunk_id']: chunk['text']
+                    for chunk in sql_chunks
+                }
+
+                # Enrich vector chunks with SQL text
+                enriched_chunks = []
+                for chunk_id in chunk_ids:  # Preserve order from vector search
+                    if chunk_id in chunk_id_to_vector_chunk and chunk_id in chunk_id_to_sql_text:
+                        vector_chunk = chunk_id_to_vector_chunk[chunk_id]
+                        sql_text = chunk_id_to_sql_text[chunk_id]
+
+                        # Clone the chunk and add SQL text to payload
+                        enriched_chunk = {
+                            "score": vector_chunk.get("score", 0),
+                            "payload": {
+                                **vector_chunk.get("payload", {}),
+                                "content": sql_text,  # SQL text as authoritative content
+                                "sql_read_through": True  # Flag to indicate source
+                            }
+                        }
+                        enriched_chunks.append(enriched_chunk)
+                    else:
+                        logger.warning(f"No SQL text found for chunk_id: {chunk_id}")
+                        # Keep original chunk as fallback
+                        enriched_chunks.append(chunk_id_to_vector_chunk.get(chunk_id, {}))
+
+                logger.info(f"Successfully enriched {len(enriched_chunks)} chunks with SQL content")
+                return enriched_chunks
+
+            finally:
+                self.db_service._return(conn)
+
+        except Exception as e:
+            logger.error(f"Failed to enrich chunks with SQL content: {e}")
+            logger.warning("Falling back to vector payload content")
+            return chunks  # Return original chunks on error
+
+    async def store_conversation_messages(
+        self,
+        project_id: str,
+        session_id: str,
+        user_message: str,
+        assistant_message: str
+    ) -> Tuple[str, str]:
+        """
+        Store conversation messages using SQL-first approach.
+
+        Args:
+            project_id: Project identifier
+            session_id: Session identifier
+            user_message: User's question/message
+            assistant_message: Assistant's response
+
+        Returns:
+            Tuple of (user_message_id, assistant_message_id)
+        """
+        try:
+            # Check if dual-write is enabled
+            dual_write = getattr(self.settings, 'rag_dual_write', 'true').lower() == 'true'
+
+            if dual_write:
+                # Use SQL-first storage service
+                from .store import create_rag_store_service
+                rag_store = create_rag_store_service(self.settings)
+
+                conn = self.db_service._conn()
+                try:
+                    # Store user message
+                    user_msg_id = rag_store.store_message_and_vector(
+                        conn=conn,
+                        project_id=project_id,
+                        session_id=session_id,
+                        role="user",
+                        content=user_message
+                    )
+
+                    # Store assistant message
+                    assistant_msg_id = rag_store.store_message_and_vector(
+                        conn=conn,
+                        project_id=project_id,
+                        session_id=session_id,
+                        role="assistant",
+                        content=assistant_message
+                    )
+
+                    logger.debug(f"Stored conversation messages: user={user_msg_id}, assistant={assistant_msg_id}")
+                    return user_msg_id, assistant_msg_id
+
+                finally:
+                    self.db_service._return(conn)
+            else:
+                logger.debug("Dual-write disabled, skipping conversation message storage")
+                return "disabled", "disabled"
+
+        except Exception as e:
+            logger.error(f"Failed to store conversation messages: {e}")
+            return "error", "error"
 
     def _deduplicate_sources(self, chunks: List[Dict[str, Any]], max_chunks: int) -> List[Dict[str, Any]]:
         """

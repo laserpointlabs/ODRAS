@@ -113,28 +113,41 @@ async def _create_thread_with_das2(project_id: str, user_id: str, username: str,
         if not das2_engine or not das2_engine.project_manager:
             return {"success": False, "error": "DAS2 not available"}
 
-        # Check if thread already exists
-        existing_thread = await das2_engine.project_manager.get_project_thread_by_project_id(project_id)
-        if existing_thread:
-            logger.info(f"Project thread already exists for project {project_id}")
-            return {
-                "success": True,
-                "project_thread_id": existing_thread.project_thread_id,
-                "project_id": project_id,
-                "message": f"Project thread already exists for '{project_name}'"
-            }
+        # Check if thread already exists (SQL-first format)
+        existing_context = await das2_engine.project_manager.get_project_thread_by_project_id(project_id)
+        if existing_context and "error" not in existing_context:
+            # Extract thread ID from SQL-first format
+            if "project_thread" in existing_context:
+                existing_thread_id = existing_context["project_thread"]["project_thread_id"]
+            else:
+                existing_thread_id = existing_context.get("project_thread_id")
 
-        # Create new project thread
+            if existing_thread_id:
+                logger.info(f"Project thread already exists for project {project_id}")
+                return {
+                    "success": True,
+                    "project_thread_id": existing_thread_id,
+                    "project_id": project_id,
+                    "message": f"Project thread already exists for '{project_name}'"
+                }
+
+        # Create new project thread (SQL-first format)
         thread_context = await das2_engine.project_manager.create_project_thread(
             project_id=project_id,
             user_id=user_id
         )
 
-        logger.info(f"Created DAS2 project thread {thread_context.project_thread_id} for project {project_id}")
+        # SQL-first manager returns dict, not object
+        if isinstance(thread_context, dict):
+            project_thread_id = thread_context.get('project_thread_id')
+        else:
+            project_thread_id = getattr(thread_context, 'project_thread_id', None)
+
+        logger.info(f"Created DAS2 project thread {project_thread_id} for project {project_id}")
 
         return {
             "success": True,
-            "project_thread_id": thread_context.project_thread_id,
+            "project_thread_id": project_thread_id,
             "project_id": project_id,
             "message": f"DAS functionality enabled for '{project_name}' (DAS2)"
         }

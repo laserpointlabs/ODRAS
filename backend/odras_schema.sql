@@ -60,6 +60,7 @@ CREATE TABLE IF NOT EXISTS installation_config (
     rag_implementation VARCHAR(20) DEFAULT 'hardcoded' NOT NULL, -- 'hardcoded' or 'bpmn'
     rag_bpmn_model VARCHAR(100),                       -- Selected BPMN model key
     rag_model_version VARCHAR(20),                     -- Selected model version
+    file_processing_implementation VARCHAR(20) DEFAULT 'hardcoded' NOT NULL, -- 'hardcoded' or 'bpmn'
     is_active BOOLEAN DEFAULT TRUE,
     created_at TIMESTAMPTZ DEFAULT NOW(),
     updated_at TIMESTAMPTZ DEFAULT NOW()
@@ -678,6 +679,109 @@ COMMENT ON COLUMN knowledge_chunks.token_count IS 'Number of tokens in the chunk
 COMMENT ON COLUMN knowledge_relationships.neo4j_relationship_id IS 'Reference to relationship ID in Neo4j graph';
 COMMENT ON COLUMN knowledge_relationships.confidence_score IS 'AI confidence score for relationship extraction (0.0-1.0)';
 
+-- =====================================
+-- RAG SQL-FIRST TABLES
+-- =====================================
+
+-- RAG document metadata table
+CREATE TABLE IF NOT EXISTS doc (
+    doc_id TEXT PRIMARY KEY,
+    project_id TEXT NOT NULL,
+    filename TEXT NOT NULL,
+    version INTEGER NOT NULL DEFAULT 1,
+    sha256 TEXT NOT NULL,
+    created_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+-- RAG document chunks with full text content (source of truth)
+CREATE TABLE IF NOT EXISTS doc_chunk (
+    chunk_id TEXT PRIMARY KEY,
+    doc_id TEXT NOT NULL REFERENCES doc(doc_id) ON DELETE CASCADE,
+    chunk_index INTEGER NOT NULL,
+    text TEXT NOT NULL,
+    page INTEGER,
+    start_char INTEGER,
+    end_char INTEGER,
+    created_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+-- RAG chat message history
+CREATE TABLE IF NOT EXISTS chat_message (
+    message_id TEXT PRIMARY KEY,
+    session_id TEXT NOT NULL,
+    project_id TEXT NOT NULL,
+    role TEXT NOT NULL CHECK (role IN ('user','assistant')),
+    content TEXT NOT NULL,
+    created_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+-- Project thread metadata (SQL-first)
+CREATE TABLE IF NOT EXISTS project_thread (
+    project_thread_id TEXT PRIMARY KEY,
+    project_id TEXT NOT NULL,
+    created_by TEXT NOT NULL,
+    created_at TIMESTAMPTZ DEFAULT NOW(),
+    last_activity TIMESTAMPTZ DEFAULT NOW(),
+    status TEXT DEFAULT 'active' CHECK (status IN ('active', 'archived', 'completed')),
+    goals TEXT,
+    current_workbench TEXT
+);
+
+-- Individual project events (SQL-first)
+CREATE TABLE IF NOT EXISTS project_event (
+    event_id TEXT PRIMARY KEY,
+    project_thread_id TEXT NOT NULL REFERENCES project_thread(project_thread_id) ON DELETE CASCADE,
+    project_id TEXT NOT NULL,
+    user_id TEXT NOT NULL,
+    event_type TEXT NOT NULL,
+    event_data JSONB NOT NULL DEFAULT '{}',
+    context_snapshot JSONB DEFAULT '{}',
+    semantic_summary TEXT,
+    created_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+-- Thread conversation messages
+CREATE TABLE IF NOT EXISTS thread_conversation (
+    conversation_id TEXT PRIMARY KEY,
+    project_thread_id TEXT NOT NULL REFERENCES project_thread(project_thread_id) ON DELETE CASCADE,
+    role TEXT NOT NULL CHECK (role IN ('user', 'assistant', 'system')),
+    content TEXT NOT NULL,
+    metadata JSONB DEFAULT '{}',
+    created_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+-- RAG SQL-first indexes for performance
+CREATE INDEX IF NOT EXISTS idx_doc_chunk_doc ON doc_chunk(doc_id, chunk_index);
+CREATE INDEX IF NOT EXISTS idx_doc_chunk_doc_id ON doc_chunk(doc_id);
+CREATE INDEX IF NOT EXISTS idx_chat_message_session ON chat_message(session_id);
+CREATE INDEX IF NOT EXISTS idx_chat_message_project ON chat_message(project_id);
+CREATE INDEX IF NOT EXISTS idx_chat_message_created ON chat_message(created_at);
+
+CREATE INDEX IF NOT EXISTS idx_project_thread_project ON project_thread(project_id);
+CREATE INDEX IF NOT EXISTS idx_project_thread_created_by ON project_thread(created_by);
+CREATE INDEX IF NOT EXISTS idx_project_thread_status ON project_thread(status);
+
+CREATE INDEX IF NOT EXISTS idx_project_event_thread ON project_event(project_thread_id);
+CREATE INDEX IF NOT EXISTS idx_project_event_project ON project_event(project_id);
+CREATE INDEX IF NOT EXISTS idx_project_event_type ON project_event(event_type);
+CREATE INDEX IF NOT EXISTS idx_project_event_created ON project_event(created_at);
+
+CREATE INDEX IF NOT EXISTS idx_thread_conversation_thread ON thread_conversation(project_thread_id);
+CREATE INDEX IF NOT EXISTS idx_thread_conversation_role ON thread_conversation(role);
+CREATE INDEX IF NOT EXISTS idx_thread_conversation_created ON thread_conversation(created_at);
+
 -- Function comments
 COMMENT ON FUNCTION resolve_iri IS 'Resolves an IRI to its resource type and metadata';
 COMMENT ON TRIGGER trigger_mark_orphaned_asset ON knowledge_assets IS 'Automatically marks assets as orphaned when source file is deleted';
+
+-- RAG table comments
+COMMENT ON TABLE doc IS 'RAG document metadata for SQL-first storage';
+COMMENT ON TABLE doc_chunk IS 'RAG document chunks with full text content as source of truth';
+COMMENT ON TABLE chat_message IS 'RAG chat conversation history';
+COMMENT ON TABLE project_thread IS 'SQL-first project thread metadata - no full text content';
+COMMENT ON TABLE project_event IS 'Individual project events as source of truth for event content';
+COMMENT ON TABLE thread_conversation IS 'Conversation messages separate from project events';
+COMMENT ON COLUMN doc_chunk.text IS 'Full text content - source of truth for RAG chunks';
+COMMENT ON COLUMN chat_message.role IS 'Message role: user or assistant';
+COMMENT ON COLUMN project_event.event_data IS 'Full event data stored in SQL, not vectors';
+COMMENT ON COLUMN project_event.semantic_summary IS 'Optional semantic summary for embedding';

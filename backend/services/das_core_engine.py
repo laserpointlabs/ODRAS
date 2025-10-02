@@ -101,19 +101,32 @@ class DASCoreEngine:
     - Contextual suggestions and assistance
     """
 
-    def __init__(self, settings: Settings, rag_service: RAGService, db_service: DatabaseService, redis_client=None, qdrant_service=None):
+    def __init__(self, settings: Settings, rag_service: RAGService, db_service: DatabaseService, redis_client=None, project_manager=None):
         self.settings = settings
         self.rag_service = rag_service
         self.db_service = db_service
         self.redis = redis_client
-        self.qdrant = qdrant_service
 
-        # Initialize project intelligence services
-        if not qdrant_service:
-            raise RuntimeError("Qdrant service required for project intelligence - vector store is primary storage")
+        # Use provided project manager (should be SqlFirstThreadManager)
+        if project_manager:
+            self.project_manager = project_manager
+            logger.info("DAS Core Engine using provided SQL-first project manager")
+        else:
+            # Fallback: create SQL-first manager
+            qdrant_service = rag_service.qdrant_service if hasattr(rag_service, 'qdrant_service') else None
+            if not qdrant_service:
+                raise RuntimeError("Qdrant service required for project intelligence")
 
-        self.project_manager = ProjectThreadManager(settings, redis_client, qdrant_service)
-        self.project_intelligence = ProjectIntelligenceService(settings, redis_client, qdrant_service, rag_service)
+            from .sql_first_thread_manager import SqlFirstThreadManager
+            self.project_manager = SqlFirstThreadManager(settings, qdrant_service)
+            logger.info("DAS Core Engine created SQL-first project manager")
+        # Initialize project intelligence with qdrant service from rag_service
+        qdrant_service = rag_service.qdrant_service if hasattr(rag_service, 'qdrant_service') else None
+        if qdrant_service:
+            self.project_intelligence = ProjectIntelligenceService(settings, redis_client, qdrant_service, rag_service)
+        else:
+            logger.warning("No Qdrant service available for project intelligence")
+            self.project_intelligence = None
 
         logger.info(f"Project intelligence initialized - Redis: {'Available' if redis_client else 'Not available (cache disabled)'}")
 

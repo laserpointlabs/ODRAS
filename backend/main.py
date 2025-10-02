@@ -687,47 +687,65 @@ async def on_startup():
         Settings()  # loads env
         print("✅ Settings loaded")
 
-        print("🔥 Step 2: Starting DAS initialization...")
+        print("🔥 Step 2: Verifying RAG SQL-first tables...")
+        logger.info("🔧 Verifying RAG SQL-first tables...")
+        from backend.db.init import ensure_rag_schema_from_settings
+        try:
+            if ensure_rag_schema_from_settings(settings):
+                print("✅ RAG SQL-first tables verified/created")
+            else:
+                print("ℹ️  RAG SQL-first tables already exist (from schema)")
+        except Exception as e:
+            logger.debug(f"RAG table verification note: {e}")
+            print("ℹ️  RAG SQL-first tables already exist (from main schema)")
+
+        print("🔥 Step 3: Starting DAS initialization...")
         logger.info("🚀 Starting DAS initialization...")
 
-        print("🔥 Step 3: Importing services...")
+        print("🔥 Step 4: Importing services...")
         from backend.api.das import initialize_das_engine
         from backend.services.rag_service import RAGService
         import redis.asyncio as redis
         print("✅ Services imported")
 
-        print("🔥 Step 4: Creating service instances...")
+        print("🔥 Step 5: Creating service instances...")
         logger.info("📦 Creating service instances...")
         settings = Settings()
         print("✅ Settings instance created")
 
-        print("🔥 Step 5: Creating RAG service...")
+        print("🔥 Step 6: Creating RAG service...")
         rag_service = RAGService(settings)
         print("✅ RAG service created")
 
-        print("🔥 Step 6: Connecting to Redis...")
+        print("🔥 Step 7: Connecting to Redis...")
         logger.info("🔗 Connecting to Redis...")
         redis_client = redis.from_url(settings.redis_url if hasattr(settings, 'redis_url') else "redis://localhost:6379")
         print("✅ Redis client created")
 
-        print("🔥 Step 7: Initializing DAS...")
+        print("🔥 Step 8: Initializing DAS...")
         logger.info("🤖 Initializing DAS...")
         await initialize_das_engine(settings, rag_service, db, redis_client)
-        print("✅ DAS initialized")
+        print("✅ DAS (Core) initialized")
 
-        print("🔥 Step 8: Configuring middleware...")
+        print("🔥 Step 8b: Initializing DAS2...")
+        logger.info("🤖 Initializing DAS2...")
+        from backend.api.das2 import initialize_das2_engine
+        await initialize_das2_engine()
+        print("✅ DAS2 initialized")
+
+        print("🔥 Step 9: Configuring middleware...")
         logger.info("🔧 Configuring middleware...")
         from backend.middleware.session_capture import set_global_redis_client
         set_global_redis_client(redis_client)
         print("✅ Middleware configured with Redis client")
 
-        print("🔥 Step 9: Initializing semantic capture...")
+        print("🔥 Step 10: Initializing semantic capture...")
         logger.info("📊 Initializing semantic capture...")
         from backend.services.semantic_event_capture import initialize_semantic_capture
         await initialize_semantic_capture(redis_client)
         print("✅ Semantic capture initialized")
 
-        print("🔥 Step 10: Setting up middleware-to-DAS event routing...")
+        print("🔥 Step 11: Setting up middleware-to-DAS event routing...")
         logger.info("🔗 Configuring middleware to route events to existing ProjectThreadManager...")
         try:
             # Configure middleware to route events directly to DAS
@@ -1108,6 +1126,88 @@ async def get_rag_config(user: Dict = Depends(get_admin_user)):
     except Exception as e:
         logger.error(f"Failed to get RAG configuration: {str(e)}")
         raise HTTPException(status_code=500, detail=f"Failed to retrieve RAG configuration: {str(e)}")
+
+
+@app.get("/api/admin/file-processing-config")
+async def get_file_processing_config(user: Dict = Depends(get_admin_user)):
+    """Get current file processing configuration (Admin only)."""
+    try:
+        conn = db._conn()
+        try:
+            with conn.cursor() as cur:
+                cur.execute("""
+                    SELECT file_processing_implementation
+                    FROM installation_config
+                    WHERE is_active = true
+                    LIMIT 1
+                """)
+
+                result = cur.fetchone()
+
+                if not result:
+                    return {
+                        "success": True,
+                        "file_processing_implementation": "bpmn"
+                    }
+
+                return {
+                    "success": True,
+                    "file_processing_implementation": result[0] or "bpmn",
+                    "available_implementations": ["hardcoded", "bpmn"]
+                }
+        finally:
+            conn.close()
+
+    except Exception as e:
+        logger.error(f"Failed to retrieve file processing configuration: {str(e)}")
+        raise HTTPException(status_code=500, detail=f"Failed to retrieve file processing configuration: {str(e)}")
+
+
+@app.put("/api/admin/file-processing-config")
+async def update_file_processing_config(
+    config: Dict[str, str],
+    user: Dict = Depends(get_admin_user)
+):
+    """Update file processing configuration (Admin only)."""
+    try:
+        file_processing_implementation = config.get("file_processing_implementation")
+
+        if not file_processing_implementation or file_processing_implementation not in ["hardcoded", "bpmn"]:
+            raise HTTPException(
+                status_code=400,
+                detail="file_processing_implementation must be either 'hardcoded' or 'bpmn'"
+            )
+
+        conn = db._conn()
+        try:
+            with conn.cursor() as cur:
+                cur.execute("""
+                    UPDATE installation_config
+                    SET file_processing_implementation = %s,
+                        updated_at = NOW()
+                    WHERE is_active = true
+                """, (file_processing_implementation,))
+
+                if cur.rowcount == 0:
+                    raise HTTPException(status_code=404, detail="No active installation config found")
+
+            conn.commit()
+            logger.info(f"Updated file processing configuration to: {file_processing_implementation}")
+
+            return {
+                "success": True,
+                "file_processing_implementation": file_processing_implementation,
+                "message": f"File processing configuration updated to {file_processing_implementation}"
+            }
+
+        finally:
+            conn.close()
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Failed to update file processing configuration: {str(e)}")
+        raise HTTPException(status_code=500, detail=f"Failed to update file processing configuration: {str(e)}")
 
 
 @app.put("/api/admin/rag-config")

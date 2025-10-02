@@ -86,13 +86,35 @@ async def list_project_threads(
         if not project_manager:
             raise HTTPException(status_code=503, detail="Project manager not available")
 
-        # For now, we'll need to implement a method to list threads
-        # This is a simplified version - in production you'd want pagination
-        threads = []
+        # Use SQL-first thread manager to list threads
+        project_manager = engine.project_manager
 
-        # This is a placeholder - we'd need to implement list_threads in ProjectThreadManager
-        # For now, return empty list with proper structure
-        return threads
+        # Check if we're using SQL-first manager
+        if hasattr(project_manager, 'list_threads'):
+            threads_data = await project_manager.list_threads(project_id=project_id)
+
+            # Convert to ThreadOverview format
+            threads = []
+            for thread_data in threads_data:
+                thread_overview = ThreadOverview(
+                    project_thread_id=thread_data["project_thread_id"],
+                    project_id=thread_data["project_id"],
+                    created_by=thread_data["created_by"],
+                    created_at=thread_data["created_at"],
+                    last_activity=thread_data["last_activity"],
+                    status=thread_data.get("status", "active"),
+                    current_workbench=thread_data.get("current_workbench", "unknown"),
+                    conversation_count=thread_data.get("conversation_count", 0),
+                    project_events_count=thread_data.get("project_events_count", 0)
+                )
+                threads.append(thread_overview)
+
+            logger.info(f"Listed {len(threads)} threads for project {project_id}")
+            return threads
+        else:
+            # Legacy fallback
+            logger.warning("Using legacy thread manager - limited functionality")
+            return []
 
     except HTTPException:
         raise
@@ -115,7 +137,7 @@ async def get_project_thread_details(
         if not user_id:
             raise HTTPException(status_code=401, detail="User not authenticated")
 
-        # Get project thread
+        # Get project thread (SQL-first format)
         project_thread = await engine.project_manager.get_project_thread(project_thread_id)
         if not project_thread:
             raise HTTPException(status_code=404, detail="Project thread not found")
@@ -124,28 +146,18 @@ async def get_project_thread_details(
         project_details = None
         if engine.db_service:
             try:
-                project_details = engine.db_service.get_project_comprehensive(project_thread.project_id)
+                project_details = engine.db_service.get_project_comprehensive(project_thread["project_id"])
             except Exception as e:
                 logger.warning(f"Could not get project details: {e}")
 
-        return {
-            "project_thread_id": project_thread.project_thread_id,
-            "project_id": project_thread.project_id,
-            "project_details": project_details,
-            "created_at": project_thread.created_at.isoformat(),
-            "last_activity": project_thread.last_activity.isoformat(),
-            "current_workbench": project_thread.current_workbench,
-            "conversation_history": project_thread.conversation_history,
-            "project_events": project_thread.project_events,
-            "active_ontologies": project_thread.active_ontologies,
-            "project_goals": project_thread.project_goals,
-            "recent_documents": project_thread.recent_documents,
-            "key_decisions": project_thread.key_decisions,
-            "learned_patterns": project_thread.learned_patterns,
-            "contextual_references": project_thread.contextual_references,
-            "similar_projects": project_thread.similar_projects,
-            "applied_patterns": project_thread.applied_patterns
+        # Return data in expected format (SQL-first manager already formats correctly)
+        result = {
+            **project_thread,  # Spread the SQL-first formatted data
+            "project_details": project_details
         }
+
+        logger.info(f"Retrieved thread details for {project_thread_id} - SQL-first: {result.get('sql_first', False)}")
+        return result
 
     except HTTPException:
         raise
@@ -169,22 +181,26 @@ async def get_conversation_entry(
         if not user_id:
             raise HTTPException(status_code=401, detail="User not authenticated")
 
-        # Get project thread
+        # Get project thread (SQL-first format)
         project_thread = await engine.project_manager.get_project_thread(project_thread_id)
         if not project_thread:
             raise HTTPException(status_code=404, detail="Project thread not found")
 
+        # Get conversation history (SQL-first format)
+        conversation_history = project_thread.get("conversation_history", [])
+
         # Check entry index
-        if entry_index < 0 or entry_index >= len(project_thread.conversation_history):
+        if entry_index < 0 or entry_index >= len(conversation_history):
             raise HTTPException(status_code=404, detail="Conversation entry not found")
 
-        entry = project_thread.conversation_history[entry_index]
+        entry = conversation_history[entry_index]
 
         return {
             "entry_index": entry_index,
             "entry": entry,
-            "total_entries": len(project_thread.conversation_history),
-            "project_thread_id": project_thread_id
+            "total_entries": len(conversation_history),
+            "project_thread_id": project_thread_id,
+            "sql_first": project_thread.get("sql_first", False)
         }
 
     except HTTPException:

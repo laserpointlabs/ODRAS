@@ -21,6 +21,10 @@ class Settings(BaseSettings):
 
     collection_name: str = "odras_requirements"
 
+    # RAG SQL-first Configuration
+    rag_dual_write: str = "true"  # Enable dual-write (SQL + vectors)
+    rag_sql_read_through: str = "true"  # Enable SQL read-through for chunk content
+
     # File Storage Configuration
     storage_backend: str = "minio"  # local | minio | postgresql
 
