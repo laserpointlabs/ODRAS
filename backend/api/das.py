@@ -1155,7 +1155,11 @@ async def initialize_das_engine(settings: Settings, rag_service: RAGService, db_
         # Get qdrant service from rag_service for project intelligence
         qdrant_service = rag_service.qdrant_service if hasattr(rag_service, 'qdrant_service') else None
 
-        das_engine = DASCoreEngine(settings, rag_service, db_service, redis_client, qdrant_service)
+        # Initialize with SQL-first thread manager
+        from ..services.sql_first_thread_manager import SqlFirstThreadManager
+        sql_first_project_manager = SqlFirstThreadManager(settings, qdrant_service)
+
+        das_engine = DASCoreEngine(settings, rag_service, db_service, redis_client, project_manager=sql_first_project_manager)
         session_manager = SessionManager(settings, redis_client)
         logger.info("DAS engine and session manager initialized with project intelligence")
     except Exception as e:

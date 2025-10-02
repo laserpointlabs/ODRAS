@@ -59,11 +59,18 @@ class DAS2CoreEngine:
     NO intelligence layers, NO complex logic, NO bullshit.
     """
 
-    def __init__(self, settings: Settings, rag_service: RAGService, project_manager: ProjectThreadManager, db_service=None):
+    def __init__(self, settings: Settings, rag_service: RAGService, project_manager, db_service=None):
         self.settings = settings
         self.rag_service = rag_service
-        self.project_manager = project_manager
+        self.project_manager = project_manager  # Now SqlFirstThreadManager
         self.db_service = db_service
+
+        # Check if we're using SQL-first thread manager
+        self.sql_first_threads = hasattr(project_manager, 'get_project_context')
+        if self.sql_first_threads:
+            logger.info("DAS2 initialized with SQL-first thread manager")
+        else:
+            logger.warning("DAS2 using legacy thread manager - consider upgrading")
 
         logger.info("DAS2 Core Engine initialized - SIMPLE APPROACH")
 
@@ -81,19 +88,39 @@ class DAS2CoreEngine:
         try:
             print(f"DAS2_DEBUG: Starting process_message for project {project_id}")
 
-            # 1. Get project thread context
-            if project_thread_id:
-                project_thread = await self.project_manager.get_project_thread(project_thread_id)
+            # 1. Get project thread context using SQL-first approach
+            if self.sql_first_threads:
+                # Use SQL-first thread manager
+                project_context = await self.project_manager.get_project_context(project_id)
+                if "error" in project_context:
+                    return DAS2Response(
+                        message="DAS2 is not available for this project. Project threads are created when projects are created.",
+                        metadata={"error": "no_project_thread", "project_id": project_id}
+                    )
+
+                project_thread = project_context["project_thread"]
+                conversation_history = project_context["conversation_history"]
+                recent_events = project_context["recent_events"]
+
+                print(f"DAS2_DEBUG: Found SQL-first project thread {project_thread['project_thread_id']}")
+                print(f"DAS2_DEBUG: Loaded {len(conversation_history)} conversations, {len(recent_events)} events from SQL")
             else:
-                project_thread = await self.project_manager.get_project_thread_by_project_id(project_id)
+                # Legacy fallback (vector-based)
+                if project_thread_id:
+                    project_thread = await self.project_manager.get_project_thread(project_thread_id)
+                else:
+                    project_thread = await self.project_manager.get_project_thread_by_project_id(project_id)
 
-            if not project_thread:
-                return DAS2Response(
-                    message="DAS2 is not available for this project. Project threads are created when projects are created.",
-                    metadata={"error": "no_project_thread", "project_id": project_id}
-                )
+                if not project_thread:
+                    return DAS2Response(
+                        message="DAS2 is not available for this project. Project threads are created when projects are created.",
+                        metadata={"error": "no_project_thread", "project_id": project_id}
+                    )
 
-            print(f"DAS2_DEBUG: Found project thread {project_thread.project_thread_id}")
+                conversation_history = getattr(project_thread, 'conversation_history', [])
+                recent_events = getattr(project_thread, 'project_events', [])
+
+                print(f"DAS2_DEBUG: Found legacy project thread {project_thread.project_thread_id}")
 
             # 2. Get RAG context (knowledge + sources) - DYNAMIC RAG MODE
             print(f"DAS2_DEBUG: Getting RAG configuration...")
@@ -159,16 +186,17 @@ class DAS2CoreEngine:
             # 3. Build COMPLETE context for LLM
             context_sections = []
 
-            # Conversation history
-            if project_thread.conversation_history:
+            # Conversation history (from SQL, not vectors)
+            if conversation_history:
                 context_sections.append("CONVERSATION HISTORY:")
-                for conv in project_thread.conversation_history[-10:]:  # Last 10
-                    user_msg = conv.get("user_message", "")
-                    das_resp = conv.get("das_response", "")
-                    if user_msg:
-                        context_sections.append(f"User: {user_msg}")
-                    if das_resp:
-                        context_sections.append(f"DAS: {das_resp}")
+                for conv in conversation_history[-10:]:  # Last 10 messages
+                    role = conv.get("role", "")
+                    content = conv.get("content", "")
+                    if role and content:
+                        if role == "user":
+                            context_sections.append(f"User: {content}")
+                        elif role == "assistant":
+                            context_sections.append(f"DAS: {content}")
                         context_sections.append("")
 
             # Project context (including project name)
@@ -227,44 +255,69 @@ class DAS2CoreEngine:
             else:
                 context_sections.append(f"Project ID: {project_id} (details unavailable)")
 
-            context_sections.append(f"Workbench: {project_thread.current_workbench or 'unknown'}")
-            if project_thread.project_goals:
-                context_sections.append(f"Goals: {project_thread.project_goals}")
-            if project_thread.active_ontologies:
-                context_sections.append(f"Ontologies: {', '.join(project_thread.active_ontologies)}")
-            context_sections.append("")
+            # Project thread metadata (SQL-first)
+            if self.sql_first_threads:
+                context_sections.append(f"Workbench: {project_thread.get('current_workbench', 'unknown')}")
+                if project_thread.get('goals'):
+                    context_sections.append(f"Goals: {project_thread['goals']}")
+                context_sections.append("")
 
-            # Project events (ALL context comes from here - no hard-coded calls)
-            if project_thread.project_events:
-                context_sections.append("RECENT PROJECT ACTIVITY:")
-                for event in project_thread.project_events[-10:]:  # Last 10 events
-                    event_type = event.get("event_type", "")
-                    summary = event.get("summary", "")
-                    semantic_summary = event.get("key_data", {}).get("semantic_summary", "")
-                    event_timestamp = event.get("timestamp", "")
+                # Project events from SQL (not vectors)
+                if recent_events:
+                    context_sections.append("RECENT PROJECT ACTIVITY:")
+                    for event in recent_events[-10:]:  # Last 10 events from SQL
+                        event_type = event.get("event_type", "")
+                        semantic_summary = event.get("semantic_summary", "")
+                        event_data = event.get("event_data", {})
+                        created_at = event.get("created_at", "")
 
-                    # Use rich summary from EventCapture2 if available (includes user attribution)
-                    if semantic_summary:
-                        # Add timestamp for context
-                        if event_timestamp:
-                            try:
-                                from datetime import datetime
-                                dt = datetime.fromisoformat(event_timestamp.replace('Z', '+00:00'))
-                                time_str = dt.strftime("%H:%M")
-                                context_sections.append(f"• [{time_str}] {semantic_summary}")
-                            except:
+                        # Use semantic summary if available, otherwise build from event data
+                        if semantic_summary:
+                            # Add timestamp for context
+                            if created_at:
+                                try:
+                                    from datetime import datetime
+                                    if isinstance(created_at, str):
+                                        dt = datetime.fromisoformat(created_at.replace('Z', '+00:00'))
+                                    else:
+                                        dt = created_at
+                                    time_str = dt.strftime("%H:%M")
+                                    context_sections.append(f"• [{time_str}] {semantic_summary}")
+                                except:
+                                    context_sections.append(f"• {semantic_summary}")
+                            else:
                                 context_sections.append(f"• {semantic_summary}")
                         else:
-                            context_sections.append(f"• {semantic_summary}")
-                    elif summary:
-                        context_sections.append(f"• {event_type}: {summary}")
-                    else:
-                        context_sections.append(f"• {event_type}: event")
-                context_sections.append("")
+                            # Build summary from event data
+                            action = event_data.get("semantic_action", event_data.get("action", event_type))
+                            context_sections.append(f"• {event_type}: {action}")
+                    context_sections.append("")
+                else:
+                    context_sections.append("RECENT PROJECT ACTIVITY:")
+                    context_sections.append("• No project events captured yet")
+                    context_sections.append("")
             else:
-                context_sections.append("RECENT PROJECT ACTIVITY:")
-                context_sections.append("• No project events captured yet")
+                # Legacy vector-based approach
+                context_sections.append(f"Workbench: {getattr(project_thread, 'current_workbench', 'unknown')}")
+                if hasattr(project_thread, 'project_goals') and project_thread.project_goals:
+                    context_sections.append(f"Goals: {project_thread.project_goals}")
+                if hasattr(project_thread, 'active_ontologies') and project_thread.active_ontologies:
+                    context_sections.append(f"Ontologies: {', '.join(project_thread.active_ontologies)}")
                 context_sections.append("")
+
+                # Legacy project events from vectors
+                project_events = getattr(project_thread, 'project_events', [])
+                if project_events:
+                    context_sections.append("RECENT PROJECT ACTIVITY:")
+                    for event in project_events[-10:]:  # Last 10 events
+                        event_type = event.get("event_type", "")
+                        summary = event.get("summary", "")
+                        context_sections.append(f"• {event_type}: {summary}")
+                    context_sections.append("")
+                else:
+                    context_sections.append("RECENT PROJECT ACTIVITY:")
+                    context_sections.append("• No project events captured yet")
+                    context_sections.append("")
 
             # Knowledge/RAG context
             if rag_response.get("success") and rag_response.get("chunks_found", 0) > 0:
@@ -309,8 +362,13 @@ Be helpful and conversational."""
             print(f"Project ID: {project_id}")
             print(f"User Message: {message}")
             print(f"RAG Chunks Found: {rag_response.get('chunks_found', 0)}")
-            print(f"Conversation History Entries: {len(project_thread.conversation_history)}")
-            print(f"Project Events: {len(project_thread.project_events)}")
+            # Use SQL-first data for debug output
+            if self.sql_first_threads:
+                print(f"Conversation History Entries: {len(conversation_history)}")
+                print(f"Project Events: {len(recent_events)}")
+            else:
+                print(f"Conversation History Entries: {len(getattr(project_thread, 'conversation_history', []))}")
+                print(f"Project Events: {len(getattr(project_thread, 'project_events', []))}")
             print("-"*80)
             print("FULL PROMPT:")
             print("-"*80)
@@ -343,27 +401,123 @@ Be helpful and conversational."""
                     "has_comprehensive_details": project_details is not None
                 },
                 "thread_metadata": {
-                    "conversation_length": len(project_thread.conversation_history),
-                    "project_events_count": len(project_thread.project_events)
+                    "conversation_length": len(conversation_history) if self.sql_first_threads else len(getattr(project_thread, 'conversation_history', [])),
+                    "project_events_count": len(recent_events) if self.sql_first_threads else len(getattr(project_thread, 'project_events', []))
                 }
             }
-            project_thread.conversation_history.append(conversation_entry)
-            await self.project_manager._persist_project_thread(project_thread)
+            # Store conversation entry (SQL-first handles this automatically)
+            if not self.sql_first_threads:
+                # Only needed for legacy system
+                project_thread.conversation_history.append(conversation_entry)
+                await self.project_manager._persist_project_thread(project_thread)
+            else:
+                # SQL-first already stored the conversation in store_conversation_message above
+                logger.debug("Conversation already stored in SQL-first approach")
 
             # 7. Capture event
-            await self.project_manager.capture_project_event(
-                project_id=project_id,
-                project_thread_id=project_thread.project_thread_id,
-                user_id=user_id,
-                event_type=ProjectEventType.DAS_QUESTION,
-                event_data={
-                    "message": message,
-                    "response": response_text[:100],
-                    "sources_count": len(rag_response.get("sources", []))
-                }
-            )
+            if self.sql_first_threads:
+                project_thread_id = project_thread.get('project_thread_id')
+            else:
+                project_thread_id = getattr(project_thread, 'project_thread_id', None)
 
-            # 8. Return with sources (put sources in metadata for frontend compatibility)
+            if project_thread_id and self.sql_first_threads:
+                await self.project_manager.capture_event(
+                    project_thread_id=project_thread_id,
+                    project_id=project_id,
+                    user_id=user_id,
+                    event_type="das_question",  # String instead of enum for SQL-first
+                    event_data={
+                        "message": message,
+                        "response": response_text[:100],
+                        "sources_count": len(rag_response.get("sources", []))
+                    }
+                )
+
+            # 8. Store conversation with rich debugging context (SQL-first)
+            if self.sql_first_threads:
+                try:
+                    project_thread_id = project_thread.get('project_thread_id')
+                    print(f"💾 DAS2_DEBUG: Starting conversation storage...")
+                    print(f"   Thread ID: {project_thread_id}")
+                    print(f"   User message length: {len(message)}")
+                    print(f"   Assistant response length: {len(response_text)}")
+                    print(f"   Prompt length: {len(prompt)}")
+
+                    if project_thread_id:
+                        # Prepare rich context for Thread Manager workbench
+                        rag_context = {
+                            "chunks_found": rag_response.get("chunks_found", 0),
+                            "sources": rag_response.get("sources", []),
+                            "model_used": rag_response.get("model_used", "unknown"),
+                            "provider": rag_response.get("provider", "unknown"),
+                            "success": rag_response.get("success", False)
+                        }
+
+                        project_context = {
+                            "project_id": project_id,
+                            "project_name": project_details.get('name') if project_details else None,
+                            "domain": project_details.get('domain') if project_details else None,
+                            "workbench": project_thread.get('current_workbench', 'unknown')
+                        }
+
+                        thread_metadata = {
+                            "conversation_length": len(conversation_history),
+                            "project_events_count": len(recent_events),
+                            "sql_first": True,
+                            "das_engine": "DAS2"
+                        }
+
+                        print(f"💾 DAS2_DEBUG: Storing USER message...")
+                        # Store user message with rich metadata
+                        user_msg_id = await self.project_manager.store_conversation_message(
+                            project_thread_id=project_thread_id,
+                            role="user",
+                            content=message,
+                            metadata={
+                                "das_engine": "DAS2",
+                                "timestamp": datetime.now().isoformat(),
+                                "project_context": project_context,
+                                "thread_metadata": thread_metadata
+                            }
+                        )
+                        print(f"💾 DAS2_DEBUG: Stored USER message: {user_msg_id[:8]}...")
+
+                        print(f"💾 DAS2_DEBUG: Storing ASSISTANT message...")
+                        print(f"   Response text: {response_text[:100]}...")
+                        print(f"   Prompt context length: {len(prompt)}")
+
+                        # Store assistant response with complete debugging context
+                        assistant_msg_id = await self.project_manager.store_conversation_message(
+                            project_thread_id=project_thread_id,
+                            role="assistant",
+                            content=response_text,
+                            metadata={
+                                "das_engine": "DAS2",
+                                "timestamp": datetime.now().isoformat(),
+                                "prompt_context": prompt,  # FULL PROMPT for debugging
+                                "rag_context": rag_context,
+                                "project_context": project_context,
+                                "thread_metadata": thread_metadata,
+                                "processing_time": 0.0  # Will be calculated properly later
+                            }
+                        )
+                        print(f"💾 DAS2_DEBUG: Stored ASSISTANT message: {assistant_msg_id[:8]}...")
+
+                        print(f"💾 DAS2_DEBUG: Conversation storage COMPLETE")
+                        print(f"   User: {user_msg_id[:8]}...")
+                        print(f"   Assistant: {assistant_msg_id[:8]}...")
+                        print(f"   Thread: {project_thread_id[:8]}...")
+
+                    else:
+                        print(f"❌ DAS2_DEBUG: No project_thread_id for storage!")
+
+                except Exception as e:
+                    print(f"❌ DAS2_DEBUG: Conversation storage FAILED: {e}")
+                    logger.warning(f"Failed to store DAS2 conversation in SQL: {e}")
+                    import traceback
+                    traceback.print_exc()
+
+            # 9. Return with sources (put sources in metadata for frontend compatibility)
             return DAS2Response(
                 message=response_text,
                 sources=rag_response.get("sources", []),
@@ -371,8 +525,9 @@ Be helpful and conversational."""
                     "chunks_found": rag_response.get("chunks_found", 0),
                     "confidence": "medium",
                     "project_id": project_id,
-                    "project_thread_id": project_thread.project_thread_id,
-                    "sources": rag_response.get("sources", [])  # Add sources here for frontend
+                    "project_thread_id": project_thread.get('project_thread_id') if self.sql_first_threads else getattr(project_thread, 'project_thread_id', 'unknown'),
+                    "sources": rag_response.get("sources", []),  # Add sources here for frontend
+                    "sql_first": self.sql_first_threads
                 }
             )
 

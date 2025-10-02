@@ -104,6 +104,311 @@ def get_db_service() -> DatabaseService:
     return DatabaseService(Settings())
 
 
+async def _get_file_processing_config(db_service: DatabaseService) -> Dict[str, str]:
+    """Get file processing configuration from database."""
+    try:
+        conn = db_service._conn()
+        try:
+            with conn.cursor() as cur:
+                cur.execute("""
+                    SELECT file_processing_implementation
+                    FROM installation_config
+                    WHERE is_active = true
+                    LIMIT 1
+                """)
+
+                result = cur.fetchone()
+
+                if result:
+                    return {"file_processing_implementation": result[0] or "bpmn"}
+                else:
+                    return {"file_processing_implementation": "bpmn"}
+
+        finally:
+            db_service._return(conn)
+
+    except Exception as e:
+        logger.warning(f"Failed to get file processing config: {e}")
+        return {"file_processing_implementation": "bpmn"}
+
+
+async def _process_file_hardcoded(
+    file_id: str,
+    project_id: str,
+    final_doc_type: str,
+    embedding_model: str,
+    final_chunking: str
+) -> str:
+    """Process file using hardcoded SQL-first approach with complete knowledge asset lifecycle."""
+    try:
+        logger.info(f"🔧 Starting COMPLETE hardcoded SQL-first processing for file {file_id}")
+
+        # STEP 1-3: Use our SQL-first IngestionWorker (text extraction, chunking, embedding, SQL-first storage)
+        from ..services.ingestion_worker import IngestionWorker
+        from ..services.config import Settings
+
+        settings = Settings()
+        worker = IngestionWorker(settings)
+
+        # Prepare parameters for hardcoded processing
+        params = {
+            'chunking': {
+                'strategy': final_chunking,
+                'chunk_size': 512,
+                'overlap': 50
+            },
+            'embedding': {
+                'modelId': embedding_model,
+                'batchSize': 16
+            }
+        }
+
+        logger.info(f"📄 Steps 1-3: SQL-first RAG processing with params: {params}")
+
+        # Process file with SQL-first approach (creates doc + doc_chunk + vectors)
+        result = await worker.ingest_files([file_id], params)
+
+        if not (result.get('success') and result.get('successful', 0) > 0):
+            logger.error(f"❌ SQL-first RAG processing failed for file {file_id}: {result}")
+            raise Exception(f"SQL-first RAG processing failed: {result.get('results', [{}])[0].get('error', 'Unknown error')}")
+
+        logger.info(f"✅ Steps 1-3: SQL-first RAG processing successful for file {file_id}")
+
+        # STEP 4: Create Knowledge Asset (missing from our implementation!)
+        logger.info(f"📄 Step 4: Creating knowledge asset for UI workbench...")
+        knowledge_asset_id = await _create_knowledge_asset_hardcoded(
+            file_id=file_id,
+            project_id=project_id,
+            document_type=final_doc_type
+        )
+        logger.info(f"✅ Step 4: Knowledge asset created: {knowledge_asset_id}")
+
+        # STEP 5: Link chunks to knowledge asset AND update vectors with asset_id
+        logger.info(f"📄 Step 5: Linking chunks to knowledge asset and updating vectors...")
+        await _link_chunks_to_asset_hardcoded(file_id, knowledge_asset_id)
+
+        # STEP 5b: Update SQL-first vectors to include asset_id (for source generation)
+        logger.info(f"📄 Step 5b: Adding asset_id to SQL-first vectors for source references...")
+        await _update_vectors_with_asset_id(file_id, knowledge_asset_id)
+
+        logger.info(f"✅ Step 5: Chunks linked and vectors updated with asset_id")
+
+        # STEP 6: Activate Knowledge Asset (make visible in UI)
+        logger.info(f"📄 Step 6: Activating knowledge asset...")
+        await _activate_knowledge_asset_hardcoded(knowledge_asset_id)
+        logger.info(f"✅ Step 6: Knowledge asset activated - visible in Knowledge Management workbench")
+
+        return f"hardcoded_process_{file_id}"  # Return process ID for tracking
+
+    except Exception as e:
+        logger.error(f"Complete hardcoded processing failed: {e}")
+        raise
+
+
+async def _create_knowledge_asset_hardcoded(file_id: str, project_id: str, document_type: str) -> str:
+    """Create knowledge asset record (Step 4 of BPMN workflow)."""
+    try:
+        from ..services.db import DatabaseService
+        import uuid
+        import json  # Fix for 'json' is not defined
+
+        db_service = DatabaseService(Settings())
+        knowledge_asset_id = str(uuid.uuid4())
+
+        # Get file metadata for asset creation
+        from ..services.file_storage import FileStorageService
+        storage_service = FileStorageService(Settings())
+        file_metadata = await storage_service.get_file_metadata(file_id)
+
+        filename = file_metadata.get('filename', 'unknown')
+        title = filename.rsplit('.', 1)[0] if '.' in filename else filename  # Remove extension
+
+        conn = db_service._conn()
+        try:
+            with conn.cursor() as cur:
+                cur.execute("""
+                    INSERT INTO knowledge_assets (
+                        id, source_file_id, project_id, title, document_type,
+                        content_summary, metadata, version, status, created_at, updated_at
+                    ) VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, NOW(), NOW())
+                """, (
+                    knowledge_asset_id,
+                    file_id,
+                    project_id,
+                    title,
+                    document_type,
+                    f"Knowledge asset created from {filename} using hardcoded SQL-first processing",
+                    json.dumps({"processing_method": "hardcoded_sql_first", "created_by": "hardcoded_processor"}),
+                    "1.0.0",
+                    "processing"  # Will be activated in step 6
+                ))
+            conn.commit()
+            logger.info(f"Created knowledge asset {knowledge_asset_id} for file {file_id}")
+            return knowledge_asset_id
+
+        finally:
+            db_service._return(conn)
+
+    except Exception as e:
+        logger.error(f"Failed to create knowledge asset: {e}")
+        raise
+
+
+async def _link_chunks_to_asset_hardcoded(file_id: str, knowledge_asset_id: str):
+    """Link doc_chunks to knowledge asset (Step 5)."""
+    try:
+        from ..services.db import DatabaseService
+
+        db_service = DatabaseService(Settings())
+        conn = db_service._conn()
+        try:
+            with conn.cursor() as cur:
+                # Get doc_id for this file
+                cur.execute("SELECT doc_id FROM doc WHERE filename = (SELECT filename FROM files WHERE id = %s)", (file_id,))
+                doc_result = cur.fetchone()
+
+                if doc_result:
+                    doc_id = doc_result[0]
+
+                    # Create knowledge_chunks entries that reference both doc_chunks and knowledge_asset
+                    cur.execute("""
+                        INSERT INTO knowledge_chunks (id, asset_id, sequence_number, chunk_type, content, token_count, metadata, created_at)
+                        SELECT
+                            gen_random_uuid(),
+                            %s,
+                            chunk_index,
+                            'text',
+                            text,
+                            LENGTH(text) / 4,  -- Rough token estimate
+                            ('{"source": "hardcoded_sql_first", "doc_chunk_id": "' || chunk_id || '"}')::jsonb,
+                            NOW()
+                        FROM doc_chunk
+                        WHERE doc_id = %s
+                        ORDER BY chunk_index
+                    """, (knowledge_asset_id, doc_id))
+
+                    chunks_linked = cur.rowcount
+                    logger.info(f"Linked {chunks_linked} chunks to knowledge asset {knowledge_asset_id}")
+
+            conn.commit()
+
+        finally:
+            db_service._return(conn)
+
+    except Exception as e:
+        logger.error(f"Failed to link chunks to asset: {e}")
+        raise
+
+
+async def _activate_knowledge_asset_hardcoded(knowledge_asset_id: str):
+    """Activate knowledge asset (Step 6 - make visible in UI)."""
+    try:
+        from ..services.db import DatabaseService
+
+        db_service = DatabaseService(Settings())
+        conn = db_service._conn()
+        try:
+            with conn.cursor() as cur:
+                cur.execute("""
+                    UPDATE knowledge_assets
+                    SET
+                        status = 'active',
+                        processing_stats = jsonb_build_object('processing_method', 'hardcoded_sql_first', 'activated_at', NOW()::text),
+                        updated_at = NOW()
+                    WHERE id = %s
+                """, (knowledge_asset_id,))
+
+                if cur.rowcount > 0:
+                    logger.info(f"Activated knowledge asset {knowledge_asset_id} - now visible in Knowledge Management workbench")
+                else:
+                    logger.warning(f"No knowledge asset found to activate: {knowledge_asset_id}")
+
+            conn.commit()
+
+        finally:
+            db_service._return(conn)
+
+    except Exception as e:
+        logger.error(f"Failed to activate knowledge asset: {e}")
+        raise
+
+
+async def _update_vectors_with_asset_id(file_id: str, knowledge_asset_id: str):
+    """Update SQL-first vectors to include asset_id for source generation (Step 5b)."""
+    try:
+        from ..services.db import DatabaseService
+        from ..services.qdrant_service import QdrantService
+
+        db_service = DatabaseService(Settings())
+        qdrant_service = QdrantService(Settings())
+
+        logger.info(f"🔧 Step 5b: Adding asset_id to vectors for source references")
+        print(f"🔧 ASSET_ID_DEBUG: Starting asset_id update for file {file_id}")
+        print(f"   Knowledge asset ID: {knowledge_asset_id}")
+
+        # Get all chunk_ids for this file from our SQL-first storage
+        conn = db_service._conn()
+        try:
+            with conn.cursor() as cur:
+                # Get doc_id for this file
+                cur.execute("SELECT doc_id FROM doc WHERE filename = (SELECT filename FROM files WHERE id = %s)", (file_id,))
+                doc_result = cur.fetchone()
+
+                if doc_result:
+                    doc_id = doc_result[0]
+                    print(f"🔍 ASSET_ID_DEBUG: Found doc_id {doc_id} for file {file_id}")
+
+                    # Get all chunk_ids for this doc
+                    cur.execute("SELECT chunk_id FROM doc_chunk WHERE doc_id = %s ORDER BY chunk_index", (doc_id,))
+                    chunk_results = cur.fetchall()
+
+                    chunk_ids = [row[0] for row in chunk_results]
+                    print(f"✅ ASSET_ID_DEBUG: Found {len(chunk_ids)} chunk_ids to update")
+
+                    # Use set_payload to safely add asset_id to each vector
+                    updated_count = 0
+                    for chunk_id in chunk_ids:
+                        try:
+                            print(f"🔧 ASSET_ID_DEBUG: Adding asset_id to chunk {chunk_id}")
+
+                            # Use set_payload method (safer than upsert)
+                            result = qdrant_service.client.set_payload(
+                                collection_name='knowledge_chunks',
+                                payload={'asset_id': knowledge_asset_id},
+                                points=[chunk_id],
+                                wait=True
+                            )
+
+                            updated_count += 1
+                            print(f"✅ ASSET_ID_DEBUG: Updated chunk {chunk_id} with asset_id")
+
+                        except Exception as ve:
+                            print(f"❌ ASSET_ID_DEBUG: Failed to update chunk {chunk_id}: {ve}")
+                            logger.warning(f"Failed to update chunk {chunk_id} with asset_id: {ve}")
+
+                    logger.info(f"✅ Step 5b: Updated {updated_count}/{len(chunk_ids)} vectors with asset_id")
+                    print(f"✅ ASSET_ID_DEBUG: Complete - {updated_count} vectors updated with asset_id")
+
+                    if updated_count == len(chunk_ids):
+                        print(f"🎉 ASSET_ID_DEBUG: All vectors successfully updated - sources will work!")
+                    else:
+                        print(f"⚠️ ASSET_ID_DEBUG: {len(chunk_ids) - updated_count} vectors failed to update")
+
+                else:
+                    print(f"❌ ASSET_ID_DEBUG: No doc_id found for file {file_id}")
+                    logger.error(f"No doc_id found for file {file_id}")
+
+        finally:
+            db_service._return(conn)
+
+    except Exception as e:
+        print(f"❌ ASSET_ID_DEBUG: Asset_id update failed: {e}")
+        logger.error(f"Failed to update vectors with asset_id: {e}")
+        import traceback
+        traceback.print_exc()
+        # Don't raise - let the upload succeed even if asset_id update fails
+
+
 def _detect_file_type_and_strategy(filename: str, content_type: str = None) -> Dict[str, str]:
     """
     Intelligently detect document type and optimal processing strategy based on file.
@@ -257,49 +562,73 @@ async def upload_file(
                         "extract_relationships": True,
                     }
 
-                    # START BPMN WORKFLOW (use what we built!)
-                    import httpx
+                    # Check file processing configuration to decide between hardcoded and BPMN
+                    file_processing_config = await _get_file_processing_config(db)
+                    file_processing_implementation = file_processing_config.get("file_processing_implementation", "bpmn")
 
-                    camunda_url = "http://localhost:8080/engine-rest"
-                    start_url = (
-                        f"{camunda_url}/process-definition/key/automatic_knowledge_processing/start"
-                    )
+                    logger.info(f"🔧 File processing mode: {file_processing_implementation}")
 
-                    payload = {
-                        "variables": {
-                            "file_id": {"value": file_id, "type": "String"},
-                            "project_id": {"value": project_id, "type": "String"},
-                            "filename": {"value": file.filename, "type": "String"},
-                            "document_type": {
-                                "value": final_doc_type,
-                                "type": "String",
-                            },
-                            "embedding_model": {
-                                "value": embedding_model or "all-MiniLM-L6-v2",
-                                "type": "String",
-                            },
-                            "chunking_strategy": {
-                                "value": final_chunking,
-                                "type": "String",
-                            },
-                            "chunk_size": {"value": 512, "type": "Integer"},
+                    if file_processing_implementation == "hardcoded":
+                        # Use SQL-first hardcoded processing
+                        logger.info(f"📄 Using HARDCODED processing for file {file_id}")
+                        process_instance_id = await _process_file_hardcoded(
+                            file_id=file_id,
+                            project_id=project_id,
+                            final_doc_type=final_doc_type,
+                            embedding_model=embedding_model,
+                            final_chunking=final_chunking
+                        )
+
+                        response_message = f"File uploaded and processed successfully using hardcoded SQL-first approach (process: {process_instance_id})"
+
+                    else:
+                        # Use BPMN workflow (original behavior)
+                        logger.info(f"📄 Using BPMN WORKFLOW processing for file {file_id}")
+                        import httpx
+
+                        camunda_url = "http://localhost:8080/engine-rest"
+                        start_url = (
+                            f"{camunda_url}/process-definition/key/automatic_knowledge_processing/start"
+                        )
+
+                        payload = {
+                            "variables": {
+                                "file_id": {"value": file_id, "type": "String"},
+                                "project_id": {"value": project_id, "type": "String"},
+                                "filename": {"value": file.filename, "type": "String"},
+                                "document_type": {
+                                    "value": final_doc_type,
+                                    "type": "String",
+                                },
+                                "embedding_model": {
+                                    "value": embedding_model or "all-MiniLM-L6-v2",
+                                    "type": "String",
+                                },
+                                "chunking_strategy": {
+                                    "value": final_chunking,
+                                    "type": "String",
+                                },
+                                "chunk_size": {"value": 512, "type": "Integer"},
+                            }
                         }
-                    }
 
-                    async with httpx.AsyncClient(timeout=10) as client:  # Shorter timeout
-                        response = await client.post(start_url, json=payload)
-                        response.raise_for_status()
-                        result = response.json()
-                        process_instance_id = result.get("id")
+                        async with httpx.AsyncClient(timeout=10) as client:  # Shorter timeout
+                            response = await client.post(start_url, json=payload)
+                            response.raise_for_status()
+                            data = response.json()
 
-                    logger.info(
-                        f"🔄 Started BPMN knowledge processing workflow: {process_instance_id} for file {file_id}"
-                    )
+                        process_instance_id = data.get("id")
+                        response_message = "File uploaded and BPMN knowledge processing started (workflow: " + (process_instance_id or "unknown") + ")"
+
+                        logger.info(
+                            f"🔄 Started BPMN knowledge processing workflow: {process_instance_id} for file {file_id}"
+                        )
 
                 except Exception as e:
                     logger.error(f"❌ Knowledge processing failed for file {file_id}: {str(e)}")
                     # Don't fail the upload if processing fails
-                    pass
+                    process_instance_id = f"failed_{file_id}"
+                    response_message = f"File uploaded but {file_processing_implementation} processing failed - check logs"
 
             # EventCapture2: Capture file upload event
             try:
@@ -326,11 +655,7 @@ async def upload_file(
                 print(f"🔥 DIRECT: EventCapture2 file upload failed: {e}")
                 logger.warning(f"EventCapture2 file upload failed: {e}")
 
-            # Build response
-            if process_instance_id:
-                response_message = f"File uploaded and BPMN knowledge processing started (workflow: {process_instance_id})"
-            else:
-                response_message = "File uploaded successfully (BPMN knowledge processing failed to start - check logs)"
+            # Response message already set in if/else block above - no need to override
 
             return FileUploadResponse(
                 success=True,
@@ -338,7 +663,7 @@ async def upload_file(
                 filename=metadata["filename"],
                 size=metadata["size"],
                 content_type=metadata["content_type"],
-                knowledge_asset_id=process_instance_id,  # Include BPMN process instance ID
+                knowledge_asset_id=process_instance_id,  # Include process instance ID (hardcoded or BPMN)
                 message=response_message,
             )
         else:

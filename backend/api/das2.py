@@ -99,22 +99,36 @@ async def get_das2_project_thread(
     user: dict = Depends(get_user),
     engine: DAS2CoreEngine = Depends(get_das2_engine)
 ):
-    """Get project thread info for DAS2"""
+    """Get project thread info for DAS2 (SQL-first compatible)"""
     try:
-        project_thread = await engine.project_manager.get_project_thread_by_project_id(project_id)
+        # Get project context using SQL-first approach
+        project_context = await engine.project_manager.get_project_thread_by_project_id(project_id)
 
-        if not project_thread:
+        if not project_context or "error" in project_context:
             raise HTTPException(
                 status_code=404,
                 detail=f"No project thread found for project {project_id}. Create a project first."
             )
 
+        # Handle both SQL-first context format and direct thread format
+        if "project_thread" in project_context:
+            # From get_project_context format
+            thread_data = project_context["project_thread"]
+            conversation_count = len(project_context.get("conversation_history", []))
+            events_count = len(project_context.get("recent_events", []))
+        else:
+            # Direct thread format
+            thread_data = project_context
+            conversation_count = 0  # Will be loaded separately
+            events_count = 0  # Will be loaded separately
+
         return {
-            "project_thread_id": project_thread.project_thread_id,
-            "project_id": project_thread.project_id,
-            "created_at": project_thread.created_at.isoformat(),
-            "conversation_count": len(project_thread.conversation_history),
-            "events_count": len(project_thread.project_events)
+            "project_thread_id": thread_data["project_thread_id"],
+            "project_id": thread_data["project_id"],
+            "created_at": thread_data["created_at"].isoformat() if hasattr(thread_data["created_at"], "isoformat") else str(thread_data["created_at"]),
+            "conversation_count": conversation_count,
+            "events_count": events_count,
+            "sql_first": True
         }
 
     except HTTPException:
@@ -130,26 +144,100 @@ async def get_das2_conversation_history(
     user: dict = Depends(get_user),
     engine: DAS2CoreEngine = Depends(get_das2_engine)
 ):
-    """Get conversation history for project"""
+    """Get conversation history for project (SQL-first compatible)"""
     try:
-        project_thread = await engine.project_manager.get_project_thread_by_project_id(project_id)
+        project_context = await engine.project_manager.get_project_thread_by_project_id(project_id)
 
-        if not project_thread:
+        if not project_context or "error" in project_context:
             raise HTTPException(
                 status_code=404,
                 detail=f"No project thread found for project {project_id}"
             )
 
+        # Handle SQL-first format (debug what we're getting)
+        if "project_thread" in project_context:
+            # SQL-first format
+            print(f"🔍 DAS2_HISTORY_DEBUG: Found project_thread in context")
+            print(f"   Context keys: {list(project_context.keys())}")
+
+            conversation_history = project_context.get("conversation_history", [])
+            project_thread_id = project_context["project_thread"]["project_thread_id"]
+
+            print(f"🔍 DAS2_HISTORY_DEBUG: SQL-first conversation data")
+            print(f"   Raw conversations from context: {len(conversation_history)}")
+            print(f"   Thread ID: {project_thread_id}")
+
+            if conversation_history:
+                print(f"   First conversation keys: {list(conversation_history[0].keys())}")
+            else:
+                print(f"   ❌ No conversation_history in project_context")
+
+            # The conversation_history is ALREADY formatted by SQL-first manager
+            print(f"🔍 DAS2_HISTORY_DEBUG: Processing formatted conversations")
+            print(f"   Formatted conversations count: {len(conversation_history)}")
+
+            if conversation_history:
+                print(f"   First formatted conversation keys: {list(conversation_history[0].keys())}")
+                print(f"   Has user_message: {'user_message' in conversation_history[0]}")
+                print(f"   Has das_response: {'das_response' in conversation_history[0]}")
+
+            # Convert formatted conversation to DAS history format (what DAS dock expects)
+            history = []
+            for conv in conversation_history:
+                # Handle already-formatted conversation pairs
+                if conv.get("user_message"):
+                    # User message
+                    history.append({
+                        "type": "user",
+                        "message": conv["user_message"],
+                        "timestamp": conv.get("timestamp"),
+                        "sql_first": True
+                    })
+
+                    # Assistant response (if present)
+                    if conv.get("das_response"):
+                        # Prepare metadata in DAS dock expected format
+                        rag_context = conv.get("rag_context", {})
+                        metadata = {
+                            "confidence": "medium",  # Default confidence
+                            "sources": rag_context.get("sources", []),  # ← DAS dock expects this field
+                            "chunks_found": rag_context.get("chunks_found", 0),
+                            "sql_first": True,
+                            "processing_time": conv.get("processing_time", 0)
+                        }
+
+                        print(f"🔍 DAS2_HISTORY_DEBUG: Assistant response metadata")
+                        print(f"   Sources count: {len(metadata['sources'])}")
+                        print(f"   Chunks found: {metadata['chunks_found']}")
+
+                        history.append({
+                            "type": "das",
+                            "message": conv["das_response"],
+                            "timestamp": conv.get("timestamp"),
+                            "metadata": metadata,  # ← Properly formatted for DAS dock
+                            "sql_first": True
+                        })
+
+            print(f"🔍 DAS2_HISTORY_DEBUG: Created {len(history)} history entries for DAS dock")
+        else:
+            # Legacy format fallback
+            conversation_history = getattr(project_context, 'conversation_history', [])
+            project_thread_id = getattr(project_context, 'project_thread_id', 'unknown')
+            history = conversation_history
+
         return {
-            "history": project_thread.conversation_history,
+            "history": history,
             "project_id": project_id,
-            "project_thread_id": project_thread.project_thread_id
+            "project_thread_id": project_thread_id,
+            "sql_first": "project_thread" in project_context if project_context else False
         }
 
     except HTTPException:
         raise
     except Exception as e:
         logger.error(f"Error getting DAS2 history: {e}")
+        import traceback
+        traceback.print_exc()
         raise HTTPException(status_code=500, detail=str(e))
 
 
@@ -180,8 +268,9 @@ async def initialize_das2_engine():
         except Exception as e:
             logger.warning(f"DAS2: Redis not available: {e}")
 
-        # Project manager (reuse existing)
-        project_manager = ProjectThreadManager(settings, redis_client, qdrant_service)
+        # Project manager (SQL-first implementation)
+        from ..services.sql_first_thread_manager import SqlFirstThreadManager
+        project_manager = SqlFirstThreadManager(settings, qdrant_service)
 
         # Create DAS2 engine
         das2_engine = DAS2CoreEngine(settings, rag_service, project_manager, db_service)
