@@ -774,9 +774,9 @@ class SqlFirstThreadManager:
                 # Get uploaded files/knowledge assets
                 cur.execute("""
                     SELECT ka.title, ka.document_type, ka.created_at, ka.status,
-                           f.filename, f.size, f.content_type
+                           f.filename, f.file_size, f.content_type
                     FROM knowledge_assets ka
-                    LEFT JOIN file_storage f ON ka.source_file_id::text = f.file_id
+                    LEFT JOIN files f ON ka.source_file_id::text = f.id::text
                     WHERE ka.project_id = %s AND ka.status = 'active'
                     ORDER BY ka.created_at DESC
                 """, (project_id,))
