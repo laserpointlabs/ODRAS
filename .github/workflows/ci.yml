@@ -489,7 +489,7 @@ jobs:
   das-integration-test:
     name: "DAS Comprehensive Integration Test"
     runs-on: ubuntu-latest
-    needs: [api-tests]
+    needs: [complete_odras_test]
 
     services:
       postgres:
