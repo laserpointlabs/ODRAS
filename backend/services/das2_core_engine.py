@@ -577,3 +577,209 @@ Be helpful and conversational."""
         except Exception as e:
             logger.error(f"Direct LLM call failed: {e}")
             return f"I couldn't call the LLM: {str(e)}"
+
+    async def process_message_stream(
+        self,
+        project_id: str,
+        message: str,
+        user_id: str,
+        project_thread_id: Optional[str] = None
+    ):
+        """
+        Process message with streaming response
+        Simple streaming implementation that stores both user and assistant messages
+        """
+        try:
+            print(f"DAS2_STREAM_DEBUG: Starting streaming process_message for project {project_id}")
+
+            # 1. Get project thread context (same as regular process_message)
+            if self.sql_first_threads:
+                project_context = await self.project_manager.get_project_context(project_id)
+                if "error" in project_context:
+                    yield {"type": "error", "message": "DAS2 is not available for this project. Project threads are created when projects are created."}
+                    return
+
+                project_thread = project_context["project_thread"]
+                conversation_history = project_context["conversation_history"]
+                recent_events = project_context["recent_events"]
+            else:
+                if project_thread_id:
+                    project_thread = await self.project_manager.get_project_thread(project_thread_id)
+                else:
+                    project_thread = await self.project_manager.get_project_thread_by_project_id(project_id)
+
+                if not project_thread:
+                    yield {"type": "error", "message": "DAS2 is not available for this project. Project threads are created when projects are created."}
+                    return
+
+                conversation_history = getattr(project_thread, 'conversation_history', [])
+                recent_events = getattr(project_thread, 'project_events', [])
+
+            # 2. Store user message immediately
+            if self.sql_first_threads:
+                project_thread_id = project_thread.get('project_thread_id')
+                if project_thread_id:
+                    await self.project_manager.store_conversation_message(
+                        project_thread_id=project_thread_id,
+                        role="user",
+                        content=message,
+                        metadata={"das_engine": "DAS2", "timestamp": datetime.now().isoformat()}
+                    )
+
+            # 3. Get RAG context (same as regular process_message)
+            import httpx
+            async with httpx.AsyncClient() as client:
+                auth_response = await client.post(
+                    "http://localhost:8000/api/auth/login",
+                    json={"username": "das_service", "password": "das_service_2024!"},
+                    timeout=10.0
+                )
+                auth_data = auth_response.json()
+                auth_token = auth_data.get("token")
+
+                rag_config_response = await client.get(
+                    "http://localhost:8000/api/rag-config",
+                    headers={"Authorization": f"Bearer {auth_token}"},
+                    timeout=10.0
+                )
+                rag_config = rag_config_response.json()
+                rag_implementation = rag_config.get("rag_implementation", "hardcoded")
+
+                if rag_implementation == "bpmn":
+                    rag_response = await client.post(
+                        "http://localhost:8000/api/knowledge/query-workflow",
+                        headers={"Authorization": f"Bearer {auth_token}"},
+                        json={
+                            "question": message,
+                            "project_id": project_id,
+                            "response_style": "comprehensive"
+                        },
+                        timeout=30.0
+                    )
+                    rag_response = rag_response.json()
+                else:
+                    rag_response = await self.rag_service.query_knowledge_base(
+                        question=message,
+                        project_id=project_id,
+                        user_id=user_id,
+                        max_chunks=5,
+                        similarity_threshold=0.3,
+                        include_metadata=True,
+                        response_style="comprehensive"
+                    )
+
+            # 4. Build context and call LLM with streaming
+            context_sections = []
+
+            # Add conversation history
+            if conversation_history:
+                context_sections.append("CONVERSATION HISTORY:")
+                for conv in conversation_history[-10:]:
+                    role = conv.get("role", "")
+                    content = conv.get("content", "")
+                    if role and content:
+                        if role == "user":
+                            context_sections.append(f"User: {content}")
+                        elif role == "assistant":
+                            context_sections.append(f"DAS: {content}")
+                        context_sections.append("")
+
+            # Add project context
+            context_sections.append("PROJECT CONTEXT:")
+            context_sections.append(f"Project ID: {project_id}")
+
+            # Add RAG context
+            if rag_response.get("success") and rag_response.get("chunks_found", 0) > 0:
+                context_sections.append("KNOWLEDGE FROM DOCUMENTS:")
+                context_sections.append(rag_response.get("response", ""))
+
+            full_context = "\n".join(context_sections)
+            prompt = f"""You are DAS, a digital assistant for this project. Answer using ALL provided context.
+
+{full_context}
+
+USER QUESTION: {message}
+
+Answer naturally using the context above. Be helpful and conversational."""
+
+            # 5. Stream LLM response
+            async for chunk in self._call_llm_streaming(prompt):
+                yield {"type": "content", "content": chunk}
+
+            # 6. Store assistant response
+            if self.sql_first_threads and project_thread_id:
+                # Get the full response by calling the non-streaming version for storage
+                full_response = await self._call_llm_directly(prompt)
+                await self.project_manager.store_conversation_message(
+                    project_thread_id=project_thread_id,
+                    role="assistant",
+                    content=full_response,
+                    metadata={
+                        "das_engine": "DAS2",
+                        "timestamp": datetime.now().isoformat(),
+                        "rag_context": {
+                            "chunks_found": rag_response.get("chunks_found", 0),
+                            "sources": rag_response.get("sources", [])
+                        }
+                    }
+                )
+
+            # 7. Send completion signal with metadata
+            yield {
+                "type": "done",
+                "metadata": {
+                    "sources": rag_response.get("sources", []),
+                    "chunks_found": rag_response.get("chunks_found", 0)
+                }
+            }
+
+        except Exception as e:
+            logger.error(f"DAS2 stream error: {e}")
+            yield {"type": "error", "message": str(e)}
+
+    async def _call_llm_streaming(self, prompt: str):
+        """Call LLM with streaming response"""
+        try:
+            import httpx
+
+            # Determine LLM URL based on provider
+            if self.settings.llm_provider == "ollama":
+                base_url = self.settings.ollama_url.rstrip("/")
+                llm_url = f"{base_url}/v1/chat/completions"
+            else:  # openai
+                llm_url = "https://api.openai.com/v1/chat/completions"
+
+            payload = {
+                "model": self.settings.llm_model,
+                "messages": [
+                    {"role": "system", "content": "You are DAS, a helpful digital assistant."},
+                    {"role": "user", "content": prompt}
+                ],
+                "temperature": 0.7,
+                "max_tokens": 1000,
+                "stream": True
+            }
+
+            headers = {"Content-Type": "application/json"}
+            if hasattr(self.settings, 'openai_api_key') and self.settings.openai_api_key:
+                headers["Authorization"] = f"Bearer {self.settings.openai_api_key}"
+
+            async with httpx.AsyncClient(timeout=30) as client:
+                async with client.stream("POST", llm_url, json=payload, headers=headers) as response:
+                    if response.status_code == 200:
+                        async for line in response.aiter_lines():
+                            if line.startswith("data: "):
+                                try:
+                                    data = json.loads(line[6:])
+                                    if "choices" in data and len(data["choices"]) > 0:
+                                        delta = data["choices"][0].get("delta", {})
+                                        if "content" in delta:
+                                            yield delta["content"]
+                                except json.JSONDecodeError:
+                                    continue
+                    else:
+                        yield f"Error: LLM call failed with status {response.status_code}"
+
+        except Exception as e:
+            logger.error(f"LLM streaming call failed: {e}")
+            yield f"Error: {str(e)}"

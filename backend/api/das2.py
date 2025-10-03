@@ -93,6 +93,51 @@ async def das2_chat(
         raise HTTPException(status_code=500, detail=f"DAS2 error: {str(e)}")
 
 
+@router.post("/chat/stream")
+async def das2_chat_stream(
+    request: DAS2ChatRequest,
+    user: dict = Depends(get_user),
+    engine: DAS2CoreEngine = Depends(get_das2_engine)
+):
+    """
+    DAS2 Chat Streaming - Streams response as it's generated
+    """
+    from fastapi.responses import StreamingResponse
+    import json
+    import asyncio
+
+    async def generate_stream():
+        try:
+            user_id = user.get("user_id")
+            if not user_id:
+                yield f"data: {json.dumps({'type': 'error', 'message': 'User not authenticated'})}\n\n"
+                return
+
+            print(f"DAS2_API_STREAM: Processing message='{request.message}' for project={request.project_id}")
+
+            # Process with DAS2 engine and stream the response
+            response_stream = engine.process_message_stream(
+                project_id=request.project_id,
+                message=request.message,
+                user_id=user_id,
+                project_thread_id=request.project_thread_id
+            )
+
+            # Stream the response
+            async for chunk in response_stream:
+                yield f"data: {json.dumps(chunk)}\n\n"
+
+        except Exception as e:
+            logger.error(f"DAS2 stream error: {e}")
+            yield f"data: {json.dumps({'type': 'error', 'message': str(e)})}\n\n"
+
+    return StreamingResponse(
+        generate_stream(),
+        media_type="text/plain",
+        headers={"Cache-Control": "no-cache", "Connection": "keep-alive"}
+    )
+
+
 @router.get("/project/{project_id}/thread")
 async def get_das2_project_thread(
     project_id: str,
