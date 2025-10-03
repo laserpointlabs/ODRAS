@@ -74,6 +74,19 @@ class DAS2CoreEngine:
 
         logger.info("DAS2 Core Engine initialized - SIMPLE APPROACH")
 
+    def _serialize_project_details(self, project_details):
+        """Convert project details to JSON-serializable format"""
+        if not project_details:
+            return None
+
+        serialized = {}
+        for key, value in project_details.items():
+            if hasattr(value, 'isoformat'):  # datetime object
+                serialized[key] = value.isoformat()
+            else:
+                serialized[key] = value
+        return serialized
+
     async def process_message(
         self,
         project_id: str,
@@ -716,7 +729,57 @@ Be helpful and conversational."""
 
             # Add project context
             context_sections.append("PROJECT CONTEXT:")
-            context_sections.append(f"Project ID: {project_id}")
+
+            # Get comprehensive project details (same as non-streaming method)
+            project_details = None
+            if hasattr(self, 'db_service') and self.db_service:
+                try:
+                    project_details = self.db_service.get_project_comprehensive(project_id)
+                    print(f"DAS2_STREAM_DEBUG: Retrieved project details: {bool(project_details)}")
+                except Exception as e:
+                    print(f"DAS2_STREAM_DEBUG: Failed to get project details: {e}")
+            elif hasattr(self.project_manager, 'db_service') and self.project_manager.db_service:
+                try:
+                    project_details = self.project_manager.db_service.get_project_comprehensive(project_id)
+                    print(f"DAS2_STREAM_DEBUG: Retrieved project details via project_manager: {bool(project_details)}")
+                except Exception as e:
+                    print(f"DAS2_STREAM_DEBUG: Failed to get project details via project_manager: {e}")
+            else:
+                print("DAS2_STREAM_DEBUG: No db_service available!")
+
+            if project_details:
+                context_sections.append(f"Project: {project_details.get('name', 'Unknown')} (ID: {project_id})")
+
+                if project_details.get('description'):
+                    context_sections.append(f"Description: {project_details.get('description')}")
+
+                if project_details.get('domain'):
+                    context_sections.append(f"Domain: {project_details.get('domain')}")
+
+                # Creator information
+                if project_details.get('created_by_username'):
+                    creator_name = project_details.get('created_by_username')
+                    context_sections.append(f"Created by: {creator_name}")
+
+                # Timestamps
+                if project_details.get('created_at'):
+                    context_sections.append(f"Created: {project_details.get('created_at')}")
+                if project_details.get('updated_at'):
+                    context_sections.append(f"Last updated: {project_details.get('updated_at')}")
+
+                # Namespace information
+                if project_details.get('namespace_name'):
+                    context_sections.append(f"Namespace: {project_details.get('namespace_name')} ({project_details.get('namespace_path', 'N/A')})")
+                    if project_details.get('namespace_description'):
+                        context_sections.append(f"Namespace description: {project_details.get('namespace_description')}")
+                    if project_details.get('namespace_status'):
+                        context_sections.append(f"Namespace status: {project_details.get('namespace_status')}")
+
+                # Project URI
+                if project_details.get('project_uri'):
+                    context_sections.append(f"Project URI: {project_details.get('project_uri')}")
+            else:
+                context_sections.append(f"Project ID: {project_id} (details unavailable)")
 
             # Add RAG context
             if rag_response.get("success") and rag_response.get("chunks_found", 0) > 0:
@@ -747,9 +810,18 @@ Answer naturally using the context above. Be helpful and conversational."""
                     metadata={
                         "das_engine": "DAS2",
                         "timestamp": datetime.now().isoformat(),
+                        "prompt_context": full_context,  # Store the full prompt for thread manager
                         "rag_context": {
                             "chunks_found": rag_response.get("chunks_found", 0),
                             "sources": rag_response.get("sources", [])
+                        },
+                        "project_context": {
+                            "project_id": project_id,
+                            "project_details": self._serialize_project_details(project_details)
+                        },
+                        "thread_metadata": {
+                            "sql_first": True,
+                            "conversation_pairs": len(conversation_history) if conversation_history else 0
                         }
                     }
                 )

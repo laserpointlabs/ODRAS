@@ -1651,6 +1651,30 @@
       text-align: left;
     }
 
+    .streaming-cursor {
+      display: inline;
+      animation: blink 1s infinite;
+      color: var(--accent);
+      font-weight: normal;
+      margin: 0;
+      padding: 0;
+      line-height: inherit;
+      vertical-align: baseline;
+    }
+
+    @keyframes blink {
+
+      0%,
+      50% {
+        opacity: 1;
+      }
+
+      51%,
+      100% {
+        opacity: 0;
+      }
+    }
+
     .das-toolbar .spacer {
       flex: 1;
     }
@@ -14446,7 +14470,7 @@
             // Create streaming response container (but don't show it yet)
             const streamContainer = document.createElement('div');
             streamContainer.className = 'card';
-            streamContainer.innerHTML = '<strong>DAS:</strong><br><span class="streaming-text"></span>';
+            streamContainer.innerHTML = '<strong>DAS:</strong><br><div class="streaming-text das-markdown"></div>';
             streamContainer.style.display = 'none'; // Hide initially
 
             // Add to transcript
@@ -14485,7 +14509,19 @@
 
                         // Stream content
                         fullResponse += data.content;
-                        streamingText.textContent = fullResponse;
+
+                        // For streaming, use inline markdown rendering to keep cursor inline
+                        try {
+                          // Use marked with inline-only parsing to avoid paragraph wrapping
+                          const renderer = new marked.Renderer();
+                          renderer.paragraph = (text) => text; // Don't wrap in <p> tags
+
+                          const parsed = marked.parse(fullResponse, { renderer });
+                          streamingText.innerHTML = parsed + '<span class="streaming-cursor">▊</span>';
+                        } catch (e) {
+                          // Fallback to plain text if markdown parsing fails during streaming
+                          streamingText.innerHTML = fullResponse + '<span class="streaming-cursor">▊</span>';
+                        }
 
                         // Store metadata
                         if (data.metadata) {
