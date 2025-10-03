@@ -244,6 +244,70 @@ def health_check():
     }
 
 
+@app.get("/api/sync/health")
+async def sync_health_check(project_id: Optional[str] = None, user=Depends(get_user)):
+    """Check vector/SQL synchronization health - CRITICAL for DAS reliability"""
+    try:
+        from backend.services.vector_sql_sync_monitor import get_sync_monitor
+
+        monitor = get_sync_monitor()
+        health_report = await monitor.check_sync_health(project_id)
+
+        return health_report
+
+    except Exception as e:
+        logger.error(f"Sync health check failed: {e}")
+        raise HTTPException(status_code=500, detail=f"Sync health check failed: {str(e)}")
+
+
+@app.post("/api/sync/emergency-recovery")
+async def emergency_sync_recovery(
+    project_id: str = Body(..., description="Project ID to recover"),
+    user=Depends(get_admin_user)  # Admin only for safety
+):
+    """Emergency recovery for vector/SQL desync - fixes DAS 'no information available' issues"""
+    try:
+        from backend.services.vector_sql_sync_monitor import emergency_das_recovery
+
+        recovery_result = await emergency_das_recovery(project_id)
+
+        if recovery_result["success"]:
+            return {
+                "success": True,
+                "message": f"Recovered {recovery_result['recovered_chunks']} chunks for project {project_id}",
+                "details": recovery_result
+            }
+        else:
+            raise HTTPException(
+                status_code=500,
+                detail=f"Recovery failed: {recovery_result.get('error', 'Unknown error')}"
+            )
+
+    except Exception as e:
+        logger.error(f"Emergency sync recovery failed: {e}")
+        raise HTTPException(status_code=500, detail=f"Emergency recovery failed: {str(e)}")
+
+
+@app.get("/api/sync/quick-check/{project_id}")
+async def quick_sync_check(project_id: str, user=Depends(get_user)):
+    """Quick check if DAS will work for a project - prevents 'no information available' surprises"""
+    try:
+        from backend.services.vector_sql_sync_monitor import check_das_will_work
+
+        will_work = await check_das_will_work(project_id)
+
+        return {
+            "project_id": project_id,
+            "das_will_work": will_work,
+            "status": "ready" if will_work else "sync_issue",
+            "message": "DAS ready" if will_work else "⚠️ DAS may return 'no information available' - vector store sync issue detected"
+        }
+
+    except Exception as e:
+        logger.error(f"Quick sync check failed: {e}")
+        raise HTTPException(status_code=500, detail=f"Quick check failed: {str(e)}")
+
+
 @app.post("/api/auth/logout")
 def logout(authorization: Optional[str] = Header(None)):
     """Logout and invalidate the current token."""
@@ -757,26 +821,32 @@ async def on_startup():
         await initialize_semantic_capture(redis_client)
         print("✅ Semantic capture initialized")
 
-        print("🔥 Step 11: Setting up middleware-to-DAS event routing...")
-        logger.info("🎯 Replacing fragmented middleware with unified SQL-first event system...")
+        print("🔥 Step 11: Setting up event routing...")
+        logger.info("🎯 Setting up SQL-first event system...")
         try:
-            # Replace ALL fragmented event systems with unified SQL-first approach
-            from backend.services.sql_first_event_integration import initialize_unified_sql_first_events, log_event_system_status
+            # Initialize SQL-first event capture WITHOUT adding middleware (already added during app init)
+            from backend.services.sql_first_event_integration import initialize_sql_first_event_capture_only
 
-            event_system = await initialize_unified_sql_first_events(
-                app=app,
-                db_service=db,
+            # Import QdrantService for SqlFirstThreadManager
+            from backend.services.qdrant_service import QdrantService
+            from backend.services.sql_first_thread_manager import SqlFirstThreadManager
+            qdrant_service = QdrantService(settings)
+
+            # Create SqlFirstThreadManager
+            sql_first_manager = SqlFirstThreadManager(settings, qdrant_service)
+
+            # Initialize event capture without middleware (middleware already exists)
+            initialize_sql_first_event_capture_only(
+                sql_first_manager=sql_first_manager,
                 redis_client=redis_client
             )
 
-            print(f"✅ Unified SQL-first event system active: {event_system['status']}")
-
-            # Log the consolidated system status
-            log_event_system_status()
+            print(f"✅ SQL-first event capture initialized")
 
         except Exception as e:
-            print(f"❌ Error setting up unified event system: {e}")
-            logger.error(f"Unified event system error: {e}")
+            print(f"❌ Error setting up event system: {e}")
+            logger.error(f"Event system error: {e}")
+            # Don't fail startup for event system issues
             import traceback
             traceback.print_exc()
 

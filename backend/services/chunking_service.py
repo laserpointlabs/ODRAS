@@ -99,17 +99,17 @@ class ChunkingService:
         """Initialize chunking service with configuration."""
         self.settings = settings or Settings()
 
-        # Default chunking parameters
+        # Simple, effective chunking for large context LLMs
         self.default_config = {
-            "chunk_size": 512,  # Target chunk size in tokens
-            "chunk_overlap": 50,  # Overlap between chunks in tokens
-            "min_chunk_size": 50,  # Minimum viable chunk size
-            "max_chunk_size": 1024,  # Maximum chunk size
-            "strategy": "hybrid",  # fixed, semantic, hybrid
-            "preserve_structure": True,  # Try to preserve document structure
+            "chunk_size": 1024,  # Larger chunks for more context
+            "chunk_overlap": 200,  # Substantial overlap (20%) for continuity
+            "min_chunk_size": 200,  # Minimum viable chunk size
+            "max_chunk_size": 2048,  # Larger maximum for comprehensive content
+            "strategy": "simple_semantic",  # Simple semantic strategy
+            "preserve_structure": True,  # Preserve document structure
             "split_on_sentence": True,  # Prefer sentence boundaries
-            "extract_entities": False,  # Extract named entities (requires NLP models)
-            "confidence_threshold": 0.7,  # Minimum confidence for semantic splits
+            "extract_entities": False,  # Let LLM handle entity extraction
+            "confidence_threshold": 0.5,  # Standard threshold
         }
 
         logger.info("Chunking service initialized")
@@ -536,6 +536,93 @@ class ChunkingService:
             preserve_sentences=chunk_config["split_on_sentence"],
         )
 
+    def chunk_simple_semantic(self, text: str, config: Optional[Dict[str, Any]] = None) -> List[DocumentChunk]:
+        """
+        Simple semantic chunking that provides large context to LLM
+
+        Modern best practice: Give LLM large chunks with substantial overlap
+        and let the LLM intelligently extract relevant information.
+        """
+        chunk_config = {**self.default_config, **(config or {})}
+
+        # Simple approach: Split on natural boundaries with large overlap
+        chunks = []
+        target_size = chunk_config["chunk_size"]
+        overlap_size = chunk_config["chunk_overlap"]
+
+        # Split by major sections (double newlines) but keep large chunks
+        sections = [s.strip() for s in text.split('\n\n') if s.strip()]
+
+        current_chunk = ""
+        chunk_idx = 0
+
+        for section in sections:
+            potential_chunk = current_chunk + ("\n\n" if current_chunk else "") + section
+            potential_tokens = self.estimate_token_count(potential_chunk)
+
+            if potential_tokens > target_size and current_chunk:
+                # Create chunk with current content
+                chunk = DocumentChunk(
+                    chunk_id=f"simple_semantic_{chunk_idx}",
+                    text=current_chunk,
+                    start_char=0,
+                    end_char=len(current_chunk),
+                    metadata=ChunkMetadata(
+                        section_type="semantic_section",
+                        technical_section=False,
+                        section_index=chunk_idx,
+                        chunk_strategy="simple_semantic"
+                    )
+                )
+                chunks.append(chunk)
+
+                # Start new chunk with overlap
+                overlap_text = self._get_simple_overlap(current_chunk, overlap_size)
+                current_chunk = overlap_text + ("\n\n" if overlap_text else "") + section
+                chunk_idx += 1
+            else:
+                current_chunk = potential_chunk
+
+        # Add final chunk
+        if current_chunk:
+            chunk = DocumentChunk(
+                chunk_id=f"simple_semantic_{chunk_idx}",
+                text=current_chunk,
+                start_char=0,
+                end_char=len(current_chunk),
+                metadata=ChunkMetadata(
+                    section_type="semantic_section",
+                    technical_section=False,
+                    section_index=chunk_idx,
+                    chunk_strategy="simple_semantic"
+                )
+            )
+            chunks.append(chunk)
+
+        return chunks
+
+    def _get_simple_overlap(self, text: str, overlap_tokens: int) -> str:
+        """Get simple overlap from end of text"""
+        if overlap_tokens <= 0:
+            return ""
+
+        # Convert tokens to approximate character count
+        overlap_chars = overlap_tokens * 4
+
+        if len(text) <= overlap_chars:
+            return text
+
+        # Get last portion, try to break at sentence boundary
+        overlap_text = text[-overlap_chars:]
+
+        # Find last sentence boundary in first half of overlap
+        sentence_end = overlap_text.find('. ', len(overlap_text) // 2)
+        if sentence_end > 0:
+            overlap_text = overlap_text[sentence_end + 2:]
+
+        return overlap_text.strip()
+
+
     def chunk_document(
         self,
         text: str,
@@ -578,6 +665,8 @@ class ChunkingService:
                     max_chunk_size=config["max_chunk_size"],
                     confidence_threshold=config["confidence_threshold"],
                 )
+            elif strategy == "simple_semantic":
+                chunks = self.chunk_simple_semantic(text, config)
             else:  # hybrid
                 chunks = self.chunk_hybrid(text, config)
 
@@ -656,4 +745,3 @@ def chunk_text_simple(
 
     chunks = service.chunk_document(text, chunking_config=config)
     return [chunk.to_dict() for chunk in chunks]
-

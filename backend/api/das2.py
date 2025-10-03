@@ -74,18 +74,29 @@ async def das2_chat(
 
         print(f"DAS2_API: Processing message='{request.message}' for project={request.project_id}")
 
-        # Process with DAS2 engine (simple approach)
-        response = await engine.process_message(
+        # Use unified streaming method and collect all chunks for non-streaming response
+        full_response = ""
+        final_metadata = {}
+        sources = []
+
+        async for chunk in engine.process_message_stream(
             project_id=request.project_id,
             message=request.message,
             user_id=user_id,
             project_thread_id=request.project_thread_id
-        )
+        ):
+            if chunk.get("type") == "content":
+                full_response += chunk.get("content", "")
+            elif chunk.get("type") == "done":
+                final_metadata = chunk.get("metadata", {})
+                sources = final_metadata.get("sources", [])
+            elif chunk.get("type") == "error":
+                raise HTTPException(status_code=500, detail=chunk.get("message", "Unknown error"))
 
         return DAS2ChatResponse(
-            message=response.message,
-            sources=response.sources,
-            metadata=response.metadata
+            message=full_response,
+            sources=sources,
+            metadata=final_metadata
         )
 
     except Exception as e:

@@ -1,0 +1,23 @@
+---
+alwaysApply: true
+---
+
+# Voice System Integration
+
+## Voice Conversation Behavior
+- Keep voice conversation tools talking continuously until user says "stop"
+- Use voice-mode MCP tools for service management
+- Test from user's standpoint, not just API calls
+- Use das_service credentials for all testing
+
+## Voice Testing Requirements
+- Always test from user's standpoint, not just API calls
+- Use das_service account (Username: das_service, Password: das_service_2024!)
+- Don't say we are complete until user explicitly confirms
+- Test the actual UI and user experience, not just backend APIs
+
+## Voice Service Management
+- Use voice-mode MCP tools for service management
+- Check voice service status when debugging
+- Verify audio dependencies are properly installed
+- Test voice functionality end-to-end

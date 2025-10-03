@@ -131,12 +131,17 @@ class RAGService:
         """
         try:
             # Perform vector search in the knowledge_chunks collection
+            print(f"🔍 VECTOR_QUERY_DEBUG: Searching for '{question}' in knowledge_chunks")
+            print(f"   Max chunks: {max_chunks * 2}, Threshold: {similarity_threshold}")
+
             search_results = await self.qdrant_service.search_similar_chunks(
                 query_text=question,
                 collection_name="knowledge_chunks",
                 limit=max_chunks * 2,  # Get extra results for filtering
                 score_threshold=similarity_threshold,
             )
+
+            print(f"🔍 VECTOR_QUERY_DEBUG: Vector search returned {len(search_results)} results")
 
             # Filter chunks based on project access permissions
             accessible_chunks = []
@@ -173,8 +178,11 @@ class RAGService:
             deduplicated_chunks = self._deduplicate_sources(filtered_chunks, max_chunks)
 
             # SQL read-through: fetch actual text content from SQL if enabled
+            print(f"🔍 SQL_READTHROUGH_DEBUG: SQL read-through enabled: {self.sql_read_through}")
             if self.sql_read_through:
+                print(f"🔍 SQL_READTHROUGH_DEBUG: Enriching {len(deduplicated_chunks)} chunks with SQL content")
                 deduplicated_chunks = await self._enrich_chunks_with_sql_content(deduplicated_chunks)
+                print(f"🔍 SQL_READTHROUGH_DEBUG: After enrichment: {len(deduplicated_chunks)} chunks")
 
             return deduplicated_chunks
 
@@ -208,9 +216,12 @@ class RAGService:
                     logger.warning(f"No chunk_id found in payload: {payload}")
 
             if not chunk_ids:
+                print("❌ SQL_READTHROUGH_DEBUG: No chunk_ids found in vector search results for SQL read-through")
                 logger.warning("No chunk_ids found in vector search results for SQL read-through")
                 return chunks  # Return original chunks if no IDs
 
+            print(f"🔍 SQL_READTHROUGH_DEBUG: Fetching {len(chunk_ids)} chunks from SQL")
+            print(f"   Chunk IDs: {[cid[:8] + '...' for cid in chunk_ids[:5]]}")
             logger.debug(f"Fetching {len(chunk_ids)} chunks from SQL for read-through")
 
             # Fetch actual text content from SQL
@@ -218,6 +229,17 @@ class RAGService:
             try:
                 from backend.db.queries import get_chunks_by_ids
                 sql_chunks = get_chunks_by_ids(conn, chunk_ids)
+                print(f"🔍 SQL_READTHROUGH_DEBUG: Retrieved {len(sql_chunks)} chunks from SQL")
+
+                # Debug first chunk content
+                if sql_chunks:
+                    first_chunk = sql_chunks[0]
+                    chunk_text = first_chunk.get('content', '')
+                    print(f"🔍 SQL_READTHROUGH_DEBUG: First chunk preview: {chunk_text[:200]}...")
+                    print(f"   Contains 'aeromapper': {'aeromapper' in chunk_text.lower()}")
+                    print(f"   Contains '20': {'20' in chunk_text}")
+                    print(f"   Contains 'kg': {'kg' in chunk_text.lower()}")
+
                 logger.debug(f"Retrieved {len(sql_chunks)} chunks from SQL")
 
                 # Create mapping of chunk_id to SQL text

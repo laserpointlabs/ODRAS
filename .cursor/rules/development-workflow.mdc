@@ -1,0 +1,29 @@
+---
+alwaysApply: true
+---
+
+# Development Workflow
+
+## Before Creating New Files
+1. **Check existing files** - can you update instead of create?
+2. **Consider consolidation** - does this belong in an existing document/script?
+3. **Verify location** - is this going in the right directory?
+4. **Check limits** - are we approaching file count limits?
+
+## Code Quality Standards
+- Follow patterns in [odras.sh](mdc:odras.sh) for robust process management
+- Use proper error handling and logging
+- Implement graceful shutdowns and force killing when needed
+- Check port availability before starting services
+- Anticipate and proactively handle repetitive code fixes
+
+## Testing Approach
+- Proceed slowly, one step at a time when developing features
+- Always verify changes by checking via the API when testing functionality
+- Don't explain what you did until changes work correctly
+- Test from user's standpoint, not just API calls
+
+## User Interface Guidelines
+- Prefer traditional toolbar or menu and less cluttered buttons
+- No goofy emojis; if using an icon, it should fit the project's theme and be black and white like the main vertical toolbar
+- Use keyboard shortcuts (such as F12) for panel toggles instead of UI buttons

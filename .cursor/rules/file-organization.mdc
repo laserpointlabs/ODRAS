@@ -1,0 +1,31 @@
+---
+alwaysApply: true
+---
+
+# File Organization Rules
+
+## Root Directory (STRICT LIMITS)
+- **README.md** - Only markdown file allowed in root
+- **Essential scripts only**: [odras.sh](mdc:odras.sh), [install.sh](mdc:install.sh), [setup_test_knowledge_data.py](mdc:setup_test_knowledge_data.py)
+- **Standard files**: [requirements.txt](mdc:requirements.txt), [docker-compose.yml](mdc:docker-compose.yml), .env files
+- **Config files**: [.cursorrules](mdc:.cursorrules), [pytest.ini](mdc:pytest.ini), [.gitignore](mdc:.gitignore), etc.
+- **NO logs, tests, or temporary files in root**
+
+## Documentation (docs/ folder ONLY)
+- **All .md files** (except README.md) must be in `docs/`
+- **Use consolidated guides** instead of creating new documents
+- **Follow structure**: architecture/, features/, deployment/, development/
+- **Before creating new docs**: Check if existing docs can be updated instead
+- **Maximum 35 documents** - consolidate if approaching limit
+
+## Scripts (scripts/ folder ONLY)
+- **All .py and .sh scripts** (except main system scripts) in `scripts/`
+- **Remove unused scripts** instead of accumulating them
+- **Test scripts carefully** before removing (preserve in cleanup/unused_scripts/ if uncertain)
+- **Maximum 50 scripts** - review and clean if approaching limit
+
+## Red Flags (NEVER DO THIS)
+- ❌ Create .md files in root directory (except README.md)
+- ❌ Add scripts to root directory (except essential system scripts)
+- ❌ Create multiple documents for same topic (consolidate instead)
+- ❌ Add logs, test artifacts, or temporary files to Git

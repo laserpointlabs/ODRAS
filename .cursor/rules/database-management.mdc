@@ -1,0 +1,32 @@
+---
+alwaysApply: true
+---
+
+# Database Management Rules
+
+## Migration System
+- **ALL migrations** must be added to [odras.sh](mdc:odras.sh) init-db function
+- **Update migration_order.txt** when adding new migrations
+- **Test database build** after any migration changes
+- **Include ALL required collections** in Qdrant initialization
+
+## Required Qdrant Collections
+```bash
+# These 5 collections are REQUIRED for ODRAS functionality:
+knowledge_chunks      # Document chunks (384 dim)
+knowledge_large       # OpenAI embeddings (1536 dim)
+odras_requirements    # Requirements (384 dim)
+das_instructions      # DAS instructions (384 dim)
+project_threads       # Project threads (384 dim) - CRITICAL for DAS
+```
+
+## User Management
+- **Default users**: admin, jdehart, das_service
+- **Test credentials**: das_service/das_service_2024!
+- **Always test with das_service account** for automated testing
+
+## Before ANY Database Changes
+1. **Test current build**: `./odras.sh clean -y && ./odras.sh init-db`
+2. **Verify all services**: Check PostgreSQL, Neo4j, Qdrant, Fuseki
+3. **Test DAS functionality**: Ensure project_threads collection exists
+4. **Validate migrations**: Use `python scripts/database_schema_manager.py status`
