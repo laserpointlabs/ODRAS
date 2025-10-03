@@ -14542,16 +14542,17 @@
                           metadata = { ...metadata, ...data.metadata };
                         }
 
-                        // Streaming complete - convert to final format
+                        // Streaming complete - convert to final format with CONSISTENT emoji sources
                         streamContainer.innerHTML = `
                           <strong>DAS:</strong><br>
                           <div class="das-markdown">${marked.parse(fullResponse)}</div>
                           ${metadata.sources && metadata.sources.length > 0 ? `
                             <div style="margin-top: 8px; padding-top: 8px; border-top: 1px solid var(--border);">
-                              <div class="muted" style="font-size: 0.9em;">Sources:</div>
-                              ${metadata.sources.map((source, i) =>
-                          `<div style="font-size: 0.8em; margin-left: 8px;">${i + 1}. ${source.title || 'Unknown'} (${source.document_type || 'document'})</div>`
-                        ).join('')}
+                              <div class="muted" style="font-size: 0.9em;">📚 Sources (${metadata.sources.length}):</div>
+                              ${metadata.sources.map(source => {
+                          const relevanceScore = source.relevance_score ? ` (${Math.round(source.relevance_score * 100)}% match)` : '';
+                          return `<div style="font-size: 0.8em; margin-left: 8px;">• <strong>${source.title || 'Unknown'}</strong> (${source.document_type || 'document'})${relevanceScore}</div>`;
+                        }).join('')}
                             </div>
                           ` : ''}
                         `;
