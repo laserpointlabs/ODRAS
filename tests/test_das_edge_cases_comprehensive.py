@@ -31,7 +31,7 @@ sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..', 'backend'))
 class DASEdgeCaseTester:
     """Comprehensive DAS edge case and consistency tester - self-contained"""
 
-    def __init__(self, username: str = "das_service", password: str = "das_service_2024!", verbose: bool = True):
+    def __init__(self, username: str = "jdehart", password: str = "jdehart123!", verbose: bool = True):
         self.base_url = "http://localhost:8000"
         self.username = username
         self.password = password
@@ -115,6 +115,9 @@ class DASEdgeCaseTester:
 
             self.log(f"Test project created: {project_name} ({self.project_id})", "SUCCESS")
             await asyncio.sleep(2)  # Wait for project thread creation
+
+            # Setup DAS exactly like the DAS dock does
+            await self._setup_das_like_dock()
 
     async def setup_test_ontology_and_classes(self):
         """Create test ontology with classes for edge case testing"""
@@ -334,32 +337,115 @@ class DASEdgeCaseTester:
         self.log("⚠️ Embeddings may not be fully ready, proceeding with test", "WARNING")
 
     async def ask_das(self, question: str) -> Dict[str, Any]:
-        """Ask DAS a question and return full response"""
-        async with httpx.AsyncClient(timeout=30.0) as client:
+        """Ask DAS a question using the SAME endpoint as DAS dock"""
+        async with httpx.AsyncClient(timeout=60.0) as client:
             response = await client.post(
-                f"{self.base_url}/api/das2/chat",
+                f"{self.base_url}/api/das2/chat/stream",
                 headers=self.auth_headers(),
                 json={
                     "message": question,
-                    "project_id": self.project_id
+                    "project_id": self.project_id,
+                    "project_thread_id": self.project_thread_id,
+                    "ontology_id": self.ontology_iri.split('/')[-1] if self.ontology_iri else None,
+                    "workbench": "ontology"
                 }
             )
 
             if response.status_code != 200:
-                raise Exception(f"DAS query failed: {response.text}")
+                raise Exception(f"DAS query failed: {response.status_code} - {response.text}")
 
-            das_response = response.json()
+            # Parse streaming response (same format as DAS dock)
+            full_response = ""
+            sources = []
+            metadata = {}
+
+            try:
+                async for line in response.aiter_lines():
+                    if line.startswith("data: "):
+                        try:
+                            chunk = json.loads(line[6:])  # Remove "data: " prefix
+                            chunk_type = chunk.get("type")
+
+                            if chunk_type == "content":
+                                content = chunk.get("content", "")
+                                full_response += content
+                            elif chunk_type == "done":
+                                metadata = chunk.get("metadata", {})
+                                sources = metadata.get("sources", [])
+                            elif chunk_type == "error":
+                                raise Exception(f"DAS streaming error: {chunk.get('message', 'Unknown error')}")
+                        except json.JSONDecodeError:
+                            # Skip malformed lines
+                            continue
+            except Exception as e:
+                self.log(f"Error parsing streaming response: {e}", "ERROR")
+                # If streaming fails, try to read as regular JSON
+                try:
+                    response_text = await response.aread()
+                    fallback_response = json.loads(response_text)
+                    full_response = fallback_response.get("message", "")
+                    sources = fallback_response.get("sources", [])
+                    metadata = fallback_response.get("metadata", {})
+                except:
+                    raise Exception(f"Could not parse DAS response: {e}")
+
+            das_response = {
+                "message": full_response,
+                "sources": sources,
+                "metadata": metadata
+            }
 
             # Store in conversation history for consistency tracking
             self.conversation_history.append({
                 "question": question,
-                "answer": das_response.get("message", ""),
-                "sources": das_response.get("sources", []),
-                "metadata": das_response.get("metadata", {}),
+                "answer": full_response,
+                "sources": sources,
+                "metadata": metadata,
                 "timestamp": datetime.now().isoformat()
             })
 
             return das_response
+
+    async def _setup_das_like_dock(self):
+        """Setup DAS exactly like the DAS dock does"""
+        async with httpx.AsyncClient(timeout=30.0) as client:
+            # 1. Get/Create project thread (DAS dock does this first)
+            response = await client.get(
+                f"{self.base_url}/api/das2/project/{self.project_id}/thread",
+                headers=self.auth_headers()
+            )
+
+            if response.status_code == 200:
+                data = response.json()
+                self.project_thread_id = data.get("project_thread_id")
+                self.log(f"Using existing project thread: {self.project_thread_id}", "SUCCESS")
+            else:
+                # Create a new thread
+                response = await client.post(
+                    f"{self.base_url}/api/das2/project/{self.project_id}/thread",
+                    headers=self.auth_headers(),
+                    json={"create_if_not_exists": True}
+                )
+
+                if response.status_code == 200:
+                    data = response.json()
+                    self.project_thread_id = data.get("project_thread_id")
+                    self.log(f"Created project thread: {self.project_thread_id}", "SUCCESS")
+                else:
+                    self.log(f"Could not create project thread: {response.status_code}", "WARNING")
+                    self.project_thread_id = None
+
+            # 2. Load RAG configuration (DAS dock does this)
+            response = await client.get(
+                f"{self.base_url}/api/rag-config",
+                headers=self.auth_headers()
+            )
+
+            if response.status_code == 200:
+                rag_config = response.json()
+                self.log(f"Loaded RAG config: {len(rag_config)} collections", "SUCCESS")
+            else:
+                self.log(f"Could not load RAG config: {response.status_code}", "WARNING")
 
     async def test_knowledge_consistency(self):
         """Test for knowledge consistency issues"""
@@ -625,8 +711,21 @@ class DASEdgeCaseTester:
         results = []
 
         for test in source_tests:
+            self.log(f"Testing source attribution for: {test['question']}")
             response = await self.ask_das(test["question"])
+
+            # Debug the full response structure
+            self.log(f"  Response keys: {list(response.keys())}")
+            self.log(f"  Sources: {response.get('sources', [])}")
+            self.log(f"  Metadata: {response.get('metadata', {})}")
+
             sources = response.get("sources", [])
+
+            # FAIL FAST: If no sources at all, stop the test
+            if not sources:
+                self.log(f"❌ CRITICAL: No sources found at all for question: {test['question']}", "CONSISTENCY_FAIL")
+                self.log(f"❌ This suggests DAS is not working correctly - stopping test", "CONSISTENCY_FAIL")
+                raise Exception(f"DAS not returning sources - no RAG functionality detected for question: {test['question']}")
 
             # Check if expected source is present
             source_titles = [s.get("title", "") for s in sources]
@@ -637,7 +736,8 @@ class DASEdgeCaseTester:
                 "expected_source": test["expected_source"],
                 "sources_found": source_titles,
                 "expected_source_present": expected_found,
-                "total_sources": len(sources)
+                "total_sources": len(sources),
+                "full_response": response  # For debugging
             }
 
             results.append(result)
@@ -647,6 +747,7 @@ class DASEdgeCaseTester:
             else:
                 self.log(f"  ❌ Missing expected source: {test['expected_source']}", "CONSISTENCY_FAIL")
                 self.log(f"    Found sources: {source_titles}")
+                self.log(f"    Full response: {response}")
 
         return results
 
