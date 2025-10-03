@@ -418,8 +418,8 @@ class PostgreSQLBackend(StorageBackend):
         self.settings = settings
         self.metadata_only = metadata_only  # When True, only store metadata in files table
         self.connection_pool = psycopg2.pool.ThreadedConnectionPool(
-            minconn=1,
-            maxconn=10,
+            minconn=settings.postgres_pool_min_connections,
+            maxconn=settings.postgres_pool_max_connections,
             host=settings.postgres_host,
             port=settings.postgres_port,
             database=settings.postgres_database,
@@ -1405,4 +1405,3 @@ def get_file_storage_service() -> FileStorageService:
         settings = Settings()
         _file_storage_service = FileStorageService(settings)
     return _file_storage_service
-

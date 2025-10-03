@@ -1,4 +1,4 @@
-version: '3.8'
+version: "3.8"
 
 services:
   qdrant:
@@ -22,8 +22,8 @@ services:
       - NEO4J_apoc_import_file_enabled=true
       - NEO4J_dbms_logs_debug_level=INFO
     ports:
-      - "7474:7474"   # HTTP
-      - "7687:7687"   # Bolt
+      - "7474:7474" # HTTP
+      - "7687:7687" # Bolt
     volumes:
       - neo4j_data:/data
       - neo4j_logs:/logs
@@ -75,8 +75,8 @@ services:
     container_name: odras_minio
     restart: unless-stopped
     ports:
-      - "9000:9000"     # API
-      - "9001:9001"     # Console
+      - "9000:9000" # API
+      - "9001:9001" # Console
     environment:
       - MINIO_ROOT_USER=minioadmin
       - MINIO_ROOT_PASSWORD=minioadmin
@@ -125,6 +125,24 @@ services:
       timeout: 5s
       retries: 3
 
+  # pgAdmin for PostgreSQL database management
+  pgadmin:
+    image: dpage/pgadmin4:latest
+    container_name: odras_pgadmin
+    restart: unless-stopped
+    ports:
+      - "5050:80"
+    environment:
+      - PGADMIN_DEFAULT_EMAIL=admin@odras.com
+      - PGADMIN_DEFAULT_PASSWORD=admin
+      - PGADMIN_CONFIG_SERVER_MODE=False
+      - PGADMIN_CONFIG_MASTER_PASSWORD_REQUIRED=False
+      - PGADMIN_CONFIG_WTF_CSRF_ENABLED=False
+    volumes:
+      - pgadmin_data:/var/lib/pgadmin
+    depends_on:
+      - postgres
+
 volumes:
   qdrant_data:
   neo4j_data:
@@ -134,3 +152,4 @@ volumes:
   minio_data:
   postgres_data:
   redis_data:
+  pgadmin_data:

@@ -21,24 +21,76 @@ logger = logging.getLogger(__name__)
 
 
 class EventType(Enum):
-    """Types of events EventCapture2 can capture"""
+    """Types of events EventCapture2 can capture - SQL-first compliant"""
+
+    # Project Operations
     PROJECT_CREATED = "project_created"
     PROJECT_UPDATED = "project_updated"
+    PROJECT_DELETED = "project_deleted"
+
+    # Ontology Operations
     ONTOLOGY_CREATED = "ontology_created"
     ONTOLOGY_MODIFIED = "ontology_modified"
     ONTOLOGY_SAVED = "ontology_saved"
+    ONTOLOGY_IMPORTED = "ontology_imported"
+    ONTOLOGY_EXPORTED = "ontology_exported"
+    ONTOLOGY_VALIDATED = "ontology_validated"
+    ONTOLOGY_DELETED = "ontology_deleted"
+
+    # Class Operations
     CLASS_CREATED = "class_created"
-    PROPERTY_CREATED = "property_created"
+    CLASS_UPDATED = "class_updated"
+    CLASS_DELETED = "class_deleted"
+    CLASS_RENAMED = "class_renamed"
+
+    # Property Operations (NEW - MISSING)
+    OBJECT_PROPERTY_CREATED = "object_property_created"
+    DATA_PROPERTY_CREATED = "data_property_created"
+    ANNOTATION_PROPERTY_CREATED = "annotation_property_created"
+    PROPERTY_UPDATED = "property_updated"
+    PROPERTY_DELETED = "property_deleted"
+    PROPERTY_RENAMED = "property_renamed"
+
+    # Relationship/Axiom Operations (NEW - MISSING)
+    RELATIONSHIP_ADDED = "relationship_added"
+    AXIOM_CREATED = "axiom_created"
+    AXIOM_DELETED = "axiom_deleted"
+    SUBCLASS_RELATION_ADDED = "subclass_relation_added"
+    PROPERTY_DOMAIN_SET = "property_domain_set"
+    PROPERTY_RANGE_SET = "property_range_set"
+
+    # File Operations
     FILE_UPLOADED = "file_uploaded"
     FILE_DELETED = "file_deleted"
-    WORKFLOW_STARTED = "workflow_started"
+    FILE_PROCESSING_STARTED = "file_processing_started"
+    FILE_PROCESSING_COMPLETED = "file_processing_completed"
+    FILE_PROCESSING_FAILED = "file_processing_failed"
+
+    # Knowledge Operations
     KNOWLEDGE_ASSET_CREATED = "knowledge_asset_created"
     KNOWLEDGE_ASSET_UPDATED = "knowledge_asset_updated"
     KNOWLEDGE_ASSET_DELETED = "knowledge_asset_deleted"
     KNOWLEDGE_ASSET_PUBLISHED = "knowledge_asset_published"
+    KNOWLEDGE_ASSET_ACTIVATED = "knowledge_asset_activated"
+    KNOWLEDGE_ASSET_DEACTIVATED = "knowledge_asset_deactivated"
     KNOWLEDGE_SEARCHED = "knowledge_searched"
     KNOWLEDGE_RAG_QUERY = "knowledge_rag_query"
+
+    # Workflow Operations
+    WORKFLOW_STARTED = "workflow_started"
+    WORKFLOW_COMPLETED = "workflow_completed"
+    WORKFLOW_FAILED = "workflow_failed"
+
+    # DAS Operations
     DAS_INTERACTION = "das_interaction"
+    DAS_QUERY = "das_query"
+    DAS_RESPONSE = "das_response"
+
+    # System Operations (NEW - MISSING)
+    USER_LOGIN = "user_login"
+    USER_LOGOUT = "user_logout"
+    SYSTEM_ERROR = "system_error"
+    API_ERROR = "api_error"
 
 
 @dataclass
@@ -78,20 +130,22 @@ class EnhancedEvent:
 
 class EventCapture2:
     """
-    EventCapture2 - Enhanced event capture with rich context
+    EventCapture2 - Enhanced event capture with SQL-first architecture
 
     Features:
     - Rich, descriptive event summaries
+    - SQL-first storage via SqlFirstThreadManager
     - Non-blocking event capture
     - Works with or without project threads
     - Fault-tolerant design
-    - Integrates with both DAS1 and DAS2
+    - Dual-write to vectors with IDs-only payloads
     """
 
-    def __init__(self, redis_client=None):
+    def __init__(self, redis_client=None, sql_first_manager=None):
         self.redis = redis_client
-        self.event_queue = "eventcapture2_events"
-        logger.info("EventCapture2 initialized - Enhanced event capture ready")
+        self.sql_first_manager = sql_first_manager
+        self.event_queue = "eventcapture2_events"  # Backup queue if SQL-first unavailable
+        logger.info("EventCapture2 initialized - SQL-first event capture ready")
 
     async def capture_project_created(
         self,
@@ -131,7 +185,7 @@ class EventCapture2:
                 method="POST"
             )
 
-            return await self._queue_event(event)
+            return await self._store_event(event)
 
         except Exception as e:
             logger.error(f"Failed to capture project creation: {e}")
@@ -206,7 +260,7 @@ class EventCapture2:
                 response_time=response_time
             )
 
-            return await self._queue_event(event)
+            return await self._store_event(event)
 
         except Exception as e:
             logger.error(f"Failed to capture ontology operation: {e}")
@@ -268,7 +322,7 @@ class EventCapture2:
                 response_time=response_time
             )
 
-            return await self._queue_event(event)
+            return await self._store_event(event)
 
         except Exception as e:
             logger.error(f"Failed to capture file operation: {e}")
@@ -320,7 +374,7 @@ class EventCapture2:
                 method="POST"
             )
 
-            return await self._queue_event(event)
+            return await self._store_event(event)
 
         except Exception as e:
             logger.error(f"Failed to capture workflow start: {e}")
@@ -364,7 +418,7 @@ class EventCapture2:
                 response_time=response_time
             )
 
-            return await self._queue_event(event)
+            return await self._store_event(event)
 
         except Exception as e:
             logger.error(f"Failed to capture DAS interaction: {e}")
@@ -415,7 +469,7 @@ class EventCapture2:
                 method="POST"
             )
 
-            return await self._queue_event(event)
+            return await self._store_event(event)
 
         except Exception as e:
             logger.error(f"Failed to capture knowledge asset creation: {e}")
@@ -460,7 +514,7 @@ class EventCapture2:
                 method="POST"
             )
 
-            return await self._queue_event(event)
+            return await self._store_event(event)
 
         except Exception as e:
             logger.error(f"Failed to capture knowledge search: {e}")
@@ -513,7 +567,7 @@ class EventCapture2:
                 method="POST"
             )
 
-            return await self._queue_event(event)
+            return await self._store_event(event)
 
         except Exception as e:
             logger.error(f"Failed to capture RAG query: {e}")
@@ -568,7 +622,7 @@ class EventCapture2:
                 method="PUT"
             )
 
-            return await self._queue_event(event)
+            return await self._store_event(event)
 
         except Exception as e:
             logger.error(f"Failed to capture knowledge asset update: {e}")
@@ -606,32 +660,80 @@ class EventCapture2:
                 method="PUT"
             )
 
-            return await self._queue_event(event)
+            return await self._store_event(event)
 
         except Exception as e:
             logger.error(f"Failed to capture knowledge asset publishing: {e}")
             return False
 
-    async def _queue_event(self, event: EnhancedEvent) -> bool:
-        """Queue event for background processing"""
+    async def _store_event(self, event: EnhancedEvent) -> bool:
+        """Store event using SQL-first architecture via SqlFirstThreadManager"""
         try:
-            print(f"🔥 EVENTCAPTURE2 QUEUE: Attempting to queue event - {event.summary}")
-            print(f"🔥 EVENTCAPTURE2 QUEUE: Redis client available: {bool(self.redis)}")
+            print(f"🔥 EVENTCAPTURE2 SQL-FIRST: Attempting to store event - {event.summary}")
+            print(f"🔥 EVENTCAPTURE2 SQL-FIRST: SQL manager available: {bool(self.sql_first_manager)}")
+            print(f"🔥 EVENTCAPTURE2 SQL-FIRST: Project ID: {event.project_id}")
 
+            # Primary: SQL-first storage via SqlFirstThreadManager
+            if self.sql_first_manager and event.project_id:
+                try:
+                    # Get or create project thread for this event
+                    thread_data = await self.sql_first_manager.get_or_create_project_thread(
+                        project_id=event.project_id,
+                        user_id=event.user_id
+                    )
+
+                    project_thread_id = thread_data.get("project_thread_id")
+                    print(f"🔥 EVENTCAPTURE2 SQL-FIRST: Got thread_id: {project_thread_id}")
+
+                    if project_thread_id:
+                        # Store event in SQL-first system
+                        event_id = await self.sql_first_manager.capture_event(
+                            project_thread_id=project_thread_id,
+                            project_id=event.project_id,
+                            user_id=event.user_id,
+                            event_type=event.event_type.value,
+                            event_data={
+                                "summary": event.summary,
+                                "details": event.details,
+                                "context": event.context,
+                                "endpoint": event.endpoint,
+                                "method": event.method,
+                                "response_time": event.response_time,
+                                "timestamp": event.timestamp.isoformat()
+                            },
+                            context_snapshot={
+                                "username": event.username,
+                                "event_id": event.event_id
+                            }
+                        )
+
+                        print(f"🔥 EVENTCAPTURE2 SQL-FIRST: SUCCESS - Stored event {event_id}")
+                        logger.debug(f"EventCapture2: SQL-first storage success - {event.summary}")
+                        return True
+                    else:
+                        print(f"🔥 EVENTCAPTURE2 SQL-FIRST: WARN - Could not get thread_id")
+                        logger.warning(f"EventCapture2: Could not get project_thread_id for project {event.project_id}")
+
+                except Exception as sql_error:
+                    print(f"🔥 EVENTCAPTURE2 SQL-FIRST: ERROR - {sql_error}")
+                    logger.error(f"EventCapture2: SQL-first storage failed: {sql_error}")
+                    # Fall through to Redis backup
+
+            # Backup: Redis queue if SQL-first unavailable or no project_id
             if self.redis:
                 event_json = json.dumps(event.to_dict())
                 result = await self.redis.lpush(self.event_queue, event_json)
-                print(f"🔥 EVENTCAPTURE2 QUEUE: Successfully queued event - Redis result: {result}")
-                logger.debug(f"EventCapture2: Queued event - {event.summary}")
+                print(f"🔥 EVENTCAPTURE2 REDIS: Backup storage - Redis result: {result}")
+                logger.debug(f"EventCapture2: Redis backup storage - {event.summary}")
                 return True
             else:
-                print(f"🔥 EVENTCAPTURE2 QUEUE: No Redis available - event not queued")
-                logger.warning("EventCapture2: No Redis available - event not queued")
+                print(f"🔥 EVENTCAPTURE2: No storage available for event")
+                logger.warning(f"EventCapture2: No storage available for event - {event.summary}")
                 return False
 
         except Exception as e:
-            print(f"🔥 EVENTCAPTURE2 QUEUE: Failed to queue event: {e}")
-            logger.error(f"Failed to queue event: {e}")
+            print(f"🔥 EVENTCAPTURE2: CRITICAL ERROR - {e}")
+            logger.error(f"Failed to store event: {e}")
             return False
 
     async def process_queued_events(self) -> int:
@@ -788,6 +890,136 @@ class EventCapture2:
             logger.debug(f"Failed to route to DAS1: {e}")
             return False
 
+    # ====== NEW EVENT CAPTURE METHODS FOR MISSING OPERATIONS ======
+
+    async def capture_property_operation(
+        self,
+        operation_type: str,  # "created", "updated", "deleted", "renamed"
+        property_name: str,
+        property_type: str,  # "object", "data", "annotation"
+        ontology_name: str,
+        project_id: str,
+        user_id: str,
+        username: str,
+        operation_details: Dict[str, Any],
+        response_time: Optional[float] = None
+    ) -> bool:
+        """Capture property operations (object/data/annotation properties)"""
+        try:
+            # Map operation and property types to event types
+            event_type_map = {
+                ("created", "object"): EventType.OBJECT_PROPERTY_CREATED,
+                ("created", "data"): EventType.DATA_PROPERTY_CREATED,
+                ("created", "annotation"): EventType.ANNOTATION_PROPERTY_CREATED,
+                ("updated", "object"): EventType.PROPERTY_UPDATED,
+                ("updated", "data"): EventType.PROPERTY_UPDATED,
+                ("updated", "annotation"): EventType.PROPERTY_UPDATED,
+                ("deleted", "object"): EventType.PROPERTY_DELETED,
+                ("deleted", "data"): EventType.PROPERTY_DELETED,
+                ("deleted", "annotation"): EventType.PROPERTY_DELETED,
+                ("renamed", "object"): EventType.PROPERTY_RENAMED,
+                ("renamed", "data"): EventType.PROPERTY_RENAMED,
+                ("renamed", "annotation"): EventType.PROPERTY_RENAMED,
+            }
+
+            event_type = event_type_map.get((operation_type, property_type), EventType.PROPERTY_UPDATED)
+
+            # Build rich summary
+            if operation_type == "created":
+                summary = f"{username} created {property_type} property '{property_name}' in ontology '{ontology_name}'"
+            elif operation_type == "updated":
+                summary = f"{username} updated {property_type} property '{property_name}' in ontology '{ontology_name}'"
+            elif operation_type == "deleted":
+                summary = f"{username} deleted {property_type} property '{property_name}' from ontology '{ontology_name}'"
+            elif operation_type == "renamed":
+                old_name = operation_details.get('old_name', 'unknown')
+                summary = f"{username} renamed {property_type} property '{old_name}' to '{property_name}' in ontology '{ontology_name}'"
+            else:
+                summary = f"{username} modified {property_type} property '{property_name}' in ontology '{ontology_name}'"
+
+            event = EnhancedEvent(
+                event_id=f"prop_{operation_type}_{int(datetime.now().timestamp() * 1000)}",
+                event_type=event_type,
+                timestamp=datetime.now(),
+                user_id=user_id,
+                username=username,
+                project_id=project_id,
+                summary=summary,
+                details={
+                    "property_name": property_name,
+                    "property_type": property_type,
+                    "ontology_name": ontology_name,
+                    "operation": operation_type,
+                    **operation_details
+                },
+                context={"workbench": "ontology"},
+                response_time=response_time,
+                endpoint="/api/ontology/properties",
+                method="POST"
+            )
+
+            return await self._store_event(event)
+
+        except Exception as e:
+            logger.error(f"Failed to capture property {operation_type}: {e}")
+            return False
+
+    async def capture_file_processing_event(
+        self,
+        event_type: str,  # "started", "completed", "failed"
+        filename: str,
+        project_id: str,
+        user_id: str,
+        username: str,
+        processing_details: Dict[str, Any],
+        response_time: Optional[float] = None
+    ) -> bool:
+        """Capture file processing lifecycle events"""
+        try:
+            # Map to appropriate event types
+            event_type_map = {
+                "started": EventType.FILE_PROCESSING_STARTED,
+                "completed": EventType.FILE_PROCESSING_COMPLETED,
+                "failed": EventType.FILE_PROCESSING_FAILED
+            }
+
+            mapped_event_type = event_type_map.get(event_type, EventType.FILE_PROCESSING_STARTED)
+
+            # Build rich summary
+            if event_type == "started":
+                summary = f"{username} started processing file '{filename}'"
+            elif event_type == "completed":
+                chunks_count = processing_details.get('chunks_created', 0)
+                summary = f"{username} completed processing file '{filename}' ({chunks_count} chunks created)"
+            else:  # failed
+                error = processing_details.get('error', 'Unknown error')
+                summary = f"{username} file processing failed for '{filename}': {error}"
+
+            event = EnhancedEvent(
+                event_id=f"file_proc_{event_type}_{int(datetime.now().timestamp() * 1000)}",
+                event_type=mapped_event_type,
+                timestamp=datetime.now(),
+                user_id=user_id,
+                username=username,
+                project_id=project_id,
+                summary=summary,
+                details={
+                    "filename": filename,
+                    "processing_status": event_type,
+                    **processing_details
+                },
+                context={"workbench": "files"},
+                response_time=response_time,
+                endpoint="/api/files/upload",
+                method="POST"
+            )
+
+            return await self._store_event(event)
+
+        except Exception as e:
+            logger.error(f"Failed to capture file processing {event_type}: {e}")
+            return False
+
 
 # Global EventCapture2 instance
 event_capture: Optional[EventCapture2] = None
@@ -796,8 +1028,14 @@ def get_event_capture() -> Optional[EventCapture2]:
     """Get global EventCapture2 instance"""
     return event_capture
 
-def initialize_event_capture(redis_client=None):
-    """Initialize global EventCapture2 instance"""
+def initialize_event_capture(redis_client=None, sql_first_manager=None):
+    """Initialize global EventCapture2 instance with SQL-first support"""
     global event_capture
-    event_capture = EventCapture2(redis_client)
-    logger.info("EventCapture2 global instance initialized")
+    event_capture = EventCapture2(redis_client=redis_client, sql_first_manager=sql_first_manager)
+    logger.info("EventCapture2 global instance initialized with SQL-first support")
+
+def initialize_sql_first_event_capture(sql_first_manager, redis_client=None):
+    """Initialize EventCapture2 with SQL-first as primary storage"""
+    global event_capture
+    event_capture = EventCapture2(redis_client=redis_client, sql_first_manager=sql_first_manager)
+    logger.info("EventCapture2 initialized with SQL-first primary storage")

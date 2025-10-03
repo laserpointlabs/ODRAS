@@ -94,6 +94,11 @@ app.include_router(iri_router)
 # Import and include federated access router
 from backend.api.federated_access import router as federated_router
 app.include_router(federated_router)
+
+# Import and include events management router
+from backend.api.events import router as events_router
+app.include_router(events_router)
+
 app.include_router(namespace_router)
 app.include_router(namespace_public_router)
 app.include_router(prefix_router)
@@ -381,7 +386,8 @@ async def create_project(body: Dict, user=Depends(get_user)):
             from backend.services.eventcapture2 import get_event_capture
             event_capture = get_event_capture()
             if event_capture:
-                await event_capture.capture_project_created(
+                print(f"🔥 DIRECT EVENT CAPTURE: Attempting project creation event")
+                success = await event_capture.capture_project_created(
                     project_id=proj["project_id"],
                     project_name=name,
                     user_id=user["user_id"],
@@ -392,8 +398,14 @@ async def create_project(body: Dict, user=Depends(get_user)):
                         "namespace_id": namespace_id
                     }
                 )
+                print(f"🔥 DIRECT EVENT CAPTURE: Project creation result = {success}")
+            else:
+                print(f"🔥 DIRECT EVENT CAPTURE: EventCapture2 not available")
         except Exception as e:
+            print(f"🔥 DIRECT EVENT CAPTURE: Project creation failed: {e}")
             logger.warning(f"EventCapture2 project creation failed: {e}")
+            import traceback
+            traceback.print_exc()
 
         return {"project": proj}
     except Exception as e:
@@ -746,22 +758,25 @@ async def on_startup():
         print("✅ Semantic capture initialized")
 
         print("🔥 Step 11: Setting up middleware-to-DAS event routing...")
-        logger.info("🔗 Configuring middleware to route events to existing ProjectThreadManager...")
+        logger.info("🎯 Replacing fragmented middleware with unified SQL-first event system...")
         try:
-            # Configure middleware to route events directly to DAS
-            from backend.services.middleware_to_das_bridge import MiddlewareToDASBridge
-            global middleware_bridge
-            middleware_bridge = MiddlewareToDASBridge(redis_client)
-            print(f"✅ Middleware-to-DAS bridge configured")
+            # Replace ALL fragmented event systems with unified SQL-first approach
+            from backend.services.sql_first_event_integration import initialize_unified_sql_first_events, log_event_system_status
 
-            # Store bridge instance globally for middleware access
-            import backend.middleware.session_capture as session_middleware
-            session_middleware.das_bridge = middleware_bridge
-            print("✅ Bridge connected to middleware")
+            event_system = await initialize_unified_sql_first_events(
+                app=app,
+                db_service=db,
+                redis_client=redis_client
+            )
+
+            print(f"✅ Unified SQL-first event system active: {event_system['status']}")
+
+            # Log the consolidated system status
+            log_event_system_status()
 
         except Exception as e:
-            print(f"❌ Error setting up middleware bridge: {e}")
-            logger.error(f"Middleware bridge error: {e}")
+            print(f"❌ Error setting up unified event system: {e}")
+            logger.error(f"Unified event system error: {e}")
             import traceback
             traceback.print_exc()
 
@@ -775,6 +790,28 @@ async def on_startup():
         traceback.print_exc()
         logger.error(f"Full traceback: {traceback.format_exc()}")
         # Don't fail startup if DAS initialization fails
+
+    # Start connection pool monitoring task
+    try:
+        import asyncio
+        async def monitor_connection_pool():
+            """Monitor and prune database connections periodically."""
+            while True:
+                try:
+                    if hasattr(db, 'prune_old_connections'):
+                        db.prune_old_connections()
+                    if hasattr(db, 'get_pool_status'):
+                        status = db.get_pool_status()
+                        if status.get('active_connections', 0) > status.get('maxconn', 0) * 0.8:
+                            logger.warning(f"High connection pool usage: {status}")
+                except Exception as e:
+                    logger.error(f"Error in connection pool monitoring: {e}")
+                await asyncio.sleep(300)  # Check every 5 minutes
+
+        asyncio.create_task(monitor_connection_pool())
+        logger.info("✅ Connection pool monitoring started")
+    except Exception as e:
+        logger.error(f"Failed to start connection pool monitoring: {e}")
 
 
 @app.get("/ontology-editor", response_class=HTMLResponse)
@@ -1094,6 +1131,18 @@ async def get_installation_config():
     except Exception as e:
         logger.error(f"Error getting installation config: {e}")
         raise HTTPException(status_code=500, detail=str(e))
+
+
+@app.get("/api/system/db-pool-status")
+async def get_db_pool_status():
+    """Get database connection pool status for monitoring."""
+    try:
+        if hasattr(db, 'get_pool_status'):
+            return db.get_pool_status()
+        else:
+            return {"error": "Pool status not available"}
+    except Exception as e:
+        return {"error": str(e)}
 
 
 @app.get("/api/admin/rag-config")

@@ -1,4 +1,5 @@
 import logging
+import time
 from typing import Any, Dict, List, Optional
 
 import psycopg2
@@ -17,23 +18,69 @@ class DatabaseService:
     def __init__(self, settings: Settings):
         self.settings = settings
         self.pool = psycopg2.pool.ThreadedConnectionPool(
-            minconn=1,
-            maxconn=10,
+            minconn=settings.postgres_pool_min_connections,
+            maxconn=settings.postgres_pool_max_connections,
             host=settings.postgres_host,
             port=settings.postgres_port,
             database=settings.postgres_database,
             user=settings.postgres_user,
             password=settings.postgres_password,
         )
+        self._connection_creation_time = {}
+        logger.info(f"Database connection pool initialized: min={settings.postgres_pool_min_connections}, max={settings.postgres_pool_max_connections}")
 
     def _conn(self):
-        return self.pool.getconn()
+        try:
+            conn = self.pool.getconn()
+            # Track connection creation time for pruning
+            conn_id = id(conn)
+            self._connection_creation_time[conn_id] = time.time()
+            return conn
+        except psycopg2.pool.PoolError as e:
+            logger.error(f"Failed to get database connection: {e}")
+            logger.error(f"Pool status: {self.get_pool_status()}")
+            raise
 
     def _return(self, conn):
         try:
+            conn_id = id(conn)
+            if conn_id in self._connection_creation_time:
+                del self._connection_creation_time[conn_id]
             self.pool.putconn(conn)
-        except Exception:
-            pass
+        except Exception as e:
+            logger.warning(f"Error returning connection to pool: {e}")
+
+    def get_pool_status(self) -> Dict[str, Any]:
+        """Get current connection pool status for monitoring."""
+        try:
+            return {
+                "minconn": self.pool.minconn,
+                "maxconn": self.pool.maxconn,
+                "closed": self.pool.closed,
+                "available_connections": len(self.pool._pool),
+                "active_connections": self.pool.maxconn - len(self.pool._pool),
+                "connection_creation_times": len(self._connection_creation_time)
+            }
+        except Exception as e:
+            return {"error": str(e)}
+
+    def prune_old_connections(self):
+        """Prune connections that have been alive for too long."""
+        current_time = time.time()
+        lifetime_threshold = self.settings.postgres_pool_connection_lifetime
+
+        # Get connections that are too old
+        old_connections = [
+            conn_id for conn_id, creation_time in self._connection_creation_time.items()
+            if current_time - creation_time > lifetime_threshold
+        ]
+
+        if old_connections:
+            logger.info(f"Pruning {len(old_connections)} old connections")
+            # Note: psycopg2 doesn't provide direct connection pruning
+            # This is a placeholder for future implementation
+            for conn_id in old_connections:
+                del self._connection_creation_time[conn_id]
 
     # Users
     def get_or_create_user(
