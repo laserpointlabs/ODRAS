@@ -1644,6 +1644,13 @@
       font-style: italic;
     }
 
+    .ellipsis-dots {
+      display: inline-block;
+      width: 1.5em;
+      /* Fixed width to prevent layout shift */
+      text-align: left;
+    }
+
     .das-toolbar .spacer {
       flex: 1;
     }
@@ -14312,12 +14319,23 @@
           // Remove conversation entries from the project thread
           const projectId = getCurrentProjectId();
           if (projectId && conversationsToRemove > 0) {
-            for (let i = 0; i < conversationsToRemove; i++) {
-              // TODO: Implement delete last message in DAS2
-              console.log('Delete last message not yet implemented in DAS2 - skipping');
+            try {
+              // Call DAS2 delete endpoint for each conversation pair
+              for (let i = 0; i < conversationsToRemove; i++) {
+                const deleteResponse = await fetch(`/api/das2/project/${projectId}/conversation/last`, {
+                  method: 'DELETE',
+                  headers: { ...authHeader() }
+                });
 
-              // For now, just simulate success
-              console.log(`⚠️ Simulated removal of conversation entry ${i + 1}/${conversationsToRemove} (DAS2 TODO)`);
+                if (deleteResponse.ok) {
+                  const result = await deleteResponse.json();
+                  console.log(`✅ Deleted conversation entry ${i + 1}/${conversationsToRemove}:`, result.message);
+                } else {
+                  console.warn(`⚠️ Failed to delete conversation entry ${i + 1}/${conversationsToRemove}:`, deleteResponse.status);
+                }
+              }
+            } catch (error) {
+              console.error('Error deleting conversation entries:', error);
             }
           }
 
@@ -14382,6 +14400,15 @@
           }
         }, 500);
 
+        // Helper function to clean up progress indicator
+        const cleanupProgress = () => {
+          clearInterval(ellipsisInterval);
+          const progressElement = document.getElementById(progressId);
+          if (progressElement && progressElement.parentElement) {
+            progressElement.parentElement.remove();
+          }
+        };
+
         try {
           console.log('Sending DAS message:', message);
 
@@ -14394,6 +14421,10 @@
 
           console.log('DAS Context:', currentContext);
 
+          // Add connection timeout
+          const controller = new AbortController();
+          const timeoutId = setTimeout(() => controller.abort(), 60000); // 60 second timeout
+
           const response = await fetch('/api/das2/chat/stream', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json', ...authHeader() },
@@ -14401,23 +14432,22 @@
               message: message,
               project_thread_id: currentProjectThreadId,
               ...currentContext  // ← Include project context
-            })
+            }),
+            signal: controller.signal
           });
+
+          clearTimeout(timeoutId); // Clear timeout if request succeeds
 
           console.log('DAS Stream Response received, status:', response.status);
 
           if (response.ok) {
-            // Stop ellipsis animation and remove progress indicator
-            clearInterval(ellipsisInterval);
-            const progressElement = document.getElementById(progressId);
-            if (progressElement && progressElement.parentElement) {
-              progressElement.parentElement.remove();
-            }
+            // Don't remove progress indicator yet - wait for first content
 
-            // Create streaming response container
+            // Create streaming response container (but don't show it yet)
             const streamContainer = document.createElement('div');
             streamContainer.className = 'card';
             streamContainer.innerHTML = '<strong>DAS:</strong><br><span class="streaming-text"></span>';
+            streamContainer.style.display = 'none'; // Hide initially
 
             // Add to transcript
             const transcript = document.getElementById('dasTranscript');
@@ -14426,6 +14456,7 @@
             const streamingText = streamContainer.querySelector('.streaming-text');
             let fullResponse = '';
             let metadata = {};
+            let firstContentReceived = false;
 
             // Handle streaming response
             const reader = response.body.getReader();
@@ -14445,6 +14476,13 @@
                       const data = JSON.parse(line.slice(6));
 
                       if (data.type === 'content') {
+                        // On first content, remove progress indicator and show stream container
+                        if (!firstContentReceived) {
+                          cleanupProgress();
+                          streamContainer.style.display = 'block';
+                          firstContentReceived = true;
+                        }
+
                         // Stream content
                         fullResponse += data.content;
                         streamingText.textContent = fullResponse;
@@ -14457,6 +14495,17 @@
                         // Scroll to bottom
                         streamContainer.scrollIntoView({ behavior: 'smooth' });
                       } else if (data.type === 'done') {
+                        // If we never received content, ensure progress is removed
+                        if (!firstContentReceived) {
+                          cleanupProgress();
+                          streamContainer.style.display = 'block';
+                        }
+
+                        // Store done metadata if any
+                        if (data.metadata) {
+                          metadata = { ...metadata, ...data.metadata };
+                        }
+
                         // Streaming complete - convert to final format
                         streamContainer.innerHTML = `
                           <strong>DAS:</strong><br>
@@ -14472,6 +14521,14 @@
                         `;
                         updateDASStatus('Ready');
                         break;
+                      } else if (data.type === 'error') {
+                        // Handle streaming error
+                        if (!firstContentReceived) {
+                          cleanupProgress();
+                        }
+                        addMessageToTranscript('error', 'Error: ' + (data.message || 'Unknown error'));
+                        updateDASStatus('Error');
+                        break;
                       }
                     } catch (e) {
                       console.warn('Failed to parse streaming data:', e, line);
@@ -14486,11 +14543,7 @@
             console.log('DAS Response error, status:', response.status);
 
             // Stop ellipsis animation and remove progress indicator
-            clearInterval(ellipsisInterval);
-            const progressElement = document.getElementById(progressId);
-            if (progressElement && progressElement.parentElement) {
-              progressElement.parentElement.remove();
-            }
+            cleanupProgress();
 
             const error = await response.json().catch(() => ({ detail: 'Unknown error' }));
             console.log('DAS Error response:', error);
@@ -14501,11 +14554,7 @@
           console.log('DAS Network error:', error);
 
           // Stop ellipsis animation and remove progress indicator
-          clearInterval(ellipsisInterval);
-          const progressElement = document.getElementById(progressId);
-          if (progressElement && progressElement.parentElement) {
-            progressElement.parentElement.remove();
-          }
+          cleanupProgress();
 
           addMessageToTranscript('error', 'Network error: ' + error.message);
           updateDASStatus('Error');
@@ -14818,6 +14867,9 @@ def hello_world():
           if (!text) return;
           sendDASMessage(text);
           promptInput.value = '';
+          // Reset textarea to single line height
+          promptInput.style.height = 'auto';
+          promptInput.rows = 1;
         });
 
         promptInput.addEventListener('keydown', (e) => {

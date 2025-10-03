@@ -686,6 +686,75 @@ class SqlFirstThreadManager:
             logger.error(f"Failed to list threads: {e}")
             return []
 
+    async def delete_last_conversation(self, project_thread_id: str) -> bool:
+        """Delete the last conversation entry (user + assistant pair) from SQL"""
+        try:
+            conn = self.db_service._conn()
+            try:
+                with conn.cursor() as cur:
+                    # Get the last conversation entry
+                    cur.execute("""
+                        SELECT conversation_id, role, content, created_at
+                        FROM thread_conversation
+                        WHERE project_thread_id = %s
+                        ORDER BY created_at DESC
+                        LIMIT 2
+                    """, (project_thread_id,))
+
+                    last_entries = cur.fetchall()
+                    print(f"🔍 DELETE_DEBUG: Found {len(last_entries)} entries for thread {project_thread_id}")
+                    for i, entry in enumerate(last_entries):
+                        print(f"   Entry {i}: role={entry[1]}, content_preview={entry[2][:50]}...")
+
+                    if not last_entries:
+                        logger.info(f"No conversation entries found for thread {project_thread_id}")
+                        return False
+
+                    # Check if we have a user message (should be the last one chronologically)
+                    # The entries are ordered by created_at DESC, so we need to find the user message
+                    user_entry = None
+                    assistant_entry = None
+
+                    for entry in last_entries:
+                        if entry[1] == 'user':
+                            user_entry = entry
+                        elif entry[1] == 'assistant':
+                            assistant_entry = entry
+
+                    if not user_entry:
+                        logger.info(f"No user message found in last entries, cannot delete conversation pair")
+                        return False
+
+                    # Delete the user message and assistant message if it exists
+                    entries_to_delete = 2 if assistant_entry else 1
+
+                    cur.execute("""
+                        DELETE FROM thread_conversation
+                        WHERE project_thread_id = %s
+                        AND conversation_id IN (
+                            SELECT conversation_id FROM (
+                                SELECT conversation_id
+                                FROM thread_conversation
+                                WHERE project_thread_id = %s
+                                ORDER BY created_at DESC
+                                LIMIT %s
+                            ) AS last_entries
+                        )
+                    """, (project_thread_id, project_thread_id, entries_to_delete))
+
+                    deleted_count = cur.rowcount
+                    conn.commit()
+
+                    logger.info(f"Deleted {deleted_count} conversation entries from thread {project_thread_id}")
+                    return deleted_count > 0
+
+            finally:
+                self.db_service._return(conn)
+
+        except Exception as e:
+            logger.error(f"Failed to delete last conversation for thread {project_thread_id}: {e}")
+            return False
+
     def get_service_info(self) -> Dict[str, Any]:
         """Get service information"""
         dual_write = getattr(self.settings, 'rag_dual_write', 'true').lower() == 'true'

@@ -702,18 +702,18 @@ USER QUESTION: {message}
 
 Answer naturally using the context above. Be helpful and conversational."""
 
-            # 5. Stream LLM response
+            # 5. Stream LLM response and accumulate for storage
+            full_response_content = ""
             async for chunk in self._call_llm_streaming(prompt):
+                full_response_content += chunk  # Accumulate chunks
                 yield {"type": "content", "content": chunk}
 
-            # 6. Store assistant response
+            # 6. Store assistant response (using accumulated content)
             if self.sql_first_threads and project_thread_id:
-                # Get the full response by calling the non-streaming version for storage
-                full_response = await self._call_llm_directly(prompt)
                 await self.project_manager.store_conversation_message(
                     project_thread_id=project_thread_id,
                     role="assistant",
-                    content=full_response,
+                    content=full_response_content,  # Use accumulated content
                     metadata={
                         "das_engine": "DAS2",
                         "timestamp": datetime.now().isoformat(),

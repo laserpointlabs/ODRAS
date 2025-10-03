@@ -133,8 +133,14 @@ async def das2_chat_stream(
 
     return StreamingResponse(
         generate_stream(),
-        media_type="text/plain",
-        headers={"Cache-Control": "no-cache", "Connection": "keep-alive"}
+        media_type="text/event-stream",
+        headers={
+            "Cache-Control": "no-cache",
+            "Connection": "keep-alive",
+            "Access-Control-Allow-Origin": "*",
+            "Access-Control-Allow-Headers": "Content-Type, Authorization",
+            "X-Accel-Buffering": "no"  # Disable nginx buffering
+        }
     )
 
 
@@ -283,6 +289,55 @@ async def get_das2_conversation_history(
         logger.error(f"Error getting DAS2 history: {e}")
         import traceback
         traceback.print_exc()
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@router.delete("/project/{project_id}/conversation/last")
+async def delete_last_conversation(
+    project_id: str,
+    user: dict = Depends(get_user),
+    engine: DAS2CoreEngine = Depends(get_das2_engine)
+):
+    """Delete the last conversation entry (user message + DAS response) from project thread"""
+    try:
+        user_id = user.get("user_id")
+        if not user_id:
+            raise HTTPException(status_code=401, detail="User not authenticated")
+
+        print(f"DAS2_DELETE: Deleting last conversation for project {project_id}")
+
+        # Get project thread
+        project_context = await engine.project_manager.get_project_thread_by_project_id(project_id)
+        if not project_context or "error" in project_context:
+            raise HTTPException(
+                status_code=404,
+                detail=f"No project thread found for project {project_id}"
+            )
+
+        project_thread_id = None
+        if "project_thread" in project_context:
+            project_thread_id = project_context["project_thread"]["project_thread_id"]
+        else:
+            project_thread_id = getattr(project_context, 'project_thread_id', None)
+
+        if not project_thread_id:
+            raise HTTPException(
+                status_code=404,
+                detail="Project thread ID not found"
+            )
+
+        # Delete the last conversation entry (user + assistant pair)
+        success = await engine.project_manager.delete_last_conversation(project_thread_id)
+
+        if success:
+            return {"success": True, "message": "Last conversation deleted successfully"}
+        else:
+            return {"success": False, "message": "No conversation to delete"}
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Error deleting last conversation: {e}")
         raise HTTPException(status_code=500, detail=str(e))
 
 
