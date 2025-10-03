@@ -189,15 +189,30 @@ class DAS2CoreEngine:
             # Conversation history (from SQL, not vectors)
             if conversation_history:
                 context_sections.append("CONVERSATION HISTORY:")
-                for conv in conversation_history[-10:]:  # Last 10 messages
-                    role = conv.get("role", "")
-                    content = conv.get("content", "")
-                    if role and content:
-                        if role == "user":
-                            context_sections.append(f"User: {content}")
-                        elif role == "assistant":
-                            context_sections.append(f"DAS: {content}")
+
+                # Handle SQL-first formatted conversations (user_message/das_response pairs)
+                if self.sql_first_threads and conversation_history and isinstance(conversation_history[0], dict) and 'user_message' in conversation_history[0]:
+                    print(f"🔍 DAS2_CONTEXT: Processing {len(conversation_history)} SQL-first conversation pairs")
+                    for conv in conversation_history[-5:]:  # Last 5 conversation pairs
+                        user_msg = conv.get("user_message", "")
+                        das_response = conv.get("das_response", "")
+                        if user_msg:
+                            context_sections.append(f"User: {user_msg}")
+                        if das_response:
+                            context_sections.append(f"DAS: {das_response}")
                         context_sections.append("")
+                else:
+                    # Handle legacy format (individual role/content messages)
+                    print(f"🔍 DAS2_CONTEXT: Processing {len(conversation_history)} legacy conversation messages")
+                    for conv in conversation_history[-10:]:  # Last 10 messages
+                        role = conv.get("role", "")
+                        content = conv.get("content", "")
+                        if role and content:
+                            if role == "user":
+                                context_sections.append(f"User: {content}")
+                            elif role == "assistant":
+                                context_sections.append(f"DAS: {content}")
+                            context_sections.append("")
 
             # Project context (including project name)
             context_sections.append("PROJECT CONTEXT:")
@@ -674,15 +689,30 @@ Be helpful and conversational."""
             # Add conversation history
             if conversation_history:
                 context_sections.append("CONVERSATION HISTORY:")
-                for conv in conversation_history[-10:]:
-                    role = conv.get("role", "")
-                    content = conv.get("content", "")
-                    if role and content:
-                        if role == "user":
-                            context_sections.append(f"User: {content}")
-                        elif role == "assistant":
-                            context_sections.append(f"DAS: {content}")
+
+                # Handle SQL-first formatted conversations (user_message/das_response pairs)
+                if self.sql_first_threads and conversation_history and isinstance(conversation_history[0], dict) and 'user_message' in conversation_history[0]:
+                    print(f"🔍 DAS2_STREAM_CONTEXT: Processing {len(conversation_history)} SQL-first conversation pairs")
+                    for conv in conversation_history[-5:]:  # Last 5 conversation pairs
+                        user_msg = conv.get("user_message", "")
+                        das_response = conv.get("das_response", "")
+                        if user_msg:
+                            context_sections.append(f"User: {user_msg}")
+                        if das_response:
+                            context_sections.append(f"DAS: {das_response}")
                         context_sections.append("")
+                else:
+                    # Handle legacy format (individual role/content messages)
+                    print(f"🔍 DAS2_STREAM_CONTEXT: Processing {len(conversation_history)} legacy conversation messages")
+                    for conv in conversation_history[-10:]:
+                        role = conv.get("role", "")
+                        content = conv.get("content", "")
+                        if role and content:
+                            if role == "user":
+                                context_sections.append(f"User: {content}")
+                            elif role == "assistant":
+                                context_sections.append(f"DAS: {content}")
+                            context_sections.append("")
 
             # Add project context
             context_sections.append("PROJECT CONTEXT:")
