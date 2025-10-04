@@ -73,20 +73,20 @@ class ResourceURIService:
     def generate_project_uri(self, project_id: str) -> str:
         """
         Generate project base URI.
-        Format: {base_uri}/odras/{namespace_path}/{project_uuid}/
-        Example: https://xma-adt.usnc.mil/odras/core/7e43e3b4-0f60-4b52-ad72-1295b288645a/
+        Format: {base_uri}/{namespace_path}/{project_uuid}/
+        Example: https://xma-adt.usnc.mil/core/7e43e3b4-0f60-4b52-ad72-1295b288645a/
         """
         namespace_path, project_name = self._get_project_namespace_info(project_id)
 
         # Ensure base URI is properly formatted with https and full domain
         base_uri = self.installation_base_uri
 
-        # Add odras prefix to the path structure
+        # Use namespace path directly (odras prefix is already in base_uri if needed)
         if namespace_path:
-            return f"{base_uri}/odras/{namespace_path}/{project_id}/"
+            return f"{base_uri}/{namespace_path}/{project_id}/"
         else:
             # Fallback for projects without namespace
-            return f"{base_uri}/odras/projects/{project_id}/"
+            return f"{base_uri}/projects/{project_id}/"
 
     def generate_ontology_uri(self, project_id: str, ontology_name: str) -> str:
         """
@@ -100,11 +100,11 @@ class ResourceURIService:
 
         if namespace_path:
             return (
-                f"{self.installation_base_uri}/odras/{namespace_path}/{project_id}/ontologies/{safe_name}"
+                f"{self.installation_base_uri}/{namespace_path}/{project_id}/ontologies/{safe_name}"
             )
         else:
             # Fallback for projects without namespace
-            return f"{self.installation_base_uri}/odras/projects/{project_id}/ontologies/{safe_name}"
+            return f"{self.installation_base_uri}/projects/{project_id}/ontologies/{safe_name}"
 
     def generate_ontology_entity_uri(
         self, project_id: str, ontology_name: str, entity_name: str
@@ -131,10 +131,10 @@ class ResourceURIService:
 
         if namespace_path:
             return (
-                f"{self.installation_base_uri}/odras/{namespace_path}/{project_id}/files/{resource_name}"
+                f"{self.installation_base_uri}/{namespace_path}/{project_id}/files/{resource_name}"
             )
         else:
-            return f"{self.installation_base_uri}/odras/projects/{project_id}/files/{resource_name}"
+            return f"{self.installation_base_uri}/projects/{project_id}/files/{resource_name}"
 
     def generate_knowledge_uri(
         self, project_id: str, asset_name: str, asset_id: Optional[str] = None
@@ -149,9 +149,9 @@ class ResourceURIService:
         resource_name = asset_id if asset_id else self._sanitize_name(asset_name)
 
         if namespace_path:
-            return f"{self.installation_base_uri}/odras/{namespace_path}/{project_id}/knowledge/{resource_name}"
+            return f"{self.installation_base_uri}/{namespace_path}/{project_id}/knowledge/{resource_name}"
         else:
-            return f"{self.installation_base_uri}/odras/projects/{project_id}/knowledge/{resource_name}"
+            return f"{self.installation_base_uri}/projects/{project_id}/knowledge/{resource_name}"
 
     def generate_admin_uri(self, resource_type: str, resource_name: str) -> str:
         """
