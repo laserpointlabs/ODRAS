@@ -2747,9 +2747,6 @@
             </div>
             <div style="display:flex; gap:8px; align-items:center;">
               <button class="btn" id="knowledgeRefreshBtn">Refresh</button>
-              <div class="muted" style="font-size:11px; color:#22c55e; display:flex; align-items:center; gap:4px;">
-                ⚙️ Auto-processing enabled
-              </div>
             </div>
           </div>
 
@@ -2794,9 +2791,9 @@
                 <h4 style="margin:0;">Knowledge Details</h4>
                 <div style="display:flex; gap:4px;">
                   <button class="btn" id="knowledgeQueryBtn" title="Query Knowledge"
-                    style="min-width:auto; padding:4px 8px; font-size:16px;">🔍</button>
+                    style="min-width:auto; padding:4px 8px; font-size:16px; display:none;">🔍</button>
                   <button class="btn" id="knowledgeGraphBtn" title="View Graph"
-                    style="min-width:auto; padding:4px 8px; font-size:16px;">🕸️</button>
+                    style="min-width:auto; padding:4px 8px; font-size:16px; display:none;">🕸️</button>
                 </div>
               </div>
               <div id="knowledgeDetailsContent" style="flex:1; overflow-y:auto; min-height:0;">
@@ -7560,6 +7557,13 @@
 
         // Update admin UI elements visibility
         updateAdminUIVisibility(me.is_admin);
+
+        // Load knowledge assets if knowledge workbench is active
+        const knowledgeWorkbench = document.getElementById('wb-knowledge');
+        if (knowledgeWorkbench && knowledgeWorkbench.style.display !== 'none') {
+          console.log('🧠 User authenticated, loading knowledge assets...');
+          loadKnowledgeAssets();
+        }
 
         // Start monitoring authentication status
         startAuthMonitoring();
@@ -15682,6 +15686,12 @@ def hello_world():
 
     async function loadKnowledgeAssets() {
       try {
+        // Check if user is authenticated before making the request
+        if (!isAuthenticated) {
+          console.log('🧠 User not authenticated, skipping knowledge assets load');
+          return;
+        }
+
         console.log('🧠 Loading knowledge assets...');
         const response = await fetch('/api/knowledge/assets', {
           headers: { ...authHeader() }
@@ -15750,22 +15760,41 @@ def hello_world():
 
         // Action buttons
         const actionButtons = `
-          <div class="asset-actions" style="display:flex; gap:4px; margin-top:8px; padding-top:8px; border-top:1px solid var(--border);">
-            <button class="btn" style="padding:4px 8px; font-size:11px; background:#1e3a8a; color:#60a5fa;"
-                    onclick="event.stopPropagation(); viewAssetContent('${asset.id}')" title="View Content">
-              📄 Content
-            </button>
-            <button class="btn" style="padding:4px 8px; font-size:11px; background:#dc2626; color:#f87171;"
-                    onclick="event.stopPropagation(); deleteAsset('${asset.id}', '${asset.title}')" title="Delete Asset">
-              🗑️ Delete
-            </button>
-            ${isAdmin ? `
-              <button class="btn" style="padding:4px 8px; font-size:11px; background:#7c3aed; color:#a78bfa;"
-                      onclick="event.stopPropagation(); toggleAssetPublic('${asset.id}', ${!asset.is_public})"
-                      title="${asset.is_public ? 'Make Private' : 'Make Public'}">
-                ${asset.is_public ? '🔒 Private' : '🌐 Public'}
+          <div class="asset-actions" style="display:flex; justify-content:space-between; align-items:center; margin-top:8px; padding-top:8px; border-top:1px solid var(--border);">
+            <div style="display:flex; gap:6px;">
+              <button class="btn" style="background:transparent; border:1px solid var(--border); border-radius:6px; padding:6px; margin:0 2px; cursor:pointer; color:var(--text); transition:all 0.2s; display:inline-flex; align-items:center; justify-content:center;"
+                      onclick="event.stopPropagation(); viewAssetContent('${asset.id}')" title="View Content"
+                      onmouseover="this.style.background='var(--panel-2)'; this.style.borderColor='var(--accent)';"
+                      onmouseout="this.style.background='transparent'; this.style.borderColor='var(--border)';">
+                <svg width="14" height="14" viewBox="0 0 20 20" fill="currentColor">
+                  <path d="M10 12a2 2 0 100-4 2 2 0 000 4z"/>
+                  <path fill-rule="evenodd" d="M.458 10C1.732 5.943 5.522 3 10 3s8.268 2.943 9.542 7c-1.274 4.057-5.064 7-9.542 7S1.732 14.057.458 10zM14 10a4 4 0 11-8 0 4 4 0 018 0z" clip-rule="evenodd"/>
+                </svg>
               </button>
-            ` : ''}
+              ${isAdmin ? `
+                <button class="btn" style="background:transparent; border:1px solid var(--border); border-radius:6px; padding:6px; margin:0 2px; cursor:pointer; color:var(--text); transition:all 0.2s; display:inline-flex; align-items:center; justify-content:center;"
+                        onclick="event.stopPropagation(); toggleAssetPublic('${asset.id}', ${!asset.is_public})"
+                        title="${asset.is_public ? 'Make Private' : 'Make Public'}"
+                        onmouseover="this.style.background='var(--panel-2)'; this.style.borderColor='var(--accent)';"
+                        onmouseout="this.style.background='transparent'; this.style.borderColor='var(--border)';">
+                  <svg width="14" height="14" viewBox="0 0 20 20" fill="currentColor">
+                    ${asset.is_public ?
+              '<path fill-rule="evenodd" d="M5 9V7a5 5 0 0110 0v2a2 2 0 012 2v5a2 2 0 01-2 2H5a2 2 0 01-2-2v-5a2 2 0 012-2zm8-2v2H7V7a3 3 0 016 0z" clip-rule="evenodd"/>' :
+              '<path d="M10 2a5 5 0 00-5 5v2a2 2 0 00-2 2v5a2 2 0 002 2h10a2 2 0 002-2v-5a2 2 0 00-2-2H7V7a3 3 0 015.905-.75 1 1 0 001.937-.5A5.002 5.002 0 0010 2z"/>'
+            }
+                  </svg>
+                </button>
+              ` : ''}
+            </div>
+            <button class="btn" style="background:transparent; border:1px solid var(--border); border-radius:6px; padding:6px; margin:0 2px; cursor:pointer; color:#ef4444; transition:all 0.2s; display:inline-flex; align-items:center; justify-content:center;"
+                    onclick="event.stopPropagation(); deleteAsset('${asset.id}', '${asset.title}')" title="Delete Asset"
+                    onmouseover="this.style.background='rgba(239, 68, 68, 0.1)'; this.style.borderColor='#ef4444';"
+                    onmouseout="this.style.background='transparent'; this.style.borderColor='var(--border)'; this.style.color='#ef4444';">
+              <svg width="14" height="14" viewBox="0 0 20 20" fill="currentColor">
+                <path fill-rule="evenodd" d="M9 2a1 1 0 000 2h2a1 1 0 100-2H9z" clip-rule="evenodd"/>
+                <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clip-rule="evenodd"/>
+              </svg>
+            </button>
           </div>
         `;
 
@@ -16006,15 +16035,15 @@ def hello_world():
         });
       }
 
-      // Load knowledge assets if the knowledge workbench is active
+      // Only load knowledge assets if user is authenticated
       const knowledgeWorkbench = document.getElementById('wb-knowledge');
-      if (knowledgeWorkbench && !knowledgeWorkbench.style.display) {
+      if (knowledgeWorkbench && !knowledgeWorkbench.style.display && isAuthenticated) {
         loadKnowledgeAssets();
       }
 
-      // Also load when switching to knowledge workbench
+      // Also load when switching to knowledge workbench (only if authenticated)
       const observer = new MutationObserver(() => {
-        if (knowledgeWorkbench && knowledgeWorkbench.style.display !== 'none') {
+        if (knowledgeWorkbench && knowledgeWorkbench.style.display !== 'none' && isAuthenticated) {
           loadKnowledgeAssets();
         }
       });
