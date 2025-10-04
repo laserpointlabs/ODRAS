@@ -95,7 +95,111 @@
 
 ## 🚀 Feature Improvements
 
-### 7. Project Access Permissions
+### 7. Ontology Question Tool
+**Status**: 🔴 Not Started
+**Priority**: High
+**Documentation**: `docs/features/ONTOLOGY_QUESTION_DRIVEN_DEVELOPMENT.md`
+
+**Description**: Create a question tool for the ontology workbench to help with ontological development and validation. This implements Question-Driven Ontology Development (OQDD) methodology.
+
+**Implementation Phases** (16 weeks):
+
+**Phase 1: Foundation (Weeks 1-2)**
+- [ ] Create database schema for questions, concepts, mappings, validation
+- [ ] Implement basic CRUD API endpoints for questions
+- [ ] Create question listing with filtering/sorting
+- [ ] Add question templates endpoint
+- [ ] Set up Qdrant collection for question embeddings
+
+**Phase 2: NLP Integration (Weeks 3-4)**
+- [ ] Implement QuestionProcessor with spaCy and SentenceTransformer
+- [ ] Build concept extraction pipeline
+- [ ] Create question embedding generation
+- [ ] Implement intent classification (purpose, input, output, structure, validation, constraint)
+- [ ] Store embeddings in Qdrant with metadata
+
+**Phase 3: DAS Training (Weeks 5-6)**
+- [ ] Create DASQuestionTrainer service
+- [ ] Implement knowledge extraction from questions
+- [ ] Build pattern recognition system
+- [ ] Integrate with DAS knowledge base
+- [ ] Create training pipeline for new questions
+
+**Phase 4: Ontology Generation (Weeks 7-9)**
+- [ ] Implement OntologyGenerationService
+- [ ] Build question-to-OWL element mapping
+- [ ] Create conflict resolution system
+- [ ] Apply OWL best practices optimization
+- [ ] Integrate with Fuseki for ontology creation
+- [ ] Add explanation generation for created elements
+
+**Phase 5: Validation System (Weeks 10-11)**
+- [ ] Create QuestionValidationService
+- [ ] Implement question coverage checking
+- [ ] Build gap analysis system
+- [ ] Add metrics calculation (overall coverage, by category)
+- [ ] Create recommendation engine
+- [ ] Generate validation reports
+
+**Phase 6: UI Development (Weeks 12-14)**
+- [ ] Create Question Manager table view with filtering
+- [ ] Build question creation/edit forms
+- [ ] Add question detail view with concept visualization
+- [ ] Create validation dashboard with charts
+- [ ] Build DAS assistance panel
+- [ ] Add gap analysis visualization
+- [ ] Implement question templates UI
+
+**Phase 7: Testing & Refinement (Weeks 15-16)**
+- [ ] Unit tests for NLP pipeline
+- [ ] Integration tests for DAS training
+- [ ] End-to-end tests for generation workflow
+- [ ] Performance tests for large question sets
+- [ ] User acceptance testing
+- [ ] Documentation and training materials
+
+**Key Features**:
+- **Question Categories**: Purpose, Inputs, Outputs, Structure, Validation, Constraints
+- **Metadata Fields**: Question text, category, priority, status, tags, created date, last modified
+- **NLP Processing**: Automatic concept extraction, intent classification, embedding generation
+- **DAS Integration**: 3-phase training (embedding, pattern recognition, element association)
+- **Ontology Generation**: Automated creation of OWL elements from questions
+- **Validation Workflow**: Real-time coverage analysis and gap identification
+- **Templates**: Pre-built question sets for common ontology types
+- **Analytics**: Track question completion and ontology development progress
+- **Traceability**: Bidirectional links between questions and ontology elements
+
+**Expected Outcomes**:
+- 70% reduction in ontology development time
+- 90%+ coverage of domain requirements
+- Reduced defects through automated validation
+- Better collaboration between technical and domain experts
+- Living documentation through question-answer pairs
+
+**API Endpoints**:
+```
+POST   /api/v1/projects/{project_id}/ontologies/{ontology_id}/questions
+GET    /api/v1/projects/{project_id}/ontologies/{ontology_id}/questions
+GET    /api/v1/projects/{project_id}/ontologies/{ontology_id}/questions/{question_id}
+PUT    /api/v1/projects/{project_id}/ontologies/{ontology_id}/questions/{question_id}
+DELETE /api/v1/projects/{project_id}/ontologies/{ontology_id}/questions/{question_id}
+POST   /api/v1/questions/{question_id}/analyze
+POST   /api/v1/das/train-questions
+POST   /api/v1/das/generate-ontology
+POST   /api/v1/das/validate-ontology
+GET    /api/v1/das/validation-report
+GET    /api/v1/question-templates
+```
+
+**Database Tables**:
+- `ontology_questions`: Core question data
+- `question_concepts`: Extracted concepts from NLP
+- `question_element_mapping`: Links between questions and ontology elements
+- `question_validation`: Validation results
+
+**Impact**: Transforms ontology development from ad-hoc process into structured, validated, AI-assisted workflow. Significantly improves quality, completeness, and development speed.
+
+### 8. Project Access Permissions
 **Status**: 🔴 Not Started
 **Priority**: Medium
 
@@ -107,7 +211,7 @@
 - [ ] Ensure proper project selection workflow
 - [ ] Test with different user roles
 
-### 7. Installation Configuration Management
+### 9. Installation Configuration Management
 **Status**: 🔴 Not Started
 **Priority**: Low
 
@@ -123,7 +227,7 @@
 
 ## 📋 Code Quality
 
-### 8. Frontend Code Organization
+### 10. Frontend Code Organization
 **Status**: 🔴 Not Started
 **Priority**: Low
 
@@ -135,7 +239,7 @@
 - [ ] Improve error handling consistency
 - [ ] Add JSDoc comments for complex functions
 
-### 9. Backend Service Consistency
+### 11. Backend Service Consistency
 **Status**: 🔴 Not Started
 **Priority**: Low
 
@@ -151,7 +255,7 @@
 
 ## 🧪 Testing
 
-### 10. IRI Generation Testing
+### 12. IRI Generation Testing
 **Status**: 🔴 Not Started
 **Priority**: High
 
@@ -167,7 +271,7 @@
 
 ## 📚 Documentation
 
-### 11. IRI Standards Documentation
+### 13. IRI Standards Documentation
 **Status**: 🔴 Not Started
 **Priority**: Medium
 
@@ -186,7 +290,8 @@
 1. **Immediate**: Test the completed fixes (project URI display, IRI cleanup)
 2. **Short-term**: Create branch for IRI standardization planning
 3. **Medium-term**: Address project access permissions
-4. **Long-term**: Implement comprehensive IRI standardization
+4. **High Priority**: Design and implement Ontology Question Tool
+5. **Long-term**: Implement comprehensive IRI standardization
 
 ---
 
@@ -197,9 +302,8 @@
 - IRI standardization is a major refactor that needs careful planning
 - Consider breaking large tasks into smaller, manageable chunks
 - Always test changes thoroughly before marking as complete
+- **Ontology Question Tool**: See comprehensive architecture document at `docs/features/ONTOLOGY_QUESTION_DRIVEN_DEVELOPMENT.md` for full implementation details, benefits analysis, and system design
 
 ---
 
-*Last Updated: 2024-12-19*
-
-
+*Last Updated: 2025-10-04*
