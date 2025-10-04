@@ -1235,18 +1235,44 @@
       transition: transform 160ms ease;
     }
 
-    /* Left panel chevron: right when collapsed, left when expanded */
-    #wb-ontology.onto-tree-collapsed #ontoTreeToggleIcon {
+    /* Ontology tree chevron: use same logic as main tree */
+    #ontoTreeToggleIcon {
       transform: rotate(0deg);
+      transition: transform 0.2s ease;
     }
 
-    #wb-ontology:not(.onto-tree-collapsed) #ontoTreeToggleIcon {
+    #wb-ontology.onto-tree-collapsed #ontoTreeToggleIcon {
       transform: rotate(180deg);
     }
 
     #wb-ontology.onto-tree-collapsed .onto-tree-header {
       padding: 4px !important;
-      justify-content: center !important;
+      flex-direction: column !important;
+      gap: 4px !important;
+      align-items: center !important;
+    }
+
+    #wb-ontology.onto-tree-collapsed .onto-tree-controls {
+      flex-direction: column !important;
+      gap: 4px !important;
+    }
+
+    /* Ontology root node row styling to accommodate visibility button */
+    .onto-node-row {
+      display: flex;
+      align-items: center;
+      gap: 4px;
+      padding: 2px 4px;
+      border-radius: 4px;
+    }
+
+    .onto-node-row .iconbtn {
+      opacity: 0.7;
+      transition: opacity 0.2s ease;
+    }
+
+    .onto-node-row:hover .iconbtn {
+      opacity: 1;
     }
 
     /* Properties panel */
@@ -1410,12 +1436,13 @@
       max-width: var(--onto-props-collapsed-w);
     }
 
-    /* Right panel chevron: left when collapsed, right when expanded */
-    #wb-ontology.onto-props-collapsed #ontoPropsToggleIcon {
+    /* Properties panel chevron: use same logic as main tree */
+    #ontoPropsToggleIcon {
       transform: rotate(0deg);
+      transition: transform 0.2s ease;
     }
 
-    #wb-ontology:not(.onto-props-collapsed) #ontoPropsToggleIcon {
+    #wb-ontology.onto-props-collapsed #ontoPropsToggleIcon {
       transform: rotate(180deg);
     }
 
@@ -2348,17 +2375,10 @@
               <div class="onto-tree-header" id="ontoTreeHeader">
                 <div class="muted">Ontology</div>
                 <div class="onto-tree-controls">
-                  <button class="iconbtn" id="ontoVisibilityToggle" title="Toggle Visibility">
-                    <svg viewBox="0 0 24 24" fill="none" stroke-width="1.6" stroke-linecap="round"
-                      stroke-linejoin="round">
-                      <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z" />
-                      <circle cx="12" cy="12" r="3" />
-                    </svg>
-                  </button>
                   <button class="iconbtn" id="ontoTreeToggle" title="Collapse">
                     <svg id="ontoTreeToggleIcon" viewBox="0 0 24 24" fill="none" stroke-width="1.6"
                       stroke-linecap="round" stroke-linejoin="round">
-                      <path d="M9 6l6 6-6 6" />
+                      <path d="M15 6l-6 6 6 6" />
                     </svg>
                   </button>
                 </div>
@@ -7606,21 +7626,15 @@
         if (treeCollapsed) {
           const sec = qs('#wb-ontology');
           if (sec && !sec.classList.contains('onto-tree-collapsed')) sec.classList.add('onto-tree-collapsed');
-          const icon = qs('#ontoTreeToggleIcon');
-          if (icon) icon.innerHTML = '<path d="M9 6l6 6-6 6"/>';
+          // CSS rotation handles chevron direction automatically
         }
         const propsCollapsed = localStorage.getItem('onto_props_collapsed') === '1';
         if (propsCollapsed) {
           const sec = qs('#wb-ontology');
           if (sec && !sec.classList.contains('onto-props-collapsed')) sec.classList.add('onto-props-collapsed');
-          const icon = qs('#ontoPropsToggleIcon');
-          if (icon) icon.innerHTML = '<path d="M15 6l-6 6 6 6"/>';
+          // CSS rotation handles chevron direction automatically
         }
-        // Ensure icon SVGs match classes and allow CSS rotation animation to apply
-        const treeIcon = qs('#ontoTreeToggleIcon');
-        if (treeIcon && !treeCollapsed) treeIcon.innerHTML = '<path d="M15 6l-6 6 6 6"/>';
-        const propsIcon = qs('#ontoPropsToggleIcon');
-        if (propsIcon && !propsCollapsed) propsIcon.innerHTML = '<path d="M9 6l6 6-6 6"/>';
+        // CSS rotation handles chevron directions automatically for both panels
         const savedW = parseInt(localStorage.getItem('onto_props_w') || '0', 10);
         if (savedW) document.documentElement.style.setProperty('--onto-props-w', savedW + 'px');
         // Do not load any graph here; renderTree handles per-project restore safely
@@ -9910,7 +9924,26 @@
           text.textContent = modelName;
         } catch (_) { text.textContent = 'Ontology'; }
       })();
-      row.appendChild(twist); row.appendChild(text); rootItem.appendChild(row); rootItem.appendChild(ul);
+      // Add visibility toggle button to the ontology root node
+      const visibilityBtn = document.createElement('button');
+      visibilityBtn.className = 'iconbtn';
+      visibilityBtn.id = 'ontoVisibilityToggle';
+      visibilityBtn.title = 'Toggle Visibility';
+      visibilityBtn.style.marginLeft = 'auto';
+      visibilityBtn.innerHTML = `
+        <svg viewBox="0 0 24 24" fill="none" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z" />
+          <circle cx="12" cy="12" r="3" />
+        </svg>
+      `;
+
+      // Add click event listener for visibility toggle
+      visibilityBtn.addEventListener('click', (e) => {
+        e.stopPropagation();
+        showVisibilityMenu();
+      });
+
+      row.appendChild(twist); row.appendChild(text); row.appendChild(visibilityBtn); rootItem.appendChild(row); rootItem.appendChild(ul);
       // (Do not delete projects here; project deletion is handled in the main tree top node in renderTree)
       root.innerHTML = '';
       root.appendChild(rootItem);
@@ -11913,26 +11946,14 @@
           const sec = qs('#wb-ontology');
           if (!sec) return;
           const collapsed = sec.classList.toggle('onto-tree-collapsed');
-          const icon = qs('#ontoTreeToggleIcon');
-          if (icon) {
-            // Left panel: show right chevron when collapsed, left chevron when expanded
-            icon.innerHTML = collapsed
-              ? '<path d="M9 6l6 6-6 6"/>'
-              : '<path d="M15 6l-6 6 6 6"/>';
-          }
+          // CSS rotation handles the chevron direction automatically
           try { localStorage.setItem('onto_tree_collapsed', collapsed ? '1' : '0'); } catch (_) { }
           requestAnimationFrame(() => { if (ontoState.cy) ontoState.cy.resize(); });
         } else if (e.target === qs('#ontoPropsToggle') || e.target.closest('#ontoPropsToggle')) {
           const sec = qs('#wb-ontology');
           if (!sec) return;
           const collapsed = sec.classList.toggle('onto-props-collapsed');
-          const icon = qs('#ontoPropsToggleIcon');
-          if (icon) {
-            // Right panel: show left chevron when collapsed, right chevron when expanded
-            icon.innerHTML = collapsed
-              ? '<path d="M15 6l-6 6 6 6"/>'
-              : '<path d="M9 6l6 6-6 6"/>';
-          }
+          // CSS rotation handles the chevron direction automatically
           try { localStorage.setItem('onto_props_collapsed', collapsed ? '1' : '0'); } catch (_) { }
           // Wait for reflow before resizing Cytoscape so it fits the new grid
           requestAnimationFrame(() => { if (ontoState.cy) ontoState.cy.resize(); });
@@ -12019,14 +12040,7 @@
         if (toggleBtn) toggleBtn.click();
       });
 
-      // Visibility toggle button
-      const visibilityToggle = qs('#ontoVisibilityToggle');
-      if (visibilityToggle) {
-        visibilityToggle.addEventListener('click', (e) => {
-          e.stopPropagation();
-          showVisibilityMenu();
-        });
-      }
+      // Visibility toggle button (now handled in renderOntologyTree where button is created)
 
       // Type is now read-only, no event listener needed
       const fileInput = () => qs('#ontoImportFile');
