@@ -7406,6 +7406,17 @@
     function showAuth(show) {
       qs('#authView').style.display = show ? 'grid' : 'none';
       qs('#mainView').style.display = show ? 'none' : 'grid';
+      // Hide/show logout button based on auth state
+      qs('#logoutBtn').style.display = show ? 'none' : 'block';
+
+      // Only close DAS when logging out - let DAS manage its own visibility when logging in
+      if (show) {
+        // When logging out: close and clean DAS
+        if (typeof window.closeDASAndClean === 'function') {
+          window.closeDASAndClean();
+        }
+      }
+      // Don't manually override DAS panel display - let DAS state management handle it
     }
 
     // Global authentication state
@@ -15598,7 +15609,22 @@ def hello_world():
       const onKey = (e) => {
         // Two toggles: Alt+Shift+D or Ctrl+Alt+D to avoid browser collisions
         const toggleCombo = ((e.altKey && e.shiftKey && (e.key === 'D' || e.key === 'd')) || (e.ctrlKey && e.altKey && (e.key === 'D' || e.key === 'd')));
-        if (toggleCombo) { e.preventDefault(); toggleOpen(); return; }
+        if (toggleCombo) {
+          e.preventDefault();
+          // Check if user is logged in by checking if main view is visible
+          const mainView = qs('#mainView');
+          const authView = qs('#authView');
+          const isLoggedIn = mainView && mainView.style.display !== 'none';
+          const isLoginVisible = authView && authView.style.display === 'grid';
+
+          if (isLoggedIn && !isLoginVisible) {
+            console.log('✅ DAS toggle allowed - calling toggleOpen()');
+            toggleOpen();
+          } else {
+            console.log('🔒 DAS keyboard shortcut blocked: Not authenticated');
+          }
+          return;
+        }
         if (!state.open) return;
         const isAltShift = e.altKey && e.shiftKey;
         if (!isAltShift) return;
