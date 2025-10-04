@@ -8816,16 +8816,16 @@
           return li;
         });
         if (ontoItems.length) {
-          ontologyNode = makeItem('ontology', 'Ontology', 'folder', ontoItems);
+          ontologyNode = makeItem('ontology', 'Ontologies', 'folder', ontoItems);
         } else {
           // No ontologies: ensure empty state is shown
           activeOntologyIri = null;
           updateOntoGraphLabel();
-          ontologyNode = makeItem('ontology', 'Ontology', 'folder', []);
+          ontologyNode = makeItem('ontology', 'Ontologies', 'folder', []);
         }
       } catch (_) {
         // Network/SPARQL error: show a placeholder item
-        ontologyNode = makeItem('ontology', 'Ontology', 'folder', [
+        ontologyNode = makeItem('ontology', 'Ontologies', 'folder', [
           makeItem('onto-error', 'Discovery unavailable', 'onto')
         ]);
       }
