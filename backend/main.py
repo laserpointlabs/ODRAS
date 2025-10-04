@@ -17,6 +17,7 @@ from fastapi import (
     Header,
 )
 from fastapi.responses import HTMLResponse
+from fastapi.staticfiles import StaticFiles
 from fastapi import Request
 import secrets
 import logging
@@ -63,6 +64,9 @@ from backend.run_registry import RUNS as SHARED_RUNS
 from backend.test_review_endpoint import router as test_router
 
 app = FastAPI(title="ODRAS API", version="0.1.0")
+
+# Mount static files
+app.mount("/static", StaticFiles(directory="frontend"), name="static")
 
 # Create session capture middleware during app creation (before startup)
 from backend.middleware.session_capture import SessionCaptureMiddleware

@@ -5,6 +5,8 @@
   <meta charset="utf-8" />
   <title>ODRAS — UI Restart</title>
   <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <link rel="icon" type="image/x-icon" href="/static/favicon.ico" />
+  <link rel="icon" type="image/png" href="/static/avian-link-black.png" />
 
   <!-- Markdown parsing and syntax highlighting -->
   <script src="https://cdn.jsdelivr.net/npm/marked@9.1.6/marked.min.js"></script>
@@ -83,6 +85,15 @@
     .brand {
       font-weight: 600;
       letter-spacing: .5px;
+      display: flex;
+      align-items: center;
+      gap: 4px;
+    }
+
+    .brand-icon {
+      width: 24px;
+      height: 24px;
+      flex-shrink: 0;
     }
 
     .spacer {
@@ -2073,7 +2084,10 @@
 <body>
   <div id="app" class="layout">
     <div class="topbar">
-      <div class="brand">AVIAN-ODRAS</div>
+      <div class="brand">
+        <img src="/static/avian-link-black.png" alt="Avian" class="brand-icon" />
+        AVIAN-ODRAS
+      </div>
       <div class="spacer"></div>
 
       <!-- LLM Status Indicator (always visible) -->
@@ -2093,7 +2107,10 @@
 
     <div id="authView" class="login" style="display:none;">
       <div class="card">
-        <h3 style="margin:0 0 8px 0;">Sign in</h3>
+        <h3 style="margin:0 0 8px 0; display: flex; justify-content: space-between; align-items: center;">
+          Sign in
+          <img src="/static/avian-logo-white.png" alt="AVIAN" style="height: 24px; width: auto;" />
+        </h3>
         <div class="row"><label>Username</label><input id="u" type="text" /></div>
         <div class="row"><label>Password</label><input id="p" type="password" /></div>
         <button class="btn" id="loginBtn">Login</button>
