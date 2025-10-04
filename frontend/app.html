@@ -153,6 +153,12 @@
       display: grid;
       grid-template-columns: var(--iconbar-w) var(--tree-w) 6px 1fr;
       height: 100%;
+      transition: grid-template-columns 0.2s ease;
+    }
+
+    /* When tree dock is collapsed, adjust grid columns */
+    .content:has(.tree-dock-collapsed) {
+      grid-template-columns: var(--iconbar-w) 40px 6px 1fr;
     }
 
     .iconbar {
@@ -313,6 +319,55 @@
       margin: 0 8px;
     }
 
+    /* Main Tree Collapse Functionality */
+    .tree-dock-collapsed {
+      width: 40px !important;
+      min-width: 40px !important;
+      max-width: 40px !important;
+    }
+
+
+    .tree-dock-collapsed .tree-scroll {
+      display: none;
+    }
+
+    .tree-dock-collapsed .tree-header {
+      padding: 8px 4px;
+      justify-content: center;
+    }
+
+    .tree-dock-collapsed .tree-header-left {
+      display: none;
+    }
+
+    .tree-toggle {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      width: 32px;
+      height: 32px;
+      flex-shrink: 0;
+      padding: 6px;
+    }
+
+    .tree-toggle svg {
+      width: 16px;
+      height: 16px;
+      transition: transform 0.2s ease;
+      stroke: currentColor;
+      fill: none;
+    }
+
+    /* When tree is expanded (normal state): chevron points left (←) indicating "close" */
+    .tree-toggle svg {
+      transform: rotate(0deg);
+    }
+
+    /* When tree is collapsed: chevron points right (→) indicating "open" */
+    .tree-dock-collapsed .tree-toggle svg {
+      transform: rotate(180deg);
+    }
+
     .tree {
       border-right: 1px solid var(--border);
       background: var(--panel-2);
@@ -326,6 +381,13 @@
     .tree-header {
       padding: 10px;
       border-bottom: 1px solid var(--border);
+      display: flex;
+      gap: 8px;
+      align-items: center;
+      justify-content: space-between;
+    }
+
+    .tree-header-left {
       display: flex;
       gap: 8px;
       align-items: center;
@@ -2133,8 +2195,15 @@
 
       <aside class="tree" id="treePanel" aria-label="Project Tree">
         <div class="tree-header">
-          <select id="projectSelect2" title="Active project"></select>
-          <button class="btn" id="addNodeBtn" title="New Project">＋</button>
+          <div class="tree-header-left">
+            <select id="projectSelect2" title="Active project"></select>
+            <button class="btn" id="addNodeBtn" title="New Project">＋</button>
+          </div>
+          <button id="treeToggle" class="btn tree-toggle" title="Toggle Tree Dock" aria-label="Toggle Tree Dock">
+            <svg viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M15 18l-6-6 6-6" />
+            </svg>
+          </button>
         </div>
         <div class="tree-scroll">
           <nav class="treeview" aria-label="Project">
@@ -7520,6 +7589,16 @@
         // Restore left project tree width
         const uiMainTreeW = parseInt(localStorage.getItem('ui_main_tree_w') || '0', 10);
         if (uiMainTreeW) document.documentElement.style.setProperty('--tree-w', uiMainTreeW + 'px');
+
+        // Restore main tree collapsed state
+        const mainTreeCollapsed = localStorage.getItem('main_tree_collapsed') === '1';
+        if (mainTreeCollapsed) {
+          const treePanel = qs('#treePanel');
+          if (treePanel && !treePanel.classList.contains('tree-dock-collapsed')) {
+            treePanel.classList.add('tree-dock-collapsed');
+          }
+        }
+
         // Restore ontology left tree width
         const ontoTreeW = parseInt(localStorage.getItem('onto_tree_w') || '0', 10);
         if (ontoTreeW) document.documentElement.style.setProperty('--onto-tree-w', ontoTreeW + 'px');
@@ -11824,6 +11903,12 @@
           exportOntologyJSON();
         } else if (e.target === qs('#ontoImportBtn')) {
           const inp = qs('#ontoImportFile'); if (inp) inp.click();
+        } else if (e.target === qs('#treeToggle') || e.target.closest('#treeToggle')) {
+          // Main tree dock toggle
+          const treePanel = qs('#treePanel');
+          if (!treePanel) return;
+          const collapsed = treePanel.classList.toggle('tree-dock-collapsed');
+          try { localStorage.setItem('main_tree_collapsed', collapsed ? '1' : '0'); } catch (_) { }
         } else if (e.target === qs('#ontoTreeToggle') || e.target === qs('#ontoTreeToggleIcon')) {
           const sec = qs('#wb-ontology');
           if (!sec) return;
