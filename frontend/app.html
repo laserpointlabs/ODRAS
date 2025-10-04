@@ -11884,12 +11884,26 @@
           try { if (ontoState.cy) ontoState.cy.fit(undefined, 20); } catch (_) { }
         } else if (e.target === qs('#ontoFullscreenBtn')) {
           try {
-            const sec = qs('#wb-ontology');
-            if (!sec) return;
+            // Use browser fullscreen instead of element fullscreen
+            // Auto-hide main tree view for more screen real estate
+            const treePanel = qs('#treePanel');
+            const wasTreeCollapsed = treePanel?.classList.contains('tree-dock-collapsed');
+
             if (!document.fullscreenElement) {
-              if (sec.requestFullscreen) await sec.requestFullscreen();
+              // Entering fullscreen - hide tree if not already collapsed
+              if (treePanel && !wasTreeCollapsed) {
+                treePanel.classList.add('tree-dock-collapsed');
+                // Store that we auto-collapsed it
+                treePanel.setAttribute('data-auto-collapsed', 'true');
+              }
+              document.documentElement.requestFullscreen?.();
             } else {
-              if (document.exitFullscreen) await document.exitFullscreen();
+              // Exiting fullscreen - restore tree if we auto-collapsed it
+              if (treePanel && treePanel.getAttribute('data-auto-collapsed') === 'true') {
+                treePanel.classList.remove('tree-dock-collapsed');
+                treePanel.removeAttribute('data-auto-collapsed');
+              }
+              document.exitFullscreen?.();
             }
           } catch (_) { }
         } else if (e.target === qs('#ontoSaveBtn')) {
@@ -12048,6 +12062,16 @@
       document.addEventListener('fullscreenchange', () => {
         const btn = qs('#ontoFullscreenBtn');
         if (btn) btn.title = document.fullscreenElement ? 'Exit fullscreen' : 'Enter fullscreen';
+
+        // Handle auto-collapsed tree restoration when exiting fullscreen via F11 or other methods
+        if (!document.fullscreenElement) {
+          const treePanel = qs('#treePanel');
+          if (treePanel && treePanel.getAttribute('data-auto-collapsed') === 'true') {
+            treePanel.classList.remove('tree-dock-collapsed');
+            treePanel.removeAttribute('data-auto-collapsed');
+          }
+        }
+
         requestAnimationFrame(() => { if (ontoState.cy) ontoState.cy.resize(); });
       });
       const header = qs('#ontoTreeHeader');
