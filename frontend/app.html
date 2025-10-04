@@ -1825,23 +1825,11 @@
     }
 
     /* LLM Status Indicator */
-    .llm-status-indicator {
-      font-size: 12px;
+    #llmStatusDot,
+    #llmStatusDockDot {
       margin-right: 8px;
       cursor: help;
-      transition: all 0.3s ease;
-    }
-
-    .llm-status-indicator.healthy {
-      color: #22c55e;
-    }
-
-    .llm-status-indicator.unhealthy {
-      color: #ef4444;
-    }
-
-    .llm-status-indicator.checking {
-      color: #f59e0b;
+      transition: background 0.3s ease;
     }
 
     /* DAS Progress Indicator */
@@ -2089,7 +2077,7 @@
       <div class="spacer"></div>
 
       <!-- LLM Status Indicator (always visible) -->
-      <span id="llmStatus" class="llm-status-indicator" title="LLM Status: Checking...">🟡</span>
+      <span id="llmStatusDot" class="status-dot" style="background: #f59e0b;" title="LLM Status: Checking..."></span>
 
       <!-- Installation Configuration Display -->
       <div id="installationInfo" class="installation-info">
@@ -3809,7 +3797,8 @@
       <strong>DAS</strong>
       <span class="muted" id="dasStatus" style="margin-left:8px;">Idle</span>
       <div class="spacer"></div>
-      <span id="llmStatusDock" class="llm-status-indicator" title="LLM Status: Checking...">🟡</span>
+      <span id="llmStatusDockDot" class="status-dot" style="background: #f59e0b;"
+        title="LLM Status: Checking..."></span>
       <span class="das-help">Ctrl+Alt+D (or Alt+Shift+D) to toggle; <br>Alt+Shift+←/→/↓ to dock</span>
     </div>
     <div class="das-body" id="dasBody">
@@ -14654,23 +14643,22 @@
 
       // Check LLM health status
       async function checkLLMHealth() {
-        const statusElement = document.getElementById('llmStatus');
-        const dockStatusElement = document.getElementById('llmStatusDock');
+        // Get status dot elements
+        const mainDot = document.getElementById('llmStatusDot');
+        const dockDot = document.getElementById('llmStatusDockDot');
 
-        // Update both indicators if they exist
-        const elements = [statusElement, dockStatusElement].filter(el => el);
+        const dots = [mainDot, dockDot].filter(Boolean);
 
-        if (elements.length === 0) {
-          console.warn('No LLM status elements found');
+        if (dots.length === 0) {
+          console.warn('No LLM status dot elements found');
           return;
         }
 
         try {
-          // Set checking state
-          elements.forEach(el => {
-            el.textContent = '🟡';
-            el.className = 'llm-status-indicator checking';
-            el.title = 'LLM Status: Checking...';
+          // Set checking state (amber)
+          dots.forEach(dot => {
+            dot.style.background = '#f59e0b'; // --warn color
+            dot.title = 'LLM Status: Checking...';
           });
 
           // Note: /api/das/llm/health doesn't exist, so just set as healthy
@@ -14678,25 +14666,22 @@
           const isHealthy = true;
 
           if (isHealthy) {
-            elements.forEach(el => {
-              el.textContent = '🟢';
-              el.className = 'llm-status-indicator healthy';
-              el.title = `LLM Status: Ready`;
+            dots.forEach(dot => {
+              dot.style.background = 'var(--ok)'; // Green
+              dot.title = 'LLM Status: Ready';
             });
             console.log('LLM health check: Healthy');
           } else {
-            elements.forEach(el => {
-              el.textContent = '🔴';
-              el.className = 'llm-status-indicator unhealthy';
-              el.title = `LLM Status: Unhealthy - ${data.error || 'Unknown error'}`;
+            dots.forEach(dot => {
+              dot.style.background = 'var(--err)'; // Red
+              dot.title = `LLM Status: Unhealthy - ${data.error || 'Unknown error'}`;
             });
             console.warn('LLM health check: Unhealthy', data);
           }
         } catch (error) {
-          elements.forEach(el => {
-            el.textContent = '🔴';
-            el.className = 'llm-status-indicator unhealthy';
-            el.title = `LLM Status: Error - ${error.message}`;
+          dots.forEach(dot => {
+            dot.style.background = 'var(--err)'; // Red
+            dot.title = `LLM Status: Error - ${error.message}`;
           });
           console.error('LLM health check failed:', error);
         }
@@ -15504,14 +15489,16 @@ def hello_world():
         }
 
         console.log('Initializing LLM monitoring...');
-        const statusElement = document.getElementById('llmStatus');
-        if (!statusElement) {
-          console.warn('LLM status element not found, retrying in 1 second...');
+        const mainDot = document.getElementById('llmStatusDot');
+        const dockDot = document.getElementById('llmStatusDockDot');
+
+        if (!mainDot && !dockDot) {
+          console.warn('LLM status elements not found, retrying in 1 second...');
           setTimeout(initializeLLMMonitoring, 1000);
           return;
         }
 
-        console.log('LLM status element found, starting monitoring...');
+        console.log('LLM status elements found, starting monitoring...');
         llmInitialized = true;
         try {
           startLLMHealthMonitoring();
@@ -15542,33 +15529,30 @@ def hello_world():
       // Also try after a delay as backup
       setTimeout(tryInitializeLLM, 1000);
 
-      // Manual test function for debugging
+      // Manual test function for debugging (only available via console)
       window.testLLMStatus = function () {
         console.log('Manual LLM status test...');
-        const element = document.getElementById('llmStatus');
-        const dockElement = document.getElementById('llmStatusDock');
+        const mainDot = document.getElementById('llmStatusDot');
+        const dockDot = document.getElementById('llmStatusDockDot');
 
-        [element, dockElement].forEach((el, index) => {
-          if (el) {
-            console.log(`Element ${index + 1} found:`, el);
-            console.log(`Element ${index + 1} position:`, el.getBoundingClientRect());
-            console.log(`Element ${index + 1} visibility:`, window.getComputedStyle(el).visibility);
-            console.log(`Element ${index + 1} display:`, window.getComputedStyle(el).display);
-            el.textContent = '🟢';
-            el.className = 'llm-status-indicator healthy';
-            el.title = 'Manual test - LLM Status: Healthy';
-            console.log(`Element ${index + 1} updated successfully`);
+        const dots = [mainDot, dockDot];
+
+        dots.forEach((dot, index) => {
+          if (dot) {
+            console.log(`Dot ${index + 1} found:`, dot);
+            console.log(`Dot ${index + 1} position:`, dot.getBoundingClientRect());
+            console.log(`Dot ${index + 1} visibility:`, window.getComputedStyle(dot).visibility);
+            console.log(`Dot ${index + 1} display:`, window.getComputedStyle(dot).display);
+            dot.style.background = 'var(--ok)';
+            dot.title = 'Manual test - LLM Status: Healthy';
+            console.log(`Dot ${index + 1} updated successfully`);
           } else {
-            console.error(`Element ${index + 1} not found!`);
+            console.error(`Dot ${index + 1} not found!`);
           }
         });
       };
 
-      // Test after 3 seconds
-      setTimeout(() => {
-        console.log('Running manual test...');
-        window.testLLMStatus();
-      }, 3000);
+      // Removed automatic test - function only available via console for debugging
 
       // Initialize DAS when panel opens
       if (sendBtn && promptInput && transcript) {

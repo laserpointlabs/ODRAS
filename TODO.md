@@ -76,11 +76,26 @@
 - [ ] Document the database fix in migration history
 - [ ] Ensure all URI generation uses centralized service
 
+### 6. Connection Pool Management
+**Status**: 🔴 Not Started
+**Priority**: High
+
+**Description**: Improve connection pool management to prevent pool exhaustion, particularly during Playwright testing sessions.
+
+**Tasks**:
+- [ ] Investigate current connection pool configuration
+- [ ] Implement proper connection cleanup in test teardown
+- [ ] Add connection pool monitoring and alerts
+- [ ] Optimize connection pool size for testing workloads
+- [ ] Add connection pool health checks
+- [ ] Implement connection timeout handling
+- [ ] Add connection pool metrics and logging
+
 ---
 
 ## 🚀 Feature Improvements
 
-### 6. Project Access Permissions
+### 7. Project Access Permissions
 **Status**: 🔴 Not Started
 **Priority**: Medium
 
