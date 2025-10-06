@@ -167,6 +167,18 @@ CREATE TABLE IF NOT EXISTS public.project_members (
     PRIMARY KEY (user_id, project_id)
 );
 
+-- Ontologies registry per project (required for DAS ontology context)
+CREATE TABLE IF NOT EXISTS public.ontologies_registry (
+    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    project_id UUID REFERENCES public.projects(project_id) ON DELETE CASCADE,
+    graph_iri TEXT UNIQUE NOT NULL,
+    label TEXT,
+    role VARCHAR(20) DEFAULT 'base', -- base | import | unknown
+    is_reference BOOLEAN DEFAULT FALSE, -- TRUE for admin-created reference ontologies
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+    updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+);
+
 -- =====================================
 -- FILE & KNOWLEDGE MANAGEMENT
 -- =====================================
@@ -551,6 +563,11 @@ CREATE TRIGGER update_users_updated_at
 CREATE TRIGGER trigger_projects_updated_at
     BEFORE UPDATE ON projects
     FOR EACH ROW EXECUTE FUNCTION update_projects_updated_at();
+
+-- Trigger for ontologies_registry updated_at
+CREATE TRIGGER update_ontologies_registry_updated_at
+    BEFORE UPDATE ON public.ontologies_registry
+    FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
 
 -- Trigger for domain registry updated_at
 DROP TRIGGER IF EXISTS trigger_domain_registry_updated_at ON domain_registry;

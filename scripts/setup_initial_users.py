@@ -62,8 +62,10 @@ def setup_initial_users():
             )
 
             if not cur.fetchone():
-                print("❌ Password fields not found. Please run the migration script first:")
-                print("   psql -U postgres -d odras -f scripts/migrate_auth_system.sql")
+                print("❌ Password fields not found in users table!")
+                print("   This means the database schema is incomplete.")
+                print("   Expected: users table should have 'password_hash' and 'salt' columns")
+                print("   Solution: Run './odras.sh clean -y && ./odras.sh init-db' to rebuild schema")
                 return False
 
             # Update existing users with passwords

@@ -107,7 +107,7 @@ async def get_ontology(
         raise HTTPException(status_code=500, detail=f"Failed to retrieve ontology: {str(e)}")
 
 
-@router.put("/", response_model=OntologyResponse)
+@router.put("/", response_model=OntologyResponse, deprecated=True)
 async def update_ontology(
     ontology_data: OntologyUpdate,
     project_id: Optional[str] = None,
@@ -115,15 +115,35 @@ async def update_ontology(
     manager: OntologyManager = Depends(get_ontology_manager),
 ):
     """
-    Update the entire ontology from JSON format.
+    ⚠️ DEPRECATED: Update the entire ontology from JSON format.
+
+    🔥 WARNING: This endpoint has known issues with rich attribute persistence.
+    Classes and properties may not save correctly to Fuseki.
+
+    ✅ RECOMMENDED ALTERNATIVES:
+    - Use POST /api/ontologies (create) + POST /api/ontology/save (turtle content)
+    - Use individual endpoints: POST /api/ontology/classes, POST /api/ontology/properties
+
+    See: docs/architecture/MULTI_ENDPOINT_ONTOLOGY_ISSUE.md
 
     Args:
         ontology_data: The complete ontology structure
         user_id: ID of the user making the change
 
     Returns:
-        Update operation result
+        Update operation result (may be incomplete due to known JSON→RDF conversion issues)
     """
+
+    import warnings
+    warnings.warn(
+        "PUT /api/ontology/ is deprecated due to JSON→RDF conversion issues. "
+        "Use POST /api/ontologies + POST /api/ontology/save instead. "
+        "See docs/architecture/MULTI_ENDPOINT_ONTOLOGY_ISSUE.md",
+        DeprecationWarning,
+        stacklevel=2
+    )
+
+    logger.warning("🔥 DEPRECATED ENDPOINT USED: PUT /api/ontology/ - Consider migrating to working alternatives")
     try:
         # Convert Pydantic model to dict
         ontology_dict = ontology_data.dict(exclude_none=True)
@@ -162,7 +182,7 @@ async def update_ontology(
         raise HTTPException(status_code=500, detail=f"Failed to update ontology: {str(e)}")
 
 
-@router.post("/", response_model=OntologyResponse)
+@router.post("/", response_model=OntologyResponse, deprecated=True)
 async def create_ontology(
     ontology_data: OntologyUpdate,
     project_id: Optional[str] = None,
@@ -170,7 +190,15 @@ async def create_ontology(
     manager: OntologyManager = Depends(get_ontology_manager),
 ):
     """
-    Create a new ontology from JSON format.
+    ⚠️ DEPRECATED: Create a new ontology from JSON format.
+
+    🔥 WARNING: This endpoint has the same JSON→RDF conversion issues as PUT.
+    Rich attributes may not persist correctly to Fuseki.
+
+    ✅ RECOMMENDED ALTERNATIVE:
+    - Use POST /api/ontologies (create empty) + POST /api/ontology/save (turtle content)
+
+    See: docs/architecture/MULTI_ENDPOINT_ONTOLOGY_ISSUE.md
 
     Args:
         ontology_data: The complete ontology structure
@@ -178,8 +206,18 @@ async def create_ontology(
         user_id: ID of the user creating the ontology
 
     Returns:
-        Creation operation result
+        Creation operation result (may be incomplete due to JSON→RDF issues)
     """
+
+    import warnings
+    warnings.warn(
+        "POST /api/ontology/ is deprecated due to JSON→RDF conversion issues. "
+        "Use POST /api/ontologies + POST /api/ontology/save instead.",
+        DeprecationWarning,
+        stacklevel=2
+    )
+
+    logger.warning("🔥 DEPRECATED ENDPOINT USED: POST /api/ontology/ - Use POST /api/ontologies instead")
     try:
         # Convert Pydantic model to dict
         ontology_dict = ontology_data.dict(exclude_none=True)

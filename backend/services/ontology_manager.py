@@ -710,10 +710,22 @@ class OntologyManager:
 
     def _json_to_rdf(self, ontology_json: Dict[str, Any]) -> Graph:
         """Convert JSON ontology to RDF graph."""
+        import logging
+        logger = logging.getLogger(__name__)
+
+        logger.info(f"🔍 JSON_TO_RDF: Converting JSON ontology with keys: {list(ontology_json.keys())}")
+        logger.info(f"🔍 JSON_TO_RDF: Classes count: {len(ontology_json.get('classes', []))}")
+        logger.info(f"🔍 JSON_TO_RDF: Object properties count: {len(ontology_json.get('object_properties', []))}")
+        logger.info(f"🔍 JSON_TO_RDF: Datatype properties count: {len(ontology_json.get('datatype_properties', []))}")
+
         graph = Graph()
         graph.bind("odras", self.odras_ns)
         graph.bind("owl", OWL)
         graph.bind("rdfs", RDFS)
+        graph.bind("skos", URIRef("http://www.w3.org/2004/02/skos/core#"))
+        graph.bind("dc", URIRef("http://purl.org/dc/elements/1.1/"))
+        graph.bind("dcterms", URIRef("http://purl.org/dc/terms/"))
+        graph.bind("xsd", XSD)
 
         # Add ontology metadata
         ontology_uri = URIRef(self.base_uri)
@@ -726,50 +738,137 @@ class OntologyManager:
             if "description" in metadata:
                 graph.add((ontology_uri, RDFS.comment, Literal(metadata["description"])))
 
-        # Add classes
-        for cls in ontology_json.get("classes", []):
-            class_uri = URIRef(f"{self.base_uri}#{cls['name']}")
-            graph.add((class_uri, RDF.type, OWL.Class))
-            graph.add((class_uri, RDFS.label, Literal(cls.get("label", cls["name"]))))
+        # Add classes with comprehensive attribute support
+        logger.info(f"🔍 JSON_TO_RDF: Processing {len(ontology_json.get('classes', []))} classes")
+        for i, cls in enumerate(ontology_json.get("classes", [])):
+            logger.info(f"🔍 JSON_TO_RDF: Processing class {i+1}: {cls.get('name', 'Unknown')} with keys: {list(cls.keys())}")
 
-            if "comment" in cls:
-                graph.add((class_uri, RDFS.comment, Literal(cls["comment"])))
+            try:
+                class_uri = URIRef(f"{self.base_uri}#{cls['name']}")
+                graph.add((class_uri, RDF.type, OWL.Class))
+                graph.add((class_uri, RDFS.label, Literal(cls.get("label", cls["name"]))))
 
-            if "subclass_of" in cls:
-                parent_uri = URIRef(f"{self.base_uri}#{cls['subclass_of']}")
-                graph.add((class_uri, RDFS.subClassOf, parent_uri))
+                # Standard ontological properties
+                if "comment" in cls and cls["comment"]:
+                    graph.add((class_uri, RDFS.comment, Literal(cls["comment"])))
+                    logger.info(f"🔍 JSON_TO_RDF: Added comment for {cls['name']}")
+                if "definition" in cls and cls["definition"]:
+                    graph.add((class_uri, URIRef("http://www.w3.org/2004/02/skos/core#definition"), Literal(cls["definition"])))
+                    logger.info(f"🔍 JSON_TO_RDF: Added definition for {cls['name']}")
+                if "example" in cls and cls["example"]:
+                    graph.add((class_uri, URIRef("http://www.w3.org/2004/02/skos/core#example"), Literal(cls["example"])))
+                    logger.info(f"🔍 JSON_TO_RDF: Added example for {cls['name']}")
+                if "identifier" in cls and cls["identifier"]:
+                    graph.add((class_uri, URIRef("http://purl.org/dc/elements/1.1/identifier"), Literal(cls["identifier"])))
 
-        # Add object properties
+                # Class relationships
+                if "subclassOf" in cls and cls["subclassOf"]:
+                    if cls["subclassOf"].startswith("http"):
+                        graph.add((class_uri, RDFS.subClassOf, URIRef(cls["subclassOf"])))
+                    else:
+                        parent_uri = URIRef(f"{self.base_uri}#{cls['subclassOf']}")
+                        graph.add((class_uri, RDFS.subClassOf, parent_uri))
+                if "equivalentClass" in cls and cls["equivalentClass"]:
+                    equiv_uri = URIRef(cls["equivalentClass"]) if cls["equivalentClass"].startswith("http") else URIRef(f"{self.base_uri}#{cls['equivalentClass']}")
+                    graph.add((class_uri, OWL.equivalentClass, equiv_uri))
+                if "disjointWith" in cls and cls["disjointWith"]:
+                    disjoint_uri = URIRef(cls["disjointWith"]) if cls["disjointWith"].startswith("http") else URIRef(f"{self.base_uri}#{cls['disjointWith']}")
+                    graph.add((class_uri, OWL.disjointWith, disjoint_uri))
+
+                # Metadata properties
+                if "creator" in cls and cls["creator"]:
+                    graph.add((class_uri, URIRef("http://purl.org/dc/elements/1.1/creator"), Literal(cls["creator"])))
+                    logger.info(f"🔍 JSON_TO_RDF: Added creator for {cls['name']}: {cls['creator']}")
+                if "created_date" in cls and cls["created_date"]:
+                    graph.add((class_uri, URIRef("http://purl.org/dc/elements/1.1/date"), Literal(cls["created_date"])))
+                if "last_modified_by" in cls and cls["last_modified_by"]:
+                    graph.add((class_uri, URIRef("http://purl.org/dc/elements/1.1/contributor"), Literal(cls["last_modified_by"])))
+                if "last_modified_date" in cls and cls["last_modified_date"]:
+                    graph.add((class_uri, URIRef("http://purl.org/dc/terms/modified"), Literal(cls["last_modified_date"])))
+
+                # Custom properties
+                if "priority" in cls and cls["priority"]:
+                    graph.add((class_uri, URIRef(f"{self.base_uri}#priority"), Literal(cls["priority"])))
+                    logger.info(f"🔍 JSON_TO_RDF: Added priority for {cls['name']}: {cls['priority']}")
+                if "status" in cls and cls["status"]:
+                    graph.add((class_uri, URIRef(f"{self.base_uri}#status"), Literal(cls["status"])))
+                    logger.info(f"🔍 JSON_TO_RDF: Added status for {cls['name']}: {cls['status']}")
+
+                logger.info(f"✅ JSON_TO_RDF: Successfully processed class {cls['name']}")
+
+            except Exception as e:
+                logger.error(f"❌ JSON_TO_RDF: Error processing class {cls.get('name', 'Unknown')}: {e}")
+
+        # Add object properties with comprehensive attribute support
         for prop in ontology_json.get("object_properties", []):
             prop_uri = URIRef(f"{self.base_uri}#{prop['name']}")
             graph.add((prop_uri, RDF.type, OWL.ObjectProperty))
             graph.add((prop_uri, RDFS.label, Literal(prop.get("label", prop["name"]))))
 
-            if "comment" in prop:
+            # Standard ontological properties
+            if "comment" in prop and prop["comment"]:
                 graph.add((prop_uri, RDFS.comment, Literal(prop["comment"])))
+            if "definition" in prop and prop["definition"]:
+                graph.add((prop_uri, URIRef("http://www.w3.org/2004/02/skos/core#definition"), Literal(prop["definition"])))
+            if "example" in prop and prop["example"]:
+                graph.add((prop_uri, URIRef("http://www.w3.org/2004/02/skos/core#example"), Literal(prop["example"])))
+            if "identifier" in prop and prop["identifier"]:
+                graph.add((prop_uri, URIRef("http://purl.org/dc/elements/1.1/identifier"), Literal(prop["identifier"])))
 
-            if "domain" in prop:
+            # Property relationships
+            if "domain" in prop and prop["domain"]:
                 domain_uri = URIRef(f"{self.base_uri}#{prop['domain']}")
                 graph.add((prop_uri, RDFS.domain, domain_uri))
-
-            if "range" in prop:
+            if "range" in prop and prop["range"]:
                 range_uri = URIRef(f"{self.base_uri}#{prop['range']}")
                 graph.add((prop_uri, RDFS.range, range_uri))
+            if "inverseOf" in prop and prop["inverseOf"]:
+                inverse_uri = URIRef(prop["inverseOf"]) if prop["inverseOf"].startswith("http") else URIRef(f"{self.base_uri}#{prop['inverseOf']}")
+                graph.add((prop_uri, OWL.inverseOf, inverse_uri))
+            if "subPropertyOf" in prop and prop["subPropertyOf"]:
+                parent_uri = URIRef(prop["subPropertyOf"]) if prop["subPropertyOf"].startswith("http") else URIRef(f"{self.base_uri}#{prop['subPropertyOf']}")
+                graph.add((prop_uri, RDFS.subPropertyOf, parent_uri))
+            if "equivalentProperty" in prop and prop["equivalentProperty"]:
+                equiv_uri = URIRef(prop["equivalentProperty"]) if prop["equivalentProperty"].startswith("http") else URIRef(f"{self.base_uri}#{prop['equivalentProperty']}")
+                graph.add((prop_uri, OWL.equivalentProperty, equiv_uri))
 
-        # Add datatype properties
+            # Metadata properties
+            if "creator" in prop and prop["creator"]:
+                graph.add((prop_uri, URIRef("http://purl.org/dc/elements/1.1/creator"), Literal(prop["creator"])))
+            if "created_date" in prop and prop["created_date"]:
+                graph.add((prop_uri, URIRef("http://purl.org/dc/elements/1.1/date"), Literal(prop["created_date"])))
+            if "last_modified_by" in prop and prop["last_modified_by"]:
+                graph.add((prop_uri, URIRef("http://purl.org/dc/elements/1.1/contributor"), Literal(prop["last_modified_by"])))
+            if "last_modified_date" in prop and prop["last_modified_date"]:
+                graph.add((prop_uri, URIRef("http://purl.org/dc/terms/modified"), Literal(prop["last_modified_date"])))
+
+            # Property characteristics
+            if "functional" in prop and prop["functional"]:
+                graph.add((prop_uri, RDF.type, OWL.FunctionalProperty))
+            if "inverse_functional" in prop and prop["inverse_functional"]:
+                graph.add((prop_uri, RDF.type, OWL.InverseFunctionalProperty))
+
+        # Add datatype properties with comprehensive attribute support
         for prop in ontology_json.get("datatype_properties", []):
             prop_uri = URIRef(f"{self.base_uri}#{prop['name']}")
             graph.add((prop_uri, RDF.type, OWL.DatatypeProperty))
             graph.add((prop_uri, RDFS.label, Literal(prop.get("label", prop["name"]))))
 
-            if "comment" in prop:
+            # Standard ontological properties
+            if "comment" in prop and prop["comment"]:
                 graph.add((prop_uri, RDFS.comment, Literal(prop["comment"])))
+            if "definition" in prop and prop["definition"]:
+                graph.add((prop_uri, URIRef("http://www.w3.org/2004/02/skos/core#definition"), Literal(prop["definition"])))
+            if "example" in prop and prop["example"]:
+                graph.add((prop_uri, URIRef("http://www.w3.org/2004/02/skos/core#example"), Literal(prop["example"])))
+            if "identifier" in prop and prop["identifier"]:
+                graph.add((prop_uri, URIRef("http://purl.org/dc/elements/1.1/identifier"), Literal(prop["identifier"])))
 
-            if "domain" in prop:
+            # Property relationships
+            if "domain" in prop and prop["domain"]:
                 domain_uri = URIRef(f"{self.base_uri}#{prop['domain']}")
                 graph.add((prop_uri, RDFS.domain, domain_uri))
-
-            if "range" in prop:
+            if "range" in prop and prop["range"]:
                 if prop["range"] in [
                     "string",
                     "integer",
@@ -781,6 +880,26 @@ class OntologyManager:
                 else:
                     range_uri = URIRef(f"{self.base_uri}#{prop['range']}")
                 graph.add((prop_uri, RDFS.range, range_uri))
+            if "subPropertyOf" in prop and prop["subPropertyOf"]:
+                parent_uri = URIRef(prop["subPropertyOf"]) if prop["subPropertyOf"].startswith("http") else URIRef(f"{self.base_uri}#{prop['subPropertyOf']}")
+                graph.add((prop_uri, RDFS.subPropertyOf, parent_uri))
+            if "equivalentProperty" in prop and prop["equivalentProperty"]:
+                equiv_uri = URIRef(prop["equivalentProperty"]) if prop["equivalentProperty"].startswith("http") else URIRef(f"{self.base_uri}#{prop['equivalentProperty']}")
+                graph.add((prop_uri, OWL.equivalentProperty, equiv_uri))
+
+            # Metadata properties
+            if "creator" in prop and prop["creator"]:
+                graph.add((prop_uri, URIRef("http://purl.org/dc/elements/1.1/creator"), Literal(prop["creator"])))
+            if "created_date" in prop and prop["created_date"]:
+                graph.add((prop_uri, URIRef("http://purl.org/dc/elements/1.1/date"), Literal(prop["created_date"])))
+            if "last_modified_by" in prop and prop["last_modified_by"]:
+                graph.add((prop_uri, URIRef("http://purl.org/dc/elements/1.1/contributor"), Literal(prop["last_modified_by"])))
+            if "last_modified_date" in prop and prop["last_modified_date"]:
+                graph.add((prop_uri, URIRef("http://purl.org/dc/terms/modified"), Literal(prop["last_modified_date"])))
+
+            # Property characteristics
+            if "functional" in prop and prop["functional"]:
+                graph.add((prop_uri, RDF.type, OWL.FunctionalProperty))
 
         return graph
 
@@ -1242,4 +1361,3 @@ class OntologyManager:
                 "errors": [f"Validation failed: {str(e)}"],
                 "entity_count": 0,
             }
-

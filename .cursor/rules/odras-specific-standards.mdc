@@ -1,0 +1,35 @@
+---
+alwaysApply: true
+---
+
+# ODRAS-Specific Standards
+
+## Ontology and URI Management
+- Use program and project segments in URIs (e.g., http://usn/adt/SE/core), not user-specific segments
+- Odras installations are program specific and ontologies are project specific
+- Use owl:equivalentClass to link classes from imported ontologies to base classes
+- Custom prefixes should be pushed to the managed prefixes list
+- Prefix metadata should be stored
+- Prefixes must be lowercase, with no spaces, no special characters, and no numbers
+- Use atomic approved prefixes that can be combined in order within namespaces
+- Multi-level prefixes like industry/lockheed should be built in the namespace using single-level prefixes
+
+## RAG Implementation
+- RAG elements should always be implemented as BPMN workflows rather than hard-coded RAG pipelines
+- Don't pull ontology data from local sources
+
+## File Storage
+- All files must be stored in Minio; no local file storage is allowed
+- Update [requirements.txt](mdc:requirements.txt) whenever new Python packages are added
+
+## BPMN Requirements
+- All BPMN processes must include complete BPMN diagram information (bpmndi) with visual layout data
+- Include BPMNShape elements for all tasks/events/gateways with proper bounds and labels
+- Include BPMNEdge elements for all sequence flows with waypoints
+- BPMN diagrams should include the actual BPMN XML data to make reviewing easier
+
+## Process Management
+- Use Python scripts executed via a simple worker rather than bash scripts or a large set of API endpoints
+- Use non-interactive scripts that do not require user input for database and system checks
+- The `./odras.sh clean` command should delete Fuseki datasets entirely during the clean process
+- Include the -y flag when running `./odras.sh clean-all` to prevent interactive user input

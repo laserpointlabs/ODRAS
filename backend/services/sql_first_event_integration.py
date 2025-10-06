@@ -81,6 +81,36 @@ async def initialize_unified_sql_first_events(app, db_service, redis_client=None
         raise
 
 
+def initialize_sql_first_event_capture_only(sql_first_manager, redis_client=None):
+    """
+    Initialize SQL-first event capture without adding middleware
+
+    This function sets up the event capture system without trying to add
+    middleware to the app (which must be done during app initialization, not startup)
+    """
+    try:
+        logger.info("🎯 Initializing SQL-first event capture (no middleware)...")
+
+        # Initialize EventCapture2 with SQL-first support
+        print("🔥 EVENTS: Initializing EventCapture2 with SQL-first storage...")
+        initialize_sql_first_event_capture(
+            sql_first_manager=sql_first_manager,
+            redis_client=redis_client
+        )
+        print("✅ EventCapture2 initialized with SQL-first storage")
+
+        print("🎉 SQL-FIRST EVENT CAPTURE ACTIVE!")
+        logger.info("✅ SQL-first event capture initialized successfully")
+
+        return {"status": "active", "sql_first_manager": sql_first_manager}
+
+    except Exception as e:
+        logger.error(f"Failed to initialize SQL-first event capture: {e}")
+        import traceback
+        traceback.print_exc()
+        return {"error": str(e), "status": "failed"}
+
+
 def log_event_system_status():
     """Log the current status of the consolidated event system"""
     print("""

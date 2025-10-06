@@ -372,8 +372,8 @@ class SqlFirstThreadManager:
 
                 project_thread_id = thread["project_thread_id"]
 
-                # Get recent events (from SQL, not vectors)
-                recent_events = get_recent_events(conn, project_thread_id, limit=10)
+                # Get ALL recent events (from SQL, not vectors) - no smart filtering
+                recent_events = get_recent_events(conn, project_thread_id, limit=20)
 
                 # Get conversation history
                 conversation = get_conversation_history(conn, project_thread_id, limit=20)
@@ -382,10 +382,15 @@ class SqlFirstThreadManager:
                 formatted_conversations = self._format_conversation_for_ui(conversation)
                 print(f"🔍 GET_BY_PROJECT_DEBUG: Formatted {len(conversation)} raw → {len(formatted_conversations)} DAS-compatible")
 
+                # ✅ GET PROJECT METADATA (files, ontologies, classes)
+                project_metadata = self._get_comprehensive_project_metadata(conn, project_id)
+                print(f"🔍 PROJECT_METADATA_DEBUG: Retrieved metadata with {len(project_metadata.get('files', []))} files, {len(project_metadata.get('ontologies', []))} ontologies")
+
                 return {
                     "project_thread": thread,
                     "recent_events": recent_events,
                     "conversation_history": formatted_conversations,  # ← Now properly formatted for DAS dock
+                    "project_metadata": project_metadata,  # ← Add comprehensive project metadata
                     "sql_first": True  # Flag indicating SQL-first retrieval
                 }
 
@@ -685,6 +690,255 @@ class SqlFirstThreadManager:
         except Exception as e:
             logger.error(f"Failed to list threads: {e}")
             return []
+
+    async def delete_last_conversation(self, project_thread_id: str) -> bool:
+        """Delete the last conversation entry (user + assistant pair) from SQL"""
+        try:
+            conn = self.db_service._conn()
+            try:
+                with conn.cursor() as cur:
+                    # Get the last conversation entry
+                    cur.execute("""
+                        SELECT conversation_id, role, content, created_at
+                        FROM thread_conversation
+                        WHERE project_thread_id = %s
+                        ORDER BY created_at DESC
+                        LIMIT 2
+                    """, (project_thread_id,))
+
+                    last_entries = cur.fetchall()
+                    print(f"🔍 DELETE_DEBUG: Found {len(last_entries)} entries for thread {project_thread_id}")
+                    for i, entry in enumerate(last_entries):
+                        print(f"   Entry {i}: role={entry[1]}, content_preview={entry[2][:50]}...")
+
+                    if not last_entries:
+                        logger.info(f"No conversation entries found for thread {project_thread_id}")
+                        return False
+
+                    # Check if we have a user message (should be the last one chronologically)
+                    # The entries are ordered by created_at DESC, so we need to find the user message
+                    user_entry = None
+                    assistant_entry = None
+
+                    for entry in last_entries:
+                        if entry[1] == 'user':
+                            user_entry = entry
+                        elif entry[1] == 'assistant':
+                            assistant_entry = entry
+
+                    if not user_entry:
+                        logger.info(f"No user message found in last entries, cannot delete conversation pair")
+                        return False
+
+                    # Delete the user message and assistant message if it exists
+                    entries_to_delete = 2 if assistant_entry else 1
+
+                    cur.execute("""
+                        DELETE FROM thread_conversation
+                        WHERE project_thread_id = %s
+                        AND conversation_id IN (
+                            SELECT conversation_id FROM (
+                                SELECT conversation_id
+                                FROM thread_conversation
+                                WHERE project_thread_id = %s
+                                ORDER BY created_at DESC
+                                LIMIT %s
+                            ) AS last_entries
+                        )
+                    """, (project_thread_id, project_thread_id, entries_to_delete))
+
+                    deleted_count = cur.rowcount
+                    conn.commit()
+
+                    logger.info(f"Deleted {deleted_count} conversation entries from thread {project_thread_id}")
+                    return deleted_count > 0
+
+            finally:
+                self.db_service._return(conn)
+
+        except Exception as e:
+            logger.error(f"Failed to delete last conversation for thread {project_thread_id}: {e}")
+            return False
+
+    def _get_comprehensive_project_metadata(self, conn, project_id: str) -> Dict[str, Any]:
+        """Get comprehensive project metadata including files, ontologies, and classes"""
+        try:
+            metadata = {
+                "files": [],
+                "ontologies": [],
+                "classes": [],
+                "recent_activities": []
+            }
+
+            with conn.cursor() as cur:
+                # Get uploaded files/knowledge assets
+                cur.execute("""
+                    SELECT ka.title, ka.document_type, ka.created_at, ka.status,
+                           f.filename, f.file_size, f.content_type
+                    FROM knowledge_assets ka
+                    LEFT JOIN files f ON ka.source_file_id::text = f.id::text
+                    WHERE ka.project_id = %s AND ka.status = 'active'
+                    ORDER BY ka.created_at DESC
+                """, (project_id,))
+
+                files = cur.fetchall()
+                for file_row in files:
+                    metadata["files"].append({
+                        "title": file_row[0],
+                        "document_type": file_row[1],
+                        "filename": file_row[4],
+                        "size": file_row[5],
+                        "created_at": file_row[2].isoformat() if file_row[2] else None
+                    })
+
+                # Get ontologies
+                cur.execute("""
+                    SELECT graph_iri, label, role, is_reference, created_at
+                    FROM ontologies_registry
+                    WHERE project_id = %s
+                    ORDER BY created_at DESC
+                """, (project_id,))
+
+                ontologies = cur.fetchall()
+                for onto_row in ontologies:
+                    metadata["ontologies"].append({
+                        "graph_iri": onto_row[0],
+                        "label": onto_row[1],
+                        "role": onto_row[2],
+                        "is_reference": onto_row[3],
+                        "created_at": onto_row[4].isoformat() if onto_row[4] else None
+                    })
+
+                # Get ontology classes using SPARQL (for each ontology)
+                for onto_row in ontologies:
+                    try:
+                        graph_iri = onto_row[0]
+                        onto_label = onto_row[1]
+
+                        # Simple SPARQL query to get classes
+                        import requests
+                        from backend.services.config import Settings
+                        settings = Settings()
+
+                        sparql_query = f"""
+                        PREFIX owl: <http://www.w3.org/2002/07/owl#>
+                        PREFIX rdfs: <http://www.w3.org/2000/01/rdf-schema#>
+                        SELECT ?class ?label WHERE {{
+                            GRAPH <{graph_iri}> {{
+                                ?class a owl:Class .
+                                OPTIONAL {{ ?class rdfs:label ?label }}
+                            }}
+                        }}
+                        """
+
+                        fuseki_url = f"{settings.fuseki_url}/query"
+                        response = requests.post(
+                            fuseki_url,
+                            data={"query": sparql_query},
+                            headers={"Accept": "application/json"},
+                            auth=(settings.fuseki_user, settings.fuseki_password) if settings.fuseki_user else None,
+                            timeout=5
+                        )
+
+                        if response.status_code == 200:
+                            sparql_result = response.json()
+                            bindings = sparql_result.get("results", {}).get("bindings", [])
+
+                            for binding in bindings:
+                                class_uri = binding.get("class", {}).get("value", "")
+                                class_label = binding.get("label", {}).get("value", "")
+
+                                # Extract class name from URI
+                                class_name = class_uri.split("#")[-1] if "#" in class_uri else class_uri.split("/")[-1]
+
+                                metadata["classes"].append({
+                                    "class_name": class_name,
+                                    "class_label": class_label or class_name,
+                                    "class_uri": class_uri,
+                                    "ontology": onto_label
+                                })
+
+                    except Exception as e:
+                        logger.warning(f"Failed to get classes for ontology {onto_row[0]}: {e}")
+
+                # Get recent project activities from events
+                cur.execute("""
+                    SELECT event_type, semantic_summary, created_at
+                    FROM project_event
+                    WHERE project_id = %s
+                    ORDER BY created_at DESC
+                    LIMIT 10
+                """, (project_id,))
+
+                activities = cur.fetchall()
+                for activity in activities:
+                    metadata["recent_activities"].append({
+                        "event_type": activity[0],
+                        "summary": activity[1],
+                        "created_at": activity[2].isoformat() if activity[2] else None
+                    })
+
+            return metadata
+
+        except Exception as e:
+            logger.error(f"Failed to get comprehensive project metadata: {e}")
+            return {
+                "files": [],
+                "ontologies": [],
+                "recent_activities": [],
+                "error": str(e)
+            }
+
+    def _get_diverse_recent_events(self, conn, project_thread_id: str, limit: int = 10) -> List[Dict[str, Any]]:
+        """
+        Get diverse recent events - prioritize important project events over DAS interactions
+
+        Returns a mix of event types to give DAS better project context awareness
+        """
+        try:
+            with conn.cursor() as cur:
+                # Get diverse events with priority for non-DAS interactions
+                cur.execute("""
+                    (
+                        SELECT event_id, project_thread_id, project_id, user_id, event_type,
+                               event_data, context_snapshot, semantic_summary, created_at,
+                               1 as priority  -- High priority for important events
+                        FROM project_event
+                        WHERE project_thread_id = %s
+                        AND event_type IN ('project_created', 'ontology_created', 'ontology_modified', 'file_uploaded', 'class_created')
+                        ORDER BY created_at DESC
+                        LIMIT %s
+                    )
+                    UNION ALL
+                    (
+                        SELECT event_id, project_thread_id, project_id, user_id, event_type,
+                               event_data, context_snapshot, semantic_summary, created_at,
+                               2 as priority  -- Lower priority for DAS interactions
+                        FROM project_event
+                        WHERE project_thread_id = %s
+                        AND event_type = 'das_interaction'
+                        ORDER BY created_at DESC
+                        LIMIT %s
+                    )
+                    ORDER BY priority ASC, created_at DESC
+                    LIMIT %s
+                """, (project_thread_id, limit // 2, project_thread_id, limit // 2, limit))
+
+                cols = [desc[0] for desc in cur.description if desc[0] != 'priority']
+                results = []
+                for row in cur.fetchall():
+                    # Exclude the priority column from the result
+                    event_dict = dict(zip(cols, row[:-1]))  # Exclude last column (priority)
+                    results.append(event_dict)
+
+                logger.debug(f"Retrieved {len(results)} diverse events for thread {project_thread_id}")
+                return results
+
+        except Exception as e:
+            logger.error(f"Failed to get diverse recent events: {e}")
+            # Fallback to regular recent events
+            from backend.db.event_queries import get_recent_events
+            return get_recent_events(conn, project_thread_id, limit)
 
     def get_service_info(self) -> Dict[str, Any]:
         """Get service information"""

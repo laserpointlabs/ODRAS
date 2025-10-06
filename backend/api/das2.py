@@ -74,23 +74,85 @@ async def das2_chat(
 
         print(f"DAS2_API: Processing message='{request.message}' for project={request.project_id}")
 
-        # Process with DAS2 engine (simple approach)
-        response = await engine.process_message(
+        # Use unified streaming method and collect all chunks for non-streaming response
+        full_response = ""
+        final_metadata = {}
+        sources = []
+
+        async for chunk in engine.process_message_stream(
             project_id=request.project_id,
             message=request.message,
             user_id=user_id,
             project_thread_id=request.project_thread_id
-        )
+        ):
+            if chunk.get("type") == "content":
+                full_response += chunk.get("content", "")
+            elif chunk.get("type") == "done":
+                final_metadata = chunk.get("metadata", {})
+                sources = final_metadata.get("sources", [])
+            elif chunk.get("type") == "error":
+                raise HTTPException(status_code=500, detail=chunk.get("message", "Unknown error"))
 
         return DAS2ChatResponse(
-            message=response.message,
-            sources=response.sources,
-            metadata=response.metadata
+            message=full_response,
+            sources=sources,
+            metadata=final_metadata
         )
 
     except Exception as e:
         logger.error(f"DAS2 chat error: {e}")
         raise HTTPException(status_code=500, detail=f"DAS2 error: {str(e)}")
+
+
+@router.post("/chat/stream")
+async def das2_chat_stream(
+    request: DAS2ChatRequest,
+    user: dict = Depends(get_user),
+    engine: DAS2CoreEngine = Depends(get_das2_engine)
+):
+    """
+    DAS2 Chat Streaming - Streams response as it's generated
+    """
+    from fastapi.responses import StreamingResponse
+    import json
+    import asyncio
+
+    async def generate_stream():
+        try:
+            user_id = user.get("user_id")
+            if not user_id:
+                yield f"data: {json.dumps({'type': 'error', 'message': 'User not authenticated'})}\n\n"
+                return
+
+            print(f"DAS2_API_STREAM: Processing message='{request.message}' for project={request.project_id}")
+
+            # Process with DAS2 engine and stream the response
+            response_stream = engine.process_message_stream(
+                project_id=request.project_id,
+                message=request.message,
+                user_id=user_id,
+                project_thread_id=request.project_thread_id
+            )
+
+            # Stream the response
+            async for chunk in response_stream:
+                yield f"data: {json.dumps(chunk)}\n\n"
+
+        except Exception as e:
+            logger.error(f"DAS2 stream error: {e}")
+            yield f"data: {json.dumps({'type': 'error', 'message': str(e)})}\n\n"
+
+    return StreamingResponse(
+        generate_stream(),
+        media_type="text/event-stream",
+        headers={
+            "Cache-Control": "no-cache",
+            "Connection": "keep-alive",
+            "Access-Control-Allow-Origin": "*",
+            "Access-Control-Allow-Headers": "Content-Type, Authorization",
+            "X-Accel-Buffering": "no"  # Disable nginx buffering
+        }
+    )
 
 
 @router.get("/project/{project_id}/thread")
@@ -238,6 +300,55 @@ async def get_das2_conversation_history(
         logger.error(f"Error getting DAS2 history: {e}")
         import traceback
         traceback.print_exc()
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@router.delete("/project/{project_id}/conversation/last")
+async def delete_last_conversation(
+    project_id: str,
+    user: dict = Depends(get_user),
+    engine: DAS2CoreEngine = Depends(get_das2_engine)
+):
+    """Delete the last conversation entry (user message + DAS response) from project thread"""
+    try:
+        user_id = user.get("user_id")
+        if not user_id:
+            raise HTTPException(status_code=401, detail="User not authenticated")
+
+        print(f"DAS2_DELETE: Deleting last conversation for project {project_id}")
+
+        # Get project thread
+        project_context = await engine.project_manager.get_project_thread_by_project_id(project_id)
+        if not project_context or "error" in project_context:
+            raise HTTPException(
+                status_code=404,
+                detail=f"No project thread found for project {project_id}"
+            )
+
+        project_thread_id = None
+        if "project_thread" in project_context:
+            project_thread_id = project_context["project_thread"]["project_thread_id"]
+        else:
+            project_thread_id = getattr(project_context, 'project_thread_id', None)
+
+        if not project_thread_id:
+            raise HTTPException(
+                status_code=404,
+                detail="Project thread ID not found"
+            )
+
+        # Delete the last conversation entry (user + assistant pair)
+        success = await engine.project_manager.delete_last_conversation(project_thread_id)
+
+        if success:
+            return {"success": True, "message": "Last conversation deleted successfully"}
+        else:
+            return {"success": False, "message": "No conversation to delete"}
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Error deleting last conversation: {e}")
         raise HTTPException(status_code=500, detail=str(e))
 
 

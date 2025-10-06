@@ -17,6 +17,7 @@ from fastapi import (
     Header,
 )
 from fastapi.responses import HTMLResponse
+from fastapi.staticfiles import StaticFiles
 from fastapi import Request
 import secrets
 import logging
@@ -63,6 +64,9 @@ from backend.run_registry import RUNS as SHARED_RUNS
 from backend.test_review_endpoint import router as test_router
 
 app = FastAPI(title="ODRAS API", version="0.1.0")
+
+# Mount static files
+app.mount("/static", StaticFiles(directory="frontend"), name="static")
 
 # Create session capture middleware during app creation (before startup)
 from backend.middleware.session_capture import SessionCaptureMiddleware
@@ -244,6 +248,70 @@ def health_check():
     }
 
 
+@app.get("/api/sync/health")
+async def sync_health_check(project_id: Optional[str] = None, user=Depends(get_user)):
+    """Check vector/SQL synchronization health - CRITICAL for DAS reliability"""
+    try:
+        from backend.services.vector_sql_sync_monitor import get_sync_monitor
+
+        monitor = get_sync_monitor()
+        health_report = await monitor.check_sync_health(project_id)
+
+        return health_report
+
+    except Exception as e:
+        logger.error(f"Sync health check failed: {e}")
+        raise HTTPException(status_code=500, detail=f"Sync health check failed: {str(e)}")
+
+
+@app.post("/api/sync/emergency-recovery")
+async def emergency_sync_recovery(
+    project_id: str = Body(..., description="Project ID to recover"),
+    user=Depends(get_admin_user)  # Admin only for safety
+):
+    """Emergency recovery for vector/SQL desync - fixes DAS 'no information available' issues"""
+    try:
+        from backend.services.vector_sql_sync_monitor import emergency_das_recovery
+
+        recovery_result = await emergency_das_recovery(project_id)
+
+        if recovery_result["success"]:
+            return {
+                "success": True,
+                "message": f"Recovered {recovery_result['recovered_chunks']} chunks for project {project_id}",
+                "details": recovery_result
+            }
+        else:
+            raise HTTPException(
+                status_code=500,
+                detail=f"Recovery failed: {recovery_result.get('error', 'Unknown error')}"
+            )
+
+    except Exception as e:
+        logger.error(f"Emergency sync recovery failed: {e}")
+        raise HTTPException(status_code=500, detail=f"Emergency recovery failed: {str(e)}")
+
+
+@app.get("/api/sync/quick-check/{project_id}")
+async def quick_sync_check(project_id: str, user=Depends(get_user)):
+    """Quick check if DAS will work for a project - prevents 'no information available' surprises"""
+    try:
+        from backend.services.vector_sql_sync_monitor import check_das_will_work
+
+        will_work = await check_das_will_work(project_id)
+
+        return {
+            "project_id": project_id,
+            "das_will_work": will_work,
+            "status": "ready" if will_work else "sync_issue",
+            "message": "DAS ready" if will_work else "⚠️ DAS may return 'no information available' - vector store sync issue detected"
+        }
+
+    except Exception as e:
+        logger.error(f"Quick sync check failed: {e}")
+        raise HTTPException(status_code=500, detail=f"Quick check failed: {str(e)}")
+
+
 @app.post("/api/auth/logout")
 def logout(authorization: Optional[str] = Header(None)):
     """Logout and invalidate the current token."""
@@ -274,46 +342,12 @@ def logout_all():
         raise HTTPException(status_code=500, detail="Failed to logout all users")
 
 
-@app.on_event("startup")
-async def startup_event():
-    """Clean up expired tokens and initialize DAS2 on startup."""
-    try:
-        cleanup_expired_tokens()
-        logger.info("Cleaned up expired tokens on startup")
-
-        # Initialize DAS2 engine
-        from backend.api.das2 import initialize_das2_engine
-        await initialize_das2_engine()
-        logger.info("DAS2 engine initialized on startup")
-
-        # Initialize EventCapture2 with background worker
-        from backend.services.eventcapture2 import initialize_event_capture
-        from backend.services.eventcapture2_worker import start_eventcapture2_worker
-        try:
-            import redis.asyncio as redis
-            redis_client = redis.from_url("redis://localhost:6379")
-            await redis_client.ping()
-            initialize_event_capture(redis_client)
-            # Start background worker to process queued events
-            await start_eventcapture2_worker(redis_client)
-            logger.info("EventCapture2 initialized with Redis and background worker")
-        except Exception as e:
-            logger.warning(f"EventCapture2 initialized without Redis: {e}")
-            initialize_event_capture(None)
-
-    except Exception as e:
-        logger.error(f"Error during startup: {e}")
+# NOTE: Startup event is consolidated below at line ~768 in on_startup() function
+# This section is kept for reference but not used
 
 
-@app.on_event("shutdown")
-async def shutdown_event():
-    """Clean up EventCapture2 worker on shutdown."""
-    try:
-        from backend.services.eventcapture2_worker import stop_eventcapture2_worker
-        await stop_eventcapture2_worker()
-        logger.info("EventCapture2 worker stopped on shutdown")
-    except Exception as e:
-        logger.error(f"Error during shutdown: {e}")
+# NOTE: Shutdown is handled in application lifecycle
+# Database monitor cleanup will happen automatically on process exit
 
 
 @app.get("/api/projects")
@@ -757,26 +791,32 @@ async def on_startup():
         await initialize_semantic_capture(redis_client)
         print("✅ Semantic capture initialized")
 
-        print("🔥 Step 11: Setting up middleware-to-DAS event routing...")
-        logger.info("🎯 Replacing fragmented middleware with unified SQL-first event system...")
+        print("🔥 Step 11: Setting up event routing...")
+        logger.info("🎯 Setting up SQL-first event system...")
         try:
-            # Replace ALL fragmented event systems with unified SQL-first approach
-            from backend.services.sql_first_event_integration import initialize_unified_sql_first_events, log_event_system_status
+            # Initialize SQL-first event capture WITHOUT adding middleware (already added during app init)
+            from backend.services.sql_first_event_integration import initialize_sql_first_event_capture_only
 
-            event_system = await initialize_unified_sql_first_events(
-                app=app,
-                db_service=db,
+            # Import QdrantService for SqlFirstThreadManager
+            from backend.services.qdrant_service import QdrantService
+            from backend.services.sql_first_thread_manager import SqlFirstThreadManager
+            qdrant_service = QdrantService(settings)
+
+            # Create SqlFirstThreadManager
+            sql_first_manager = SqlFirstThreadManager(settings, qdrant_service)
+
+            # Initialize event capture without middleware (middleware already exists)
+            initialize_sql_first_event_capture_only(
+                sql_first_manager=sql_first_manager,
                 redis_client=redis_client
             )
 
-            print(f"✅ Unified SQL-first event system active: {event_system['status']}")
-
-            # Log the consolidated system status
-            log_event_system_status()
+            print(f"✅ SQL-first event capture initialized")
 
         except Exception as e:
-            print(f"❌ Error setting up unified event system: {e}")
-            logger.error(f"Unified event system error: {e}")
+            print(f"❌ Error setting up event system: {e}")
+            logger.error(f"Event system error: {e}")
+            # Don't fail startup for event system issues
             import traceback
             traceback.print_exc()
 
@@ -793,25 +833,13 @@ async def on_startup():
 
     # Start connection pool monitoring task
     try:
-        import asyncio
-        async def monitor_connection_pool():
-            """Monitor and prune database connections periodically."""
-            while True:
-                try:
-                    if hasattr(db, 'prune_old_connections'):
-                        db.prune_old_connections()
-                    if hasattr(db, 'get_pool_status'):
-                        status = db.get_pool_status()
-                        if status.get('active_connections', 0) > status.get('maxconn', 0) * 0.8:
-                            logger.warning(f"High connection pool usage: {status}")
-                except Exception as e:
-                    logger.error(f"Error in connection pool monitoring: {e}")
-                await asyncio.sleep(300)  # Check every 5 minutes
-
-        asyncio.create_task(monitor_connection_pool())
-        logger.info("✅ Connection pool monitoring started")
+        from backend.services.db_monitor import start_db_monitor
+        start_db_monitor(db)
+        print("✅ Database connection pool monitor started")
+        logger.info("✅ Database connection pool monitor started")
     except Exception as e:
-        logger.error(f"Failed to start connection pool monitoring: {e}")
+        print(f"⚠️  Failed to start database monitor: {e}")
+        logger.warning(f"Failed to start database monitor: {e}")
 
 
 @app.get("/ontology-editor", response_class=HTMLResponse)

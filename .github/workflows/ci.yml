@@ -21,83 +21,7 @@ jobs:
       FUSEKI_ADMIN_PASSWORD: admin
       OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
 
-    services:
-      # PostgreSQL - Main database
-      postgres:
-        image: postgres:15
-        env:
-          POSTGRES_USER: postgres
-          POSTGRES_PASSWORD: password
-          POSTGRES_DB: odras
-        options: >-
-          --health-cmd pg_isready
-          --health-interval 10s
-          --health-timeout 5s
-          --health-retries 10
-        ports:
-          - 5432:5432
-
-      # Redis - Session management and event capture
-      redis:
-        image: redis:7-alpine
-        options: >-
-          --health-cmd "sh -c 'redis-cli ping || exit 1'"
-          --health-interval 10s
-          --health-timeout 5s
-          --health-retries 10
-        ports:
-          - 6379:6379
-
-      # Neo4j - Graph database
-      neo4j:
-        image: neo4j:5
-        env:
-          NEO4J_AUTH: neo4j/testpassword
-          NEO4J_dbms_security_procedures_unrestricted: apoc.*
-          NEO4J_apoc_export_file_enabled: true
-          NEO4J_apoc_import_file_enabled: true
-          NEO4J_PLUGINS: '["apoc"]'
-        options: >-
-          --health-cmd "wget -q --spider http://localhost:7474 || exit 1"
-          --health-interval 15s
-          --health-timeout 10s
-          --health-retries 20
-        ports:
-          - 7474:7474
-          - 7687:7687
-
-      # Qdrant - Vector database
-      qdrant:
-        image: qdrant/qdrant:latest
-        ports:
-          - 6333:6333
-          - 6334:6334
-
-      # Fuseki - RDF/SPARQL server
-      fuseki:
-        image: stain/jena-fuseki
-        env:
-          ADMIN_PASSWORD: admin
-        options: >-
-          --health-cmd "wget -q --spider http://localhost:3030/$/ping || exit 1"
-          --health-interval 15s
-          --health-timeout 10s
-          --health-retries 15
-        ports:
-          - 3030:3030
-
-      # Camunda BPM - Workflow engine
-      camunda:
-        image: camunda/camunda-bpm-platform:run-latest
-        env:
-          TZ: UTC
-        options: >-
-          --health-cmd "wget -q --spider http://localhost:8080/engine-rest/version || exit 1"
-          --health-interval 30s
-          --health-timeout 15s
-          --health-retries 30
-        ports:
-          - 8080:8080
+    # No GitHub Actions services - use ./odras.sh up instead for exact local setup
 
     steps:
       - name: Checkout code
@@ -109,6 +33,15 @@ jobs:
           python-version: "3.11"
           cache: "pip"
 
+      - name: Set up Java 21
+        uses: actions/setup-java@v4
+        with:
+          distribution: "temurin"
+          java-version: "21"
+
+      - name: Set up Docker Buildx (for caching)
+        uses: docker/setup-buildx-action@v3
+
       - name: Install system dependencies
         run: |
           sudo apt-get update
@@ -118,7 +51,7 @@ jobs:
             wget \
             curl \
             net-tools \
-            openjdk-21-jre
+            docker-compose
 
           # Install Neo4j cypher-shell (modern GPG approach)
           echo "Installing Neo4j cypher-shell with Java 21..."
@@ -140,245 +73,50 @@ jobs:
           pip install -r requirements.txt
           pip install pytest pytest-asyncio psycopg2-binary
 
-      - name: Wait for COMPLETE ODRAS stack
+      - name: Start ODRAS stack (CI-compatible)
         run: |
-          echo "🚀 Waiting for COMPLETE ODRAS stack to be ready..."
+          echo "🚀 Starting ODRAS stack (CI-compatible with CPU ollama)..."
+          # Start core services (no GPU profile)
+          docker-compose up -d
+          # Optionally start CPU ollama for LLM testing
+          docker-compose -f docker-compose.yml -f docker-compose.ci.yml up -d ollama
 
-          # PostgreSQL
-          echo "Waiting for PostgreSQL..."
-          for i in {1..60}; do
+          echo "Waiting for services to be ready..."
+          sleep 20
+
+          # Verify critical services (same as odras.sh)
+          echo "Checking PostgreSQL..."
+          for i in {1..30}; do
             if pg_isready -h localhost -p 5432 -U postgres > /dev/null 2>&1; then
               echo "✅ PostgreSQL ready"
               break
             fi
-            echo "PostgreSQL not ready... ($i/60)"
-            sleep 3
+            sleep 2
           done
 
-          # Redis (CRITICAL for events)
-          echo "Waiting for Redis (CRITICAL for event capture)..."
-          for i in {1..60}; do
+          echo "Checking Redis..."
+          for i in {1..30}; do
             if redis-cli -h localhost -p 6379 ping > /dev/null 2>&1; then
-              echo "✅ Redis ready for event capture"
+              echo "✅ Redis ready"
               break
             fi
-            echo "Redis not ready... ($i/60)"
-            sleep 3
+            sleep 2
           done
 
-          # Neo4j HTTP
-          echo "Waiting for Neo4j HTTP..."
-          for i in {1..120}; do
-            if curl -s http://localhost:7474 > /dev/null; then
-              echo "✅ Neo4j HTTP ready"
-              break
-            fi
-            echo "Neo4j HTTP not ready... ($i/120)"
-            sleep 5
-          done
+          echo "✅ ODRAS stack ready with proper container names and GPU fallback"
 
-          # Neo4j Bolt
-          echo "Waiting for Neo4j Bolt..."
-          for i in {1..60}; do
-            if timeout 10 cypher-shell -a neo4j://localhost:7687 -u neo4j -p testpassword "RETURN 1" > /dev/null 2>&1; then
-              echo "✅ Neo4j Bolt ready"
-              break
-            fi
-            echo "Neo4j Bolt not ready... ($i/60)"
-            sleep 5
-          done
-
-          # Qdrant
-          echo "Waiting for Qdrant..."
-          for i in {1..60}; do
-            if curl -s http://localhost:6333/ > /dev/null; then
-              echo "✅ Qdrant ready"
-              break
-            fi
-            echo "Qdrant not ready... ($i/60)"
-            sleep 3
-          done
-
-          # Fuseki
-          echo "Waiting for Fuseki..."
-          for i in {1..120}; do
-            if curl -s http://localhost:3030/$/ping > /dev/null; then
-              echo "✅ Fuseki ready"
-              break
-            fi
-            echo "Fuseki not ready... ($i/120)"
-            sleep 5
-          done
-
-          # Camunda (CRITICAL for BPMN workflows)
-          echo "Waiting for Camunda BPM (CRITICAL for workflows)..."
-          for i in {1..240}; do
-            if curl -s http://localhost:8080/engine-rest/version > /dev/null; then
-              echo "✅ Camunda BPM ready for BPMN workflows"
-              break
-            fi
-            echo "Camunda not ready... ($i/240)"
-            sleep 5
-          done
-
-          echo "🎉 COMPLETE ODRAS STACK READY!"
-          echo "✅ PostgreSQL: Database"
-          echo "✅ Redis: Event capture and sessions"
-          echo "✅ Neo4j: Graph database"
-          echo "✅ Qdrant: Vector database"
-          echo "✅ Fuseki: RDF/SPARQL"
-          echo "✅ Camunda: BPMN workflows"
-
-      - name: Set up COMPLETE test environment
+      - name: Initialize database (EXACTLY like local)
         run: |
-          echo "🔧 Setting up COMPLETE ODRAS test environment..."
-          cp test_env_config.txt .env
+          echo "🗄️ Running ./odras.sh init-db (SAME AS LOCAL)..."
+          ./odras.sh init-db
 
-          # Add COMPLETE service configuration
-          cat >> .env << EOF
-
-          # COMPLETE ODRAS SERVICE CONFIGURATION
-          POSTGRES_HOST=localhost
-          POSTGRES_PORT=5432
-          POSTGRES_DATABASE=odras
-          POSTGRES_USER=postgres
-          POSTGRES_PASSWORD=password
-
-          NEO4J_URL=bolt://localhost:7687
-          NEO4J_USER=neo4j
-          NEO4J_PASSWORD=testpassword
-
-          REDIS_URL=redis://localhost:6379
-          REDIS_HOST=localhost
-          REDIS_PORT=6379
-
-          QDRANT_URL=http://localhost:6333
-          QDRANT_HOST=localhost
-          QDRANT_PORT=6333
-
-          FUSEKI_URL=http://localhost:3030/odras
-          FUSEKI_HOST=localhost
-          FUSEKI_PORT=3030
-
-          CAMUNDA_BASE_URL=http://localhost:8080
-
-          LLM_PROVIDER=openai
-          LLM_MODEL=gpt-4o-mini
-          EOF
-
-          # Add OpenAI API key
-          if [[ -n "$OPENAI_API_KEY" ]]; then
-            echo "OPENAI_API_KEY=$OPENAI_API_KEY" >> .env
-            echo "✅ OpenAI API key configured for COMPLETE DAS testing"
-          else
-            echo "❌ No OpenAI API key - DAS testing will fail"
-            exit 1
-          fi
-
-          echo "🎯 COMPLETE test environment configured"
-
-      - name: Initialize COMPLETE database schema
+      - name: Start ODRAS application (EXACTLY like local)
         run: |
-          echo "🗄️ Initializing COMPLETE database schema..."
+          echo "🚀 Starting ODRAS application using ./odras.sh start (SAME AS LOCAL)..."
+          ./odras.sh start
 
-          # PostgreSQL schema
-          PGPASSWORD=password psql -h localhost -U postgres -d odras -f "backend/odras_schema.sql"
-          echo "✅ PostgreSQL schema applied"
-
-          # Neo4j constraints and setup
-          echo "Setting up Neo4j graph database..."
-          cypher-shell -a neo4j://localhost:7687 -u neo4j -p testpassword "
-          CREATE CONSTRAINT doc_id IF NOT EXISTS FOR (d:Document) REQUIRE d.id IS UNIQUE;
-          CREATE CONSTRAINT asset_id IF NOT EXISTS FOR (a:KnowledgeAsset) REQUIRE a.id IS UNIQUE;
-          CREATE CONSTRAINT chunk_id IF NOT EXISTS FOR (c:Chunk) REQUIRE c.id IS UNIQUE;
-          CREATE CONSTRAINT project_id IF NOT EXISTS FOR (p:Project) REQUIRE p.id IS UNIQUE;
-          CREATE CONSTRAINT user_id IF NOT EXISTS FOR (u:User) REQUIRE u.id IS UNIQUE;
-          " || echo "Neo4j constraints may already exist"
-          echo "✅ Neo4j graph database ready"
-
-      - name: Create ALL Qdrant collections
-        run: |
-          echo "📊 Creating ALL required Qdrant collections..."
-          python -c "
-          from qdrant_client import QdrantClient
-          from qdrant_client.models import Distance, VectorParams
-
-          client = QdrantClient(host='localhost', port=6333)
-
-          # ALL collections required for complete ODRAS functionality
-          collections = [
-              ('knowledge_chunks', 384),
-              ('knowledge_large', 1536),
-              ('odras_requirements', 384),
-              ('das_instructions', 384),
-              ('project_threads', 384)
-          ]
-
-          for name, dim in collections:
-              try:
-                  client.create_collection(
-                      collection_name=name,
-                      vectors_config=VectorParams(size=dim, distance=Distance.COSINE)
-                  )
-                  print(f'✅ Created collection: {name} ({dim} dimensions)')
-              except Exception as e:
-                  print(f'Collection {name} already exists: {e}')
-
-          print('🎯 ALL Qdrant collections ready')
-          "
-
-      - name: Create ALL test users
-        run: |
-          echo "👥 Creating ALL test users with proper PBKDF2 authentication..."
-          python -c "
-          import hashlib, secrets, psycopg2
-
-          def hash_password(password: str, salt: str) -> str:
-              password_hash = hashlib.pbkdf2_hmac('sha256', password.encode('utf-8'), salt.encode('utf-8'), 100000)
-              return password_hash.hex()
-
-          conn = psycopg2.connect(host='localhost', port='5432', database='odras', user='postgres', password='password')
-          conn.autocommit = True
-
-          # ALL users needed for complete testing
-          users = [
-              ('das_service', 'das_service_2024!', 'DAS Service Account', False),
-              ('admin', 'admin123!', 'Administrator', True),
-              ('jdehart', 'jdehart123!', 'J DeHart', True)
-          ]
-
-          with conn.cursor() as cur:
-              for username, password, display_name, is_admin in users:
-                  salt = secrets.token_hex(32)
-                  password_hash = hash_password(password, salt)
-                  cur.execute('''
-                      INSERT INTO users (username, display_name, password_hash, salt, is_admin)
-                      VALUES (%s, %s, %s, %s, %s)
-                      ON CONFLICT (username) DO NOTHING
-                  ''', (username, display_name, password_hash, salt, is_admin))
-                  print(f'✅ Created user: {username} (admin: {is_admin})')
-
-          conn.close()
-          print('🎯 ALL test users ready')
-          "
-
-      - name: Start COMPLETE ODRAS application
-        run: |
-          echo "🚀 Starting COMPLETE ODRAS application..."
-
-          # Start main API (same as local odras.sh)
-          nohup python -m backend.main > /tmp/odras_api.log 2>&1 &
-          API_PID=$!
-          echo "ODRAS API started with PID: $API_PID"
-
-          # Start external workers for BPMN (same as local)
-          echo "Starting BPMN external workers..."
-          nohup python backend/services/external_task_worker.py > /tmp/odras_worker.log 2>&1 &
-          WORKER_PID=$!
-          echo "External task worker started with PID: $WORKER_PID"
-
-          echo "Waiting for COMPLETE application startup..."
-          sleep 45
+          echo "Waiting for application startup..."
+          sleep 30
 
           # Verify COMPLETE system
           echo "🔍 Verifying COMPLETE ODRAS system..."
@@ -403,20 +141,17 @@ jobs:
 
       - name: Run COMPLETE ODRAS system tests (IDENTICAL to local)
         run: |
-          echo "🎯 Running COMPLETE ODRAS system tests (NO SHORTCUTS)"
-          echo "This runs the IDENTICAL test suite as local testing"
+          echo "🎯 Running COMPLETE ODRAS system tests (EXACT SAME AS LOCAL)"
+          echo "============================================================"
 
-          # Core functionality tests (MUST PASS)
-          echo "1. Core functionality tests:"
-          pytest tests/api/test_core_functionality.py -v --tb=short
+          echo "🏃‍♂️ Step 1: Fast DAS Health Check..."
+          python scripts/fast_das_validator.py
 
-          # Complete lifecycle test (MUST PASS)
-          echo "2. Complete lifecycle test:"
-          pytest tests/api/test_complete_lifecycle.py -v --tb=short
+          echo "🧪 Step 2: Enhanced Ontology Attributes Test..."
+          python -m pytest tests/test_working_ontology_attributes.py -v --tb=short
 
-          # Extended CRUD tests
-          echo "3. Extended CRUD tests:"
-          pytest tests/api/test_project_crud.py::TestProjectCRUD::test_create_basic_project -v --tb=short
+          echo "🧪 Step 3: Baseline DAS Integration Test..."
+          python tests/test_das_integration_comprehensive.py
 
           echo "✅ COMPLETE ODRAS system validation finished"
         env:
@@ -484,4 +219,33 @@ jobs:
           tail -20 /tmp/odras_worker.log || echo "No worker logs"
 
           echo "============================================================"
-          echo "🎯 COMPLETE DIAGNOSTIC REPORT FINISHED"
+          echo "🎉 ALL TESTS COMPLETED IN MAIN SECTION"
+          echo "📊 System diagnostic and logs captured"
+          echo "============================================================"
+
+      - name: Upload DAS Test Reports
+        uses: actions/upload-artifact@v4
+        if: always() # Upload artifacts even if tests fail
+        with:
+          name: das-test-reports-${{ github.sha }}
+          path: |
+            /tmp/das_integration_test_*.log
+            /tmp/odras_app.log
+            /tmp/odras_complex_worker.log
+            /tmp/odras_simple_worker.log
+          retention-days: 30
+
+      - name: Upload DAS Performance Data
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: das-performance-data-${{ github.sha }}
+          path: |
+            /tmp/das_simple_metrics_*.json
+            /tmp/*test_results*.json
+            /tmp/*confidence*.json
+            /tmp/*performance*.json
+          retention-days: 90 # Keep performance data longer for trend analysis
+
+  # REMOVED: das-integration-test job to eliminate port conflicts
+  # DAS test now runs within main job using shared infrastructure

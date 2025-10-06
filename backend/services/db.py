@@ -25,6 +25,11 @@ class DatabaseService:
             database=settings.postgres_database,
             user=settings.postgres_user,
             password=settings.postgres_password,
+            # Add keepalive to prevent stale connections
+            keepalives=1,
+            keepalives_idle=30,
+            keepalives_interval=10,
+            keepalives_count=5,
         )
         self._connection_creation_time = {}
         logger.info(f"Database connection pool initialized: min={settings.postgres_pool_min_connections}, max={settings.postgres_pool_max_connections}")
@@ -35,6 +40,27 @@ class DatabaseService:
             # Track connection creation time for pruning
             conn_id = id(conn)
             self._connection_creation_time[conn_id] = time.time()
+
+            # Validate connection is alive - test with a simple query
+            try:
+                with conn.cursor() as cur:
+                    cur.execute("SELECT 1")
+                    cur.fetchone()
+            except (psycopg2.OperationalError, psycopg2.InterfaceError) as e:
+                logger.warning(f"Dead connection detected, recreating: {e}")
+                # Close the dead connection
+                try:
+                    conn.close()
+                except Exception:
+                    pass
+                # Remove from pool tracking
+                if conn_id in self._connection_creation_time:
+                    del self._connection_creation_time[conn_id]
+                # Get a new connection
+                conn = self.pool.getconn()
+                conn_id = id(conn)
+                self._connection_creation_time[conn_id] = time.time()
+
             return conn
         except psycopg2.pool.PoolError as e:
             logger.error(f"Failed to get database connection: {e}")
@@ -46,7 +72,27 @@ class DatabaseService:
             conn_id = id(conn)
             if conn_id in self._connection_creation_time:
                 del self._connection_creation_time[conn_id]
-            self.pool.putconn(conn)
+
+            # Check if connection is still valid before returning to pool
+            try:
+                # Rollback any uncommitted transactions
+                if conn and not conn.closed:
+                    conn.rollback()
+                    self.pool.putconn(conn)
+                else:
+                    # Connection is closed, just remove it
+                    logger.warning("Attempted to return closed connection to pool")
+                    try:
+                        self.pool.putconn(conn, close=True)
+                    except Exception:
+                        pass
+            except Exception as e:
+                logger.warning(f"Error validating connection before return: {e}")
+                # Try to close the bad connection
+                try:
+                    self.pool.putconn(conn, close=True)
+                except Exception:
+                    pass
         except Exception as e:
             logger.warning(f"Error returning connection to pool: {e}")
 

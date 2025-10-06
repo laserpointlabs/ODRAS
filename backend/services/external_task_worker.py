@@ -16,7 +16,14 @@ import requests
 from requests.adapters import HTTPAdapter
 from urllib3.util.retry import Retry
 
-from .config import Settings
+try:
+    from .config import Settings
+except ImportError:
+    # Fallback for direct execution in CI
+    import sys
+    import os
+    sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..'))
+    from services.config import Settings
 
 # Set up logging
 logger = logging.getLogger(__name__)
@@ -991,4 +998,3 @@ Please provide a comprehensive answer based on the context provided. If the cont
             "processing_status": "success",
             "errors": [],
         }
-

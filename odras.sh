@@ -243,13 +243,35 @@ show_app_logs() {
 
 # Docker Compose functions
 start_docker() {
-    print_status "Starting Docker Compose services..."
+    print_status "Starting Docker Compose services (CPU mode)..."
     docker-compose -f "$DOCKER_COMPOSE_FILE" up -d
     if [[ $? -eq 0 ]]; then
-        print_success "Docker services started"
+        print_success "Docker services started (CPU mode)"
         show_docker_status
     else
         print_error "Failed to start Docker services"
+        return 1
+    fi
+}
+
+start_docker_gpu() {
+    print_status "Starting Docker Compose services with GPU acceleration..."
+    if [[ ! -f "docker-compose.gpu.yml" ]]; then
+        print_error "GPU overlay file not found: docker-compose.gpu.yml"
+        print_status "Using CPU mode instead..."
+        start_docker
+        return
+    fi
+
+    export COMPOSE_PROFILES=gpu
+    docker-compose -f "$DOCKER_COMPOSE_FILE" -f "docker-compose.gpu.yml" up -d
+    if [[ $? -eq 0 ]]; then
+        print_success "Docker services started with GPU acceleration"
+        print_status "🎮 Ollama: GPU-accelerated (nvidia runtime)"
+        show_docker_status
+    else
+        print_error "Failed to start Docker services with GPU"
+        print_status "💡 Tip: Ensure NVIDIA Docker runtime is installed"
         return 1
     fi
 }
@@ -1572,7 +1594,8 @@ show_help() {
     echo "  logs           Show application logs"
     echo ""
     echo "Docker Commands:"
-    echo "  up             Start Docker Compose services"
+    echo "  up             Start Docker Compose services (CPU mode - CI safe)"
+    echo "  up-gpu         Start with GPU acceleration (local development)"
     echo "  down           Stop and remove Docker Compose services"
     echo "  restart-docker Restart Docker Compose services"
     echo "  docker-status  Show Docker services status"
@@ -1594,7 +1617,8 @@ show_help() {
     echo ""
     echo "Examples:"
     echo "  $0 start       # Start the app"
-    echo "  $0 up          # Start Docker services"
+    echo "  $0 up          # Start Docker services (CPU mode - CI safe)"
+    echo "  $0 up-gpu      # Start Docker services with GPU acceleration"
     echo "  $0 status      # Check status"
     echo "  $0 logs        # View app logs"
     echo "  $0 clean       # Clean all database data for fresh testing"
@@ -1626,6 +1650,9 @@ main() {
             ;;
         up)
             start_docker
+            ;;
+        up-gpu)
+            start_docker_gpu
             ;;
         down)
             down_docker

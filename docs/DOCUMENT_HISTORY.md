@@ -2,11 +2,34 @@
 
 This document tracks all documentation changes, consolidations, and deletions to maintain historical record.
 
+## New Documentation - October 6, 2025
+
+### Database Connection Pool Troubleshooting Guide
+**Created:** `docs/development/DATABASE_CONNECTION_POOL_TROUBLESHOOTING.md`
+**Purpose:** Comprehensive troubleshooting guide for database connection pool issues
+**Issue:** Users unable to login after idle periods due to stale database connections (Oct 2025)
+**Solution:** TCP keepalive, connection validation, pool size reduction, background monitoring
+**Size:** 518 lines
+**Status:** Active - Primary reference for connection pool debugging
+
+**Key Changes Documented:**
+- Added TCP keepalive to PostgreSQL connections (keepalives=1, idle=30s, interval=10s, count=5)
+- Implemented connection health checks in `_conn()` method
+- Reduced connection pool from 5-50 to 2-20 connections
+- Created background monitor task (`backend/services/db_monitor.py`)
+- Improved connection return logic with validation
+
+**Modified Files:**
+- `backend/services/db.py` - Core connection pool changes
+- `backend/services/config.py` - Pool size configuration
+- `backend/services/db_monitor.py` - NEW - Background monitoring
+- `backend/main.py` - Startup event integration
+
 ## Document Cleanup - September 23, 2025
 
-**Branch:** `cleanup/repo-cleanup`  
-**Commit:** [Commit hash will be added after commit]  
-**Total Documents Before:** 74  
+**Branch:** `cleanup/repo-cleanup`
+**Commit:** [Commit hash will be added after commit]
+**Total Documents Before:** 74
 **Total Documents After:** 27 (63% reduction)
 **Additional Cleanup:** Moved all top-level .md files to docs/ folder
 

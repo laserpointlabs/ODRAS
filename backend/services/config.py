@@ -43,10 +43,10 @@ class Settings(BaseSettings):
     postgres_password: str = "password"
 
     # Database Connection Pool Configuration
-    postgres_pool_min_connections: int = 5
-    postgres_pool_max_connections: int = 50
+    postgres_pool_min_connections: int = 2
+    postgres_pool_max_connections: int = 20  # Reduced from 50 to prevent connection exhaustion
     postgres_pool_connection_timeout: int = 30
-    postgres_pool_connection_lifetime: int = 3600  # 1 hour
+    postgres_pool_connection_lifetime: int = 1800  # 30 minutes (reduced from 1 hour)
 
     # Local Storage Configuration
     local_storage_path: str = "./storage/files"

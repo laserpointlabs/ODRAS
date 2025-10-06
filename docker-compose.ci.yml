@@ -1,0 +1,10 @@
+version: '3.8'
+
+# CI overlay: Enables CPU-only ollama for CI testing
+services:
+  ollama:
+    profiles: ["ci"]        # Separate profile for CI
+    # No runtime nvidia, no NVIDIA_* env, no WSL mounts
+    environment:
+      - OLLAMA_KEEP_ALIVE=1h
+      - OLLAMA_HOST=0.0.0.0 # Allow external connections for testing

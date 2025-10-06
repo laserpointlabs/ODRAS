@@ -1,0 +1,35 @@
+---
+alwaysApply: true
+---
+
+# CRITICAL: Always Check Logs
+
+## MANDATORY Log Checking
+- **ALWAYS check logs after making ANY change**
+- **ALWAYS check logs after starting/stopping services**
+- **ALWAYS check logs when debugging issues**
+- **ALWAYS check logs before claiming success**
+- **Log checking is MANDATORY, not optional**
+
+## Log Checking Commands
+- Use `./odras.sh logs` for ODRAS application logs
+- Use `docker-compose logs` for service logs
+- Check both application logs and service logs
+- Logs reveal the truth about what's actually happening
+
+## Why This Matters
+- Changes may appear to work but fail silently
+- Services may start but not function correctly
+- Database connections may fail without obvious errors
+- API endpoints may return errors not visible in UI
+- Logs are the definitive source of truth for system status
+
+## Before Claiming Success
+1. Make the change
+2. Check logs immediately
+3. Verify no errors or warnings
+4. Test functionality
+5. Check logs again
+6. Only then claim success
+
+**Remember: Logs don't lie - they show exactly what's happening in the system.**

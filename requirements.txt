@@ -36,6 +36,8 @@ pytest>=7.4.0
 pytest-asyncio>=1.1.0
 pytest-cov>=4.1.0
 pytest-mock>=3.10.0
+pytest-json-report>=1.5.0
+playwright>=1.55.0
 rich>=13.0.0
 
 # Development Tools
@@ -45,4 +47,3 @@ bandit>=1.7.0
 
 # Additional utilities
 python-multipart>=0.0.6
-

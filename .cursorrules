@@ -150,3 +150,13 @@ project_threads       # Project threads (384 dim) - CRITICAL for DAS
 - Use proper error handling and logging
 - Implement graceful shutdowns and force killing when needed
 - Check port availability before starting services
+
+## 🚨 CRITICAL: Always Check Logs
+- **ALWAYS check logs after making ANY change**
+- **ALWAYS check logs after starting/stopping services**
+- **ALWAYS check logs when debugging issues**
+- **ALWAYS check logs before claiming success**
+- **Log checking is MANDATORY, not optional**
+- Use `./odras.sh logs` or `docker-compose logs` to verify changes
+- Check both application logs and service logs
+- Logs reveal the truth about what's actually happening

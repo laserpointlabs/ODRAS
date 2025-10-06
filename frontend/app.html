@@ -5,6 +5,8 @@
   <meta charset="utf-8" />
   <title>ODRAS — UI Restart</title>
   <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <link rel="icon" type="image/x-icon" href="/static/favicon.ico" />
+  <link rel="icon" type="image/png" href="/static/avian-link-black.png" />
 
   <!-- Markdown parsing and syntax highlighting -->
   <script src="https://cdn.jsdelivr.net/npm/marked@9.1.6/marked.min.js"></script>
@@ -83,6 +85,15 @@
     .brand {
       font-weight: 600;
       letter-spacing: .5px;
+      display: flex;
+      align-items: center;
+      gap: 4px;
+    }
+
+    .brand-icon {
+      width: 24px;
+      height: 24px;
+      flex-shrink: 0;
     }
 
     .spacer {
@@ -153,6 +164,12 @@
       display: grid;
       grid-template-columns: var(--iconbar-w) var(--tree-w) 6px 1fr;
       height: 100%;
+      transition: grid-template-columns 0.2s ease;
+    }
+
+    /* When tree dock is collapsed, adjust grid columns */
+    .content:has(.tree-dock-collapsed) {
+      grid-template-columns: var(--iconbar-w) 40px 6px 1fr;
     }
 
     .iconbar {
@@ -184,6 +201,14 @@
       stroke: currentColor;
     }
 
+    .icon[data-wb="settings"] {
+      position: absolute;
+      bottom: 56px;
+      /* 8px (admin bottom) + 40px (admin height) + 8px (gap) */
+      left: 50%;
+      transform: translateX(-50%);
+    }
+
     .icon[data-wb="admin"] {
       position: absolute;
       bottom: 8px;
@@ -194,6 +219,164 @@
     .icon.active {
       color: var(--accent);
       border-color: var(--accent);
+    }
+
+    /* Analysis Lab Styling */
+    .analysis-container {
+      display: flex;
+      height: calc(100vh - 200px);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      background: var(--panel);
+      overflow: hidden;
+      margin-top: 20px;
+    }
+
+    .jupyter-toolbar {
+      width: 60px;
+      background: var(--panel-2);
+      border-right: 1px solid var(--border);
+      display: flex;
+      flex-direction: column;
+      padding: 8px 4px;
+      gap: 4px;
+      overflow-y: auto;
+    }
+
+    .jupyter-canvas {
+      flex: 1;
+      position: relative;
+      background: var(--bg);
+    }
+
+    .jupyter-placeholder {
+      height: 100%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      flex-direction: column;
+      color: var(--muted);
+      background: var(--bg);
+    }
+
+    .jupyter-placeholder-content {
+      text-align: center;
+      padding: 40px;
+    }
+
+    .jupyter-icon {
+      width: 80px;
+      height: 80px;
+      margin: 0 auto 24px;
+      color: var(--accent);
+      opacity: 0.8;
+    }
+
+    .jupyter-icon svg {
+      width: 100%;
+      height: 100%;
+    }
+
+    .jupyter-placeholder-content h3 {
+      margin: 0 0 12px 0;
+      color: var(--text);
+      font-size: 24px;
+      font-weight: 600;
+    }
+
+    .jupyter-placeholder-content p {
+      margin: 0 0 24px 0;
+      color: var(--muted);
+      font-size: 16px;
+      line-height: 1.5;
+    }
+
+    .jupyter-actions {
+      display: flex;
+      gap: 12px;
+      justify-content: center;
+    }
+
+    .jupyter-toolbar .icon {
+      width: 48px;
+      height: 48px;
+      margin: 0;
+      border-radius: 6px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    .jupyter-toolbar .icon:hover {
+      background: var(--accent);
+      color: white;
+    }
+
+    .jupyter-toolbar .icon svg {
+      width: 20px;
+      height: 20px;
+    }
+
+    /* Tree Separator */
+    .tree-separator {
+      margin: 8px 0;
+      padding: 0;
+      list-style: none;
+    }
+
+    .separator-line {
+      height: 1px;
+      background: var(--border);
+      margin: 0 8px;
+    }
+
+    /* Main Tree Collapse Functionality */
+    .tree-dock-collapsed {
+      width: 40px !important;
+      min-width: 40px !important;
+      max-width: 40px !important;
+    }
+
+
+    .tree-dock-collapsed .tree-scroll {
+      display: none;
+    }
+
+    .tree-dock-collapsed .tree-header {
+      padding: 8px 4px;
+      justify-content: center;
+    }
+
+    .tree-dock-collapsed .tree-header-left {
+      display: none;
+    }
+
+    .tree-toggle {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      width: 32px;
+      height: 32px;
+      flex-shrink: 0;
+      padding: 6px;
+    }
+
+    .tree-toggle svg {
+      width: 16px;
+      height: 16px;
+      transition: transform 0.2s ease;
+      stroke: currentColor;
+      fill: none;
+    }
+
+    /* When tree is expanded (normal state): chevron points left (←) indicating "close" */
+    .tree-toggle svg {
+      transform: rotate(0deg);
+    }
+
+    /* When tree is collapsed: chevron points right (→) indicating "open" */
+    .tree-dock-collapsed .tree-toggle svg {
+      transform: rotate(180deg);
     }
 
     .tree {
@@ -209,6 +392,13 @@
     .tree-header {
       padding: 10px;
       border-bottom: 1px solid var(--border);
+      display: flex;
+      gap: 8px;
+      align-items: center;
+      justify-content: space-between;
+    }
+
+    .tree-header-left {
       display: flex;
       gap: 8px;
       align-items: center;
@@ -1056,18 +1246,44 @@
       transition: transform 160ms ease;
     }
 
-    /* Left panel chevron: right when collapsed, left when expanded */
-    #wb-ontology.onto-tree-collapsed #ontoTreeToggleIcon {
+    /* Ontology tree chevron: use same logic as main tree */
+    #ontoTreeToggleIcon {
       transform: rotate(0deg);
+      transition: transform 0.2s ease;
     }
 
-    #wb-ontology:not(.onto-tree-collapsed) #ontoTreeToggleIcon {
+    #wb-ontology.onto-tree-collapsed #ontoTreeToggleIcon {
       transform: rotate(180deg);
     }
 
     #wb-ontology.onto-tree-collapsed .onto-tree-header {
       padding: 4px !important;
-      justify-content: center !important;
+      flex-direction: column !important;
+      gap: 4px !important;
+      align-items: center !important;
+    }
+
+    #wb-ontology.onto-tree-collapsed .onto-tree-controls {
+      flex-direction: column !important;
+      gap: 4px !important;
+    }
+
+    /* Ontology root node row styling to accommodate visibility button */
+    .onto-node-row {
+      display: flex;
+      align-items: center;
+      gap: 4px;
+      padding: 2px 4px;
+      border-radius: 4px;
+    }
+
+    .onto-node-row .iconbtn {
+      opacity: 0.7;
+      transition: opacity 0.2s ease;
+    }
+
+    .onto-node-row:hover .iconbtn {
+      opacity: 1;
     }
 
     /* Properties panel */
@@ -1231,12 +1447,13 @@
       max-width: var(--onto-props-collapsed-w);
     }
 
-    /* Right panel chevron: left when collapsed, right when expanded */
-    #wb-ontology.onto-props-collapsed #ontoPropsToggleIcon {
+    /* Properties panel chevron: use same logic as main tree */
+    #ontoPropsToggleIcon {
       transform: rotate(0deg);
+      transition: transform 0.2s ease;
     }
 
-    #wb-ontology:not(.onto-props-collapsed) #ontoPropsToggleIcon {
+    #wb-ontology.onto-props-collapsed #ontoPropsToggleIcon {
       transform: rotate(180deg);
     }
 
@@ -1370,6 +1587,17 @@
 
     .das-dock-bottom .das-resizer-y {
       top: -3px;
+    }
+
+    /* DAS Send Button Hover Effects */
+    #dasSendBtn:hover {
+      background: var(--text);
+      border-color: var(--text);
+      transform: translateY(-1px);
+    }
+
+    #dasSendBtn:active {
+      transform: translateY(0);
     }
 
     /* DAS suggestions styling */
@@ -1608,29 +1836,48 @@
     }
 
     /* LLM Status Indicator */
-    .llm-status-indicator {
-      font-size: 12px;
+    #llmStatusDot,
+    #llmStatusDockDot {
       margin-right: 8px;
       cursor: help;
-      transition: all 0.3s ease;
-    }
-
-    .llm-status-indicator.healthy {
-      color: #22c55e;
-    }
-
-    .llm-status-indicator.unhealthy {
-      color: #ef4444;
-    }
-
-    .llm-status-indicator.checking {
-      color: #f59e0b;
+      transition: background 0.3s ease;
     }
 
     /* DAS Progress Indicator */
     .das-progress {
       color: var(--muted);
       font-style: italic;
+    }
+
+    .ellipsis-dots {
+      display: inline-block;
+      width: 1.5em;
+      /* Fixed width to prevent layout shift */
+      text-align: left;
+    }
+
+    .streaming-cursor {
+      display: inline;
+      animation: blink 1s infinite;
+      color: var(--accent);
+      font-weight: normal;
+      margin: 0;
+      padding: 0;
+      line-height: inherit;
+      vertical-align: baseline;
+    }
+
+    @keyframes blink {
+
+      0%,
+      50% {
+        opacity: 1;
+      }
+
+      51%,
+      100% {
+        opacity: 0;
+      }
     }
 
     .das-toolbar .spacer {
@@ -1837,11 +2084,14 @@
 <body>
   <div id="app" class="layout">
     <div class="topbar">
-      <div class="brand">AVIAN-ODRAS</div>
+      <div class="brand">
+        <img src="/static/avian-link-black.png" alt="Avian" class="brand-icon" />
+        AVIAN-ODRAS
+      </div>
       <div class="spacer"></div>
 
       <!-- LLM Status Indicator (always visible) -->
-      <span id="llmStatus" class="llm-status-indicator" title="LLM Status: Checking...">🟡</span>
+      <span id="llmStatusDot" class="status-dot" style="background: #f59e0b;" title="LLM Status: Checking..."></span>
 
       <!-- Installation Configuration Display -->
       <div id="installationInfo" class="installation-info">
@@ -1857,7 +2107,10 @@
 
     <div id="authView" class="login" style="display:none;">
       <div class="card">
-        <h3 style="margin:0 0 8px 0;">Sign in</h3>
+        <h3 style="margin:0 0 8px 0; display: flex; justify-content: space-between; align-items: center;">
+          Sign in
+          <img src="/static/avian-logo-white.png" alt="AVIAN" style="height: 24px; width: auto;" />
+        </h3>
         <div class="row"><label>Username</label><input id="u" type="text" /></div>
         <div class="row"><label>Password</label><input id="p" type="password" /></div>
         <button class="btn" id="loginBtn">Login</button>
@@ -1943,6 +2196,19 @@
             <path d="M8 15h8" />
           </svg>
         </div>
+        <div class="icon" data-wb="analysis" title="Analysis" aria-label="Analysis">
+          <svg viewBox="0 0 24 24" fill="none" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M3 3v18h18" />
+            <path d="M18.7 8l-5.1 5.2-2.8-2.7L7 14.3" />
+          </svg>
+        </div>
+        <div class="icon" data-wb="settings" title="Settings" aria-label="Settings">
+          <svg viewBox="0 0 24 24" fill="none" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round">
+            <circle cx="12" cy="12" r="3" />
+            <path
+              d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1 1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z" />
+          </svg>
+        </div>
         <div class="icon" data-wb="admin" title="Admin" aria-label="Admin">
           <svg viewBox="0 0 24 24" fill="none" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round">
             <path d="M12 3l8 4v6c0 5-5 8-8 8s-8-3-8-8V7l8-4z" />
@@ -1961,8 +2227,15 @@
 
       <aside class="tree" id="treePanel" aria-label="Project Tree">
         <div class="tree-header">
-          <select id="projectSelect2" title="Active project"></select>
-          <button class="btn" id="addNodeBtn" title="New Project">＋</button>
+          <div class="tree-header-left">
+            <select id="projectSelect2" title="Active project"></select>
+            <button class="btn" id="addNodeBtn" title="New Project">＋</button>
+          </div>
+          <button id="treeToggle" class="btn tree-toggle" title="Toggle Tree Dock" aria-label="Toggle Tree Dock">
+            <svg viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M15 18l-6-6 6-6" />
+            </svg>
+          </button>
         </div>
         <div class="tree-scroll">
           <nav class="treeview" aria-label="Project">
@@ -2107,17 +2380,10 @@
               <div class="onto-tree-header" id="ontoTreeHeader">
                 <div class="muted">Ontology</div>
                 <div class="onto-tree-controls">
-                  <button class="iconbtn" id="ontoVisibilityToggle" title="Toggle Visibility">
-                    <svg viewBox="0 0 24 24" fill="none" stroke-width="1.6" stroke-linecap="round"
-                      stroke-linejoin="round">
-                      <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z" />
-                      <circle cx="12" cy="12" r="3" />
-                    </svg>
-                  </button>
                   <button class="iconbtn" id="ontoTreeToggle" title="Collapse">
                     <svg id="ontoTreeToggleIcon" viewBox="0 0 24 24" fill="none" stroke-width="1.6"
                       stroke-linecap="round" stroke-linejoin="round">
-                      <path d="M9 6l6 6-6 6" />
+                      <path d="M15 6l-6 6 6 6" />
                     </svg>
                   </button>
                 </div>
@@ -2481,9 +2747,6 @@
             </div>
             <div style="display:flex; gap:8px; align-items:center;">
               <button class="btn" id="knowledgeRefreshBtn">Refresh</button>
-              <div class="muted" style="font-size:11px; color:#22c55e; display:flex; align-items:center; gap:4px;">
-                ⚙️ Auto-processing enabled
-              </div>
             </div>
           </div>
 
@@ -2528,9 +2791,9 @@
                 <h4 style="margin:0;">Knowledge Details</h4>
                 <div style="display:flex; gap:4px;">
                   <button class="btn" id="knowledgeQueryBtn" title="Query Knowledge"
-                    style="min-width:auto; padding:4px 8px; font-size:16px;">🔍</button>
+                    style="min-width:auto; padding:4px 8px; font-size:16px; display:none;">🔍</button>
                   <button class="btn" id="knowledgeGraphBtn" title="View Graph"
-                    style="min-width:auto; padding:4px 8px; font-size:16px;">🕸️</button>
+                    style="min-width:auto; padding:4px 8px; font-size:16px; display:none;">🕸️</button>
                 </div>
               </div>
               <div id="knowledgeDetailsContent" style="flex:1; overflow-y:auto; min-height:0;">
@@ -2665,6 +2928,213 @@
         <section id="wb-playground" class="workbench">
           <h2>LLM Playground</h2>
           <div class="muted">Ask questions, generate white papers, save to project.</div>
+        </section>
+        <section id="wb-settings" class="workbench">
+          <h2>Settings</h2>
+          <div class="muted">Application preferences and configuration options.</div>
+          <div id="settingsContent">
+            <div class="card">
+              <h3>General Settings</h3>
+              <div class="row">
+                <label>Theme</label>
+                <select id="themeSelect">
+                  <option value="dark">Dark</option>
+                  <option value="light">Light</option>
+                </select>
+              </div>
+              <div class="row">
+                <label>Language</label>
+                <select id="languageSelect">
+                  <option value="en">English</option>
+                </select>
+              </div>
+            </div>
+            <div class="card">
+              <h3>Display Settings</h3>
+              <div class="row">
+                <label>Tree Width</label>
+                <input type="range" id="treeWidthSlider" min="200" max="400" value="300">
+                <span id="treeWidthValue">300px</span>
+              </div>
+            </div>
+          </div>
+        </section>
+        <section id="wb-analysis" class="workbench">
+          <h2>Analysis Lab</h2>
+          <div class="muted">Interactive Jupyter Lab for data analysis, modeling, and simulation. Test → Validate →
+            Release proven assets to Artifacts.</div>
+
+          <!-- Enhanced Jupyter Lab Integration with Dedicated Toolbar -->
+          <div id="jupyterLabContainer" class="analysis-container">
+            <!-- Jupyter Lab Toolbar -->
+            <div class="jupyter-toolbar">
+              <!-- Core Jupyter Functions -->
+              <div class="icon" title="New Notebook" onclick="createNewNotebook()">
+                <svg viewBox="0 0 24 24" fill="none" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round">
+                  <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" />
+                  <polyline points="14,2 14,8 20,8" />
+                  <line x1="16" y1="13" x2="8" y2="13" />
+                  <line x1="16" y1="17" x2="8" y2="17" />
+                </svg>
+              </div>
+              <div class="icon" title="Open File" onclick="openFile()">
+                <svg viewBox="0 0 24 24" fill="none" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round">
+                  <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" />
+                  <polyline points="14,2 14,8 20,8" />
+                </svg>
+              </div>
+              <div class="icon" title="Save" onclick="saveNotebook()">
+                <svg viewBox="0 0 24 24" fill="none" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round">
+                  <path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z" />
+                  <polyline points="17,21 17,13 7,13 7,21" />
+                  <polyline points="7,3 7,8 15,8" />
+                </svg>
+              </div>
+              <div class="icon" title="Run Cell" onclick="runCell()">
+                <svg viewBox="0 0 24 24" fill="none" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round">
+                  <polygon points="5,3 19,12 5,21" />
+                </svg>
+              </div>
+              <div class="icon" title="Stop" onclick="stopExecution()">
+                <svg viewBox="0 0 24 24" fill="none" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round">
+                  <rect x="6" y="6" width="12" height="12" rx="2" />
+                </svg>
+              </div>
+              <div class="icon" title="Restart Kernel" onclick="restartKernel()">
+                <svg viewBox="0 0 24 24" fill="none" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round">
+                  <path d="M3 12a9 9 0 0 1 9-9 9.75 9.75 0 0 1 6.74 2.74L21 8" />
+                  <path d="M21 3v5h-5" />
+                  <path d="M21 12a9 9 0 0 1-9 9 9.75 9.75 0 0 1-6.74-2.74L3 16" />
+                  <path d="M3 21v-5h5" />
+                </svg>
+              </div>
+
+              <!-- Separator -->
+              <div style="height: 1px; background: var(--border); margin: 8px 4px;"></div>
+
+              <!-- ODRAS Integration -->
+              <div class="icon" title="Load ODRAS Data" onclick="loadOdrasData()">
+                <svg viewBox="0 0 24 24" fill="none" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round">
+                  <path
+                    d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z" />
+                  <polyline points="3.27,6.96 12,12.01 20.73,6.96" />
+                  <line x1="12" y1="22.08" x2="12" y2="12" />
+                </svg>
+              </div>
+              <div class="icon" title="Save to Artifacts" onclick="saveToArtifacts()">
+                <svg viewBox="0 0 24 24" fill="none" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round">
+                  <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" />
+                  <polyline points="14,2 14,8 20,8" />
+                  <line x1="16" y1="13" x2="8" y2="13" />
+                  <line x1="16" y1="17" x2="8" y2="17" />
+                  <circle cx="12" cy="12" r="2" />
+                </svg>
+              </div>
+              <div class="icon" title="Export Report" onclick="exportReport()">
+                <svg viewBox="0 0 24 24" fill="none" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round">
+                  <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" />
+                  <polyline points="14,2 14,8 20,8" />
+                  <line x1="16" y1="13" x2="8" y2="13" />
+                  <line x1="16" y1="17" x2="8" y2="17" />
+                  <path d="M12 18h.01" />
+                </svg>
+              </div>
+              <div class="icon" title="Link to Project" onclick="linkToProject()">
+                <svg viewBox="0 0 24 24" fill="none" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round">
+                  <path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71" />
+                  <path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71" />
+                </svg>
+              </div>
+
+              <!-- Separator -->
+              <div style="height: 1px; background: var(--border); margin: 8px 4px;"></div>
+
+              <!-- Analysis Tools -->
+              <div class="icon" title="Quick Plot" onclick="quickPlot()">
+                <svg viewBox="0 0 24 24" fill="none" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round">
+                  <path d="M3 3v18h18" />
+                  <path d="M18.7 8l-5.1 5.2-2.8-2.7L7 14.3" />
+                </svg>
+              </div>
+              <div class="icon" title="ML Templates" onclick="openMLTemplates()">
+                <svg viewBox="0 0 24 24" fill="none" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round">
+                  <path
+                    d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z" />
+                </svg>
+              </div>
+              <div class="icon" title="Simulation" onclick="openSimulation()">
+                <svg viewBox="0 0 24 24" fill="none" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round">
+                  <circle cx="12" cy="12" r="10" />
+                  <polygon points="10,8 16,12 10,16 10,8" />
+                </svg>
+              </div>
+
+              <!-- Separator -->
+              <div style="height: 1px; background: var(--border); margin: 8px 4px;"></div>
+
+              <!-- Collaboration -->
+              <div class="icon" title="Share" onclick="shareNotebook()">
+                <svg viewBox="0 0 24 24" fill="none" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round">
+                  <circle cx="18" cy="5" r="3" />
+                  <circle cx="6" cy="12" r="3" />
+                  <circle cx="18" cy="19" r="3" />
+                  <line x1="8.59" y1="13.51" x2="15.42" y2="17.49" />
+                  <line x1="15.41" y1="6.51" x2="8.59" y2="10.49" />
+                </svg>
+              </div>
+              <div class="icon" title="Templates" onclick="openTemplates()">
+                <svg viewBox="0 0 24 24" fill="none" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round">
+                  <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" />
+                  <polyline points="14,2 14,8 20,8" />
+                  <line x1="16" y1="13" x2="8" y2="13" />
+                  <line x1="16" y1="17" x2="8" y2="17" />
+                  <polyline points="10,9 9,9 8,9" />
+                </svg>
+              </div>
+              <div class="icon" title="Help" onclick="showJupyterHelp()">
+                <svg viewBox="0 0 24 24" fill="none" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round">
+                  <circle cx="12" cy="12" r="10" />
+                  <path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3" />
+                  <line x1="12" y1="17" x2="12.01" y2="17" />
+                </svg>
+              </div>
+            </div>
+
+            <!-- Jupyter Lab Canvas -->
+            <div class="jupyter-canvas">
+              <!-- Jupyter Lab Content Area -->
+              <div id="jupyterLabContent" class="jupyter-placeholder">
+                <div class="jupyter-placeholder-content">
+                  <div class="jupyter-icon">
+                    <svg viewBox="0 0 24 24" fill="none" stroke-width="1.5" stroke-linecap="round"
+                      stroke-linejoin="round">
+                      <rect x="3" y="3" width="18" height="18" rx="2" ry="2" />
+                      <path d="M9 9h6v6H9z" />
+                      <path d="M9 1v6" />
+                      <path d="M15 1v6" />
+                      <path d="M9 17v6" />
+                      <path d="M15 17v6" />
+                      <path d="M1 9h6" />
+                      <path d="M17 9h6" />
+                      <path d="M1 15h6" />
+                      <path d="M17 15h6" />
+                    </svg>
+                  </div>
+                  <h3>Jupyter Lab</h3>
+                  <p>Interactive analysis environment for data science, modeling, and simulation</p>
+                  <div class="jupyter-actions">
+                    <button class="btn" onclick="startJupyterLab()">Launch Jupyter Lab</button>
+                    <button class="btn" onclick="showJupyterInfo()">Learn More</button>
+                  </div>
+                </div>
+              </div>
+
+              <!-- Jupyter Lab iframe (hidden by default) -->
+              <iframe id="jupyterLabFrame" src="about:blank"
+                style="width: 100%; height: 100%; border: none; display: none;" title="Jupyter Lab">
+              </iframe>
+            </div>
+          </div>
         </section>
         <section id="wb-project" class="workbench">
           <h2>Project Information</h2>
@@ -3341,7 +3811,8 @@
       <strong>DAS</strong>
       <span class="muted" id="dasStatus" style="margin-left:8px;">Idle</span>
       <div class="spacer"></div>
-      <span id="llmStatusDock" class="llm-status-indicator" title="LLM Status: Checking...">🟡</span>
+      <span id="llmStatusDockDot" class="status-dot" style="background: #f59e0b;"
+        title="LLM Status: Checking..."></span>
       <span class="das-help">Ctrl+Alt+D (or Alt+Shift+D) to toggle; <br>Alt+Shift+←/→/↓ to dock</span>
     </div>
     <div class="das-body" id="dasBody">
@@ -3350,11 +3821,18 @@
       </div>
       <div class="das-input-container">
         <div class="card" style="margin:0;">
-          <div class="row" style="grid-template-columns: 1fr auto; align-items:center;">
-            <input type="text" id="dasPrompt" placeholder="Type a prompt..." />
-            <button class="btn" id="dasSendBtn" type="button">Send</button>
+          <div class="row" style="grid-template-columns: 1fr auto; align-items:flex-end; gap:8px;">
+            <textarea id="dasPrompt" placeholder="Type a prompt..." rows="1"
+              style="resize:none; overflow:hidden; min-height:32px; max-height:120px; background:#0b1220; color:var(--text); border:1px solid var(--border); padding:8px; border-radius:6px; font-family:inherit; font-size:inherit; line-height:1.4;"></textarea>
+            <button id="dasSendBtn" type="button"
+              style="width:36px; height:36px; border-radius:50%; background:var(--accent); border:1px solid var(--accent); color:white; display:flex; align-items:center; justify-content:center; cursor:pointer; transition:all 0.2s ease; flex-shrink:0;">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"
+                stroke-linejoin="round" width="16" height="16">
+                <path d="m18 15-6-6-6 6" />
+                <path d="M12 3v12" />
+              </svg>
+            </button>
           </div>
-          <div class="muted">DAS is ready to assist you with ODRAS tasks.</div>
         </div>
       </div>
     </div>
@@ -6034,12 +6512,72 @@
     function loadIriMap(graphIri) { try { return JSON.parse(localStorage.getItem(iriMapKey(graphIri)) || '{}'); } catch (_) { return {}; } }
     function saveIriMap(graphIri, map) { try { localStorage.setItem(iriMapKey(graphIri), JSON.stringify(map || {})); } catch (_) { } }
 
+    /**
+     * Extract RDF property URI from attribute template label
+     * Example: 'Comment (rdfs:comment)' → 'rdfs:comment'
+     */
+    function extractRdfPropertyFromLabel(label) {
+      const match = label.match(/\(([^)]+)\)$/);
+      return match ? match[1] : null;
+    }
+
+    /**
+     * Create flexible mapping from UI attributes to RDF properties
+     * Uses the attributeTemplates to automatically map UI fields to RDF predicates
+     */
+    function getAttributeToRdfMapping(objectType) {
+      const template = attributeTemplates[objectType] || {};
+      const mapping = {};
+
+      Object.entries(template).forEach(([attrKey, config]) => {
+        const rdfProperty = extractRdfPropertyFromLabel(config.label || attrKey);
+        if (rdfProperty) {
+          mapping[attrKey] = rdfProperty;
+        }
+      });
+
+      return mapping;
+    }
+
+    /**
+     * Generate RDF triples for element attributes
+     * Converts UI attributes to proper RDF annotation properties
+     */
+    function generateAttributeTriples(elementIri, attrs, objectType) {
+      const mapping = getAttributeToRdfMapping(objectType);
+      const triples = [];
+
+      Object.entries(attrs).forEach(([attrKey, value]) => {
+        const rdfProperty = mapping[attrKey];
+
+        // Skip if no RDF mapping or empty value
+        if (!rdfProperty || !value) return;
+
+        // Skip readonly metadata fields that shouldn't be saved as RDF
+        if (attrKey.includes('_timestamp') || attrKey.includes('readonly')) return;
+
+        // Handle different data types
+        if (typeof value === 'boolean') {
+          triples.push(`<${elementIri}> ${rdfProperty} ${value} .`);
+        } else if (typeof value === 'string') {
+          // Escape quotes and backslashes for RDF literals
+          const escapedValue = value.replace(/\\/g, '\\\\').replace(/"/g, '\\"');
+          triples.push(`<${elementIri}> ${rdfProperty} "${escapedValue}" .`);
+        }
+      });
+
+      return triples;
+    }
+
     function toTurtle(graphIri, linkedPairsOpt) {
       // Build per-graph stable id→IRI map
       const iriMap = loadIriMap(graphIri);
       const lines = [
         '@prefix owl: <http://www.w3.org/2002/07/owl#> .',
         '@prefix rdfs: <http://www.w3.org/2000/01/rdf-schema#> .',
+        '@prefix skos: <http://www.w3.org/2004/02/skos/core#> .',
+        '@prefix dc: <http://purl.org/dc/elements/1.1/> .',
+        '@prefix xsd: <http://www.w3.org/2001/XMLSchema#> .',
         (() => {
           try {
             const labels = loadOntologyLabelMap(activeProject);
@@ -6082,6 +6620,11 @@
         const label = (n.data('label') || '').replace(/\\/g, '\\\\').replace(/"/g, '\\"');
         if (t === 'class') {
           lines.push(`<${iri}> a owl:Class ; rdfs:label "${label}" .`);
+
+          // Add attributes as RDF annotation properties
+          const attrs = n.data('attrs') || {};
+          const attributeTriples = generateAttributeTriples(iri, attrs, 'class');
+          lines.push(...attributeTriples);
         } else if (t === 'dataProperty') {
           lines.push(`<${iri}> a owl:DatatypeProperty ; rdfs:label "${label}" .`);
           const incoming = n.incomers('edge');
@@ -6091,6 +6634,11 @@
             lines.push(`<${iri}> rdfs:domain <${srcIri}> .`);
             lines.push(`<${iri}> rdfs:range <http://www.w3.org/2001/XMLSchema#string> .`);
           }
+
+          // Add attributes as RDF annotation properties
+          const attrs = n.data('attrs') || {};
+          const attributeTriples = generateAttributeTriples(iri, attrs, 'dataProperty');
+          lines.push(...attributeTriples);
         }
       });
       // Object properties from edges
@@ -6115,11 +6663,29 @@
               }
             } else {
               lines.push(`<${propIri}> a owl:ObjectProperty ; rdfs:label "${pred}" ; rdfs:domain <${sIri}> ; rdfs:range <${tIri}> .`);
+
+              // Add attributes as RDF annotation properties for object properties
+              const attrs = e.data('attrs') || {};
+              const attributeTriples = generateAttributeTriples(propIri, attrs, 'objectProperty');
+              lines.push(...attributeTriples);
             }
           } else if (sType === 'note' && (tType === 'class' || tType === 'dataProperty') && pred === 'note_for') {
-            // Emit as annotation on target element
-            const text = (s.data('label') || '').replace(/\\/g, '\\\\').replace(/"/g, '\\"');
-            lines.push(`<${tIri}> rdfs:comment "${text}" .`);
+            // Emit as annotation on target element using rich note attributes
+            const noteAttrs = s.data('attrs') || {};
+            let noteText = s.data('label') || '';
+
+            // Use content from attributes if available (richer than just label)
+            if (noteAttrs.content) {
+              noteText = noteAttrs.content;
+            }
+
+            // Include note type if specified
+            if (noteAttrs.noteType && noteAttrs.noteType !== 'Note') {
+              noteText = `[${noteAttrs.noteType}] ${noteText}`;
+            }
+
+            const escapedText = noteText.replace(/\\/g, '\\\\').replace(/"/g, '\\"');
+            lines.push(`<${tIri}> rdfs:comment "${escapedText}" .`);
           }
         }
       });
@@ -6931,6 +7497,17 @@
     function showAuth(show) {
       qs('#authView').style.display = show ? 'grid' : 'none';
       qs('#mainView').style.display = show ? 'none' : 'grid';
+      // Hide/show logout button based on auth state
+      qs('#logoutBtn').style.display = show ? 'none' : 'block';
+
+      // Only close DAS when logging out - let DAS manage its own visibility when logging in
+      if (show) {
+        // When logging out: close and clean DAS
+        if (typeof window.closeDASAndClean === 'function') {
+          window.closeDASAndClean();
+        }
+      }
+      // Don't manually override DAS panel display - let DAS state management handle it
     }
 
     // Global authentication state
@@ -7069,6 +7646,13 @@
         // Update admin UI elements visibility
         updateAdminUIVisibility(me.is_admin);
 
+        // Load knowledge assets if knowledge workbench is active
+        const knowledgeWorkbench = document.getElementById('wb-knowledge');
+        if (knowledgeWorkbench && knowledgeWorkbench.style.display !== 'none') {
+          console.log('🧠 User authenticated, loading knowledge assets...');
+          loadKnowledgeAssets();
+        }
+
         // Start monitoring authentication status
         startAuthMonitoring();
       } catch (error) {
@@ -7134,6 +7718,16 @@
         // Restore left project tree width
         const uiMainTreeW = parseInt(localStorage.getItem('ui_main_tree_w') || '0', 10);
         if (uiMainTreeW) document.documentElement.style.setProperty('--tree-w', uiMainTreeW + 'px');
+
+        // Restore main tree collapsed state
+        const mainTreeCollapsed = localStorage.getItem('main_tree_collapsed') === '1';
+        if (mainTreeCollapsed) {
+          const treePanel = qs('#treePanel');
+          if (treePanel && !treePanel.classList.contains('tree-dock-collapsed')) {
+            treePanel.classList.add('tree-dock-collapsed');
+          }
+        }
+
         // Restore ontology left tree width
         const ontoTreeW = parseInt(localStorage.getItem('onto_tree_w') || '0', 10);
         if (ontoTreeW) document.documentElement.style.setProperty('--onto-tree-w', ontoTreeW + 'px');
@@ -7141,21 +7735,15 @@
         if (treeCollapsed) {
           const sec = qs('#wb-ontology');
           if (sec && !sec.classList.contains('onto-tree-collapsed')) sec.classList.add('onto-tree-collapsed');
-          const icon = qs('#ontoTreeToggleIcon');
-          if (icon) icon.innerHTML = '<path d="M9 6l6 6-6 6"/>';
+          // CSS rotation handles chevron direction automatically
         }
         const propsCollapsed = localStorage.getItem('onto_props_collapsed') === '1';
         if (propsCollapsed) {
           const sec = qs('#wb-ontology');
           if (sec && !sec.classList.contains('onto-props-collapsed')) sec.classList.add('onto-props-collapsed');
-          const icon = qs('#ontoPropsToggleIcon');
-          if (icon) icon.innerHTML = '<path d="M15 6l-6 6 6 6"/>';
+          // CSS rotation handles chevron direction automatically
         }
-        // Ensure icon SVGs match classes and allow CSS rotation animation to apply
-        const treeIcon = qs('#ontoTreeToggleIcon');
-        if (treeIcon && !treeCollapsed) treeIcon.innerHTML = '<path d="M15 6l-6 6 6 6"/>';
-        const propsIcon = qs('#ontoPropsToggleIcon');
-        if (propsIcon && !propsCollapsed) propsIcon.innerHTML = '<path d="M9 6l6 6-6 6"/>';
+        // CSS rotation handles chevron directions automatically for both panels
         const savedW = parseInt(localStorage.getItem('onto_props_w') || '0', 10);
         if (savedW) document.documentElement.style.setProperty('--onto-props-w', savedW + 'px');
         // Do not load any graph here; renderTree handles per-project restore safely
@@ -7228,6 +7816,200 @@
       qs('#userMenu').textContent = '';  // Clear user display
       showAuth(true);
     };
+
+    // Initialize settings workbench
+    function initializeSettings() {
+      console.log('⚙️ Initializing Settings workbench...');
+
+      // Load saved settings from localStorage
+      const savedTheme = localStorage.getItem('odras_theme') || 'dark';
+      const savedTreeWidth = localStorage.getItem('ui_main_tree_w') || '300';
+
+      // Set theme selector
+      const themeSelect = document.getElementById('themeSelect');
+      if (themeSelect) {
+        themeSelect.value = savedTheme;
+        themeSelect.addEventListener('change', (e) => {
+          localStorage.setItem('odras_theme', e.target.value);
+          console.log('Theme changed to:', e.target.value);
+        });
+      }
+
+      // Set tree width slider
+      const treeWidthSlider = document.getElementById('treeWidthSlider');
+      const treeWidthValue = document.getElementById('treeWidthValue');
+      if (treeWidthSlider && treeWidthValue) {
+        treeWidthSlider.value = savedTreeWidth;
+        treeWidthValue.textContent = savedTreeWidth + 'px';
+
+        treeWidthSlider.addEventListener('input', (e) => {
+          const width = e.target.value;
+          treeWidthValue.textContent = width + 'px';
+          localStorage.setItem('ui_main_tree_w', width);
+
+          // Apply the width change immediately
+          const tree = document.querySelector('.tree');
+          if (tree) {
+            tree.style.width = width + 'px';
+          }
+        });
+      }
+    }
+
+    // Initialize analysis lab workbench
+    function initializeAnalysisLab() {
+      console.log('📊 Initializing Analysis Lab workbench...');
+
+      // Check if Jupyter Lab is already running
+      const jupyterStatus = localStorage.getItem('jupyter_lab_status') || 'stopped';
+      updateJupyterStatus(jupyterStatus);
+    }
+
+    // Jupyter Lab functions
+    function startJupyterLab() {
+      console.log('🚀 Starting Jupyter Lab...');
+
+      // Update status to starting
+      updateJupyterStatus('starting');
+
+      // Simulate Jupyter Lab startup (in real implementation, this would make API calls)
+      setTimeout(() => {
+        // For demo purposes, show a placeholder
+        const content = document.getElementById('jupyterLabContent');
+        const iframe = document.getElementById('jupyterLabFrame');
+
+        if (content && iframe) {
+          content.style.display = 'none';
+          iframe.style.display = 'block';
+
+          // Set a placeholder URL (in real implementation, this would be the actual Jupyter Lab URL)
+          iframe.src = 'data:text/html,<div style="display:flex;align-items:center;justify-content:center;height:100%;background:#f8f9fa;color:#666;font-family:monospace;"><div style="text-align:center;"><h3>Jupyter Lab</h3><p>Jupyter Lab would be running here</p><p style="font-size:12px;color:#999;">This is a placeholder for demonstration</p></div></div>';
+
+          updateJupyterStatus('running');
+        }
+      }, 2000);
+    }
+
+    function showJupyterInfo() {
+      alert('Jupyter Lab Integration:\\n\\n• Interactive data analysis environment\\n• Support for Python, R, Julia, and more\\n• Rich visualizations and plots\\n• Collaborative notebooks\\n• Integration with ODRAS data sources\\n\\nThis is a scaffolded interface for future Jupyter Lab integration.');
+    }
+
+    function updateJupyterStatus(status) {
+      localStorage.setItem('jupyter_lab_status', status);
+
+      const buttons = document.querySelectorAll('#jupyterLabContainer button');
+      buttons.forEach(btn => {
+        if (btn.textContent.includes('Launch Jupyter Lab')) {
+          if (status === 'starting') {
+            btn.textContent = 'Starting...';
+            btn.disabled = true;
+          } else if (status === 'running') {
+            btn.textContent = 'Stop Lab';
+            btn.disabled = false;
+            btn.onclick = stopJupyterLab;
+          } else {
+            btn.textContent = 'Launch Jupyter Lab';
+            btn.disabled = false;
+            btn.onclick = startJupyterLab;
+          }
+        }
+      });
+    }
+
+    function stopJupyterLab() {
+      console.log('🛑 Stopping Jupyter Lab...');
+
+      const content = document.getElementById('jupyterLabContent');
+      const iframe = document.getElementById('jupyterLabFrame');
+
+      if (content && iframe) {
+        content.style.display = 'flex';
+        iframe.style.display = 'none';
+        iframe.src = 'about:blank';
+
+        updateJupyterStatus('stopped');
+      }
+    }
+
+    // Enhanced Jupyter Lab Toolbar Functions
+    function createNewNotebook() {
+      console.log('📓 Creating new notebook...');
+      alert('New notebook creation would be implemented here. This would create a new Jupyter notebook for analysis.');
+    }
+
+    function openFile() {
+      console.log('📁 Opening file...');
+      alert('File browser would be implemented here. This would open the Jupyter Lab file browser.');
+    }
+
+    function saveNotebook() {
+      console.log('💾 Saving notebook...');
+      alert('Notebook save functionality would be implemented here.');
+    }
+
+    function runCell() {
+      console.log('▶️ Running cell...');
+      alert('Cell execution would be implemented here. This would run the current cell in Jupyter Lab.');
+    }
+
+    function stopExecution() {
+      console.log('⏸️ Stopping execution...');
+      alert('Execution stop functionality would be implemented here.');
+    }
+
+    function restartKernel() {
+      console.log('🔄 Restarting kernel...');
+      alert('Kernel restart functionality would be implemented here.');
+    }
+
+    function loadOdrasData() {
+      console.log('📊 Loading ODRAS data...');
+      alert('ODRAS data loading would be implemented here. This would provide access to project data from PostgreSQL, Neo4j, and Qdrant.');
+    }
+
+    function saveToArtifacts() {
+      console.log('💾 Saving to artifacts...');
+      alert('Save to artifacts functionality would be implemented here. This would save notebook outputs to the artifacts section.');
+    }
+
+    function exportReport() {
+      console.log('📋 Exporting report...');
+      alert('Report export functionality would be implemented here. This would generate reports from notebook outputs.');
+    }
+
+    function linkToProject() {
+      console.log('🔗 Linking to project...');
+      alert('Project linking functionality would be implemented here. This would associate the notebook with the current ODRAS project.');
+    }
+
+    function quickPlot() {
+      console.log('📈 Quick plot...');
+      alert('Quick plotting functionality would be implemented here. This would provide quick access to plotting tools.');
+    }
+
+    function openMLTemplates() {
+      console.log('🤖 Opening ML templates...');
+      alert('ML templates would be implemented here. This would provide pre-built machine learning workflow templates.');
+    }
+
+    function openSimulation() {
+      console.log('🎲 Opening simulation...');
+      alert('Simulation functionality would be implemented here. This would provide simulation workflow templates and tools.');
+    }
+
+    function shareNotebook() {
+      console.log('👥 Sharing notebook...');
+      alert('Notebook sharing functionality would be implemented here. This would allow sharing notebooks with team members.');
+    }
+
+    function openTemplates() {
+      console.log('📚 Opening templates...');
+      alert('Template library would be implemented here. This would provide ODRAS-specific notebook templates.');
+    }
+
+    function showJupyterHelp() {
+      alert('Jupyter Lab Help:\\n\\n• Use Ctrl+Enter to run cells\\n• Use Shift+Enter to run and advance\\n• Use A/B to add cells above/below\\n• Use DD to delete cells\\n• Use M/Y to switch between Markdown/Code\\n\\nODRAS Integration:\\n• Load project data directly\\n• Save results to artifacts\\n• Export reports and visualizations\\n• Collaborate with team members');
+    }
 
     // Projects
     async function loadProjects() {
@@ -7659,7 +8441,11 @@
       qs('#wb-' + wb).classList.add('active');
 
       // Load data when switching to specific workbenches
-      if (wb === 'admin') {
+      if (wb === 'settings') {
+        initializeSettings();
+      } else if (wb === 'analysis') {
+        initializeAnalysisLab();
+      } else if (wb === 'admin') {
         loadPrefixes();
         loadDomains();
         // Only load namespaces if user is authenticated
@@ -8118,16 +8904,16 @@
           return li;
         });
         if (ontoItems.length) {
-          ontologyNode = makeItem('ontology', 'Ontology', 'folder', ontoItems);
+          ontologyNode = makeItem('ontology', 'Ontologies', 'folder', ontoItems);
         } else {
           // No ontologies: ensure empty state is shown
           activeOntologyIri = null;
           updateOntoGraphLabel();
-          ontologyNode = makeItem('ontology', 'Ontology', 'folder', []);
+          ontologyNode = makeItem('ontology', 'Ontologies', 'folder', []);
         }
       } catch (_) {
         // Network/SPARQL error: show a placeholder item
-        ontologyNode = makeItem('ontology', 'Ontology', 'folder', [
+        ontologyNode = makeItem('ontology', 'Ontologies', 'folder', [
           makeItem('onto-error', 'Discovery unavailable', 'onto')
         ]);
       }
@@ -8286,13 +9072,43 @@
       if (docKnowItems.length) docsChildren.push(docsKnowNode);
       const docsNode = makeItem('documents', 'Documents', 'folder', docsChildren);
       const reqNode = makeItem('requirements', 'Extracted Requirements', 'folder', reqItems);
+
+      // Create new ODRAS-specific tree nodes
+      const knowledgeNode = makeItem('knowledge', 'Knowledge', 'folder', []);
+
+      // Analysis node with nested structure for Test → Validate → Release workflow
+      const analysisDataNode = makeItem('analysis-data', 'Data', 'folder', []);
+      const analysisModelsNode = makeItem('analysis-models', 'Models', 'folder', []);
+      const analysisSimulationsNode = makeItem('analysis-simulations', 'Simulations', 'folder', []);
+      const analysisNotebooksNode = makeItem('analysis-notebooks', 'Notebooks', 'folder', []);
+      const analysisResultsNode = makeItem('analysis-results', 'Results', 'folder', []);
+      const analysisTemplatesNode = makeItem('analysis-templates', 'Templates', 'folder', []);
+
+      const analysisNode = makeItem('analysis', 'Analysis', 'folder', [
+        analysisDataNode,
+        analysisModelsNode,
+        analysisSimulationsNode,
+        analysisNotebooksNode,
+        analysisResultsNode,
+        analysisTemplatesNode
+      ]);
+
+      const eventsNode = makeItem('events', 'Events', 'folder', []);
+
+      // Keep artifacts node for backward compatibility
       const outNode = makeItem('artifacts', 'Artifacts', 'folder', outItems);
+
+      // Create horizontal separator
+      const separator = document.createElement('li');
+      separator.className = 'tree-separator';
+      separator.innerHTML = '<div class="separator-line"></div>';
 
       root.innerHTML = '';
       // If no project, show minimal empty tree
       root.innerHTML = '';
       if (project && (project.id || project.project_id)) {
-        [projectInfo, ontologyNode, docsNode, reqNode, outNode].filter(Boolean).forEach(n => root.appendChild(n));
+        // Show new ODRAS tree structure with nested Analysis and separator before artifacts
+        [projectInfo, ontologyNode, knowledgeNode, analysisNode, eventsNode, separator, outNode].filter(Boolean).forEach(n => root.appendChild(n));
       }
 
       // Auto-restore previously selected ontology for this project, if available
@@ -8334,7 +9150,7 @@
 
       // Add plus button on Ontology section header (right side)
       try {
-        const ontoSection = Array.from(root.children).find(li => li.querySelector('.node-label')?.textContent === 'Ontology');
+        const ontoSection = Array.from(root.children).find(li => li.querySelector('.node-label')?.textContent === 'Ontologies');
         const headerRow = ontoSection ? ontoSection.querySelector('.node-row') : null;
         if (headerRow && !headerRow.querySelector('.tree-add-btn')) {
           const addBtn = document.createElement('button');
@@ -9217,7 +10033,26 @@
           text.textContent = modelName;
         } catch (_) { text.textContent = 'Ontology'; }
       })();
-      row.appendChild(twist); row.appendChild(text); rootItem.appendChild(row); rootItem.appendChild(ul);
+      // Add visibility toggle button to the ontology root node
+      const visibilityBtn = document.createElement('button');
+      visibilityBtn.className = 'iconbtn';
+      visibilityBtn.id = 'ontoVisibilityToggle';
+      visibilityBtn.title = 'Toggle Visibility';
+      visibilityBtn.style.marginLeft = 'auto';
+      visibilityBtn.innerHTML = `
+        <svg viewBox="0 0 24 24" fill="none" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z" />
+          <circle cx="12" cy="12" r="3" />
+        </svg>
+      `;
+
+      // Add click event listener for visibility toggle
+      visibilityBtn.addEventListener('click', (e) => {
+        e.stopPropagation();
+        showVisibilityMenu();
+      });
+
+      row.appendChild(twist); row.appendChild(text); row.appendChild(visibilityBtn); rootItem.appendChild(row); rootItem.appendChild(ul);
       // (Do not delete projects here; project deletion is handled in the main tree top node in renderTree)
       root.innerHTML = '';
       root.appendChild(rootItem);
@@ -10307,18 +11142,32 @@
         // Add click handler to IRI text
         iriEl.onclick = () => copyIriToClipboard(iri);
       } else {
-        // Show current namespace when no element is selected
-        const modelNamespace = getModelNamespace();
-        iriEl.textContent = modelNamespace;
-        iriEl.title = `Current Model Namespace: ${modelNamespace}\nClick to copy namespace`;
-        iriEl.style.color = '#60a5fa';
-        iriEl.style.opacity = '1';
-        iriEl.onclick = () => copyIriToClipboard(modelNamespace);
+        // Show current namespace when no element is selected, but only if there's an active ontology
+        if (activeOntologyIri) {
+          const modelNamespace = getModelNamespace();
+          iriEl.textContent = modelNamespace;
+          iriEl.title = `Current Model Namespace: ${modelNamespace}\nClick to copy namespace`;
+          iriEl.style.color = '#60a5fa';
+          iriEl.style.opacity = '1';
+          iriEl.onclick = () => copyIriToClipboard(modelNamespace);
 
-        // Show copy button for namespace
-        if (copyBtn) {
-          copyBtn.style.display = 'inline-block';
-          copyBtn.onclick = () => copyIriToClipboard(modelNamespace);
+          // Show copy button for namespace
+          if (copyBtn) {
+            copyBtn.style.display = 'inline-block';
+            copyBtn.onclick = () => copyIriToClipboard(modelNamespace);
+          }
+        } else {
+          // No active ontology - show "No element selected"
+          iriEl.textContent = 'No element selected';
+          iriEl.title = 'No element selected';
+          iriEl.style.color = '#9aa4b2';
+          iriEl.style.opacity = '0.7';
+          iriEl.onclick = null;
+
+          // Hide copy button when no element is selected
+          if (copyBtn) {
+            copyBtn.style.display = 'none';
+          }
         }
       }
     }
@@ -10893,19 +11742,71 @@
         const type = data.type || 'class';
 
         if (type === 'class') {
-          ontologyData.classes.push({
+          const attrs = data.attrs || {};
+
+          // Build comprehensive class data with all attributes
+          const classData = {
             name: data.id,
             label: data.label || data.id,
-            comment: data.comment || ''
+            comment: attrs.comment || data.comment || '',
+            // Standard ontological properties
+            definition: attrs.definition || '',
+            example: attrs.example || '',
+            identifier: attrs.identifier || '',
+            subclassOf: attrs.subclassOf || '',
+            equivalentClass: attrs.equivalentClass || '',
+            disjointWith: attrs.disjointWith || '',
+            // Metadata properties
+            creator: attrs.creator || '',
+            created_date: attrs.created_date || '',
+            last_modified_by: attrs.last_modified_by || '',
+            last_modified_date: attrs.last_modified_date || '',
+            // Custom properties
+            priority: attrs.priority || '',
+            status: attrs.status || ''
+          };
+
+          // Remove empty attributes to keep JSON clean
+          Object.keys(classData).forEach(key => {
+            if (classData[key] === '' || classData[key] === null || classData[key] === undefined) {
+              delete classData[key];
+            }
           });
+
+          ontologyData.classes.push(classData);
         } else if (type === 'dataProperty') {
-          ontologyData.datatype_properties.push({
+          const attrs = data.attrs || {};
+
+          // Build comprehensive data property data with all attributes
+          const propData = {
             name: data.id,
             label: data.label || data.id,
-            comment: data.comment || '',
+            comment: attrs.comment || data.comment || '',
             domain: data.domain || '',
-            range: data.range || 'string'
+            range: data.range || 'string',
+            // Standard ontological properties
+            definition: attrs.definition || '',
+            example: attrs.example || '',
+            identifier: attrs.identifier || '',
+            subPropertyOf: attrs.subPropertyOf || '',
+            equivalentProperty: attrs.equivalentProperty || '',
+            // Metadata properties
+            creator: attrs.creator || '',
+            created_date: attrs.created_date || '',
+            last_modified_by: attrs.last_modified_by || '',
+            last_modified_date: attrs.last_modified_date || '',
+            // Custom properties
+            functional: attrs.functional || false
+          };
+
+          // Remove empty attributes to keep JSON clean
+          Object.keys(propData).forEach(key => {
+            if (propData[key] === '' || propData[key] === null || propData[key] === undefined || propData[key] === false) {
+              delete propData[key];
+            }
           });
+
+          ontologyData.datatype_properties.push(propData);
         }
       });
 
@@ -10916,13 +11817,112 @@
         const targetType = ontoState.cy.$(`#${data.target}`).data('type') || 'class';
 
         if (sourceType === 'class' && targetType === 'class') {
-          ontologyData.object_properties.push({
+          const attrs = data.attrs || {};
+
+          // Build comprehensive object property data with all attributes
+          const propData = {
             name: data.id,
             label: data.predicate || data.id,
-            comment: data.comment || '',
+            comment: attrs.comment || data.comment || '',
             domain: data.source,
-            range: data.target
+            range: data.target,
+            // Standard ontological properties
+            definition: attrs.definition || '',
+            example: attrs.example || '',
+            identifier: attrs.identifier || '',
+            inverseOf: attrs.inverseOf || '',
+            subPropertyOf: attrs.subPropertyOf || '',
+            equivalentProperty: attrs.equivalentProperty || '',
+            propertyType: attrs.propertyType || '',
+            // Metadata properties
+            creator: attrs.creator || '',
+            created_date: attrs.created_date || '',
+            last_modified_by: attrs.last_modified_by || '',
+            last_modified_date: attrs.last_modified_date || '',
+            // Custom properties
+            functional: attrs.functional || false,
+            inverse_functional: attrs.inverse_functional || false
+          };
+
+          // Remove empty attributes to keep JSON clean
+          Object.keys(propData).forEach(key => {
+            if (propData[key] === '' || propData[key] === null || propData[key] === undefined || propData[key] === false) {
+              delete propData[key];
+            }
           });
+
+          ontologyData.object_properties.push(propData);
+        } else if (sourceType === 'note' && (targetType === 'class' || targetType === 'dataProperty') && data.predicate === 'note_for') {
+          // Handle note annotations - add note content as comment on target element
+          const noteNode = ontoState.cy.$(`#${data.source}`);
+          const targetNode = ontoState.cy.$(`#${data.target}`);
+
+          if (noteNode.length && targetNode.length) {
+            // Get ALL note attributes for rich context
+            const noteAttrs = noteNode.data('attrs') || {};
+            let noteText = noteNode.data('label') || '';
+
+            // Use content from attributes if available (richer than just label)
+            if (noteAttrs.content) {
+              noteText = noteAttrs.content;
+            }
+
+            // Build comprehensive note annotation with all metadata
+            const noteType = noteAttrs.noteType || 'Note';
+            const creator = noteAttrs.creator || 'Unknown';
+            const createdDate = noteAttrs.created_date || '';
+
+            // Create rich note annotation
+            let fullNoteText = noteType !== 'Note' ? `[${noteType}] ${noteText}` : noteText;
+
+            // Add metadata for DAS context
+            const noteMetadata = [];
+            if (creator) noteMetadata.push(`by ${creator}`);
+            if (createdDate) noteMetadata.push(`on ${createdDate}`);
+
+            if (noteMetadata.length > 0) {
+              fullNoteText += ` (${noteMetadata.join(', ')})`;
+            }
+
+            const targetId = data.target;
+
+            // Find the target class/property in our ontology data and add the note as a rich annotation
+            if (targetType === 'class') {
+              const targetClass = ontologyData.classes.find(cls => cls.name === targetId);
+              if (targetClass) {
+                // Add as structured note data for DAS to understand note context
+                if (!targetClass.notes) targetClass.notes = [];
+                targetClass.notes.push({
+                  type: noteType,
+                  content: noteText,
+                  creator: creator,
+                  created_date: createdDate,
+                  full_text: fullNoteText
+                });
+
+                // Also append to comment for backward compatibility
+                const existingComment = targetClass.comment || '';
+                targetClass.comment = existingComment ? `${existingComment}\nNote: ${fullNoteText}` : fullNoteText;
+              }
+            } else if (targetType === 'dataProperty') {
+              const targetProp = ontologyData.datatype_properties.find(prop => prop.name === targetId);
+              if (targetProp) {
+                // Add as structured note data for DAS to understand note context
+                if (!targetProp.notes) targetProp.notes = [];
+                targetProp.notes.push({
+                  type: noteType,
+                  content: noteText,
+                  creator: creator,
+                  created_date: createdDate,
+                  full_text: fullNoteText
+                });
+
+                // Also append to comment for backward compatibility
+                const existingComment = targetProp.comment || '';
+                targetProp.comment = existingComment ? `${existingComment}\nNote: ${fullNoteText}` : fullNoteText;
+              }
+            }
+          }
         }
       });
 
@@ -11123,12 +12123,26 @@
           try { if (ontoState.cy) ontoState.cy.fit(undefined, 20); } catch (_) { }
         } else if (e.target === qs('#ontoFullscreenBtn')) {
           try {
-            const sec = qs('#wb-ontology');
-            if (!sec) return;
+            // Use browser fullscreen instead of element fullscreen
+            // Auto-hide main tree view for more screen real estate
+            const treePanel = qs('#treePanel');
+            const wasTreeCollapsed = treePanel?.classList.contains('tree-dock-collapsed');
+
             if (!document.fullscreenElement) {
-              if (sec.requestFullscreen) await sec.requestFullscreen();
+              // Entering fullscreen - hide tree if not already collapsed
+              if (treePanel && !wasTreeCollapsed) {
+                treePanel.classList.add('tree-dock-collapsed');
+                // Store that we auto-collapsed it
+                treePanel.setAttribute('data-auto-collapsed', 'true');
+              }
+              document.documentElement.requestFullscreen?.();
             } else {
-              if (document.exitFullscreen) await document.exitFullscreen();
+              // Exiting fullscreen - restore tree if we auto-collapsed it
+              if (treePanel && treePanel.getAttribute('data-auto-collapsed') === 'true') {
+                treePanel.classList.remove('tree-dock-collapsed');
+                treePanel.removeAttribute('data-auto-collapsed');
+              }
+              document.exitFullscreen?.();
             }
           } catch (_) { }
         } else if (e.target === qs('#ontoSaveBtn')) {
@@ -11147,6 +12161,7 @@
 
             // Save ontology data to server
             console.log('💾 Sending ontology data to server...');
+            console.warn('🔥 USING DEPRECATED API: PUT /api/ontology/ - Consider migrating to Turtle save. See docs/architecture/MULTI_ENDPOINT_ONTOLOGY_ISSUE.md');
             const response = await authenticatedFetch(`/api/ontology/?graph=${encodeURIComponent(activeOntologyIri)}`, {
               method: 'PUT',
               headers: {
@@ -11196,30 +12211,24 @@
           exportOntologyJSON();
         } else if (e.target === qs('#ontoImportBtn')) {
           const inp = qs('#ontoImportFile'); if (inp) inp.click();
+        } else if (e.target === qs('#treeToggle') || e.target.closest('#treeToggle')) {
+          // Main tree dock toggle
+          const treePanel = qs('#treePanel');
+          if (!treePanel) return;
+          const collapsed = treePanel.classList.toggle('tree-dock-collapsed');
+          try { localStorage.setItem('main_tree_collapsed', collapsed ? '1' : '0'); } catch (_) { }
         } else if (e.target === qs('#ontoTreeToggle') || e.target === qs('#ontoTreeToggleIcon')) {
           const sec = qs('#wb-ontology');
           if (!sec) return;
           const collapsed = sec.classList.toggle('onto-tree-collapsed');
-          const icon = qs('#ontoTreeToggleIcon');
-          if (icon) {
-            // Left panel: show right chevron when collapsed, left chevron when expanded
-            icon.innerHTML = collapsed
-              ? '<path d="M9 6l6 6-6 6"/>'
-              : '<path d="M15 6l-6 6 6 6"/>';
-          }
+          // CSS rotation handles the chevron direction automatically
           try { localStorage.setItem('onto_tree_collapsed', collapsed ? '1' : '0'); } catch (_) { }
           requestAnimationFrame(() => { if (ontoState.cy) ontoState.cy.resize(); });
         } else if (e.target === qs('#ontoPropsToggle') || e.target.closest('#ontoPropsToggle')) {
           const sec = qs('#wb-ontology');
           if (!sec) return;
           const collapsed = sec.classList.toggle('onto-props-collapsed');
-          const icon = qs('#ontoPropsToggleIcon');
-          if (icon) {
-            // Right panel: show left chevron when collapsed, right chevron when expanded
-            icon.innerHTML = collapsed
-              ? '<path d="M15 6l-6 6 6 6"/>'
-              : '<path d="M9 6l6 6-6 6"/>';
-          }
+          // CSS rotation handles the chevron direction automatically
           try { localStorage.setItem('onto_props_collapsed', collapsed ? '1' : '0'); } catch (_) { }
           // Wait for reflow before resizing Cytoscape so it fits the new grid
           requestAnimationFrame(() => { if (ontoState.cy) ontoState.cy.resize(); });
@@ -11293,6 +12302,16 @@
       document.addEventListener('fullscreenchange', () => {
         const btn = qs('#ontoFullscreenBtn');
         if (btn) btn.title = document.fullscreenElement ? 'Exit fullscreen' : 'Enter fullscreen';
+
+        // Handle auto-collapsed tree restoration when exiting fullscreen via F11 or other methods
+        if (!document.fullscreenElement) {
+          const treePanel = qs('#treePanel');
+          if (treePanel && treePanel.getAttribute('data-auto-collapsed') === 'true') {
+            treePanel.classList.remove('tree-dock-collapsed');
+            treePanel.removeAttribute('data-auto-collapsed');
+          }
+        }
+
         requestAnimationFrame(() => { if (ontoState.cy) ontoState.cy.resize(); });
       });
       const header = qs('#ontoTreeHeader');
@@ -11306,14 +12325,7 @@
         if (toggleBtn) toggleBtn.click();
       });
 
-      // Visibility toggle button
-      const visibilityToggle = qs('#ontoVisibilityToggle');
-      if (visibilityToggle) {
-        visibilityToggle.addEventListener('click', (e) => {
-          e.stopPropagation();
-          showVisibilityMenu();
-        });
-      }
+      // Visibility toggle button (now handled in renderOntologyTree where button is created)
 
       // Type is now read-only, no event listener needed
       const fileInput = () => qs('#ontoImportFile');
@@ -13790,6 +14802,25 @@
       const promptInput = document.getElementById('dasPrompt');
       const sendBtn = document.getElementById('dasSendBtn');
       if (!panel) return;
+
+      // Auto-expand textarea functionality
+      function autoExpandTextarea(textarea) {
+        textarea.style.height = 'auto';
+        const newHeight = Math.min(textarea.scrollHeight, 120); // Max height of 120px
+        textarea.style.height = newHeight + 'px';
+      }
+
+      // Set up auto-expand for the textarea
+      if (promptInput) {
+        promptInput.addEventListener('input', function () {
+          autoExpandTextarea(this);
+        });
+
+        // Also expand on paste
+        promptInput.addEventListener('paste', function () {
+          setTimeout(() => autoExpandTextarea(this), 0);
+        });
+      }
       let state = { open: false, dock: 'right', width: 420, height: Math.max(300, Math.round(window.innerHeight * 0.4)) };
       try { const saved = JSON.parse(localStorage.getItem(storageKey) || '{}'); state = { ...state, ...saved }; } catch (_) { }
       function applyState() {
@@ -13897,23 +14928,22 @@
 
       // Check LLM health status
       async function checkLLMHealth() {
-        const statusElement = document.getElementById('llmStatus');
-        const dockStatusElement = document.getElementById('llmStatusDock');
+        // Get status dot elements
+        const mainDot = document.getElementById('llmStatusDot');
+        const dockDot = document.getElementById('llmStatusDockDot');
 
-        // Update both indicators if they exist
-        const elements = [statusElement, dockStatusElement].filter(el => el);
+        const dots = [mainDot, dockDot].filter(Boolean);
 
-        if (elements.length === 0) {
-          console.warn('No LLM status elements found');
+        if (dots.length === 0) {
+          console.warn('No LLM status dot elements found');
           return;
         }
 
         try {
-          // Set checking state
-          elements.forEach(el => {
-            el.textContent = '🟡';
-            el.className = 'llm-status-indicator checking';
-            el.title = 'LLM Status: Checking...';
+          // Set checking state (amber)
+          dots.forEach(dot => {
+            dot.style.background = '#f59e0b'; // --warn color
+            dot.title = 'LLM Status: Checking...';
           });
 
           // Note: /api/das/llm/health doesn't exist, so just set as healthy
@@ -13921,25 +14951,22 @@
           const isHealthy = true;
 
           if (isHealthy) {
-            elements.forEach(el => {
-              el.textContent = '🟢';
-              el.className = 'llm-status-indicator healthy';
-              el.title = `LLM Status: Ready`;
+            dots.forEach(dot => {
+              dot.style.background = 'var(--ok)'; // Green
+              dot.title = 'LLM Status: Ready';
             });
             console.log('LLM health check: Healthy');
           } else {
-            elements.forEach(el => {
-              el.textContent = '🔴';
-              el.className = 'llm-status-indicator unhealthy';
-              el.title = `LLM Status: Unhealthy - ${data.error || 'Unknown error'}`;
+            dots.forEach(dot => {
+              dot.style.background = 'var(--err)'; // Red
+              dot.title = `LLM Status: Unhealthy - ${data.error || 'Unknown error'}`;
             });
             console.warn('LLM health check: Unhealthy', data);
           }
         } catch (error) {
-          elements.forEach(el => {
-            el.textContent = '🔴';
-            el.className = 'llm-status-indicator unhealthy';
-            el.title = `LLM Status: Error - ${error.message}`;
+          dots.forEach(dot => {
+            dot.style.background = 'var(--err)'; // Red
+            dot.title = `LLM Status: Error - ${error.message}`;
           });
           console.error('LLM health check failed:', error);
         }
@@ -14275,12 +15302,23 @@
           // Remove conversation entries from the project thread
           const projectId = getCurrentProjectId();
           if (projectId && conversationsToRemove > 0) {
-            for (let i = 0; i < conversationsToRemove; i++) {
-              // TODO: Implement delete last message in DAS2
-              console.log('Delete last message not yet implemented in DAS2 - skipping');
+            try {
+              // Call DAS2 delete endpoint for each conversation pair
+              for (let i = 0; i < conversationsToRemove; i++) {
+                const deleteResponse = await fetch(`/api/das2/project/${projectId}/conversation/last`, {
+                  method: 'DELETE',
+                  headers: { ...authHeader() }
+                });
 
-              // For now, just simulate success
-              console.log(`⚠️ Simulated removal of conversation entry ${i + 1}/${conversationsToRemove} (DAS2 TODO)`);
+                if (deleteResponse.ok) {
+                  const result = await deleteResponse.json();
+                  console.log(`✅ Deleted conversation entry ${i + 1}/${conversationsToRemove}:`, result.message);
+                } else {
+                  console.warn(`⚠️ Failed to delete conversation entry ${i + 1}/${conversationsToRemove}:`, deleteResponse.status);
+                }
+              }
+            } catch (error) {
+              console.error('Error deleting conversation entries:', error);
             }
           }
 
@@ -14345,6 +15383,15 @@
           }
         }, 500);
 
+        // Helper function to clean up progress indicator
+        const cleanupProgress = () => {
+          clearInterval(ellipsisInterval);
+          const progressElement = document.getElementById(progressId);
+          if (progressElement && progressElement.parentElement) {
+            progressElement.parentElement.remove();
+          }
+        };
+
         try {
           console.log('Sending DAS message:', message);
 
@@ -14357,51 +15404,142 @@
 
           console.log('DAS Context:', currentContext);
 
-          const response = await fetch('/api/das2/chat', {
+          // Add connection timeout
+          const controller = new AbortController();
+          const timeoutId = setTimeout(() => controller.abort(), 60000); // 60 second timeout
+
+          const response = await fetch('/api/das2/chat/stream', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json', ...authHeader() },
             body: JSON.stringify({
               message: message,
               project_thread_id: currentProjectThreadId,
               ...currentContext  // ← Include project context
-            })
+            }),
+            signal: controller.signal
           });
 
-          console.log('DAS Response received, status:', response.status);
+          clearTimeout(timeoutId); // Clear timeout if request succeeds
+
+          console.log('DAS Stream Response received, status:', response.status);
 
           if (response.ok) {
-            const data = await response.json();
+            // Don't remove progress indicator yet - wait for first content
 
-            // Stop ellipsis animation and remove progress indicator
-            clearInterval(ellipsisInterval);
-            const progressElement = document.getElementById(progressId);
-            if (progressElement && progressElement.parentElement) {
-              progressElement.parentElement.remove();
+            // Create streaming response container (but don't show it yet)
+            const streamContainer = document.createElement('div');
+            streamContainer.className = 'card';
+            streamContainer.innerHTML = '<strong>DAS:</strong><br><div class="streaming-text das-markdown"></div>';
+            streamContainer.style.display = 'none'; // Hide initially
+
+            // Add to transcript
+            const transcript = document.getElementById('dasTranscript');
+            transcript.appendChild(streamContainer);
+
+            const streamingText = streamContainer.querySelector('.streaming-text');
+            let fullResponse = '';
+            let metadata = {};
+            let firstContentReceived = false;
+
+            // Handle streaming response
+            const reader = response.body.getReader();
+            const decoder = new TextDecoder();
+
+            try {
+              while (true) {
+                const { done, value } = await reader.read();
+                if (done) break;
+
+                const chunk = decoder.decode(value);
+                const lines = chunk.split('\n');
+
+                for (const line of lines) {
+                  if (line.startsWith('data: ')) {
+                    try {
+                      const data = JSON.parse(line.slice(6));
+
+                      if (data.type === 'content') {
+                        // On first content, remove progress indicator and show stream container
+                        if (!firstContentReceived) {
+                          cleanupProgress();
+                          streamContainer.style.display = 'block';
+                          firstContentReceived = true;
+                        }
+
+                        // Stream content
+                        fullResponse += data.content;
+
+                        // For streaming, use inline markdown rendering to keep cursor inline
+                        try {
+                          // Use marked with inline-only parsing to avoid paragraph wrapping
+                          const renderer = new marked.Renderer();
+                          renderer.paragraph = (text) => text; // Don't wrap in <p> tags
+
+                          const parsed = marked.parse(fullResponse, { renderer });
+                          streamingText.innerHTML = parsed + '<span class="streaming-cursor">▊</span>';
+                        } catch (e) {
+                          // Fallback to plain text if markdown parsing fails during streaming
+                          streamingText.innerHTML = fullResponse + '<span class="streaming-cursor">▊</span>';
+                        }
+
+                        // Store metadata
+                        if (data.metadata) {
+                          metadata = { ...metadata, ...data.metadata };
+                        }
+
+                        // Scroll to bottom
+                        streamContainer.scrollIntoView({ behavior: 'smooth' });
+                      } else if (data.type === 'done') {
+                        // If we never received content, ensure progress is removed
+                        if (!firstContentReceived) {
+                          cleanupProgress();
+                          streamContainer.style.display = 'block';
+                        }
+
+                        // Store done metadata if any
+                        if (data.metadata) {
+                          metadata = { ...metadata, ...data.metadata };
+                        }
+
+                        // Streaming complete - convert to final format with CONSISTENT emoji sources
+                        streamContainer.innerHTML = `
+                          <strong>DAS:</strong><br>
+                          <div class="das-markdown">${marked.parse(fullResponse)}</div>
+                          ${metadata.sources && metadata.sources.length > 0 ? `
+                            <div style="margin-top: 8px; padding-top: 8px; border-top: 1px solid var(--border);">
+                              <div class="muted" style="font-size: 0.9em;">📚 Sources (${metadata.sources.length}):</div>
+                              ${metadata.sources.map(source => {
+                          const relevanceScore = source.relevance_score ? ` (${Math.round(source.relevance_score * 100)}% match)` : '';
+                          return `<div style="font-size: 0.8em; margin-left: 8px;">• <strong>${source.title || 'Unknown'}</strong> (${source.document_type || 'document'})${relevanceScore}</div>`;
+                        }).join('')}
+                            </div>
+                          ` : ''}
+                        `;
+                        updateDASStatus('Ready');
+                        break;
+                      } else if (data.type === 'error') {
+                        // Handle streaming error
+                        if (!firstContentReceived) {
+                          cleanupProgress();
+                        }
+                        addMessageToTranscript('error', 'Error: ' + (data.message || 'Unknown error'));
+                        updateDASStatus('Error');
+                        break;
+                      }
+                    } catch (e) {
+                      console.warn('Failed to parse streaming data:', e, line);
+                    }
+                  }
+                }
+              }
+            } finally {
+              reader.releaseLock();
             }
-
-            // Add DAS response to transcript
-            console.log('DAS Response Data:', data);
-            console.log('DAS Metadata:', data.metadata);
-            console.log('DAS Sources:', data.metadata ? data.metadata.sources : 'No metadata');
-
-            addMessageToTranscript('das', data.message, {
-              confidence: data.confidence,
-              intent: data.intent,
-              suggestions: data.suggestions,
-              commands: data.commands,
-              sources: data.metadata ? data.metadata.sources : []
-            });
-
-            updateDASStatus('Ready');
           } else {
             console.log('DAS Response error, status:', response.status);
 
             // Stop ellipsis animation and remove progress indicator
-            clearInterval(ellipsisInterval);
-            const progressElement = document.getElementById(progressId);
-            if (progressElement && progressElement.parentElement) {
-              progressElement.parentElement.remove();
-            }
+            cleanupProgress();
 
             const error = await response.json().catch(() => ({ detail: 'Unknown error' }));
             console.log('DAS Error response:', error);
@@ -14412,11 +15550,7 @@
           console.log('DAS Network error:', error);
 
           // Stop ellipsis animation and remove progress indicator
-          clearInterval(ellipsisInterval);
-          const progressElement = document.getElementById(progressId);
-          if (progressElement && progressElement.parentElement) {
-            progressElement.parentElement.remove();
-          }
+          cleanupProgress();
 
           addMessageToTranscript('error', 'Network error: ' + error.message);
           updateDASStatus('Error');
@@ -14640,14 +15774,16 @@ def hello_world():
         }
 
         console.log('Initializing LLM monitoring...');
-        const statusElement = document.getElementById('llmStatus');
-        if (!statusElement) {
-          console.warn('LLM status element not found, retrying in 1 second...');
+        const mainDot = document.getElementById('llmStatusDot');
+        const dockDot = document.getElementById('llmStatusDockDot');
+
+        if (!mainDot && !dockDot) {
+          console.warn('LLM status elements not found, retrying in 1 second...');
           setTimeout(initializeLLMMonitoring, 1000);
           return;
         }
 
-        console.log('LLM status element found, starting monitoring...');
+        console.log('LLM status elements found, starting monitoring...');
         llmInitialized = true;
         try {
           startLLMHealthMonitoring();
@@ -14678,33 +15814,30 @@ def hello_world():
       // Also try after a delay as backup
       setTimeout(tryInitializeLLM, 1000);
 
-      // Manual test function for debugging
+      // Manual test function for debugging (only available via console)
       window.testLLMStatus = function () {
         console.log('Manual LLM status test...');
-        const element = document.getElementById('llmStatus');
-        const dockElement = document.getElementById('llmStatusDock');
+        const mainDot = document.getElementById('llmStatusDot');
+        const dockDot = document.getElementById('llmStatusDockDot');
 
-        [element, dockElement].forEach((el, index) => {
-          if (el) {
-            console.log(`Element ${index + 1} found:`, el);
-            console.log(`Element ${index + 1} position:`, el.getBoundingClientRect());
-            console.log(`Element ${index + 1} visibility:`, window.getComputedStyle(el).visibility);
-            console.log(`Element ${index + 1} display:`, window.getComputedStyle(el).display);
-            el.textContent = '🟢';
-            el.className = 'llm-status-indicator healthy';
-            el.title = 'Manual test - LLM Status: Healthy';
-            console.log(`Element ${index + 1} updated successfully`);
+        const dots = [mainDot, dockDot];
+
+        dots.forEach((dot, index) => {
+          if (dot) {
+            console.log(`Dot ${index + 1} found:`, dot);
+            console.log(`Dot ${index + 1} position:`, dot.getBoundingClientRect());
+            console.log(`Dot ${index + 1} visibility:`, window.getComputedStyle(dot).visibility);
+            console.log(`Dot ${index + 1} display:`, window.getComputedStyle(dot).display);
+            dot.style.background = 'var(--ok)';
+            dot.title = 'Manual test - LLM Status: Healthy';
+            console.log(`Dot ${index + 1} updated successfully`);
           } else {
-            console.error(`Element ${index + 1} not found!`);
+            console.error(`Dot ${index + 1} not found!`);
           }
         });
       };
 
-      // Test after 3 seconds
-      setTimeout(() => {
-        console.log('Running manual test...');
-        window.testLLMStatus();
-      }, 3000);
+      // Removed automatic test - function only available via console for debugging
 
       // Initialize DAS when panel opens
       if (sendBtn && promptInput && transcript) {
@@ -14729,6 +15862,9 @@ def hello_world():
           if (!text) return;
           sendDASMessage(text);
           promptInput.value = '';
+          // Reset textarea to single line height
+          promptInput.style.height = 'auto';
+          promptInput.rows = 1;
         });
 
         promptInput.addEventListener('keydown', (e) => {
@@ -14742,7 +15878,22 @@ def hello_world():
       const onKey = (e) => {
         // Two toggles: Alt+Shift+D or Ctrl+Alt+D to avoid browser collisions
         const toggleCombo = ((e.altKey && e.shiftKey && (e.key === 'D' || e.key === 'd')) || (e.ctrlKey && e.altKey && (e.key === 'D' || e.key === 'd')));
-        if (toggleCombo) { e.preventDefault(); toggleOpen(); return; }
+        if (toggleCombo) {
+          e.preventDefault();
+          // Check if user is logged in by checking if main view is visible
+          const mainView = qs('#mainView');
+          const authView = qs('#authView');
+          const isLoggedIn = mainView && mainView.style.display !== 'none';
+          const isLoginVisible = authView && authView.style.display === 'grid';
+
+          if (isLoggedIn && !isLoginVisible) {
+            console.log('✅ DAS toggle allowed - calling toggleOpen()');
+            toggleOpen();
+          } else {
+            console.log('🔒 DAS keyboard shortcut blocked: Not authenticated');
+          }
+          return;
+        }
         if (!state.open) return;
         const isAltShift = e.altKey && e.shiftKey;
         if (!isAltShift) return;
@@ -14799,6 +15950,12 @@ def hello_world():
 
     async function loadKnowledgeAssets() {
       try {
+        // Check if user is authenticated before making the request
+        if (!isAuthenticated) {
+          console.log('🧠 User not authenticated, skipping knowledge assets load');
+          return;
+        }
+
         console.log('🧠 Loading knowledge assets...');
         const response = await fetch('/api/knowledge/assets', {
           headers: { ...authHeader() }
@@ -14867,22 +16024,41 @@ def hello_world():
 
         // Action buttons
         const actionButtons = `
-          <div class="asset-actions" style="display:flex; gap:4px; margin-top:8px; padding-top:8px; border-top:1px solid var(--border);">
-            <button class="btn" style="padding:4px 8px; font-size:11px; background:#1e3a8a; color:#60a5fa;"
-                    onclick="event.stopPropagation(); viewAssetContent('${asset.id}')" title="View Content">
-              📄 Content
-            </button>
-            <button class="btn" style="padding:4px 8px; font-size:11px; background:#dc2626; color:#f87171;"
-                    onclick="event.stopPropagation(); deleteAsset('${asset.id}', '${asset.title}')" title="Delete Asset">
-              🗑️ Delete
-            </button>
-            ${isAdmin ? `
-              <button class="btn" style="padding:4px 8px; font-size:11px; background:#7c3aed; color:#a78bfa;"
-                      onclick="event.stopPropagation(); toggleAssetPublic('${asset.id}', ${!asset.is_public})"
-                      title="${asset.is_public ? 'Make Private' : 'Make Public'}">
-                ${asset.is_public ? '🔒 Private' : '🌐 Public'}
+          <div class="asset-actions" style="display:flex; justify-content:space-between; align-items:center; margin-top:8px; padding-top:8px; border-top:1px solid var(--border);">
+            <div style="display:flex; gap:6px;">
+              <button class="btn" style="background:transparent; border:1px solid var(--border); border-radius:6px; padding:6px; margin:0 2px; cursor:pointer; color:var(--text); transition:all 0.2s; display:inline-flex; align-items:center; justify-content:center;"
+                      onclick="event.stopPropagation(); viewAssetContent('${asset.id}')" title="View Content"
+                      onmouseover="this.style.background='var(--panel-2)'; this.style.borderColor='var(--accent)';"
+                      onmouseout="this.style.background='transparent'; this.style.borderColor='var(--border)';">
+                <svg width="14" height="14" viewBox="0 0 20 20" fill="currentColor">
+                  <path d="M10 12a2 2 0 100-4 2 2 0 000 4z"/>
+                  <path fill-rule="evenodd" d="M.458 10C1.732 5.943 5.522 3 10 3s8.268 2.943 9.542 7c-1.274 4.057-5.064 7-9.542 7S1.732 14.057.458 10zM14 10a4 4 0 11-8 0 4 4 0 018 0z" clip-rule="evenodd"/>
+                </svg>
               </button>
-            ` : ''}
+              ${isAdmin ? `
+                <button class="btn" style="background:transparent; border:1px solid var(--border); border-radius:6px; padding:6px; margin:0 2px; cursor:pointer; color:var(--text); transition:all 0.2s; display:inline-flex; align-items:center; justify-content:center;"
+                        onclick="event.stopPropagation(); toggleAssetPublic('${asset.id}', ${!asset.is_public})"
+                        title="${asset.is_public ? 'Make Private' : 'Make Public'}"
+                        onmouseover="this.style.background='var(--panel-2)'; this.style.borderColor='var(--accent)';"
+                        onmouseout="this.style.background='transparent'; this.style.borderColor='var(--border)';">
+                  <svg width="14" height="14" viewBox="0 0 20 20" fill="currentColor">
+                    ${asset.is_public ?
+              '<path fill-rule="evenodd" d="M5 9V7a5 5 0 0110 0v2a2 2 0 012 2v5a2 2 0 01-2 2H5a2 2 0 01-2-2v-5a2 2 0 012-2zm8-2v2H7V7a3 3 0 016 0z" clip-rule="evenodd"/>' :
+              '<path d="M10 2a5 5 0 00-5 5v2a2 2 0 00-2 2v5a2 2 0 002 2h10a2 2 0 002-2v-5a2 2 0 00-2-2H7V7a3 3 0 015.905-.75 1 1 0 001.937-.5A5.002 5.002 0 0010 2z"/>'
+            }
+                  </svg>
+                </button>
+              ` : ''}
+            </div>
+            <button class="btn" style="background:transparent; border:1px solid var(--border); border-radius:6px; padding:6px; margin:0 2px; cursor:pointer; color:#ef4444; transition:all 0.2s; display:inline-flex; align-items:center; justify-content:center;"
+                    onclick="event.stopPropagation(); deleteAsset('${asset.id}', '${asset.title}')" title="Delete Asset"
+                    onmouseover="this.style.background='rgba(239, 68, 68, 0.1)'; this.style.borderColor='#ef4444';"
+                    onmouseout="this.style.background='transparent'; this.style.borderColor='var(--border)'; this.style.color='#ef4444';">
+              <svg width="14" height="14" viewBox="0 0 20 20" fill="currentColor">
+                <path fill-rule="evenodd" d="M9 2a1 1 0 000 2h2a1 1 0 100-2H9z" clip-rule="evenodd"/>
+                <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clip-rule="evenodd"/>
+              </svg>
+            </button>
           </div>
         `;
 
@@ -15123,15 +16299,15 @@ def hello_world():
         });
       }
 
-      // Load knowledge assets if the knowledge workbench is active
+      // Only load knowledge assets if user is authenticated
       const knowledgeWorkbench = document.getElementById('wb-knowledge');
-      if (knowledgeWorkbench && !knowledgeWorkbench.style.display) {
+      if (knowledgeWorkbench && !knowledgeWorkbench.style.display && isAuthenticated) {
         loadKnowledgeAssets();
       }
 
-      // Also load when switching to knowledge workbench
+      // Also load when switching to knowledge workbench (only if authenticated)
       const observer = new MutationObserver(() => {
-        if (knowledgeWorkbench && knowledgeWorkbench.style.display !== 'none') {
+        if (knowledgeWorkbench && knowledgeWorkbench.style.display !== 'none' && isAuthenticated) {
           loadKnowledgeAssets();
         }
       });
@@ -17130,7 +18306,7 @@ def hello_world():
           </h3>
           <div style="background: var(--panel-2); padding: 16px; border-radius: 12px; border: 1px solid var(--border);">
             <code style="font-family: 'SF Mono', 'Monaco', 'Inconsolata', 'Roboto Mono', monospace; color: var(--accent); word-break: break-all; font-size: 14px; line-height: 1.4;">
-              ${projectData.namespace_path ? `http://${projectData.namespace_path}/${projectId}/` : 'No namespace assigned'}
+              ${projectData.namespace_path ? `${INSTALLATION_CONFIG.baseUri}/${projectData.namespace_path}/${projectId}/` : 'No namespace assigned'}
             </code>
           </div>
           <div style="font-size: 13px; color: var(--muted); margin-top: 8px; display: flex; align-items: center; gap: 6px;">
