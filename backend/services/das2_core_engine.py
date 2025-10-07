@@ -138,29 +138,64 @@ class DAS2CoreEngine:
                         imported_ontologies.append(import_iri)
                         logger.info(f"Found import: {graph_iri} imports {import_iri}")
 
-            # SPARQL query to get classes with ALL their rich attributes
+            # SPARQL query to get ALL ontology content including individuals, restrictions, disjoint classes, etc.
             sparql_query = f"""
             PREFIX owl: <http://www.w3.org/2002/07/owl#>
+            PREFIX rdf: <http://www.w3.org/1999/02/22-rdf-syntax-ns#>
             PREFIX rdfs: <http://www.w3.org/2000/01/rdf-schema#>
             PREFIX skos: <http://www.w3.org/2004/02/skos/core#>
             PREFIX dc: <http://purl.org/dc/elements/1.1/>
             PREFIX dcterms: <http://purl.org/dc/terms/>
+            PREFIX foaf: <http://xmlns.com/foaf/0.1/>
 
             SELECT ?class ?className ?classComment ?classDefinition ?classExample ?classIdentifier
                    ?classCreator ?classCreatedDate ?classModifiedBy ?classModifiedDate
-                   ?classPriority ?classStatus ?classSubClassOf ?classEquivalentClass
+                   ?classPriority ?classStatus ?classSubClassOf ?classEquivalentClass ?classDisjointWith
 
                    ?objProp ?objPropName ?objPropComment ?objPropDefinition ?objPropExample
                    ?domain ?range ?objPropCreator ?objPropCreatedDate ?objPropModifiedBy
-                   ?objPropInverseOf ?objPropSubPropertyOf ?objPropEquivalentProperty
+                   ?objPropInverseOf ?objPropSubPropertyOf ?objPropEquivalentProperty ?objPropDisjointWith
 
                    ?dataProp ?dataPropName ?dataPropComment ?dataPropDefinition ?dataPropExample
                    ?dataDomain ?dataRange ?dataPropCreator ?dataPropCreatedDate ?dataPropModifiedBy
-                   ?dataPropSubPropertyOf ?dataPropEquivalentProperty
+                   ?dataPropSubPropertyOf ?dataPropEquivalentProperty ?dataPropDisjointWith
+
+                   ?individual ?individualName ?individualComment ?individualType ?individualCreator ?individualCreatedDate
+                   ?individualProperty ?individualPropertyValue ?individualPropertyType
+
+                   ?restriction ?restrictionType ?restrictionProperty ?restrictionCardinality ?restrictionValue
+                   ?restrictionOnClass ?restrictionOnProperty
+
+                   ?annotationProp ?annotationPropName ?annotationPropComment ?annotationPropDomain ?annotationPropRange
+
+                   ?note ?noteName ?noteComment ?noteType ?noteCreator ?noteCreatedDate ?noteModifiedBy ?noteModifiedDate
+                   ?noteFor ?noteForType ?noteForName ?noteForComment
+
+                   ?ontology ?ontologyLabel ?ontologyComment ?ontologyDefinition ?ontologyExample
+                   ?ontologyTitle ?ontologyDescription ?ontologyCreator ?ontologyContributor ?ontologyDate
+                   ?ontologyCreated ?ontologyModified ?ontologyVersion ?ontologyLicense ?ontologyHomepage
 
             WHERE {{
                 GRAPH <{graph_iri}> {{
-                    # Classes with comprehensive attributes
+                    # Ontology-level annotations
+                    OPTIONAL {{
+                        ?ontology a owl:Ontology .
+                        OPTIONAL {{ ?ontology rdfs:label ?ontologyLabel }}
+                        OPTIONAL {{ ?ontology rdfs:comment ?ontologyComment }}
+                        OPTIONAL {{ ?ontology skos:definition ?ontologyDefinition }}
+                        OPTIONAL {{ ?ontology skos:example ?ontologyExample }}
+                        OPTIONAL {{ ?ontology dc:title ?ontologyTitle }}
+                        OPTIONAL {{ ?ontology dc:description ?ontologyDescription }}
+                        OPTIONAL {{ ?ontology dc:creator ?ontologyCreator }}
+                        OPTIONAL {{ ?ontology dc:contributor ?ontologyContributor }}
+                        OPTIONAL {{ ?ontology dc:date ?ontologyDate }}
+                        OPTIONAL {{ ?ontology dcterms:created ?ontologyCreated }}
+                        OPTIONAL {{ ?ontology dcterms:modified ?ontologyModified }}
+                        OPTIONAL {{ ?ontology dcterms:version ?ontologyVersion }}
+                        OPTIONAL {{ ?ontology dcterms:license ?ontologyLicense }}
+                        OPTIONAL {{ ?ontology foaf:homepage ?ontologyHomepage }}
+                    }}
+                    # Classes with comprehensive attributes including disjoint classes
                     OPTIONAL {{
                         ?class a owl:Class .
                         OPTIONAL {{ ?class rdfs:label ?className }}
@@ -169,16 +204,17 @@ class DAS2CoreEngine:
                         OPTIONAL {{ ?class skos:example ?classExample }}
                         OPTIONAL {{ ?class dc:identifier ?classIdentifier }}
                         OPTIONAL {{ ?class dc:creator ?classCreator }}
-                        OPTIONAL {{ ?class dc:date ?classCreatedDate }}
+                        OPTIONAL {{ ?class dc:created ?classCreatedDate }}
                         OPTIONAL {{ ?class dc:contributor ?classModifiedBy }}
                         OPTIONAL {{ ?class dcterms:modified ?classModifiedDate }}
                         OPTIONAL {{ ?class ?priorityProp ?classPriority FILTER(CONTAINS(STR(?priorityProp), "priority")) }}
                         OPTIONAL {{ ?class ?statusProp ?classStatus FILTER(CONTAINS(STR(?statusProp), "status")) }}
                         OPTIONAL {{ ?class rdfs:subClassOf ?classSubClassOf }}
                         OPTIONAL {{ ?class owl:equivalentClass ?classEquivalentClass }}
+                        OPTIONAL {{ ?class owl:disjointWith ?classDisjointWith }}
                     }}
 
-                    # Object Properties with comprehensive attributes
+                    # Object Properties with comprehensive attributes including disjoint properties
                     OPTIONAL {{
                         ?objProp a owl:ObjectProperty .
                         OPTIONAL {{ ?objProp rdfs:label ?objPropName }}
@@ -188,14 +224,15 @@ class DAS2CoreEngine:
                         OPTIONAL {{ ?objProp rdfs:domain ?domain }}
                         OPTIONAL {{ ?objProp rdfs:range ?range }}
                         OPTIONAL {{ ?objProp dc:creator ?objPropCreator }}
-                        OPTIONAL {{ ?objProp dc:date ?objPropCreatedDate }}
+                        OPTIONAL {{ ?objProp dc:created ?objPropCreatedDate }}
                         OPTIONAL {{ ?objProp dc:contributor ?objPropModifiedBy }}
                         OPTIONAL {{ ?objProp owl:inverseOf ?objPropInverseOf }}
                         OPTIONAL {{ ?objProp rdfs:subPropertyOf ?objPropSubPropertyOf }}
                         OPTIONAL {{ ?objProp owl:equivalentProperty ?objPropEquivalentProperty }}
+                        OPTIONAL {{ ?objProp owl:propertyDisjointWith ?objPropDisjointWith }}
                     }}
 
-                    # Data Properties with comprehensive attributes
+                    # Data Properties with comprehensive attributes including disjoint properties
                     OPTIONAL {{
                         ?dataProp a owl:DatatypeProperty .
                         OPTIONAL {{ ?dataProp rdfs:label ?dataPropName }}
@@ -205,10 +242,73 @@ class DAS2CoreEngine:
                         OPTIONAL {{ ?dataProp rdfs:domain ?dataDomain }}
                         OPTIONAL {{ ?dataProp rdfs:range ?dataRange }}
                         OPTIONAL {{ ?dataProp dc:creator ?dataPropCreator }}
-                        OPTIONAL {{ ?dataProp dc:date ?dataPropCreatedDate }}
+                        OPTIONAL {{ ?dataProp dc:created ?dataPropCreatedDate }}
                         OPTIONAL {{ ?dataProp dc:contributor ?dataPropModifiedBy }}
                         OPTIONAL {{ ?dataProp rdfs:subPropertyOf ?dataPropSubPropertyOf }}
                         OPTIONAL {{ ?dataProp owl:equivalentProperty ?dataPropEquivalentProperty }}
+                        OPTIONAL {{ ?dataProp owl:propertyDisjointWith ?dataPropDisjointWith }}
+                    }}
+
+                    # Individuals/Instances with all their properties and values
+                    OPTIONAL {{
+                        ?individual a ?individualType .
+                        ?individualType a owl:Class .
+                        OPTIONAL {{ ?individual rdfs:label ?individualName }}
+                        OPTIONAL {{ ?individual rdfs:comment ?individualComment }}
+                        OPTIONAL {{ ?individual dc:creator ?individualCreator }}
+                        OPTIONAL {{ ?individual dc:created ?individualCreatedDate }}
+
+                        # Individual property values
+                        OPTIONAL {{
+                            ?individual ?individualProperty ?individualPropertyValue .
+                            OPTIONAL {{ ?individualProperty a ?individualPropertyType }}
+                        }}
+                    }}
+
+                    # Cardinality and value restrictions
+                    OPTIONAL {{
+                        ?restriction a owl:Restriction .
+                        OPTIONAL {{ ?restriction owl:onProperty ?restrictionProperty }}
+                        OPTIONAL {{ ?restriction owl:onClass ?restrictionOnClass }}
+                        OPTIONAL {{ ?restriction owl:cardinality ?restrictionCardinality }}
+                        OPTIONAL {{ ?restriction owl:minCardinality ?restrictionCardinality }}
+                        OPTIONAL {{ ?restriction owl:maxCardinality ?restrictionCardinality }}
+                        OPTIONAL {{ ?restriction owl:someValuesFrom ?restrictionValue }}
+                        OPTIONAL {{ ?restriction owl:allValuesFrom ?restrictionValue }}
+                        OPTIONAL {{ ?restriction owl:hasValue ?restrictionValue }}
+
+                        # Determine restriction type
+                        BIND(IF(BOUND(?restrictionCardinality), "cardinality",
+                               IF(BOUND(?restrictionValue), "value", "unknown")) AS ?restrictionType)
+                    }}
+
+                    # Annotation Properties
+                    OPTIONAL {{
+                        ?annotationProp a owl:AnnotationProperty .
+                        OPTIONAL {{ ?annotationProp rdfs:label ?annotationPropName }}
+                        OPTIONAL {{ ?annotationProp rdfs:comment ?annotationPropComment }}
+                        OPTIONAL {{ ?annotationProp rdfs:domain ?annotationPropDomain }}
+                        OPTIONAL {{ ?annotationProp rdfs:range ?annotationPropRange }}
+                    }}
+
+                    # Notes with comprehensive attributes and note_for relationships
+                    OPTIONAL {{
+                        ?note a <http://www.w3.org/2004/02/skos/core#Note> .
+                        OPTIONAL {{ ?note rdfs:label ?noteName }}
+                        OPTIONAL {{ ?note rdfs:comment ?noteComment }}
+                        OPTIONAL {{ ?note dc:type ?noteType }}
+                        OPTIONAL {{ ?note dc:creator ?noteCreator }}
+                        OPTIONAL {{ ?note dc:created ?noteCreatedDate }}
+                        OPTIONAL {{ ?note dcterms:modified ?noteModifiedDate }}
+                        OPTIONAL {{ ?note dcterms:creator ?noteModifiedBy }}
+
+                        # Note_for relationship to connect notes to other objects
+                        OPTIONAL {{
+                            ?note <http://www.w3.org/2004/02/skos/core#note_for> ?noteFor .
+                            OPTIONAL {{ ?noteFor rdf:type ?noteForType }}
+                            OPTIONAL {{ ?noteFor rdfs:label ?noteForName }}
+                            OPTIONAL {{ ?noteFor rdfs:comment ?noteForComment }}
+                        }}
                     }}
                 }}
             }}
@@ -230,12 +330,37 @@ class DAS2CoreEngine:
                 bindings = results.get("results", {}).get("bindings", [])
 
                 # Organize results for main ontology with comprehensive attributes
+                ontology_metadata = {}
                 classes = {}
                 obj_properties = {}
                 data_properties = {}
+                individuals = {}
+                restrictions = {}
+                annotation_properties = {}
+                notes = {}
 
                 for binding in bindings:
-                    # Process classes with ALL attributes
+                    # Process ontology-level annotations
+                    if "ontology" in binding:
+                        ontology_uri = binding["ontology"]["value"]
+                        if ontology_uri not in ontology_metadata:
+                            ontology_metadata[ontology_uri] = {
+                                "label": binding.get("ontologyLabel", {}).get("value", ""),
+                                "comment": binding.get("ontologyComment", {}).get("value", ""),
+                                "definition": binding.get("ontologyDefinition", {}).get("value", ""),
+                                "example": binding.get("ontologyExample", {}).get("value", ""),
+                                "title": binding.get("ontologyTitle", {}).get("value", ""),
+                                "description": binding.get("ontologyDescription", {}).get("value", ""),
+                                "creator": binding.get("ontologyCreator", {}).get("value", ""),
+                                "contributor": binding.get("ontologyContributor", {}).get("value", ""),
+                                "date": binding.get("ontologyDate", {}).get("value", ""),
+                                "created": binding.get("ontologyCreated", {}).get("value", ""),
+                                "modified": binding.get("ontologyModified", {}).get("value", ""),
+                                "version": binding.get("ontologyVersion", {}).get("value", ""),
+                                "license": binding.get("ontologyLicense", {}).get("value", ""),
+                                "homepage": binding.get("ontologyHomepage", {}).get("value", "")
+                            }
+                    # Process classes with ALL attributes including disjoint classes
                     if "class" in binding:
                         class_uri = binding["class"]["value"]
                         if class_uri not in classes:
@@ -252,10 +377,11 @@ class DAS2CoreEngine:
                                 "priority": binding.get("classPriority", {}).get("value", ""),
                                 "status": binding.get("classStatus", {}).get("value", ""),
                                 "subclass_of": binding.get("classSubClassOf", {}).get("value", "").split("#")[-1].split("/")[-1] if "classSubClassOf" in binding else "",
-                                "equivalent_class": binding.get("classEquivalentClass", {}).get("value", "").split("#")[-1].split("/")[-1] if "classEquivalentClass" in binding else ""
+                                "equivalent_class": binding.get("classEquivalentClass", {}).get("value", "").split("#")[-1].split("/")[-1] if "classEquivalentClass" in binding else "",
+                                "disjoint_with": binding.get("classDisjointWith", {}).get("value", "").split("#")[-1].split("/")[-1] if "classDisjointWith" in binding else ""
                             }
 
-                    # Process object properties with ALL attributes
+                    # Process object properties with ALL attributes including disjoint properties
                     if "objProp" in binding:
                         prop_uri = binding["objProp"]["value"]
                         if prop_uri not in obj_properties:
@@ -271,10 +397,11 @@ class DAS2CoreEngine:
                                 "modified_by": binding.get("objPropModifiedBy", {}).get("value", ""),
                                 "inverse_of": binding.get("objPropInverseOf", {}).get("value", "").split("#")[-1].split("/")[-1] if "objPropInverseOf" in binding else "",
                                 "subproperty_of": binding.get("objPropSubPropertyOf", {}).get("value", "").split("#")[-1].split("/")[-1] if "objPropSubPropertyOf" in binding else "",
-                                "equivalent_property": binding.get("objPropEquivalentProperty", {}).get("value", "").split("#")[-1].split("/")[-1] if "objPropEquivalentProperty" in binding else ""
+                                "equivalent_property": binding.get("objPropEquivalentProperty", {}).get("value", "").split("#")[-1].split("/")[-1] if "objPropEquivalentProperty" in binding else "",
+                                "disjoint_with": binding.get("objPropDisjointWith", {}).get("value", "").split("#")[-1].split("/")[-1] if "objPropDisjointWith" in binding else ""
                             }
 
-                    # Process data properties with ALL attributes
+                    # Process data properties with ALL attributes including disjoint properties
                     if "dataProp" in binding:
                         prop_uri = binding["dataProp"]["value"]
                         if prop_uri not in data_properties:
@@ -289,14 +416,97 @@ class DAS2CoreEngine:
                                 "created_date": binding.get("dataPropCreatedDate", {}).get("value", ""),
                                 "modified_by": binding.get("dataPropModifiedBy", {}).get("value", ""),
                                 "subproperty_of": binding.get("dataPropSubPropertyOf", {}).get("value", "").split("#")[-1].split("/")[-1] if "dataPropSubPropertyOf" in binding else "",
-                                "equivalent_property": binding.get("dataPropEquivalentProperty", {}).get("value", "").split("#")[-1].split("/")[-1] if "dataPropEquivalentProperty" in binding else ""
+                                "equivalent_property": binding.get("dataPropEquivalentProperty", {}).get("value", "").split("#")[-1].split("/")[-1] if "dataPropEquivalentProperty" in binding else "",
+                                "disjoint_with": binding.get("dataPropDisjointWith", {}).get("value", "").split("#")[-1].split("/")[-1] if "dataPropDisjointWith" in binding else ""
                             }
 
-                # Build result with main ontology content
+                    # Process individuals/instances with all their properties
+                    if "individual" in binding:
+                        individual_uri = binding["individual"]["value"]
+                        if individual_uri not in individuals:
+                            individuals[individual_uri] = {
+                                "name": binding.get("individualName", {}).get("value", individual_uri.split("#")[-1].split("/")[-1]),
+                                "comment": binding.get("individualComment", {}).get("value", ""),
+                                "type": binding.get("individualType", {}).get("value", "").split("#")[-1].split("/")[-1] if "individualType" in binding else "",
+                                "creator": binding.get("individualCreator", {}).get("value", ""),
+                                "created_date": binding.get("individualCreatedDate", {}).get("value", ""),
+                                "properties": []
+                            }
+
+                        # Add property values for this individual
+                        if "individualProperty" in binding and "individualPropertyValue" in binding:
+                            prop_name = binding.get("individualProperty", {}).get("value", "").split("#")[-1].split("/")[-1]
+                            prop_value = binding.get("individualPropertyValue", {}).get("value", "")
+                            prop_type = binding.get("individualPropertyType", {}).get("value", "").split("#")[-1].split("/")[-1] if "individualPropertyType" in binding else ""
+
+                            individuals[individual_uri]["properties"].append({
+                                "property": prop_name,
+                                "value": prop_value,
+                                "type": prop_type
+                            })
+
+                    # Process cardinality and value restrictions
+                    if "restriction" in binding:
+                        restriction_uri = binding["restriction"]["value"]
+                        if restriction_uri not in restrictions:
+                            restrictions[restriction_uri] = {
+                                "type": binding.get("restrictionType", {}).get("value", ""),
+                                "property": binding.get("restrictionProperty", {}).get("value", "").split("#")[-1].split("/")[-1] if "restrictionProperty" in binding else "",
+                                "cardinality": binding.get("restrictionCardinality", {}).get("value", ""),
+                                "value": binding.get("restrictionValue", {}).get("value", "").split("#")[-1].split("/")[-1] if "restrictionValue" in binding else "",
+                                "on_class": binding.get("restrictionOnClass", {}).get("value", "").split("#")[-1].split("/")[-1] if "restrictionOnClass" in binding else "",
+                                "on_property": binding.get("restrictionOnProperty", {}).get("value", "").split("#")[-1].split("/")[-1] if "restrictionOnProperty" in binding else ""
+                            }
+
+                    # Process annotation properties
+                    if "annotationProp" in binding:
+                        annotation_uri = binding["annotationProp"]["value"]
+                        if annotation_uri not in annotation_properties:
+                            annotation_properties[annotation_uri] = {
+                                "name": binding.get("annotationPropName", {}).get("value", annotation_uri.split("#")[-1].split("/")[-1]),
+                                "comment": binding.get("annotationPropComment", {}).get("value", ""),
+                                "domain": binding.get("annotationPropDomain", {}).get("value", "").split("#")[-1].split("/")[-1] if "annotationPropDomain" in binding else "",
+                                "range": binding.get("annotationPropRange", {}).get("value", "").split("#")[-1].split("/")[-1] if "annotationPropRange" in binding else ""
+                            }
+
+                    # Process notes with comprehensive attributes and note_for relationships
+                    if "note" in binding:
+                        note_uri = binding["note"]["value"]
+                        if note_uri not in notes:
+                            notes[note_uri] = {
+                                "name": binding.get("noteName", {}).get("value", ""),
+                                "comment": binding.get("noteComment", {}).get("value", ""),
+                                "type": binding.get("noteType", {}).get("value", ""),
+                                "creator": binding.get("noteCreator", {}).get("value", ""),
+                                "created_date": binding.get("noteCreatedDate", {}).get("value", ""),
+                                "modified_by": binding.get("noteModifiedBy", {}).get("value", ""),
+                                "modified_date": binding.get("noteModifiedDate", {}).get("value", ""),
+                                "note_for": []
+                            }
+
+                        # Add note_for relationship if present
+                        if "noteFor" in binding:
+                            note_for_uri = binding["noteFor"]["value"]
+                            note_for_info = {
+                                "uri": note_for_uri,
+                                "type": binding.get("noteForType", {}).get("value", "").split("#")[-1].split("/")[-1] if "noteForType" in binding else "",
+                                "name": binding.get("noteForName", {}).get("value", ""),
+                                "comment": binding.get("noteForComment", {}).get("value", "")
+                            }
+                            # Avoid duplicates
+                            if note_for_info not in notes[note_uri]["note_for"]:
+                                notes[note_uri]["note_for"].append(note_for_info)
+
+                # Build result with comprehensive ontology content
                 result = {
+                    "ontology_metadata": list(ontology_metadata.values()),
                     "classes": list(classes.values()),
                     "object_properties": list(obj_properties.values()),
                     "data_properties": list(data_properties.values()),
+                    "individuals": list(individuals.values()),
+                    "restrictions": list(restrictions.values()),
+                    "annotation_properties": list(annotation_properties.values()),
+                    "notes": list(notes.values()),
                     "imports": []
                 }
 
@@ -335,6 +545,40 @@ class DAS2CoreEngine:
         """
         Helper method to add ontology content (classes, properties) to context with specified indentation
         """
+        # Add ontology-level metadata first
+        ontology_metadata = ontology_details.get('ontology_metadata', [])
+        if ontology_metadata:
+            metadata = ontology_metadata[0]
+            context_sections.append(f"{indent}Ontology Metadata:")
+            if metadata.get("label"):
+                context_sections.append(f"{indent}  • Label: {metadata['label']}")
+            if metadata.get("title"):
+                context_sections.append(f"{indent}  • Title: {metadata['title']}")
+            if metadata.get("description"):
+                context_sections.append(f"{indent}  • Description: {metadata['description']}")
+            if metadata.get("comment"):
+                context_sections.append(f"{indent}  • Comment: {metadata['comment']}")
+            if metadata.get("definition"):
+                context_sections.append(f"{indent}  • Definition: {metadata['definition']}")
+            if metadata.get("example"):
+                context_sections.append(f"{indent}  • Example: {metadata['example']}")
+            if metadata.get("creator"):
+                context_sections.append(f"{indent}  • Creator: {metadata['creator']}")
+            if metadata.get("contributor"):
+                context_sections.append(f"{indent}  • Contributor: {metadata['contributor']}")
+            if metadata.get("version"):
+                context_sections.append(f"{indent}  • Version: {metadata['version']}")
+            if metadata.get("date"):
+                context_sections.append(f"{indent}  • Date: {metadata['date']}")
+            if metadata.get("created"):
+                context_sections.append(f"{indent}  • Created: {metadata['created']}")
+            if metadata.get("modified"):
+                context_sections.append(f"{indent}  • Modified: {metadata['modified']}")
+            if metadata.get("license"):
+                context_sections.append(f"{indent}  • License: {metadata['license']}")
+            if metadata.get("homepage"):
+                context_sections.append(f"{indent}  • Homepage: {metadata['homepage']}")
+
         # Add classes with comprehensive attributes
         classes = ontology_details.get('classes', [])
         if classes:
@@ -360,16 +604,22 @@ class DAS2CoreEngine:
                     metadata_parts.append(f"Creator: {cls.get('creator')}")
                 if cls.get('created_date'):
                     metadata_parts.append(f"Created: {cls.get('created_date')}")
+                if cls.get('modified_by'):
+                    metadata_parts.append(f"Modified by: {cls.get('modified_by')}")
+                if cls.get('modified_date'):
+                    metadata_parts.append(f"Modified: {cls.get('modified_date')}")
 
                 if metadata_parts:
                     class_line += f" [{', '.join(metadata_parts)}]"
 
-                # Add structural relationships
+                # Add structural relationships including disjoint classes
                 structural_parts = []
                 if cls.get('subclass_of'):
                     structural_parts.append(f"Subclass of: {cls.get('subclass_of')}")
                 if cls.get('equivalent_class'):
                     structural_parts.append(f"Equivalent to: {cls.get('equivalent_class')}")
+                if cls.get('disjoint_with'):
+                    structural_parts.append(f"Disjoint with: {cls.get('disjoint_with')}")
 
                 if structural_parts:
                     context_sections.append(class_line)
@@ -381,6 +631,9 @@ class DAS2CoreEngine:
                 # Add example if available
                 if cls.get('example'):
                     context_sections.append(f"{indent}    Example: {cls.get('example')}")
+                # Add definition if available
+                if cls.get('definition'):
+                    context_sections.append(f"{indent}    Definition: {cls.get('definition')}")
 
         # Add object properties (relationships) with comprehensive attributes
         obj_props = ontology_details.get('object_properties', [])
@@ -414,11 +667,15 @@ class DAS2CoreEngine:
 
                 context_sections.append(prop_line)
 
-                # Add structural relationships for properties
+                # Add structural relationships for properties including disjoint properties
                 if prop.get('inverse_of'):
                     context_sections.append(f"{indent}    - Inverse of: {prop.get('inverse_of')}")
                 if prop.get('subproperty_of'):
                     context_sections.append(f"{indent}    - Subproperty of: {prop.get('subproperty_of')}")
+                if prop.get('equivalent_property'):
+                    context_sections.append(f"{indent}    - Equivalent to: {prop.get('equivalent_property')}")
+                if prop.get('disjoint_with'):
+                    context_sections.append(f"{indent}    - Disjoint with: {prop.get('disjoint_with')}")
                 if prop.get('example'):
                     context_sections.append(f"{indent}    - Example: {prop.get('example')}")
 
@@ -458,13 +715,173 @@ class DAS2CoreEngine:
 
                 context_sections.append(prop_line)
 
-                # Add structural relationships for data properties
+                # Add structural relationships for data properties including disjoint properties
                 if prop.get('subproperty_of'):
                     context_sections.append(f"{indent}    - Subproperty of: {prop.get('subproperty_of')}")
                 if prop.get('equivalent_property'):
                     context_sections.append(f"{indent}    - Equivalent to: {prop.get('equivalent_property')}")
+                if prop.get('disjoint_with'):
+                    context_sections.append(f"{indent}    - Disjoint with: {prop.get('disjoint_with')}")
                 if prop.get('example'):
                     context_sections.append(f"{indent}    - Example: {prop.get('example')}")
+
+        # Add individuals/instances with all their properties
+        individuals = ontology_details.get('individuals', [])
+        if individuals:
+            context_sections.append(f"{indent}Instances:")
+            for individual in individuals:
+                individual_name = individual.get('name', 'Unknown')
+                individual_type = individual.get('type', '')
+
+                # Build individual description
+                if individual_type:
+                    individual_line = f"{indent}  • {individual_name} (instance of {individual_type})"
+                else:
+                    individual_line = f"{indent}  • {individual_name}"
+
+                # Add comment if available
+                if individual.get('comment'):
+                    individual_line += f" - {individual.get('comment')}"
+
+                context_sections.append(individual_line)
+
+                # Add metadata
+                metadata_parts = []
+                if individual.get('creator'):
+                    metadata_parts.append(f"Creator: {individual.get('creator')}")
+                if individual.get('created_date'):
+                    metadata_parts.append(f"Created: {individual.get('created_date')}")
+
+                if metadata_parts:
+                    context_sections.append(f"{indent}    [{', '.join(metadata_parts)}]")
+
+                # Add property values
+                properties = individual.get('properties', [])
+                if properties:
+                    context_sections.append(f"{indent}    Properties:")
+                    for prop in properties:
+                        prop_name = prop.get('property', 'Unknown')
+                        prop_value = prop.get('value', '')
+                        prop_type = prop.get('type', '')
+
+                        if prop_type:
+                            context_sections.append(f"{indent}      - {prop_name}: {prop_value} ({prop_type})")
+                        else:
+                            context_sections.append(f"{indent}      - {prop_name}: {prop_value}")
+
+        # Add cardinality and value restrictions
+        restrictions = ontology_details.get('restrictions', [])
+        if restrictions:
+            context_sections.append(f"{indent}Restrictions:")
+            for restriction in restrictions:
+                restriction_type = restriction.get('type', 'unknown')
+                property_name = restriction.get('property', '')
+                cardinality = restriction.get('cardinality', '')
+                value = restriction.get('value', '')
+                on_class = restriction.get('on_class', '')
+
+                # Build restriction description
+                if restriction_type == 'cardinality' and cardinality:
+                    if property_name and on_class:
+                        restriction_line = f"{indent}  • {on_class} has {cardinality} {property_name}"
+                    elif property_name:
+                        restriction_line = f"{indent}  • {property_name} cardinality: {cardinality}"
+                    else:
+                        restriction_line = f"{indent}  • Cardinality restriction: {cardinality}"
+                elif restriction_type == 'value' and value:
+                    if property_name and on_class:
+                        restriction_line = f"{indent}  • {on_class} {property_name} has value: {value}"
+                    elif property_name:
+                        restriction_line = f"{indent}  • {property_name} has value: {value}"
+                    else:
+                        restriction_line = f"{indent}  • Value restriction: {value}"
+                else:
+                    restriction_line = f"{indent}  • {restriction_type} restriction"
+
+                context_sections.append(restriction_line)
+
+        # Add annotation properties
+        annotation_props = ontology_details.get('annotation_properties', [])
+        if annotation_props:
+            context_sections.append(f"{indent}Annotation Properties:")
+            for prop in annotation_props:
+                prop_name = prop.get('name', 'Unknown')
+                domain = prop.get('domain', '')
+                range_val = prop.get('range', '')
+
+                # Build annotation property description
+                if domain and range_val:
+                    prop_line = f"{indent}  • {prop_name}: {domain} → {range_val}"
+                elif domain:
+                    prop_line = f"{indent}  • {prop_name} (domain: {domain})"
+                elif range_val:
+                    prop_line = f"{indent}  • {prop_name} (range: {range_val})"
+                else:
+                    prop_line = f"{indent}  • {prop_name}"
+
+                # Add comment if available
+                if prop.get('comment'):
+                    prop_line += f" - {prop.get('comment')}"
+
+                context_sections.append(prop_line)
+
+        # Add notes with comprehensive attributes and note_for relationships
+        notes = ontology_details.get('notes', [])
+        if notes:
+            context_sections.append(f"{indent}Notes:")
+            for note in notes:
+                note_name = note.get('name', 'Unknown Note')
+                note_comment = note.get('comment', '')
+                note_type = note.get('type', '')
+                note_creator = note.get('creator', '')
+                note_created_date = note.get('created_date', '')
+                note_modified_by = note.get('modified_by', '')
+                note_modified_date = note.get('modified_date', '')
+
+                # Build rich note description for DAS
+                note_line = f"{indent}  • {note_name}"
+
+                # Add primary description (comment) with explicit "Content:" label
+                if note_comment:
+                    note_line += f" (Content: {note_comment})"
+
+                # Add metadata
+                metadata_parts = []
+                if note_type:
+                    metadata_parts.append(f"Type: {note_type}")
+                if note_creator:
+                    metadata_parts.append(f"Creator: {note_creator}")
+                if note_created_date:
+                    metadata_parts.append(f"Created: {note_created_date}")
+                if note_modified_by:
+                    metadata_parts.append(f"Modified by: {note_modified_by}")
+                if note_modified_date:
+                    metadata_parts.append(f"Modified: {note_modified_date}")
+
+                if metadata_parts:
+                    note_line += f" [{', '.join(metadata_parts)}]"
+
+                context_sections.append(note_line)
+
+                # Add note_for relationships
+                note_for_relationships = note.get('note_for', [])
+                if note_for_relationships:
+                    context_sections.append(f"{indent}    Note for:")
+                    for note_for in note_for_relationships:
+                        note_for_name = note_for.get('name', 'Unknown')
+                        note_for_type = note_for.get('type', '')
+                        note_for_comment = note_for.get('comment', '')
+
+                        note_for_line = f"{indent}      - {note_for_name}"
+                        if note_for_type:
+                            note_for_line += f" ({note_for_type})"
+                        if note_for_comment:
+                            note_for_line += f": {note_for_comment}"
+
+                        context_sections.append(note_for_line)
+                else:
+                    # Explicitly mark model notes
+                    context_sections.append(f"{indent}    Status: Model note (no relationships)")
 
     def _build_context_aware_query(self, message: str, conversation_history: List[Dict]) -> str:
         """

@@ -6577,18 +6577,49 @@
         '@prefix rdfs: <http://www.w3.org/2000/01/rdf-schema#> .',
         '@prefix skos: <http://www.w3.org/2004/02/skos/core#> .',
         '@prefix dc: <http://purl.org/dc/elements/1.1/> .',
+        '@prefix dcterms: <http://purl.org/dc/terms/> .',
+        '@prefix odras: <http://odras.system/ontology#> .',
         '@prefix xsd: <http://www.w3.org/2001/XMLSchema#> .',
         (() => {
           try {
             const labels = loadOntologyLabelMap(activeProject);
-            const pid = (activeProject && (activeProject.id || activeProject.project_id)) ? (activeProject.id || activeProject.project_id) : null;
-            const scopedName = pid ? (localStorage.getItem(`onto_model_name__${pid}`) || '') : '';
+            const pid = (activeProject && (activeProject.id || activeProject.project_id)) ? (activeProject.id || activeProject.project_id) : 'default';
+            const scopedName = localStorage.getItem(`onto_model_name__${pid}`) || '';
             const mapLabel = labels[graphIri] || '';
             const tail = (graphIri.split('/').pop() || graphIri);
             // Prefer the actively edited model name, then label map, then IRI tail
             const chosen = ((activeOntologyIri === graphIri && scopedName.trim()) || mapLabel || tail);
             const lbl = String(chosen || '');
-            return `\n<${graphIri}> a owl:Ontology ; rdfs:label "${String(lbl || '').replace(/\\/g, '\\\\').replace(/"/g, '\\"')}" .\n`;
+
+            // Get ontology metadata attributes from localStorage
+            let ontologyAttrs = {};
+            try {
+              ontologyAttrs = JSON.parse(localStorage.getItem(`onto_model_attrs__${pid}`) || '{}');
+            } catch (_) {
+              ontologyAttrs = {};
+            }
+
+            // Build ontology declaration with all metadata
+            let ontologyDecl = `\n<${graphIri}> a owl:Ontology ;\n`;
+            ontologyDecl += `    rdfs:label "${String(lbl || '').replace(/\\/g, '\\\\').replace(/"/g, '\\"')}"`;
+
+            // Add comment if present
+            if (ontologyAttrs.comment && ontologyAttrs.comment.trim()) {
+              ontologyDecl += ` ;\n    rdfs:comment "${String(ontologyAttrs.comment).replace(/\\/g, '\\\\').replace(/"/g, '\\"')}"`;
+            }
+
+            // Add definition if present
+            if (ontologyAttrs.definition && ontologyAttrs.definition.trim()) {
+              ontologyDecl += ` ;\n    skos:definition "${String(ontologyAttrs.definition).replace(/\\/g, '\\\\').replace(/"/g, '\\"')}"`;
+            }
+
+            // Add version if present
+            if (ontologyAttrs.version && ontologyAttrs.version.trim()) {
+              ontologyDecl += ` ;\n    owl:versionInfo "${String(ontologyAttrs.version).replace(/\\/g, '\\\\').replace(/"/g, '\\"')}"`;
+            }
+
+            ontologyDecl += ' .\n';
+            return ontologyDecl;
           } catch (_) { return `\n<${graphIri}> a owl:Ontology .\n`; }
         })()
       ];
@@ -6639,6 +6670,13 @@
           const attrs = n.data('attrs') || {};
           const attributeTriples = generateAttributeTriples(iri, attrs, 'dataProperty');
           lines.push(...attributeTriples);
+        } else if (t === 'note') {
+          lines.push(`<${iri}> a skos:Note ; rdfs:label "${label}" .`);
+
+          // Add attributes as RDF annotation properties
+          const attrs = n.data('attrs') || {};
+          const attributeTriples = generateAttributeTriples(iri, attrs, 'note');
+          lines.push(...attributeTriples);
         }
       });
       // Object properties from edges
@@ -6670,22 +6708,8 @@
               lines.push(...attributeTriples);
             }
           } else if (sType === 'note' && (tType === 'class' || tType === 'dataProperty') && pred === 'note_for') {
-            // Emit as annotation on target element using rich note attributes
-            const noteAttrs = s.data('attrs') || {};
-            let noteText = s.data('label') || '';
-
-            // Use content from attributes if available (richer than just label)
-            if (noteAttrs.content) {
-              noteText = noteAttrs.content;
-            }
-
-            // Include note type if specified
-            if (noteAttrs.noteType && noteAttrs.noteType !== 'Note') {
-              noteText = `[${noteAttrs.noteType}] ${noteText}`;
-            }
-
-            const escapedText = noteText.replace(/\\/g, '\\\\').replace(/"/g, '\\"');
-            lines.push(`<${tIri}> rdfs:comment "${escapedText}" .`);
+            // Emit skos:note_for relationship to connect note to target element
+            lines.push(`<${sIri}> skos:note_for <${tIri}> .`);
           }
         }
       });
@@ -10366,11 +10390,11 @@
         created_date: { type: 'date', label: 'Created Date (dc:created)', placeholder: 'Creation date', readonly: true },
         created_timestamp: { type: 'text', label: 'Created Timestamp', placeholder: 'ISO timestamp', readonly: true },
         last_modified_by: { type: 'text', label: 'Last Modified By (dc:contributor)', placeholder: 'Modified by', readonly: true },
-        last_modified_date: { type: 'date', label: 'Last Modified Date (dc:modified)', placeholder: 'Modification date', readonly: true },
+        last_modified_date: { type: 'date', label: 'Last Modified Date (dcterms:modified)', placeholder: 'Modification date', readonly: true },
         last_modified_timestamp: { type: 'text', label: 'Last Modified Timestamp', placeholder: 'ISO timestamp', readonly: true },
         // Custom properties
-        priority: { type: 'select', label: 'Priority', options: ['High', 'Medium', 'Low'], placeholder: 'Select priority' },
-        status: { type: 'select', label: 'Status', options: ['Draft', 'Review', 'Approved', 'Deprecated'], placeholder: 'Select status' }
+        priority: { type: 'select', label: 'Priority (odras:priority)', options: ['High', 'Medium', 'Low'], placeholder: 'Select priority' },
+        status: { type: 'select', label: 'Status (odras:status)', options: ['Draft', 'Review', 'Approved', 'Deprecated'], placeholder: 'Select status' }
       },
       objectProperty: {
         // Standard ontological properties
@@ -10389,7 +10413,7 @@
         created_date: { type: 'date', label: 'Created Date (dc:created)', placeholder: 'Creation date', readonly: true },
         created_timestamp: { type: 'text', label: 'Created Timestamp', placeholder: 'ISO timestamp', readonly: true },
         last_modified_by: { type: 'text', label: 'Last Modified By (dc:contributor)', placeholder: 'Modified by', readonly: true },
-        last_modified_date: { type: 'date', label: 'Last Modified Date (dc:modified)', placeholder: 'Modification date', readonly: true },
+        last_modified_date: { type: 'date', label: 'Last Modified Date (dcterms:modified)', placeholder: 'Modification date', readonly: true },
         last_modified_timestamp: { type: 'text', label: 'Last Modified Timestamp', placeholder: 'ISO timestamp', readonly: true },
         // Custom properties
         functional: { type: 'checkbox', label: 'Functional', placeholder: 'Is this a functional property?' },
@@ -10410,23 +10434,23 @@
         created_date: { type: 'date', label: 'Created Date (dc:created)', placeholder: 'Creation date', readonly: true },
         created_timestamp: { type: 'text', label: 'Created Timestamp', placeholder: 'ISO timestamp', readonly: true },
         last_modified_by: { type: 'text', label: 'Last Modified By (dc:contributor)', placeholder: 'Modified by', readonly: true },
-        last_modified_date: { type: 'date', label: 'Last Modified Date (dc:modified)', placeholder: 'Modification date', readonly: true },
+        last_modified_date: { type: 'date', label: 'Last Modified Date (dcterms:modified)', placeholder: 'Modification date', readonly: true },
         last_modified_timestamp: { type: 'text', label: 'Last Modified Timestamp', placeholder: 'ISO timestamp', readonly: true },
         // Custom properties
         functional: { type: 'checkbox', label: 'Functional', placeholder: 'Is this a functional property?' }
       },
       note: {
-        noteType: { type: 'select', label: 'Note Type', options: ['Note', 'Warning', 'Issue', 'Todo', 'Info', 'Success', 'Question'], placeholder: 'Select note type' },
-        content: { type: 'textarea', label: 'Content', placeholder: 'Note content' },
+        noteType: { type: 'select', label: 'Note Type (dc:type)', options: ['Note', 'Warning', 'Issue', 'Todo', 'Info', 'Success', 'Question'], placeholder: 'Select note type' },
+        content: { type: 'textarea', label: 'Content (rdfs:comment)', placeholder: 'Note content' },
         // Metadata properties
         creator: { type: 'text', label: 'Creator (dc:creator)', placeholder: 'Created by', readonly: true },
         created_date: { type: 'date', label: 'Created Date (dc:created)', placeholder: 'Creation date', readonly: true },
         created_timestamp: { type: 'text', label: 'Created Timestamp', placeholder: 'ISO timestamp', readonly: true },
         last_modified_by: { type: 'text', label: 'Last Modified By (dc:contributor)', placeholder: 'Modified by', readonly: true },
-        last_modified_date: { type: 'date', label: 'Last Modified Date (dc:modified)', placeholder: 'Modification date', readonly: true },
+        last_modified_date: { type: 'date', label: 'Last Modified Date (dcterms:modified)', placeholder: 'Modification date', readonly: true },
         last_modified_timestamp: { type: 'text', label: 'Last Modified Timestamp', placeholder: 'ISO timestamp', readonly: true },
         // Legacy fields for backward compatibility
-        author: { type: 'text', label: 'Author (Legacy)', placeholder: 'Note author', readonly: true }
+        author: { type: 'text', label: 'Author', placeholder: 'Note author', readonly: true }
       },
       model: {
         // Standard ontological properties

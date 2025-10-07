@@ -1,0 +1,376 @@
+{
+  "nodes": [
+    {
+      "data": {
+        "id": "Class1",
+        "label": "Requirement",
+        "type": "class",
+        "attrs": {
+          "comment": "Statement of need or obligation imposed on a system.",
+          "definition": "A verifiable condition or capability the system shall satisfy.",
+          "example": "“The UAV shall achieve ≥ 4 hr endurance at 10k ft.”",
+          "creator": "jdehart",
+          "created_date": "2025-10-07",
+          "created_timestamp": "2025-10-07T10:17:53.921Z",
+          "last_modified_by": "jdehart",
+          "last_modified_date": "2025-10-07",
+          "last_modified_timestamp": "2025-10-07T10:44:40.288Z"
+        }
+      },
+      "position": {
+        "x": 372.05954507207304,
+        "y": 181.74337116522324
+      }
+    },
+    {
+      "data": {
+        "id": "Class2",
+        "label": "Component",
+        "type": "class",
+        "attrs": {
+          "comment": "Physical or logical part of the system with defined interfaces.",
+          "definition": "A replaceable system element that provides or supports functions.",
+          "example": "“EO/IR sensor module,” “Wing spar,” “Flight-control app.”",
+          "creator": "jdehart",
+          "created_date": "2025-10-07",
+          "created_timestamp": "2025-10-07T10:17:56.465Z",
+          "last_modified_by": "jdehart",
+          "last_modified_date": "2025-10-07",
+          "last_modified_timestamp": "2025-10-07T10:44:40.288Z"
+        }
+      },
+      "position": {
+        "x": 369.0453971518605,
+        "y": 334.7501235816883
+      }
+    },
+    {
+      "data": {
+        "id": "Class3",
+        "label": "Constraint",
+        "type": "class",
+        "attrs": {
+          "comment": "Limitation that restricts design or operation.",
+          "definition": "A binding limit (physical, legal, budgetary, schedule) on system states or choices.",
+          "example": "“Max takeoff weight ≤ 25 kg due to Part 107.”",
+          "creator": "jdehart",
+          "created_date": "2025-10-07",
+          "created_timestamp": "2025-10-07T10:18:00.611Z",
+          "last_modified_by": "jdehart",
+          "last_modified_date": "2025-10-07",
+          "last_modified_timestamp": "2025-10-07T10:44:40.289Z"
+        }
+      },
+      "position": {
+        "x": 667.8869542720624,
+        "y": 183.80154451917582
+      }
+    },
+    {
+      "data": {
+        "id": "Class4",
+        "label": "Interface",
+        "type": "class",
+        "attrs": {
+          "comment": "Defined boundary where Components interact.",
+          "definition": "A specification of interactions (signals, fluids, forces, data) between Components.",
+          "example": "“Ethernet UDP telemetry @ 10 Hz between Autopilot and Mission PC.”",
+          "creator": "jdehart",
+          "created_date": "2025-10-07",
+          "created_timestamp": "2025-10-07T10:18:04.485Z",
+          "last_modified_by": "jdehart",
+          "last_modified_date": "2025-10-07",
+          "last_modified_timestamp": "2025-10-07T10:44:40.289Z"
+        }
+      },
+      "position": {
+        "x": 671.4330400085419,
+        "y": 337.3677301877955
+      }
+    },
+    {
+      "data": {
+        "id": "Class5",
+        "label": "Function",
+        "type": "class",
+        "attrs": {
+          "comment": "Intended capability realized by Processes.",
+          "definition": "An abstract capability independent of specific implementation.",
+          "example": "“Stabilize attitude,” “Detect targets,” “Provide ISR.”",
+          "creator": "jdehart",
+          "created_date": "2025-10-07",
+          "created_timestamp": "2025-10-07T10:18:08.541Z",
+          "last_modified_by": "jdehart",
+          "last_modified_date": "2025-10-07",
+          "last_modified_timestamp": "2025-10-07T10:44:40.290Z"
+        }
+      },
+      "position": {
+        "x": 232.04282480273102,
+        "y": 508.75301747445906
+      }
+    },
+    {
+      "data": {
+        "id": "Class6",
+        "label": "Process",
+        "type": "class",
+        "attrs": {
+          "comment": "Activity performed by Components to produce effects.",
+          "definition": "An execution step transforming inputs into outputs under defined conditions.",
+          "example": "“Assemble wing,” “Process video frames,” “Encrypt telemetry.”",
+          "creator": "jdehart",
+          "created_date": "2025-10-07",
+          "created_timestamp": "2025-10-07T10:18:11.038Z",
+          "last_modified_by": "jdehart",
+          "last_modified_date": "2025-10-07",
+          "last_modified_timestamp": "2025-10-07T10:44:40.290Z"
+        }
+      },
+      "position": {
+        "x": 540.7672447801964,
+        "y": 507.3385826891359
+      }
+    },
+    {
+      "data": {
+        "id": "Note1759832403575",
+        "label": "Core SE Ontology (for Bootstrapping)",
+        "type": "note",
+        "attrs": {
+          "noteType": "Note",
+          "author": "jdehart",
+          "creator": "jdehart",
+          "created_date": "2025-10-07",
+          "created_timestamp": "2025-10-07T10:20:03.575Z",
+          "last_modified_by": "jdehart",
+          "last_modified_date": "2025-10-07",
+          "last_modified_timestamp": "2025-10-07T10:44:40.290Z"
+        }
+      },
+      "position": {
+        "x": 127.41886814066027,
+        "y": 89.90509806609384
+      }
+    },
+    {
+      "data": {
+        "id": "DP1759833146146",
+        "label": "CAD Model",
+        "type": "dataProperty",
+        "attrs": {
+          "comment": "Resolvable URI for the component’s authoritative CAD artifact (part/assembly), preferably versioned.",
+          "definition": "The canonical, versioned locator (URI) of a component’s CAD model file or PLM record stored in a managed repository.",
+          "example": "https://plm.example.org/cad/COMP-042/v3/COMP-042.step",
+          "range": "xsd:string",
+          "creator": "jdehart",
+          "created_date": "2025-10-07",
+          "created_timestamp": "2025-10-07T10:32:26.147Z",
+          "last_modified_by": "jdehart",
+          "last_modified_date": "2025-10-07",
+          "last_modified_timestamp": "2025-10-07T10:44:40.291Z",
+          "functional": false
+        }
+      },
+      "position": {
+        "x": 88.63296070058381,
+        "y": 336.45639763493597
+      }
+    },
+    {
+      "data": {
+        "id": "Note1759833414288",
+        "label": "Note 4288",
+        "type": "note",
+        "attrs": {
+          "noteType": "Issue",
+          "content": "@jdehart: Please review requirement annotations for content and clarity.",
+          "creator": "jdehart",
+          "created_date": "2025-10-07",
+          "created_timestamp": "2025-10-07T10:36:54.288Z",
+          "last_modified_by": "jdehart",
+          "last_modified_date": "2025-10-07",
+          "last_modified_timestamp": "2025-10-07T10:44:40.291Z",
+          "author": "jdehart"
+        }
+      },
+      "position": {
+        "x": 614.6870062813603,
+        "y": 74.29596379202812
+      }
+    }
+  ],
+  "edges": [
+    {
+      "data": {
+        "id": "e1759832359031",
+        "source": "Class1",
+        "target": "Class3",
+        "predicate": "has_constraint",
+        "type": "objectProperty",
+        "attrs": {
+          "comment": "Links a Requirement to limits that restrict its satisfaction.",
+          "definition": "Associates a requirement with constraints it must obey.",
+          "example": "RQ-17 has_constraint MTOW≤25 kg.",
+          "creator": "jdehart",
+          "created_date": "2025-10-07",
+          "created_timestamp": "2025-10-07T10:19:19.031Z",
+          "last_modified_by": "jdehart",
+          "last_modified_date": "2025-10-07",
+          "last_modified_timestamp": "2025-10-07T10:31:02.304Z",
+          "functional": false,
+          "inverse_functional": false
+        }
+      }
+    },
+    {
+      "data": {
+        "id": "e1759832362171",
+        "source": "Class1",
+        "target": "Class2",
+        "predicate": "deploys",
+        "type": "objectProperty",
+        "attrs": {
+          "comment": "States that satisfying the Requirement involves fielding a Component.",
+          "definition": "Indicates the component(s) required to fulfill the requirement.",
+          "example": "RQ-21 deploys EO/IR-A sensor.",
+          "creator": "jdehart",
+          "created_date": "2025-10-07",
+          "created_timestamp": "2025-10-07T10:19:22.171Z",
+          "last_modified_by": "jdehart",
+          "last_modified_date": "2025-10-07",
+          "last_modified_timestamp": "2025-10-07T10:31:28.487Z",
+          "functional": false,
+          "inverse_functional": false
+        }
+      }
+    },
+    {
+      "data": {
+        "id": "e1759832364305",
+        "source": "Class2",
+        "target": "Class4",
+        "predicate": "has_interface",
+        "type": "objectProperty",
+        "attrs": {
+          "comment": "Declares an exposed or required interface of a Component.",
+          "definition": "Connects a component to an interface it implements or depends on.",
+          "example": "Autopilot-X has_interface “UDP Telemetry v2”.",
+          "creator": "jdehart",
+          "created_date": "2025-10-07",
+          "created_timestamp": "2025-10-07T10:19:24.305Z",
+          "last_modified_by": "jdehart",
+          "last_modified_date": "2025-10-07",
+          "last_modified_timestamp": "2025-10-07T10:32:12.389Z",
+          "functional": false,
+          "inverse_functional": false
+        }
+      }
+    },
+    {
+      "data": {
+        "id": "e1759832366291",
+        "source": "Class2",
+        "target": "Class6",
+        "predicate": "performs",
+        "type": "objectProperty",
+        "attrs": {
+          "comment": "States an activity a Component executes.",
+          "definition": "Relates a component to a process it can or does execute.",
+          "example": "GPU-Module performs “Frame Inference”.",
+          "creator": "jdehart",
+          "created_date": "2025-10-07",
+          "created_timestamp": "2025-10-07T10:19:26.291Z",
+          "last_modified_by": "jdehart",
+          "last_modified_date": "2025-10-07",
+          "last_modified_timestamp": "2025-10-07T10:33:38.477Z",
+          "functional": false,
+          "inverse_functional": false
+        }
+      }
+    },
+    {
+      "data": {
+        "id": "e1759832367921",
+        "source": "Class6",
+        "target": "Class5",
+        "predicate": "realizes",
+        "type": "objectProperty",
+        "attrs": {
+          "comment": "Binds an activity to the capability it delivers.",
+          "definition": "Indicates that execution of the process achieves the function.",
+          "example": "“Frame Inference” realizes “Detect targets”.",
+          "creator": "jdehart",
+          "created_date": "2025-10-07",
+          "created_timestamp": "2025-10-07T10:19:27.921Z",
+          "last_modified_by": "jdehart",
+          "last_modified_date": "2025-10-07",
+          "last_modified_timestamp": "2025-10-07T10:34:09.992Z",
+          "functional": false,
+          "inverse_functional": false
+        }
+      }
+    },
+    {
+      "data": {
+        "id": "e1759832370213",
+        "source": "Class5",
+        "target": "Class2",
+        "predicate": "specifically_depends_upon",
+        "type": "objectProperty",
+        "attrs": {
+          "comment": "Records concrete platform elements required for the function.",
+          "definition": "A function’s specific reliance on one or more components.",
+          "example": "“Stabilize attitude” specifically_depends_upon IMU-B.",
+          "creator": "jdehart",
+          "created_date": "2025-10-07",
+          "created_timestamp": "2025-10-07T10:19:30.213Z",
+          "last_modified_by": "jdehart",
+          "last_modified_date": "2025-10-07",
+          "last_modified_timestamp": "2025-10-07T10:34:39.156Z",
+          "functional": false,
+          "inverse_functional": false
+        }
+      }
+    },
+    {
+      "data": {
+        "id": "edp1759833146149",
+        "source": "Class2",
+        "target": "DP1759833146146",
+        "predicate": "has_cad_model",
+        "type": "objectProperty",
+        "attrs": {
+          "comment": "Provides a resolvable link to the component’s authoritative CAD artifact.",
+          "definition": "The canonical URI of the CAD file for the component instance or type.",
+          "example": "Wing-A has_cad_model <https://repo/cad/wingA.step>.",
+          "creator": "jdehart",
+          "created_date": "2025-10-07",
+          "created_timestamp": "2025-10-07T10:32:26.149Z",
+          "last_modified_by": "jdehart",
+          "last_modified_date": "2025-10-07",
+          "last_modified_timestamp": "2025-10-07T10:33:09.543Z",
+          "functional": false,
+          "inverse_functional": false
+        }
+      }
+    },
+    {
+      "data": {
+        "id": "enote1759833416665",
+        "source": "Note1759833414288",
+        "target": "Class1",
+        "predicate": "note_for",
+        "type": "note",
+        "attrs": {
+          "creator": "jdehart",
+          "created_date": "2025-10-07",
+          "created_timestamp": "2025-10-07T10:36:56.664Z",
+          "last_modified_by": "jdehart",
+          "last_modified_date": "2025-10-07",
+          "last_modified_timestamp": "2025-10-07T10:36:56.664Z"
+        }
+      }
+    }
+  ]
+}
