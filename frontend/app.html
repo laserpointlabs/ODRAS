@@ -2586,6 +2586,7 @@
                       <option value="knowledge">Knowledge</option>
                       <option value="reference">Reference</option>
                       <option value="specification">Specification</option>
+                      <option value="analysis_template">Analysis Template</option>
                     </select>
                     <button class="btn" id="setStagedDocType" style="padding:4px 8px; font-size:12px;">Apply to All
                       Staged</button>
@@ -13610,7 +13611,7 @@
         typeSelect.style.fontSize = '12px';
         typeSelect.style.minWidth = '100px';
 
-        const docTypes = ['unknown', 'requirements', 'knowledge', 'reference', 'specification', 'document', 'code', 'data'];
+        const docTypes = ['unknown', 'requirements', 'knowledge', 'reference', 'specification', 'analysis_template', 'document', 'code', 'data'];
         docTypes.forEach(type => {
           const option = document.createElement('option');
           option.value = type;
