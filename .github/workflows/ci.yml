@@ -154,7 +154,7 @@ jobs:
           python tests/test_das_integration_comprehensive.py
 
           echo "🧪 Step 4: RAG System Stability Test..."
-          python scripts/ci_rag_test.py
+          python tests/test_rag_system_stability.py
 
           echo "✅ COMPLETE ODRAS system validation finished"
         env:
