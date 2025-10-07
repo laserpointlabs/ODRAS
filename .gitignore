@@ -47,6 +47,9 @@ neo4j_logs/
 qdrant_data/
 fuseki_data/
 
+# ML Models (too large for git)
+models/
+
 # Keep important config files
 !.timecfg
 !.env.example
