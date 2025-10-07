@@ -540,14 +540,18 @@ class ChunkingService:
         """
         Simple semantic chunking that preserves document structure and provides good retrieval granularity
 
-        Improved approach: Split on natural boundaries while preserving complete sections
-        and ensuring good overlap for continuity.
+        IMPROVED for structured documents: Detects and preserves complete specification sections
+        like UAS specifications, ensuring each chunk contains complete information.
         """
         chunk_config = {**self.default_config, **(config or {})}
 
         chunks = []
         target_size = chunk_config["chunk_size"]
         overlap_size = chunk_config["chunk_overlap"]
+
+        # Special handling for structured specification documents
+        if self._is_structured_specification(text):
+            return self._chunk_structured_specification(text, chunk_config)
 
         # Split by major sections (double newlines) but preserve complete sections
         sections = [s.strip() for s in text.split('\n\n') if s.strip()]
@@ -562,18 +566,7 @@ class ChunkingService:
             # If adding this section would exceed target size and we have content
             if potential_tokens > target_size and current_chunk:
                 # Create chunk with current content
-                chunk = DocumentChunk(
-                    chunk_id=f"simple_semantic_{chunk_idx}",
-                    text=current_chunk,
-                    start_char=0,
-                    end_char=len(current_chunk),
-                    metadata=ChunkMetadata(
-                        section_type="semantic_section",
-                        technical_section=False,
-                        section_index=chunk_idx,
-                        chunk_strategy="simple_semantic"
-                    )
-                )
+                chunk = self._create_document_chunk(current_chunk, chunk_idx, "simple_semantic")
                 chunks.append(chunk)
 
                 # Start new chunk with overlap from previous chunk
@@ -622,6 +615,130 @@ class ChunkingService:
 
         return overlap_text.strip()
 
+    def _is_structured_specification(self, text: str) -> bool:
+        """
+        Detect if text is a structured specification document (like UAS specs).
+        
+        Looks for patterns like:
+        - Multiple ### headings with specifications
+        - Bullet point lists with technical parameters
+        - Consistent structure patterns
+        """
+        # Look for specification patterns
+        header_pattern = r'###\s+\w+.*(?:\(.*UAS\)|Specification|Model|System)'
+        bullet_pattern = r'^\s*-\s+\*\*[^*]+\*\*:'
+        
+        headers = len(re.findall(header_pattern, text, re.MULTILINE | re.IGNORECASE))
+        bullets = len(re.findall(bullet_pattern, text, re.MULTILINE))
+        
+        # If we have multiple specification headers and many bullet points, it's structured
+        return headers >= 3 and bullets >= 20
+
+    def _chunk_structured_specification(self, text: str, config: Dict[str, Any]) -> List[DocumentChunk]:
+        """
+        Chunk structured specification documents by preserving complete specification sections.
+        
+        Each chunk will contain:
+        - The section header (### UAS Name)
+        - Complete specification list
+        - Proper overlap with context from adjacent sections
+        """
+        chunks = []
+        chunk_idx = 0
+        
+        # Split into major sections by ### headers
+        section_pattern = r'(###\s+[^\n]+(?:\([^)]*UAS\))?[^\n]*)'
+        sections = re.split(section_pattern, text)
+        
+        # Reconstruct sections with their content
+        structured_sections = []
+        current_section = ""
+        
+        for i, part in enumerate(sections):
+            if re.match(section_pattern, part):
+                # This is a header
+                if current_section.strip():
+                    structured_sections.append(current_section.strip())
+                current_section = part
+            else:
+                # This is content
+                current_section += part
+        
+        # Don't forget the last section
+        if current_section.strip():
+            structured_sections.append(current_section.strip())
+        
+        # Group sections that are too small
+        target_size = config["chunk_size"]
+        overlap_size = config["chunk_overlap"]
+        
+        current_chunk = ""
+        
+        for section in structured_sections:
+            # Always include the parent category if section starts with ###
+            if section.startswith('###') and current_chunk:
+                # Find the parent category (## header)
+                parent_match = re.search(r'##\s+[^\n]+', current_chunk)
+                parent_context = parent_match.group(0) if parent_match else ""
+            else:
+                parent_context = ""
+            
+            potential_chunk = current_chunk + ("\n\n" if current_chunk else "") + section
+            potential_tokens = self.estimate_token_count(potential_chunk)
+            
+            # For structured specs, be more flexible with size to preserve complete sections
+            max_size = min(config["max_chunk_size"], target_size * 2)
+            
+            if potential_tokens > max_size and current_chunk:
+                # Create chunk with current content
+                chunk_content = current_chunk
+                if parent_context and not chunk_content.startswith('##'):
+                    chunk_content = parent_context + "\n\n" + chunk_content
+                
+                chunk = self._create_document_chunk(chunk_content, chunk_idx, "structured_specification")
+                chunks.append(chunk)
+                
+                # Start new chunk with minimal overlap (just the section header)
+                current_chunk = section
+                chunk_idx += 1
+            else:
+                current_chunk = potential_chunk
+        
+        # Add final chunk
+        if current_chunk:
+            chunk = self._create_document_chunk(current_chunk, chunk_idx, "structured_specification")
+            chunks.append(chunk)
+        
+        return chunks
+
+    def _create_document_chunk(self, content: str, chunk_idx: int, strategy: str) -> DocumentChunk:
+        """Helper method to create a DocumentChunk with proper metadata."""
+        token_count = self.estimate_token_count(content)
+        sentence_count = len(self.extract_sentences(content))
+        
+        # Detect chunk type based on content
+        chunk_type = "text"
+        if content.startswith('#'):
+            chunk_type = "specification"
+        elif re.search(r'^\s*-\s+\*\*', content, re.MULTILINE):
+            chunk_type = "specification_list"
+        
+        metadata = ChunkMetadata(
+            chunk_id=f"{strategy}_{chunk_idx}",
+            sequence_number=chunk_idx,
+            chunk_type=chunk_type,
+            start_char=0,
+            end_char=len(content),
+            token_count=token_count,
+            sentence_count=sentence_count,
+            confidence_score=0.8 if chunk_type == "specification" else 0.6,
+            section_path=None,
+            page_number=None,
+            cross_references=None,
+            extracted_entities=None
+        )
+        
+        return DocumentChunk(content=content, metadata=metadata)
 
     def chunk_document(
         self,
