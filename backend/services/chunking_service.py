@@ -101,15 +101,15 @@ class ChunkingService:
 
         # Simple, effective chunking for large context LLMs
         self.default_config = {
-            "chunk_size": 1024,  # Larger chunks for more context
-            "chunk_overlap": 200,  # Substantial overlap (20%) for continuity
-            "min_chunk_size": 200,  # Minimum viable chunk size
-            "max_chunk_size": 2048,  # Larger maximum for comprehensive content
+            "chunk_size": 512,  # Smaller chunks for better retrieval granularity
+            "chunk_overlap": 100,  # Moderate overlap (20%) for continuity
+            "min_chunk_size": 100,  # Minimum viable chunk size
+            "max_chunk_size": 1024,  # Reasonable maximum for comprehensive content
             "strategy": "simple_semantic",  # Simple semantic strategy
             "preserve_structure": True,  # Preserve document structure
             "split_on_sentence": True,  # Prefer sentence boundaries
             "extract_entities": False,  # Let LLM handle entity extraction
-            "confidence_threshold": 0.5,  # Standard threshold
+            "confidence_threshold": 0.3,  # Lower threshold for better coverage
         }
 
         logger.info("Chunking service initialized")
@@ -538,19 +538,18 @@ class ChunkingService:
 
     def chunk_simple_semantic(self, text: str, config: Optional[Dict[str, Any]] = None) -> List[DocumentChunk]:
         """
-        Simple semantic chunking that provides large context to LLM
+        Simple semantic chunking that preserves document structure and provides good retrieval granularity
 
-        Modern best practice: Give LLM large chunks with substantial overlap
-        and let the LLM intelligently extract relevant information.
+        Improved approach: Split on natural boundaries while preserving complete sections
+        and ensuring good overlap for continuity.
         """
         chunk_config = {**self.default_config, **(config or {})}
 
-        # Simple approach: Split on natural boundaries with large overlap
         chunks = []
         target_size = chunk_config["chunk_size"]
         overlap_size = chunk_config["chunk_overlap"]
 
-        # Split by major sections (double newlines) but keep large chunks
+        # Split by major sections (double newlines) but preserve complete sections
         sections = [s.strip() for s in text.split('\n\n') if s.strip()]
 
         current_chunk = ""
@@ -560,6 +559,7 @@ class ChunkingService:
             potential_chunk = current_chunk + ("\n\n" if current_chunk else "") + section
             potential_tokens = self.estimate_token_count(potential_chunk)
 
+            # If adding this section would exceed target size and we have content
             if potential_tokens > target_size and current_chunk:
                 # Create chunk with current content
                 chunk = DocumentChunk(
@@ -576,7 +576,7 @@ class ChunkingService:
                 )
                 chunks.append(chunk)
 
-                # Start new chunk with overlap
+                # Start new chunk with overlap from previous chunk
                 overlap_text = self._get_simple_overlap(current_chunk, overlap_size)
                 current_chunk = overlap_text + ("\n\n" if overlap_text else "") + section
                 chunk_idx += 1

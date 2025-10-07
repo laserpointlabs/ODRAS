@@ -2,7 +2,8 @@
 
 ## Fixed-Wing UAS
 
-### SkyEagle X500
+### SkyEagle X500 (Fixed-Wing UAS)
+- **UAS Type**: Fixed-Wing UAS
 - **Weight**: 15 kg
 - **Wingspan**: 3.5 meters
 - **Max Speed**: 120 km/h
@@ -18,7 +19,8 @@
 - **Data Links**: Encrypted LOS up to 150km, optional SATCOM
 - **Special Features**: Automated mission planning, terrain following
 
-### WingOne Pro
+### WingOne Pro (Fixed-Wing UAS)
+- **UAS Type**: Fixed-Wing UAS
 - **Weight**: 7 kg
 - **Wingspan**: 2.8 meters
 - **Max Speed**: 95 km/h
@@ -34,7 +36,8 @@
 - **Data Links**: Encrypted LOS up to 75km
 - **Special Features**: Rapid deployment case, under 5-minute setup
 
-### AeroMapper X8
+### AeroMapper X8 (Fixed-Wing UAS)
+- **UAS Type**: Fixed-Wing UAS
 - **Weight**: 20 kg
 - **Wingspan**: 4.2 meters
 - **Max Speed**: 140 km/h
@@ -52,7 +55,8 @@
 
 ## Multirotor UAS
 
-### QuadCopter T4
+### QuadCopter T4 (Multirotor UAS)
+- **UAS Type**: Multirotor UAS
 - **Weight**: 2.5 kg
 - **Size**: 60 cm diagonal motor-to-motor
 - **Max Speed**: 65 km/h
@@ -68,7 +72,8 @@
 - **Data Links**: Encrypted LOS up to 8km
 - **Special Features**: Automated return to home, collision avoidance
 
-### HexaCopter H6 Heavy
+### HexaCopter H6 Heavy (Multirotor UAS)
+- **UAS Type**: Multirotor UAS
 - **Weight**: 10 kg
 - **Size**: 120 cm diagonal motor-to-motor
 - **Max Speed**: 75 km/h
@@ -84,7 +89,8 @@
 - **Data Links**: Encrypted LOS up to 15km
 - **Special Features**: Redundant flight controllers, autonomous mission capability
 
-### OctoCopter Sentinel
+### OctoCopter Sentinel (Multirotor UAS)
+- **UAS Type**: Multirotor UAS
 - **Weight**: 18 kg
 - **Size**: 180 cm diagonal motor-to-motor
 - **Max Speed**: 80 km/h
@@ -102,7 +108,8 @@
 
 ## Hybrid VTOL UAS
 
-### Falcon VTOL-X
+### Falcon VTOL-X (Hybrid VTOL UAS)
+- **UAS Type**: Hybrid VTOL UAS
 - **Weight**: 12 kg
 - **Wingspan**: 3.0 meters
 - **Max Speed**: 110 km/h
@@ -118,7 +125,8 @@
 - **Data Links**: Encrypted LOS up to 100km
 - **Special Features**: Transitions from VTOL to fixed-wing flight
 
-### HoverCruise 700
+### HoverCruise 700 (Hybrid VTOL UAS)
+- **UAS Type**: Hybrid VTOL UAS
 - **Weight**: 15 kg
 - **Wingspan**: 3.8 meters
 - **Max Speed**: 130 km/h
@@ -134,7 +142,8 @@
 - **Data Links**: Encrypted LOS up to 120km
 - **Special Features**: Quick transition between hover and cruise flight
 
-### TriVector VTOL
+### TriVector VTOL (Hybrid VTOL UAS)
+- **UAS Type**: Hybrid VTOL UAS
 - **Weight**: 25 kg
 - **Wingspan**: 4.5 meters
 - **Max Speed**: 150 km/h
@@ -149,4 +158,3 @@
 - **Sensors**: Multiple simultaneous sensors
 - **Data Links**: Triple redundant encrypted LOS, SATCOM option
 - **Special Features**: Tri-rotor VTOL design, all-weather operation
-

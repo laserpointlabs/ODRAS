@@ -2598,30 +2598,44 @@
                 <div id="knowledgeProcessingOptions"
                   style="display:none; margin:6px 0; padding:8px; background:rgba(34, 197, 94, 0.1); border:1px solid #22c55e; border-radius:6px;">
                   <div style="margin-bottom:8px;">
-                    <div class="muted" style="font-size:11px; color:var(--muted);">
+                    <div class="muted"
+                      style="font-size:11px; color:var(--muted); display:flex; align-items:center; gap:4px;">
                       Files are processed for knowledge with intelligent defaults
+                      <button id="knowledgeProcessingInfoBtn" class="btn"
+                        style="padding:2px 4px; font-size:10px; background:transparent; border:1px solid var(--border); color:var(--muted);"
+                        title="Learn about chunking strategies and embedding models">ℹ️</button>
                     </div>
                   </div>
                   <div id="knowledgeProcessingConfig" style="display:grid; grid-template-columns:1fr 1fr; gap:8px;">
                     <div>
                       <label class="muted" style="font-size:10px; display:block; margin-bottom:2px;">Embedding
                         Model:</label>
-                      <select id="embeddingModel"
-                        style="background:#0b1220; color:#e5e7eb; border:1px solid var(--border); border-radius:4px; padding:2px 4px; font-size:10px; width:100%;">
-                        <option value="all-MiniLM-L6-v2">all-MiniLM-L6-v2 (Fast)</option>
-                        <option value="all-mpnet-base-v2">all-mpnet-base-v2 (Better)</option>
-                      </select>
+                      <div style="display:flex; gap:4px; align-items:center;">
+                        <select id="embeddingModel"
+                          style="background:#0b1220; color:#e5e7eb; border:1px solid var(--border); border-radius:4px; padding:2px 4px; font-size:10px; flex:1;">
+                          <option value="all-MiniLM-L6-v2">all-MiniLM-L6-v2 (Fast)</option>
+                          <option value="all-mpnet-base-v2">all-mpnet-base-v2 (Better)</option>
+                        </select>
+                        <button id="embeddingModelInfoBtn" class="btn"
+                          style="padding:2px 4px; font-size:10px; background:transparent; border:1px solid var(--border); color:var(--muted);"
+                          title="Learn about embedding models">ℹ️</button>
+                      </div>
                     </div>
                     <div>
                       <label class="muted" style="font-size:10px; display:block; margin-bottom:2px;">Chunking
                         Strategy:</label>
-                      <select id="chunkingStrategy"
-                        style="background:#0b1220; color:#e5e7eb; border:1px solid var(--border); border-radius:4px; padding:2px 4px; font-size:10px; width:100%;">
-                        <option value="">Smart Default</option>
-                        <option value="hybrid">Hybrid</option>
-                        <option value="semantic">Semantic</option>
-                        <option value="fixed">Fixed Size</option>
-                      </select>
+                      <div style="display:flex; gap:4px; align-items:center;">
+                        <select id="chunkingStrategy"
+                          style="background:#0b1220; color:#e5e7eb; border:1px solid var(--border); border-radius:4px; padding:2px 4px; font-size:10px; flex:1;">
+                          <option value="">Smart Default</option>
+                          <option value="hybrid">Hybrid</option>
+                          <option value="semantic">Semantic</option>
+                          <option value="fixed">Fixed Size</option>
+                        </select>
+                        <button id="chunkingStrategyInfoBtn" class="btn"
+                          style="padding:2px 4px; font-size:10px; background:transparent; border:1px solid var(--border); color:var(--muted);"
+                          title="Learn about chunking strategies">ℹ️</button>
+                      </div>
                     </div>
                   </div>
                 </div>
@@ -21817,7 +21831,193 @@ def hello_world():
     window.onThreadWorkbenchActivated = onThreadWorkbenchActivated;
     window.loadCurrentProjectThread = loadCurrentProjectThread;
 
+    // Knowledge Processing Info Modal Functions
+    function openKnowledgeProcessingInfoModal() {
+      const modal = document.getElementById('knowledgeProcessingInfoModal');
+      if (modal) {
+        modal.style.display = 'flex';
+      }
+    }
+
+    function closeKnowledgeProcessingInfoModal() {
+      const modal = document.getElementById('knowledgeProcessingInfoModal');
+      if (modal) {
+        modal.style.display = 'none';
+      }
+    }
+
+    // Add event listeners for the info buttons
+    document.addEventListener('DOMContentLoaded', function () {
+      const infoBtn = document.getElementById('knowledgeProcessingInfoBtn');
+      if (infoBtn) {
+        infoBtn.addEventListener('click', openKnowledgeProcessingInfoModal);
+      }
+
+      const embeddingInfoBtn = document.getElementById('embeddingModelInfoBtn');
+      if (embeddingInfoBtn) {
+        embeddingInfoBtn.addEventListener('click', openKnowledgeProcessingInfoModal);
+      }
+
+      const chunkingInfoBtn = document.getElementById('chunkingStrategyInfoBtn');
+      if (chunkingInfoBtn) {
+        chunkingInfoBtn.addEventListener('click', openKnowledgeProcessingInfoModal);
+      }
+    });
+
+    // Expose functions globally
+    window.openKnowledgeProcessingInfoModal = openKnowledgeProcessingInfoModal;
+    window.closeKnowledgeProcessingInfoModal = closeKnowledgeProcessingInfoModal;
+
   </script>
+
+  <!-- Knowledge Processing Info Modal -->
+  <div id="knowledgeProcessingInfoModal" class="modal" style="display:none;">
+    <div class="modal-content" style="max-width:800px; max-height:90vh; overflow-y:auto;">
+      <div class="modal-header">
+        <h3>Knowledge Processing Guide</h3>
+        <button class="modal-close" onclick="closeKnowledgeProcessingInfoModal()">&times;</button>
+      </div>
+      <div class="modal-body">
+        <div style="display:grid; gap:20px;">
+
+          <!-- Chunking Strategies Section -->
+          <div>
+            <h4 style="color:var(--accent); margin-bottom:12px;">📄 Chunking Strategies</h4>
+            <div style="display:grid; gap:12px;">
+
+              <div style="padding:12px; background:var(--panel-2); border:1px solid var(--border); border-radius:6px;">
+                <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:8px;">
+                  <strong style="color:var(--text);">Smart Default</strong>
+                  <span
+                    style="background:var(--success); color:white; padding:2px 6px; border-radius:4px; font-size:10px;">RECOMMENDED</span>
+                </div>
+                <p style="margin:0; font-size:12px; color:var(--muted);">Automatically selects the best strategy based
+                  on file type and content.</p>
+                <div style="margin-top:8px; font-size:11px;">
+                  <strong>Auto-selection:</strong>
+                  <ul style="margin:4px 0; padding-left:16px;">
+                    <li>Requirements/Specifications → Semantic</li>
+                    <li>Markdown/Text files → Hybrid</li>
+                    <li>Code files → Fixed Size</li>
+                    <li>Data files → Fixed Size</li>
+                  </ul>
+                </div>
+              </div>
+
+              <div style="padding:12px; background:var(--panel-2); border:1px solid var(--border); border-radius:6px;">
+                <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:8px;">
+                  <strong style="color:var(--text);">Semantic</strong>
+                  <span
+                    style="background:var(--warning); color:white; padding:2px 6px; border-radius:4px; font-size:10px;">HIGH
+                    QUALITY</span>
+                </div>
+                <p style="margin:0; font-size:12px; color:var(--muted);">Splits text at semantic boundaries (paragraphs,
+                  sections) preserving meaning.</p>
+                <div style="margin-top:8px; font-size:11px;">
+                  <strong>Best for:</strong> Requirements, specifications, technical documents<br>
+                  <strong>Pros:</strong> Preserves context, better retrieval accuracy<br>
+                  <strong>Cons:</strong> Variable chunk sizes, may be slower
+                </div>
+              </div>
+
+              <div style="padding:12px; background:var(--panel-2); border:1px solid var(--border); border-radius:6px;">
+                <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:8px;">
+                  <strong style="color:var(--text);">Hybrid</strong>
+                  <span
+                    style="background:var(--info); color:white; padding:2px 6px; border-radius:4px; font-size:10px;">BALANCED</span>
+                </div>
+                <p style="margin:0; font-size:12px; color:var(--muted);">Tries semantic first, falls back to fixed-size
+                  if needed.</p>
+                <div style="margin-top:8px; font-size:11px;">
+                  <strong>Best for:</strong> General documents, mixed content<br>
+                  <strong>Pros:</strong> Adaptive, reliable, good balance<br>
+                  <strong>Cons:</strong> More complex, variable performance
+                </div>
+              </div>
+
+              <div style="padding:12px; background:var(--panel-2); border:1px solid var(--border); border-radius:6px;">
+                <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:8px;">
+                  <strong style="color:var(--text);">Fixed Size</strong>
+                  <span
+                    style="background:var(--muted); color:white; padding:2px 6px; border-radius:4px; font-size:10px;">FAST</span>
+                </div>
+                <p style="margin:0; font-size:12px; color:var(--muted);">Splits text into fixed-size chunks with overlap
+                  for continuity.</p>
+                <div style="margin-top:8px; font-size:11px;">
+                  <strong>Best for:</strong> Code files, structured data, consistent content<br>
+                  <strong>Pros:</strong> Fast, predictable, consistent chunk sizes<br>
+                  <strong>Cons:</strong> May split concepts, less semantic awareness
+                </div>
+              </div>
+
+            </div>
+          </div>
+
+          <!-- Embedding Models Section -->
+          <div>
+            <h4 style="color:var(--accent); margin-bottom:12px;">🧠 Embedding Models</h4>
+            <div style="display:grid; gap:12px;">
+
+              <div style="padding:12px; background:var(--panel-2); border:1px solid var(--border); border-radius:6px;">
+                <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:8px;">
+                  <strong style="color:var(--text);">all-MiniLM-L6-v2 (Fast)</strong>
+                  <span
+                    style="background:var(--success); color:white; padding:2px 6px; border-radius:4px; font-size:10px;">DEFAULT</span>
+                </div>
+                <p style="margin:0; font-size:12px; color:var(--muted);">Lightweight, fast model good for general text
+                  processing.</p>
+                <div style="margin-top:8px; font-size:11px;">
+                  <strong>Dimensions:</strong> 384 | <strong>Speed:</strong> Very Fast | <strong>Cost:</strong> Free
+                  (Local)<br>
+                  <strong>Best for:</strong> General documents, quick processing, large volumes<br>
+                  <strong>Trade-off:</strong> Lower quality for technical/specialized content
+                </div>
+              </div>
+
+              <div style="padding:12px; background:var(--panel-2); border:1px solid var(--border); border-radius:6px;">
+                <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:8px;">
+                  <strong style="color:var(--text);">all-mpnet-base-v2 (Better)</strong>
+                  <span
+                    style="background:var(--warning); color:white; padding:2px 6px; border-radius:4px; font-size:10px;">RECOMMENDED</span>
+                </div>
+                <p style="margin:0; font-size:12px; color:var(--muted);">Higher quality model with better semantic
+                  understanding.</p>
+                <div style="margin-top:8px; font-size:11px;">
+                  <strong>Dimensions:</strong> 768 | <strong>Speed:</strong> Moderate | <strong>Cost:</strong> Free
+                  (Local)<br>
+                  <strong>Best for:</strong> Technical documents, requirements, specifications<br>
+                  <strong>Trade-off:</strong> Slower processing, higher memory usage
+                </div>
+              </div>
+
+            </div>
+          </div>
+
+          <!-- Recommendations Section -->
+          <div>
+            <h4 style="color:var(--accent); margin-bottom:12px;">💡 Recommendations</h4>
+            <div style="padding:12px; background:var(--panel-2); border:1px solid var(--border); border-radius:6px;">
+              <div style="font-size:12px;">
+                <strong>For Technical Documents (Requirements, Specifications):</strong><br>
+                • Chunking: Smart Default or Semantic<br>
+                • Embedding: all-mpnet-base-v2 (Better)<br><br>
+
+                <strong>For General Documents:</strong><br>
+                • Chunking: Smart Default or Hybrid<br>
+                • Embedding: all-MiniLM-L6-v2 (Fast)<br><br>
+
+                <strong>For Code/Structured Data:</strong><br>
+                • Chunking: Fixed Size<br>
+                • Embedding: all-MiniLM-L6-v2 (Fast)
+              </div>
+            </div>
+          </div>
+
+        </div>
+      </div>
+    </div>
+  </div>
+
 </body>
 
 </html>

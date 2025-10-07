@@ -1037,12 +1037,12 @@ class DAS2CoreEngine:
                     # Modern best practice with large context window models
                     if "DETAILED:" in enhanced_query or "COMPREHENSIVE:" in enhanced_query:
                         # For specific or comprehensive queries, provide maximum context
-                        max_chunks = 20
-                        threshold = 0.1  # Very low threshold for maximum coverage
-                    else:
-                        # Default: Still provide substantial context
                         max_chunks = 15
-                        threshold = 0.2
+                        threshold = 0.2  # Better balance for comprehensive coverage
+                    else:
+                        # Default: Provide good context
+                        max_chunks = 10
+                        threshold = 0.3
 
                     rag_response = await self.rag_service.query_knowledge_base(
                         question=enhanced_query,
