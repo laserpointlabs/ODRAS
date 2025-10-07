@@ -642,7 +642,7 @@ class ExternalTaskWorker:
 
         # Build context from chunks
         context_text = ""
-        for i, chunk in enumerate(context_chunks[:3]):  # Use top 3 chunks
+        for i, chunk in enumerate(context_chunks[:10]):  # Use top 10 chunks for better context
             context_text += f"\n[Context {i+1}]: {chunk.get('content', '')}"
 
         # Construct augmented prompt
@@ -811,7 +811,7 @@ Please provide a comprehensive answer based on the context provided. If the cont
         citations = []
         seen_assets = set()  # Avoid duplicate sources
 
-        for i, chunk in enumerate(context_chunks[:3]):
+        for i, chunk in enumerate(context_chunks[:10]):
             asset_id = chunk.get("asset_id", "unknown")
             if asset_id in seen_assets:
                 continue
@@ -912,7 +912,7 @@ Please provide a comprehensive answer based on the context provided. If the cont
             user_id = query_metadata.get("user_id")
             project_id = query_metadata.get("project_id")
             similarity_threshold = float(query_metadata.get("similarity_threshold", 0.5))
-            max_chunks = int(query_metadata.get("max_results", 3))
+            max_chunks = int(query_metadata.get("max_results", 15))
 
             print(f"WORKFLOW RAG: Using user_id={user_id}, project_id={project_id}, threshold={similarity_threshold}")
 

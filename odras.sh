@@ -413,10 +413,15 @@ clean_databases() {
         # Recreate Qdrant collections
         print_status "Recreating Qdrant collections..."
         if curl -s http://localhost:6333/collections >/dev/null 2>&1; then
-            # Create knowledge_chunks collection (384 dimensions for sentence-transformers)
+            # Create knowledge_chunks collection (384 dimensions for all-MiniLM-L6-v2)
             curl -s -X PUT "http://localhost:6333/collections/knowledge_chunks" \
                  -H "Content-Type: application/json" \
                  -d '{"vectors": {"size": 384, "distance": "Cosine"}}' >/dev/null 2>&1
+
+            # Create knowledge_chunks_768 collection (768 dimensions for all-mpnet-base-v2)
+            curl -s -X PUT "http://localhost:6333/collections/knowledge_chunks_768" \
+                 -H "Content-Type: application/json" \
+                 -d '{"vectors": {"size": 768, "distance": "Cosine"}}' >/dev/null 2>&1
 
             # Create knowledge_large collection (1536 dimensions for OpenAI embeddings)
             curl -s -X PUT "http://localhost:6333/collections/knowledge_large" \
@@ -438,7 +443,7 @@ clean_databases() {
                  -H "Content-Type: application/json" \
                  -d '{"vectors": {"size": 384, "distance": "Cosine"}}' >/dev/null 2>&1
 
-            print_success "✓ Recreated Qdrant collections: knowledge_chunks, knowledge_large, odras_requirements, das_instructions, project_threads"
+            print_success "✓ Recreated Qdrant collections: knowledge_chunks, knowledge_chunks_768, knowledge_large, odras_requirements, das_instructions, project_threads"
         else
             print_warning "⚠ Could not connect to Qdrant to recreate collections"
         fi
@@ -1213,10 +1218,15 @@ init_databases() {
     # Initialize Qdrant collections
     print_status "Initializing Qdrant collections..."
     if curl -s http://localhost:6333/collections >/dev/null 2>&1; then
-        # Create knowledge_chunks collection (384 dimensions for sentence-transformers)
+        # Create knowledge_chunks collection (384 dimensions for all-MiniLM-L6-v2)
         curl -s -X PUT "http://localhost:6333/collections/knowledge_chunks" \
              -H "Content-Type: application/json" \
              -d '{"vectors": {"size": 384, "distance": "Cosine"}}' >/dev/null 2>&1
+
+        # Create knowledge_chunks_768 collection (768 dimensions for all-mpnet-base-v2)
+        curl -s -X PUT "http://localhost:6333/collections/knowledge_chunks_768" \
+             -H "Content-Type: application/json" \
+             -d '{"vectors": {"size": 768, "distance": "Cosine"}}' >/dev/null 2>&1
 
         # Create knowledge_large collection (1536 dimensions for OpenAI embeddings)
         curl -s -X PUT "http://localhost:6333/collections/knowledge_large" \
@@ -1238,7 +1248,7 @@ init_databases() {
              -H "Content-Type: application/json" \
              -d '{"vectors": {"size": 384, "distance": "Cosine"}}' >/dev/null 2>&1
 
-        print_success "✓ Created Qdrant collections: knowledge_chunks, knowledge_large, odras_requirements, das_instructions, project_threads"
+        print_success "✓ Created Qdrant collections: knowledge_chunks, knowledge_chunks_768, knowledge_large, odras_requirements, das_instructions, project_threads"
     else
         print_warning "⚠ Could not connect to Qdrant to create collections"
     fi

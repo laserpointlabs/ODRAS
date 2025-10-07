@@ -130,18 +130,51 @@ class RAGService:
         With SQL read-through enabled, fetches actual text content from SQL.
         """
         try:
-            # Perform vector search in the knowledge_chunks collection
-            print(f"🔍 VECTOR_QUERY_DEBUG: Searching for '{question}' in knowledge_chunks")
+            # Perform vector search in both collections
+            print(f"🔍 VECTOR_QUERY_DEBUG: Searching for '{question}' in both collections")
             print(f"   Max chunks: {max_chunks * 2}, Threshold: {similarity_threshold}")
 
-            search_results = await self.qdrant_service.search_similar_chunks(
+            # Build metadata filter for project
+            metadata_filter = None
+            if project_id:
+                metadata_filter = {
+                    "project_id": project_id
+                }
+                print(f"🔍 VECTOR_QUERY_DEBUG: Using metadata filter: {metadata_filter}")
+
+            # Search both collections
+            search_results_384 = await self.qdrant_service.search_similar_chunks(
                 query_text=question,
                 collection_name="knowledge_chunks",
                 limit=max_chunks * 2,  # Get extra results for filtering
                 score_threshold=similarity_threshold,
+                metadata_filter=metadata_filter,
             )
 
-            print(f"🔍 VECTOR_QUERY_DEBUG: Vector search returned {len(search_results)} results")
+            search_results_768 = await self.qdrant_service.search_similar_chunks(
+                query_text=question,
+                collection_name="knowledge_chunks_768",
+                limit=max_chunks * 2,  # Get extra results for filtering
+                score_threshold=similarity_threshold,
+                metadata_filter=metadata_filter,
+            )
+
+            # Combine and deduplicate results
+            all_results = search_results_384 + search_results_768
+            # Remove duplicates based on chunk_id
+            seen_chunks = set()
+            search_results = []
+            for result in all_results:
+                # chunk_id might be in the payload
+                chunk_id = result.get('chunk_id') or result.get('payload', {}).get('chunk_id')
+                if chunk_id and chunk_id not in seen_chunks:
+                    seen_chunks.add(chunk_id)
+                    search_results.append(result)
+                elif not chunk_id:
+                    # If no chunk_id, include it anyway (legacy chunk)
+                    search_results.append(result)
+
+            print(f"🔍 VECTOR_QUERY_DEBUG: Combined search returned {len(search_results)} results ({len(search_results_384)} from 384-dim, {len(search_results_768)} from 768-dim)")
 
             # Filter chunks based on project access permissions
             accessible_chunks = []
@@ -593,25 +626,32 @@ Please provide a helpful response using both the project context (showing what h
                 for chunk in chunks:
                     chunk_data = chunk.get("payload", {})
                     asset_id = chunk_data.get("asset_id")
+                    doc_id = chunk_data.get("doc_id")
 
-                    if asset_id and asset_id not in seen_assets:
-                        # Look up actual asset title from database
-                        cur.execute(
-                            "SELECT title FROM knowledge_assets WHERE id = %s",
-                            (asset_id,),
-                        )
+                    # Try asset_id first, then fall back to doc_id
+                    lookup_id = asset_id or doc_id
+                    if lookup_id and lookup_id not in seen_assets:
+                        # Look up actual asset title from database using doc_id
+                        # First try to find the file_id for this doc_id, then find the knowledge asset
+                        cur.execute("""
+                            SELECT ka.title
+                            FROM knowledge_assets ka
+                            JOIN files f ON ka.source_file_id = f.id
+                            JOIN doc d ON f.filename = d.filename
+                            WHERE d.doc_id = %s
+                        """, (lookup_id,))
                         result = cur.fetchone()
                         asset_title = result[0] if result else "Unknown Document"
 
                         source = {
-                            "asset_id": asset_id,
+                            "asset_id": lookup_id,
                             "title": asset_title,  # ACTUAL ASSET TITLE FROM DATABASE!
                             "document_type": chunk_data.get("document_type", "document"),
                             "chunk_id": chunk_data.get("chunk_id"),
                             "relevance_score": chunk.get("score", 0.0),
                         }
                         sources.append(source)
-                        seen_assets.add(asset_id)
+                        seen_assets.add(lookup_id)
         finally:
             db_service._return(conn)
 

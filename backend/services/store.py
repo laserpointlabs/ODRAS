@@ -40,11 +40,31 @@ class RAGStoreService:
         # Default embedding model (matches ODRAS standard)
         self.default_embedding_model = "all-MiniLM-L6-v2"
 
+        # Collection names based on embedding model dimensions
+        self.docs_collection_384 = "knowledge_chunks"  # For all-MiniLM-L6-v2 (384 dims)
+        self.docs_collection_768 = "knowledge_chunks_768"  # For all-mpnet-base-v2 (768 dims)
+        self.threads_collection = "project_threads"  # For chat/project threads
+
         # Collection names (matches existing ODRAS collections)
         self.docs_collection = "knowledge_chunks"  # For document chunks
         self.threads_collection = "project_threads"  # For chat/project threads
 
         logger.info("RAG Store Service initialized with SQL-first storage")
+
+    def _get_collection_for_model(self, embedding_model: str) -> str:
+        """
+        Get the appropriate Qdrant collection based on embedding model dimensions.
+
+        Args:
+            embedding_model: The embedding model name
+
+        Returns:
+            str: Collection name for the model
+        """
+        if embedding_model == "all-mpnet-base-v2":
+            return self.docs_collection_768
+        else:
+            return self.docs_collection_384
 
     def store_chunk_and_vector(
         self,
@@ -108,12 +128,15 @@ class RAGStoreService:
                     "end_char": end,
                     "created_at": now_utc().isoformat(),
                     "embedding_model": model,
+                    "asset_id": doc_id,  # Use doc_id as asset_id for source attribution
+                    "document_type": "document",  # Default document type
                     # CRITICAL: NO "text" field in payload - SQL is source of truth
                 }
             }]
 
-            stored_ids = self.qdrant_service.store_vectors(self.docs_collection, vector_data)
-            logger.debug(f"Stored vector for chunk {chunk_id} in collection {self.docs_collection}")
+            collection_name = self._get_collection_for_model(model)
+            stored_ids = self.qdrant_service.store_vectors(collection_name, vector_data)
+            logger.debug(f"Stored vector for chunk {chunk_id} in collection {collection_name}")
 
             return chunk_id
 
@@ -269,13 +292,16 @@ class RAGStoreService:
                         "created_at": now_utc().isoformat(),
                         "embedding_model": model,
                         "sql_first": True,  # Flag to indicate SQL-first storage
+                        "asset_id": doc_id,  # Use doc_id as asset_id for source attribution
+                        "document_type": "document",  # Default document type
                         # CRITICAL: NO "text" field - SQL is source of truth
                     }
                 }
                 vectors_data.append(vector_data)
 
             # Step 4: Store vectors in batch
-            stored_ids = self.qdrant_service.store_vectors(self.docs_collection, vectors_data)
+            collection_name = self._get_collection_for_model(model)
+            stored_ids = self.qdrant_service.store_vectors(collection_name, vectors_data)
             logger.info(f"Stored {len(stored_ids)} vectors for document {doc_id}")
 
             return chunk_ids

@@ -2590,6 +2590,9 @@
                     </select>
                     <button class="btn" id="setStagedDocType" style="padding:4px 8px; font-size:12px;">Apply to All
                       Staged</button>
+                    <button class="btn" id="knowledgeProcessingInfoBtn"
+                      style="padding:4px 8px; font-size:12px; background:#3b82f6; color:#93c5fd;"
+                      title="Knowledge Processing Guidance">ℹ️ Info</button>
                     <span class="muted" style="font-size:11px;" id="stagedDocTypeHint">Files will be uploaded with this
                       document type</span>
                   </div>
@@ -21832,43 +21835,61 @@ def hello_world():
     window.onThreadWorkbenchActivated = onThreadWorkbenchActivated;
     window.loadCurrentProjectThread = loadCurrentProjectThread;
 
-    // Knowledge Processing Info Modal Functions
-    function openKnowledgeProcessingInfoModal() {
-      const modal = document.getElementById('knowledgeProcessingInfoModal');
-      if (modal) {
-        modal.style.display = 'flex';
-      }
+    // Knowledge Processing Info Modal
+    function showKnowledgeProcessingInfo() {
+      const modal = document.createElement('div');
+      modal.className = 'modal';
+      modal.style.display = 'flex';
+      modal.innerHTML = `
+        <div class="modal-content" style="max-width: 700px;">
+          <div class="modal-header">
+            <h3>Knowledge Processing Guidance</h3>
+            <button class="modal-close" onclick="this.closest('.modal').remove()">&times;</button>
+          </div>
+          <div class="modal-body">
+            <h4>Document Types</h4>
+            <ul>
+              <li><strong>Requirements:</strong> System specifications and functional requirements</li>
+              <li><strong>Knowledge:</strong> General knowledge base content and documentation</li>
+              <li><strong>Reference:</strong> Reference materials and technical documentation</li>
+              <li><strong>Specification:</strong> Technical specifications and standards</li>
+              <li><strong>Analysis Template:</strong> Templates for analysis and evaluation frameworks</li>
+            </ul>
+
+            <h4>Automatic Processing Features</h4>
+            <ul>
+              <li>Intelligent chunking based on document structure</li>
+              <li>Automatic embedding generation using selected model</li>
+              <li>Vector storage for semantic search capabilities</li>
+              <li>Knowledge asset creation for RAG queries</li>
+            </ul>
+
+            <h4>Best Practices</h4>
+            <ul>
+              <li>Use descriptive filenames for better organization</li>
+              <li>Select appropriate document types for accurate categorization</li>
+              <li>Ensure documents are well-structured for optimal chunking</li>
+              <li>Review processing status before querying the knowledge base</li>
+            </ul>
+
+            <h4>Supported Embedding Models</h4>
+            <ul>
+              <li><strong>all-MiniLM-L6-v2:</strong> Fast, efficient 384-dimensional embeddings</li>
+              <li><strong>all-mpnet-base-v2:</strong> Higher quality 768-dimensional embeddings</li>
+            </ul>
+          </div>
+        </div>
+      `;
+      document.body.appendChild(modal);
     }
 
-    function closeKnowledgeProcessingInfoModal() {
-      const modal = document.getElementById('knowledgeProcessingInfoModal');
-      if (modal) {
-        modal.style.display = 'none';
-      }
-    }
-
-    // Add event listeners for the info buttons
+    // Add event listener for knowledge processing info button
     document.addEventListener('DOMContentLoaded', function () {
       const infoBtn = document.getElementById('knowledgeProcessingInfoBtn');
       if (infoBtn) {
-        infoBtn.addEventListener('click', openKnowledgeProcessingInfoModal);
-      }
-
-      const embeddingInfoBtn = document.getElementById('embeddingModelInfoBtn');
-      if (embeddingInfoBtn) {
-        embeddingInfoBtn.addEventListener('click', openKnowledgeProcessingInfoModal);
-      }
-
-      const chunkingInfoBtn = document.getElementById('chunkingStrategyInfoBtn');
-      if (chunkingInfoBtn) {
-        chunkingInfoBtn.addEventListener('click', openKnowledgeProcessingInfoModal);
+        infoBtn.addEventListener('click', showKnowledgeProcessingInfo);
       }
     });
-
-    // Expose functions globally
-    window.openKnowledgeProcessingInfoModal = openKnowledgeProcessingInfoModal;
-    window.closeKnowledgeProcessingInfoModal = closeKnowledgeProcessingInfoModal;
-
   </script>
 
   <!-- Knowledge Processing Info Modal -->

@@ -407,17 +407,27 @@ class QdrantService:
             List of similar chunks with scores and metadata
         """
         try:
-            # Generate embedding for query text
+            # Generate embedding for query text using appropriate model
             from .embedding_service import get_embedding_service
 
             embedding_service = get_embedding_service()
-            query_embeddings = embedding_service.generate_embeddings([query_text])
+
+            # Select embedding model based on collection
+            if collection_name == "knowledge_chunks_768":
+                embedding_model = "all-mpnet-base-v2"
+            else:
+                embedding_model = "all-MiniLM-L6-v2"  # Default for knowledge_chunks
+
+            query_embeddings = embedding_service.generate_embeddings([query_text], embedding_model)
 
             if not query_embeddings:
                 logger.error("Failed to generate embedding for query text")
                 return []
 
             query_vector = query_embeddings[0]
+
+            # Log the search parameters
+            logger.info(f"Searching collection '{collection_name}' with metadata_filter: {metadata_filter}")
 
             # Perform vector search
             results = self.search_vectors(
@@ -473,4 +483,3 @@ def ensure_knowledge_collections(qdrant_service: QdrantService) -> bool:
     except Exception as e:
         logger.error(f"Failed to ensure knowledge collections: {str(e)}")
         return False
-
