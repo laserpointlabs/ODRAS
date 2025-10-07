@@ -32,6 +32,8 @@ This document tracks all documentation changes, consolidations, and deletions to
 - `backend/services/store.py` - Chunk payload fields
 - `backend/services/external_task_worker.py` - Context chunks
 - `scripts/single_query_test.py` - NEW - Comprehensive test script
+- `scripts/ci_rag_test.py` - NEW - Automated CI test script
+- `.github/workflows/ci.yml` - Added RAG testing to CI pipeline
 
 ## New Documentation - October 6, 2025
 

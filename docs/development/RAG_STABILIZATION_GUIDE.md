@@ -149,7 +149,9 @@ Sources: 3 (all showing correct document titles)
 
 ## 🧪 Testing Framework
 
-### Test Script: `scripts/single_query_test.py`
+### Test Scripts
+
+#### Manual Testing: `scripts/single_query_test.py`
 
 **Purpose:** Comprehensive RAG testing with manual evaluation capability
 
@@ -171,6 +173,33 @@ Sources: 3 (all showing correct document titles)
 cd /home/jdehart/working/ODRAS
 python scripts/single_query_test.py
 ```
+
+#### Automated CI Testing: `scripts/ci_rag_test.py`
+
+**Purpose:** Automated RAG validation for continuous integration
+
+**Features:**
+- Automated success/failure validation
+- Specific criteria checking
+- Exit codes for CI integration
+- Comprehensive test coverage
+
+**Validation Criteria:**
+- **UAS Names Query**: At least 6 of 9 platforms found
+- **General Queries**: Minimum 3 chunks, correct source titles, substantial responses
+- **Source Attribution**: No "Unknown Document" titles
+- **Response Quality**: No generic "I don't know" responses
+
+**Usage:**
+```bash
+cd /home/jdehart/working/ODRAS
+python scripts/ci_rag_test.py
+```
+
+**CI Integration:**
+- Runs automatically on every commit
+- Fails CI if RAG system is not working correctly
+- Provides detailed test results and debugging information
 
 ### Validation Criteria
 
@@ -275,6 +304,8 @@ git checkout HEAD~1 -- backend/services/store.py
 - `backend/services/store.py` - Added missing payload fields
 - `backend/services/external_task_worker.py` - Increased context chunks
 - `scripts/single_query_test.py` - Created comprehensive test script
+- `scripts/ci_rag_test.py` - Created automated CI test script
+- `.github/workflows/ci.yml` - Added RAG testing to CI pipeline
 
 **Testing Completed:**
 - ✅ UAS names query returns all 9 platforms

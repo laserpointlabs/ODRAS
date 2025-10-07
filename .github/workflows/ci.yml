@@ -153,6 +153,9 @@ jobs:
           echo "🧪 Step 3: Baseline DAS Integration Test..."
           python tests/test_das_integration_comprehensive.py
 
+          echo "🧪 Step 4: RAG System Stability Test..."
+          python scripts/ci_rag_test.py
+
           echo "✅ COMPLETE ODRAS system validation finished"
         env:
           PYTHONPATH: ${{ github.workspace }}
@@ -233,6 +236,7 @@ jobs:
             /tmp/odras_app.log
             /tmp/odras_complex_worker.log
             /tmp/odras_simple_worker.log
+            /tmp/rag_test_*.log
           retention-days: 30
 
       - name: Upload DAS Performance Data
