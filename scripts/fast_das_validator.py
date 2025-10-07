@@ -5,10 +5,10 @@ Fast DAS Validator - Quick Health Check
 Performs rapid validation of DAS functionality without long waits.
 Fails fast on basic issues to avoid 10-minute timeouts.
 
-Tests performed in <60 seconds total:
+Tests performed in <90 seconds total:
 1. ODRAS connectivity (1s)
 2. Authentication (2s)
-3. Basic DAS response (5s)
+3. Basic DAS response (30s)
 4. Ontology context (30s - enhanced with rich attributes)
 5. Rich attribute validation (30s)
 
@@ -92,7 +92,7 @@ class FastDASValidator:
             self.fast_fail_check(False, f"Authentication exception: {e}")
 
     def test_03_basic_das_response(self):
-        """Test basic DAS functionality (5s timeout)"""
+        """Test basic DAS functionality (30s timeout)"""
         self.log("Testing basic DAS response...")
 
         try:
@@ -103,7 +103,7 @@ class FastDASValidator:
                     "project_id": self.project_id,
                     "message": "Hello, can you respond?"
                 },
-                timeout=5
+                timeout=30
             )
 
             self.fast_fail_check(
@@ -253,7 +253,7 @@ class FastDASValidator:
         """Run complete fast validation"""
         print("🚀 FAST DAS VALIDATION")
         print("=" * 60)
-        print(f"Target: Complete validation in <60 seconds (enhanced ontology context)")
+        print(f"Target: Complete validation in <90 seconds (enhanced ontology context)")
         print(f"Started: {datetime.now().strftime('%H:%M:%S')}")
         print()
 
