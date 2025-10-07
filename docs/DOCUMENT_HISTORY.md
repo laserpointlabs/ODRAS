@@ -2,6 +2,37 @@
 
 This document tracks all documentation changes, consolidations, and deletions to maintain historical record.
 
+## New Documentation - October 7, 2025
+
+### RAG System Stabilization Guide
+**Created:** `docs/development/RAG_STABILIZATION_GUIDE.md`
+**Purpose:** Comprehensive documentation of RAG system fixes and improvements
+**Issue:** UAS names query only returned 2 platforms instead of 9, source attribution failures
+**Solution:** Enhanced chunk retrieval, fixed deduplication logic, improved source attribution
+**Size:** 400+ lines
+**Status:** Active - Primary reference for RAG system troubleshooting
+
+**Key Changes Documented:**
+- Increased chunk limits from 25 to 50 in DAS2 core engine
+- Lowered similarity threshold from 0.15 to 0.1 for better coverage
+- Modified deduplication to allow 3 chunks per document instead of 1
+- Fixed source attribution by adding asset_id and document_type to chunk payloads
+- Enhanced external task worker context from 3 to 10-15 chunks
+- Created comprehensive test script for RAG validation
+
+**Results Achieved:**
+- UAS names query now returns all 9 platforms (was 2)
+- Source attribution shows correct document titles (was "Unknown Document")
+- Chunk retrieval increased from 3 to 9 chunks per query
+- Response quality significantly improved with comprehensive details
+
+**Modified Files:**
+- `backend/services/das2_core_engine.py` - Chunk limits and thresholds
+- `backend/services/rag_service.py` - Source attribution and deduplication
+- `backend/services/store.py` - Chunk payload fields
+- `backend/services/external_task_worker.py` - Context chunks
+- `scripts/single_query_test.py` - NEW - Comprehensive test script
+
 ## New Documentation - October 6, 2025
 
 ### Database Connection Pool Troubleshooting Guide

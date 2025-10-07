@@ -116,30 +116,39 @@ def main():
     time.sleep(15)  # Wait for processing
     print()
 
-    # Test ONE query
-    query = "What are the UAS requirements for disaster response?"
+    # Test multiple queries
+    queries = [
+        "What are the UAS requirements for disaster response?",
+        "Please list the names only of the UAS we can select from in the specification",
+        "What are the different types of UAS platforms available?",
+        "Which UAS has the longest endurance?",
+        "What is the cost range for UAS platforms?"
+    ]
 
-    print(f"Question: {query}")
-    print()
-
-    result = test_query(token, project_id, query)
-    if result:
-        print(f"Chunks found: {result['chunks_found']} (RAG: {result['rag_chunks']})")
-        print(f"Sources: {len(result['sources'])}")
-        print()
-        print("RESPONSE:")
-        print("-" * 50)
-        print(result['message'])
-        print("-" * 50)
+    for i, query in enumerate(queries, 1):
+        print(f"--- QUERY {i} ---")
+        print(f"Question: {query}")
         print()
 
-        if result['sources']:
-            print("SOURCES:")
-            for j, source in enumerate(result['sources'], 1):
-                print(f"{j}. {source.get('title', 'Unknown')} (score: {source.get('relevance_score', 0):.3f})")
+        result = test_query(token, project_id, query)
+        if result:
+            print(f"Chunks found: {result['chunks_found']} (RAG: {result['rag_chunks']})")
+            print(f"Sources: {len(result['sources'])}")
             print()
-    else:
-        print("❌ Query failed")
+            print("RESPONSE:")
+            print("-" * 50)
+            print(result['message'])
+            print("-" * 50)
+            print()
+
+            if result['sources']:
+                print("SOURCES:")
+                for j, source in enumerate(result['sources'], 1):
+                    print(f"{j}. {source.get('title', 'Unknown')} (score: {source.get('relevance_score', 0):.3f})")
+                print()
+        else:
+            print("❌ Query failed")
+        print()
 
 if __name__ == "__main__":
     main()

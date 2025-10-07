@@ -12,7 +12,7 @@ BASE_URL = "http://localhost:8000"
 
 def login():
     response = requests.post(f"{BASE_URL}/api/auth/login", json={
-        "username": "das_service", 
+        "username": "das_service",
         "password": "das_service_2024!"
     })
     if response.ok:
@@ -22,7 +22,7 @@ def login():
 
 def get_or_create_project(token):
     headers = {"Authorization": f"Bearer {token}"}
-    
+
     # Try to get existing project
     response = requests.get(f"{BASE_URL}/api/projects", headers=headers)
     if response.ok:
@@ -30,30 +30,30 @@ def get_or_create_project(token):
         if projects and isinstance(projects, list) and len(projects) > 0:
             print(f"✅ Using existing project: {projects[0]['project_id']}")
             return projects[0]['project_id']
-    
+
     # Create new project
     print("Creating new project...")
     response = requests.post(f"{BASE_URL}/api/projects", json={
         "name": "RAG Test Project",
         "description": "Project for testing RAG functionality"
     }, headers=headers)
-    
+
     if response.ok:
         result = response.json()
         project_id = result.get('project', {}).get('project_id')
         print(f"✅ Created project: {project_id}")
         return project_id
-    
+
     print("❌ Failed to create project")
     return None
 
 def upload_document(token, project_id, file_path, doc_type="requirements"):
     headers = {"Authorization": f"Bearer {token}"}
-    
+
     if not os.path.exists(file_path):
         print(f"❌ File not found: {file_path}")
         return False
-    
+
     with open(file_path, 'rb') as f:
         files = {'file': f}
         data = {
@@ -62,7 +62,7 @@ def upload_document(token, project_id, file_path, doc_type="requirements"):
             'embedding_model': 'all-MiniLM-L6-v2'
         }
         response = requests.post(f"{BASE_URL}/api/files/upload", files=files, data=data, headers=headers)
-    
+
     if response.ok:
         result = response.json()
         print(f"✅ Uploaded {os.path.basename(file_path)} as {doc_type}")
@@ -77,7 +77,7 @@ def test_query(token, project_id, question):
         "message": question,
         "project_id": project_id
     }, headers=headers)
-    
+
     if response.ok:
         result = response.json()
         return {
@@ -92,31 +92,31 @@ def main():
     print("=== SIMPLE RAG TEST ===")
     print("This will show you actual outputs so you can judge quality")
     print()
-    
+
     # Login
     token = login()
     if not token:
         print("❌ Login failed")
         return
-    
+
     # Get or create project
     project_id = get_or_create_project(token)
     if not project_id:
         print("❌ No project available")
         return
-    
+
     print()
-    
+
     # Upload test documents
     print("Uploading test documents...")
     upload_document(token, project_id, "data/disaster_response_requirements.md", "requirements")
     upload_document(token, project_id, "data/uas_specifications.md", "specification")
     upload_document(token, project_id, "data/decision_matrix_template.md", "analysis_template")
-    
+
     print("\n⏳ Waiting for processing...")
     time.sleep(15)  # Wait for processing
     print()
-    
+
     # Test queries
     queries = [
         "What are the UAS requirements for disaster response?",
@@ -124,12 +124,12 @@ def main():
         "What is the deployment speed requirement?",
         "What are the environmental tolerance requirements?"
     ]
-    
+
     for i, query in enumerate(queries, 1):
         print(f"--- QUERY {i} ---")
         print(f"Question: {query}")
         print()
-        
+
         result = test_query(token, project_id, query)
         if result:
             print(f"Chunks found: {result['chunks_found']} (RAG: {result['rag_chunks']})")
@@ -140,7 +140,7 @@ def main():
             print(result['message'])
             print("-" * 50)
             print()
-            
+
             if result['sources']:
                 print("SOURCES:")
                 for j, source in enumerate(result['sources'], 1):

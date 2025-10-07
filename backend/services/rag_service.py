@@ -377,8 +377,8 @@ class RAGService:
 
     def _deduplicate_sources(self, chunks: List[Dict[str, Any]], max_chunks: int) -> List[Dict[str, Any]]:
         """
-        Deduplicate chunks by keeping only the best chunk per asset/document.
-        This ensures we don't show multiple "sources" from the same document.
+        Deduplicate chunks by keeping multiple chunks per asset/document for comprehensive queries.
+        For UAS specifications and other detailed documents, we need multiple chunks to get complete information.
         """
         if not chunks:
             return []
@@ -393,12 +393,13 @@ class RAGService:
                 asset_groups[asset_id] = []
             asset_groups[asset_id].append(chunk)
 
-        # Keep the best chunk from each asset (highest score)
+        # Keep multiple chunks from each asset (up to 3 per asset for comprehensive coverage)
         deduplicated_chunks = []
         for asset_id, asset_chunks in asset_groups.items():
-            # Sort by score (highest first) and take the best one
-            best_chunk = max(asset_chunks, key=lambda c: c.get("score", 0))
-            deduplicated_chunks.append(best_chunk)
+            # Sort by score (highest first) and take up to 3 chunks per asset
+            asset_chunks.sort(key=lambda c: c.get("score", 0), reverse=True)
+            chunks_to_keep = asset_chunks[:3]  # Keep up to 3 chunks per asset
+            deduplicated_chunks.extend(chunks_to_keep)
 
         # Sort all deduplicated chunks by score and limit to max_chunks
         deduplicated_chunks.sort(key=lambda c: c.get("score", 0), reverse=True)

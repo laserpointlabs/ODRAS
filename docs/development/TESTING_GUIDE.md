@@ -16,9 +16,9 @@ This guide provides the complete testing strategy for ODRAS, covering API testin
 ### Testing Pyramid
 ```
      /\     E2E Tests (Few, High-Value)
-    /  \    
+    /  \
    /____\   Integration Tests (Some, Key Flows)
-  /      \  
+  /      \
  /________\  Unit Tests (Many, Fast, Isolated)
 ```
 
@@ -237,7 +237,7 @@ testpaths = tests
 python_files = test_*.py
 python_classes = Test*
 python_functions = test_*
-markers = 
+markers =
     slow: marks tests as slow
     integration: marks tests as integration tests
     api: marks tests as API tests
@@ -284,6 +284,80 @@ pre-commit run --all-files
 - **Performance**: No regression in response times
 - **Security**: No new vulnerabilities introduced
 - **Documentation**: Tests must be documented
+
+## 🧪 RAG System Testing
+
+### **RAG Testing Framework**
+
+**Test Script:** `scripts/single_query_test.py`
+**Purpose:** Comprehensive RAG functionality validation with manual evaluation
+
+**Features:**
+- Creates project and uploads test documents automatically
+- Tests multiple query types including UAS specifications
+- Shows actual outputs for manual quality assessment
+- Validates chunk counts and source attribution
+- Provides detailed debugging information
+
+**Test Queries:**
+1. "What are the UAS requirements for disaster response?"
+2. "Please list the names only of the UAS we can select from in the specification"
+3. "What are the different types of UAS platforms available?"
+4. "Which UAS has the longest endurance?"
+5. "What is the cost range for UAS platforms?"
+
+**Usage:**
+```bash
+cd /home/jdehart/working/ODRAS
+python scripts/single_query_test.py
+```
+
+### **RAG Validation Criteria**
+
+**Success Indicators:**
+- ✅ All 9 UAS platforms returned for names query
+- ✅ Correct source titles (not "Unknown Document")
+- ✅ Comprehensive responses with specific details
+- ✅ Multiple chunks retrieved (9+ instead of 3)
+- ✅ Relevance scores above 0.3
+
+**Failure Indicators:**
+- ❌ Only 2-3 UAS platforms returned
+- ❌ "Unknown Document" in sources
+- ❌ Generic "I don't have that information" responses
+- ❌ Low chunk counts (3 or fewer)
+
+### **RAG Performance Metrics**
+
+**Key Metrics to Monitor:**
+- Chunk retrieval count per query
+- Source attribution accuracy
+- Response quality (manual evaluation)
+- Query response time
+- LLM context utilization
+
+**Expected Performance:**
+- UAS names query: 8-9 platforms returned
+- Chunk count: 9+ chunks per query
+- Source attribution: 100% correct titles
+- Response time: < 10 seconds per query
+
+### **RAG Troubleshooting**
+
+**Common Issues:**
+1. **Low chunk counts**: Check similarity thresholds and chunk limits
+2. **Missing sources**: Verify asset_id and document_type in chunk payloads
+3. **Incomplete responses**: Check deduplication logic and context limits
+4. **Poor relevance**: Adjust similarity thresholds and embedding models
+
+**Debug Information:**
+- Application logs: `/tmp/odras_app.log`
+- RAG debug messages: Look for `VECTOR_QUERY_DEBUG`, `RAG_FILTER_DEBUG`
+- Chunk content: Use Qdrant API to inspect chunk payloads
+
+**Related Documentation:**
+- **RAG Stabilization Guide:** `docs/development/RAG_STABILIZATION_GUIDE.md`
+- **SQL-First RAG:** `docs/sql_first_rag_implementation.md`
 
 ---
 
