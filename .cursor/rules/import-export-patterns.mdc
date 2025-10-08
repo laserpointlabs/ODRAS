@@ -1,0 +1,121 @@
+---
+description: Cross-project import/export functionality patterns and API design
+---
+
+# Import/Export Requirements Patterns
+
+## API Endpoint Design Standards
+
+### Avoid Route Conflicts
+**Problem Pattern:**
+```python
+# ❌ This creates route conflict
+@router.get("/projects/{project_id}/requirements/published")
+@router.get("/projects/{project_id}/requirements/{requirement_id}")
+```
+
+**Solution Pattern:**
+```python
+# ✅ Use specific route names
+@router.get("/projects/{project_id}/published-requirements") 
+@router.get("/projects/{project_id}/requirements/{requirement_id}")
+```
+
+### Import API Structure
+```python
+@router.post("/projects/{target_project_id}/import-requirements")
+async def import_requirements(
+    target_project_id: str,
+    import_request: ImportRequirementsRequest,
+    db: DatabaseService = Depends(get_db_service),
+    user: Dict = Depends(get_user),
+):
+    # 1. Preserve original requirement_id as source_requirement_id
+    # 2. Generate new UUID for imported requirement
+    # 3. Create prefixed identifier (namespace.project.REQ-XXX)
+    # 4. Set state='imported' and is_immutable=true
+    # 5. Store complete traceability metadata
+    # 6. Import all associated constraints
+```
+
+### Published Requirements Filtering
+```python
+@router.get("/projects/{project_id}/published-requirements")
+async def list_published_requirements(
+    project_id: str,
+    target_project_id: Optional[str] = Query(None)
+):
+    # Filter out already-imported requirements when target_project_id provided
+    # Only show importable (not already imported) published requirements
+```
+
+## Data Consistency Requirements
+
+### Import Process Integrity
+1. **Preserve source identity**: Store original requirement_id as source_requirement_id
+2. **Generate new identity**: Create new UUID for imported requirement
+3. **Maintain traceability**: Store source_project_iri, source_namespace_path, source_namespace_prefix
+4. **Prevent duplicates**: Check if requirement already imported before allowing
+5. **Import constraints**: Copy all associated constraint records with new requirement_id linkage
+
+### State Management Rules
+- **Original requirements**: Normal state workflow (draft → published)
+- **Imported requirements**: Always 'imported' + is_immutable=true
+- **Immutability**: Cannot edit imported requirements (enforced in UI and API)
+- **Un-import**: DELETE endpoint removes imported requirement and constraints
+
+## UI Integration Patterns
+
+### Frontend Import Modal
+```javascript
+// Global scope for selection tracking
+let importModalSelectedRequirements = new Set();
+
+// Event handling for checkboxes
+onchange="updateRequirementSelection(); event.stopPropagation();"
+
+// API call with target project filtering
+const response = await authenticatedFetch(
+    `/api/requirements/projects/${projectId}/published-requirements?target_project_id=${targetProjectId}`
+);
+```
+
+### Selection State Management
+```javascript
+function updateRequirementSelection() {
+    // Read checkbox states directly
+    const checkboxes = document.querySelectorAll('#publishedRequirements input[type="checkbox"]');
+    importModalSelectedRequirements.clear();
+    
+    checkboxes.forEach(checkbox => {
+        if (checkbox.checked) {
+            importModalSelectedRequirements.add(checkbox.dataset.requirementId);
+        }
+    });
+    
+    updateImportSummary();
+}
+```
+
+## Critical Testing Requirements
+
+### Import/Export Test Scenarios
+1. **Cross-project visibility**: Published requirements appear in other projects' import modals
+2. **Already imported filtering**: Previously imported requirements don't appear in import modal
+3. **Prefixed identifier display**: Imported requirements show namespace.project.REQ-XXX format
+4. **Visual distinctions**: Imported requirements have proper icons and gray background
+5. **Un-import workflow**: Can successfully remove imported requirements
+6. **Constraint preservation**: Imported requirements retain all original constraints
+7. **Source traceability**: Complete metadata displayed in detail panel
+
+### Database Rebuild Testing
+- **Critical**: Always test with `./odras.sh clean -y && ./odras.sh init-db`
+- **Verify**: All schema migrations apply correctly
+- **Validate**: New functionality works after clean rebuild
+
+## Never Do
+- ❌ Allow editing of imported requirements
+- ❌ Skip traceability metadata storage
+- ❌ Use conflicting API route patterns
+- ❌ Forget to import associated constraints
+- ❌ Allow duplicate imports of same requirement

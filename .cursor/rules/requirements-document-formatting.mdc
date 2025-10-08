@@ -1,0 +1,155 @@
+---
+description: Requirements document formatting standards for optimal chunking and extraction
+---
+
+# Requirements Document Formatting Standards
+
+## RFC 2119 Keyword Structure
+
+### Standard Format Template
+```markdown
+# [Document Title] Requirements
+
+## Document Structure
+This document contains requirements organized by:
+- **RFC 2119 Keywords**: MUST, SHALL, SHOULD, MAY for requirement levels
+- **Thresholds [T]**: Minimum acceptable performance levels
+- **Objectives [O]**: Desired performance levels
+- **KPPs**: Key Performance Parameters (quantifiable metrics)
+- **KPCs**: Key Performance Characteristics (qualitative capabilities)
+
+## [Category] Requirements
+
+### [Subcategory] Requirements
+**REQUIREMENT TYPE**: [Type Description]
+**CONSTRAINT LEVEL**: [Hard Constraints | Soft Constraints | Mixed]
+
+**MUST Requirements**:
+- The system MUST [requirement statement] [T].
+
+**SHALL Requirements**:
+- The UAS SHALL [requirement statement] [T].
+
+**SHOULD Requirements**:
+- The system SHOULD [requirement statement] [O].
+
+**MAY Requirements**:
+- The UAS MAY [requirement statement].
+
+**Key Performance Parameter (KPP)**: [Metric] ≥ [Value]
+**Key Performance Characteristic (KPC)**: [Qualitative measure]
+```
+
+### Example Implementation
+See [disaster_response_requirements.md](mdc:data/disaster_response_requirements.md) for complete example.
+
+## Requirement Types and Constraint Levels
+
+### Requirement Types
+- **Operational Coverage**: Area, pattern, repeat capabilities
+- **Environmental Tolerance**: Weather, temperature, visibility conditions
+- **Technical Performance**: Flight, payload, sensor specifications
+- **Stakeholder Needs**: User-specific requirements by role
+
+### Constraint Levels
+- **Hard Constraints**: Mandatory requirements (MUST/SHALL)
+- **Soft Constraints**: Recommended requirements (SHOULD)
+- **Optional Constraints**: Permitted capabilities (MAY)
+- **Mixed**: Combination of hard and soft constraints
+
+## Performance Metrics Integration
+
+### Key Performance Parameters (KPPs)
+- **Format**: `**Key Performance Parameter (KPP)**: [Metric] [Operator] [Value]`
+- **Examples**:
+  - `Area coverage rate ≥ 2.5 km²/hour`
+  - `Wind tolerance ≥ 25 knots`
+  - `Deployment time ≤ 15 minutes`
+  - `MTBF ≥ 1000 hours`
+
+### Key Performance Characteristics (KPCs)
+- **Format**: `**Key Performance Characteristic (KPC)**: [Qualitative measure]`
+- **Examples**:
+  - `Grid pattern accuracy ±10 meters`
+  - `Real-time data delivery`
+  - `FAA Part 107 compliance`
+  - `Field-ruggedized design`
+
+## Threshold and Objective Marking
+
+### Thresholds [T]
+- **Purpose**: Minimum acceptable performance levels
+- **Usage**: `The UAS MUST operate in winds up to 25 knots [T].`
+- **Extraction**: Automated constraint identification
+
+### Objectives [O]
+- **Purpose**: Desired performance levels beyond minimum
+- **Usage**: `The system SHOULD provide 6+ hours flight time [O].`
+- **Extraction**: Automated goal identification
+
+## Stakeholder-Specific Requirements
+
+### Emergency Response Teams
+- **Focus**: Operational simplicity, ruggedness, logistics
+- **Requirements**: Real-time data, minimal training, field deployment
+
+### Technical Experts
+- **Focus**: Data quality, integration, analysis capabilities
+- **Requirements**: Raw data access, programmable paths, system integration
+
+### Procurement Officers
+- **Focus**: Cost, reliability, support, lifecycle management
+- **Requirements**: Competitive costs, MTBF metrics, warranty terms
+
+### Regulatory Authorities
+- **Focus**: Compliance, safety, documentation
+- **Requirements**: Regulatory compliance, safety systems, flight logging
+
+## Automated Extraction Patterns
+
+### RFC 2119 Keyword Extraction
+```python
+# Patterns for automated requirement extraction
+must_pattern = r'\b(MUST|REQUIRED|SHALL)\b[^.]*[T]\.'
+should_pattern = r'\b(SHOULD|RECOMMENDED)\b[^.]*[O]\.'
+may_pattern = r'\b(MAY|OPTIONAL)\b[^.]*\.'
+```
+
+### KPP/KPC Extraction
+```python
+# Performance parameter patterns
+kpp_pattern = r'\*\*Key Performance Parameter \(KPP\)\*\*:\s*([^<\n]+)'
+kpc_pattern = r'\*\*Key Performance Characteristic \(KPC\)\*\*:\s*([^<\n]+)'
+```
+
+### Threshold and Objective Extraction
+```python
+# Constraint marking patterns
+threshold_pattern = r'([^.]*\[T\]\.)'
+objective_pattern = r'([^.]*\[O\]\.)'
+```
+
+## Quality Assurance
+
+### Document Validation Checklist
+- ✅ All requirements use RFC 2119 keywords
+- ✅ Thresholds [T] and objectives [O] marked
+- ✅ KPPs have quantifiable metrics
+- ✅ KPCs describe qualitative characteristics
+- ✅ Requirements organized by type and constraint level
+- ✅ Stakeholder needs clearly categorized
+
+### RAG Performance Validation
+- ✅ All requirement types extractable via queries
+- ✅ RFC 2119 keywords properly identified
+- ✅ KPPs and KPCs accessible through search
+- ✅ Constraint levels distinguishable
+- ✅ Complete requirement context preserved in chunks
+
+### Chunking Quality Validation
+- ✅ No requirement statements cut mid-sentence
+- ✅ KPP/KPC pairs kept with their requirements
+- ✅ Requirement type headers preserved with content
+- ✅ Stakeholder sections complete and accessible
+
+This formatting ensures optimal automated requirement extraction and maintains traceability for systems engineering workflows.

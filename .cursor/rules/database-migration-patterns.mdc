@@ -1,0 +1,66 @@
+---
+description: Database schema migration patterns for Requirements Workbench features
+---
+
+# Database Schema Migration Standards
+
+## Critical Migration Pattern for Requirements Features
+
+### Required Schema Changes for Import/Export
+```sql
+-- Add import traceability columns to requirements_enhanced table
+DO $$ 
+BEGIN
+    -- Add source project traceability columns
+    IF NOT EXISTS (SELECT 1 FROM information_schema.columns 
+                   WHERE table_name = 'requirements_enhanced' 
+                   AND column_name = 'source_project_iri') THEN
+        ALTER TABLE requirements_enhanced 
+        ADD COLUMN source_project_iri VARCHAR(1000),
+        ADD COLUMN source_namespace_path VARCHAR(500),
+        ADD COLUMN source_namespace_prefix VARCHAR(100);
+        
+        -- Update state constraint to include 'imported'
+        ALTER TABLE requirements_enhanced 
+        DROP CONSTRAINT IF EXISTS requirements_enhanced_state_check;
+        
+        ALTER TABLE requirements_enhanced 
+        ADD CONSTRAINT requirements_enhanced_state_check 
+        CHECK (state IN ('draft', 'review', 'approved', 'published', 'deprecated', 'cancelled', 'imported'));
+        
+        RAISE NOTICE 'Added import traceability columns to requirements_enhanced';
+    END IF;
+END $$;
+```
+
+## Migration Placement Rules
+
+### odras_schema.sql Integration
+- **ALL schema changes** must be in [backend/odras_schema.sql](mdc:backend/odras_schema.sql)
+- **Conditional migrations** using `DO $$ BEGIN ... END $$` blocks
+- **Test with**: `./odras.sh clean -y && ./odras.sh init-db`
+
+### Required Testing Sequence
+1. **Clean build test**: Verify fresh database builds work
+2. **Existing system test**: Verify migrations apply to existing databases  
+3. **Data integrity check**: Ensure existing data remains intact
+4. **Functional test**: Verify new functionality works
+
+## Never Do
+- ❌ Dynamic schema changes only in API endpoints
+- ❌ Missing constraint updates when adding new states
+- ❌ Skip testing with clean database rebuilds
+- ❌ Assume migrations will work without testing
+
+## Schema Consistency Requirements
+
+### Required Database Fields
+- `source_project_iri`: VARCHAR(1000) - Full project IRI for traceability
+- `source_namespace_path`: VARCHAR(500) - Human-readable namespace path
+- `source_namespace_prefix`: VARCHAR(100) - Short namespace prefix
+- `state`: CHECK constraint must include 'imported' for cross-project requirements
+
+### State Management
+- **Local requirements**: 'draft' → 'review' → 'approved' → 'published'
+- **Imported requirements**: Always 'imported' state + `is_immutable = true`
+- **Publishing**: Only via dedicated publish button workflow, never via edit modal

@@ -1,0 +1,74 @@
+---
+description: Requirements Workbench UI patterns and visual distinction standards
+---
+
+# Requirements Workbench UI Standards
+
+## Visual Distinctions for Imported Requirements
+
+### Required Visual Elements
+- **Import icon**: Use SVG arrow-down icon, not emoji 📥
+- **Lock icon**: Use SVG padlock icon, not emoji 🔒
+- **Gray background**: Subtle highlighting for imported rows
+- **Prefixed identifiers**: Format as `namespace.project.REQ-XXX`
+
+### SVG Icon Patterns
+```html
+<!-- Import/Download Icon -->
+<svg width="14" height="14" viewBox="0 0 20 20" fill="currentColor">
+  <path fill-rule="evenodd" d="M3 17a1 1 0 011-1h12a1 1 0 110 2H4a1 1 0 01-1-1zM6.293 6.707a1 1 0 010-1.414l3-3a1 1 0 011.414 0l3 3a1 1 0 01-1.414 1.414L11 5.414V13a1 1 0 11-2 0V5.414L7.707 6.707a1 1 0 01-1.414 0z" clip-rule="evenodd"/>
+</svg>
+
+<!-- Lock/Security Icon -->
+<svg width="14" height="14" viewBox="0 0 20 20" fill="currentColor">
+  <path fill-rule="evenodd" d="M5 9V7a5 5 0 0110 0v2a2 2 0 012 2v5a2 2 0 01-2 2H5a2 2 0 01-2-2v-5a2 2 0 012-2zm8-2v2H7V7a3 3 0 616 0z" clip-rule="evenodd"/>
+</svg>
+```
+
+## Publishing Workflow Standards
+
+### Status Dropdown Rules
+- **Create modal**: No "Published" option - only Draft, Review, Approved
+- **Edit modal**: No "Published" option - only Draft, Review, Approved, Deprecated, Cancelled  
+- **Publishing**: MUST use dedicated "Publish" button workflow
+
+### Button Visibility Logic
+```javascript
+// Imported/immutable requirements
+req.state === 'imported' || req.is_immutable ? 'Read-only' : 'Edit DAS Review'
+
+// Published requirements
+published_requirement ? 'Unpublish' : 'Publish'
+```
+
+## Action Button Standards
+
+### Import/Export UI
+- **Action restrictions**: Hide Edit/Publish buttons for imported requirements
+- **Un-import button**: Only show for imported requirements
+- **Confirmation dialogs**: Required for destructive actions (un-import)
+
+### Source Traceability Display
+```html
+<div style="margin-top:16px; padding:12px; background:var(--panel-2); border:1px solid var(--border); border-radius:6px; border-left:3px solid #06b6d4;">
+  <div style="font-size:11px; color:var(--accent); font-weight:600; margin-bottom:8px; display:flex; align-items:center; gap:4px;">
+    [IMPORT_SVG_ICON]SOURCE PROJECT TRACEABILITY
+  </div>
+  <div style="font-size:12px; color:var(--text); line-height:1.4;">
+    <strong>Namespace:</strong> {source_namespace_path}<br/>
+    <strong>Source Requirement ID:</strong> {source_requirement_id}<br/>
+    <strong>Namespace Prefix:</strong> {source_namespace_prefix}
+  </div>
+</div>
+```
+
+## Color Scheme Standards
+- **Import indicators**: `#06b6d4` (cyan)
+- **Lock/readonly**: `#6b7280` (gray) or `#f59e0b` (amber)
+- **Published status**: Purple tone
+- **Gray background**: `rgba(0,0,0,0.02)` for imported rows
+
+## Never Use
+- ❌ Emoji icons (📥🔒) - Use SVG icons only
+- ❌ "Published" in status dropdowns - Use publish button workflow
+- ❌ Edit buttons on imported requirements - Show "Read-only" instead

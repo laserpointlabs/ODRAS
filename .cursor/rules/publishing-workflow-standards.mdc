@@ -1,0 +1,126 @@
+---
+description: Requirements publishing workflow standards and button patterns
+---
+
+# Requirements Publishing Workflow Standards
+
+## Critical Workflow Separation
+
+### Publishing Button vs Edit Modal Separation
+**CRITICAL**: Requirements can ONLY be published via dedicated "Publish" button workflow.
+
+### Status Dropdown Rules
+
+#### Create New Requirement Modal
+```html
+<select id="reqState">
+    <option value="draft" selected>Draft</option>
+    <option value="review">Review</option>
+    <option value="approved">Approved</option>
+    <!-- ❌ NO "published" option -->
+</select>
+```
+
+#### Edit Requirement Modal  
+```html
+<select id="reqState">
+    <option value="draft">Draft</option>
+    <option value="review">Review</option>
+    <option value="approved">Approved</option>
+    <option value="deprecated">Deprecated</option>
+    <option value="cancelled">Cancelled</option>
+    <!-- ❌ NO "published" option -->
+</select>
+```
+
+### Publish Button Logic
+```javascript
+// Only show publish button for non-published, non-imported requirements
+function updatePublishButtonVisibility(requirement) {
+    const isImported = requirement.state === 'imported' || requirement.is_immutable;
+    const isPublished = requirement.state === 'published';
+    
+    if (isImported) {
+        // Show un-import button instead
+        showUnimportButton(requirement);
+        hideEditButtons();
+    } else if (isPublished) {
+        // Show unpublish button
+        showUnpublishButton(requirement);
+        showEditButtons(); // Published requirements can still be edited
+    } else {
+        // Show publish button
+        showPublishButton(requirement);
+        showEditButtons();
+    }
+}
+```
+
+## Publishing API Workflow
+
+### Proper Publishing Process
+```python
+@router.post("/requirements/{requirement_id}/publish")
+async def publish_requirement(requirement_id: str):
+    # 1. Set state = 'published'
+    # 2. Set is_published = true  
+    # 3. Set published_at = NOW()
+    # 4. Set published_by = user_id
+    # 5. Increment version number
+    # 6. Log to requirements_history
+    
+    # ALL flags must be set for proper functionality
+```
+
+### Data Consistency Requirements
+Requirements marked as "published" MUST have:
+- `state = 'published'` 
+- `is_published = true`
+- `published_at = NOW()`
+- `published_by = user_id`
+- Incremented version number
+
+## Version Management
+
+### Version Control Pattern
+- **Create**: version = 1
+- **Edit**: version stays same
+- **Publish**: version increments 
+- **Import**: version preserved from source
+
+### Publishing History
+```sql
+INSERT INTO requirements_history (
+    requirement_id, action, changed_by, details, project_id
+) VALUES (
+    requirement_id, 'published', user_id, 
+    'Requirement published via dedicated publish button', project_id
+);
+```
+
+## UI State Management
+
+### Button State Logic
+```javascript
+// Detail panel button visibility
+const isImported = requirement.state === 'imported' || requirement.is_immutable;
+const isPublished = requirement.state === 'published';
+
+document.getElementById('reqEditBtn').style.display = isImported ? 'none' : 'inline-block';
+document.getElementById('reqPublishBtn').style.display = (isImported || isPublished) ? 'none' : 'inline-block';
+document.getElementById('reqUnpublishBtn').style.display = isPublished ? 'inline-block' : 'none';
+document.getElementById('reqUnimportBtn').style.display = isImported ? 'inline-block' : 'none';
+```
+
+### Workflow Validation
+- **Pre-publish check**: Requirement must be in approved or review state
+- **Double-flag protection**: Both `state` and `is_published` must be consistent
+- **Immutability enforcement**: Imported requirements cannot be published/edited
+
+## Never Do
+- ❌ Add "Published" to status dropdowns in create/edit modals
+- ❌ Allow publishing via edit modal state change
+- ❌ Set only `state='published'` without setting `is_published=true`
+- ❌ Skip version incrementing on publish
+- ❌ Allow editing of imported requirements
+- ❌ Forget to log publishing actions in history table

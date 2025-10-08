@@ -50,6 +50,7 @@ from backend.api.das import router as das_router
 from backend.api.das2 import router as das2_router
 from backend.api.thread_manager import router as thread_manager_router
 from backend.api.project_threads import router as project_threads_router
+from backend.api.requirements import router as requirements_router
 from backend.api.namespace_simple import (
     router as namespace_router,
     public_router as namespace_public_router,
@@ -82,6 +83,7 @@ app.include_router(files_router)
 app.include_router(workflows_router)
 app.include_router(embedding_models_router)
 app.include_router(knowledge_router)
+app.include_router(requirements_router)  # <-- REQUIREMENTS WORKBENCH API
 # ⚠️ DAS1 DEPRECATED - DO NOT ENABLE ⚠️
 # DAS1 (original DAS) has been replaced by DAS2 with cleaner architecture
 # DAS1 endpoints: /api/das/* (DEPRECATED - DO NOT USE)

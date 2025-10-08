@@ -1,0 +1,104 @@
+---
+description: Document chunking patterns for Requirements Workbench features
+---
+
+# Document Chunking Patterns for ODRAS
+
+## Chunking Strategy Selection
+
+### Structured Specifications (UAS, Technical Docs)
+- **Strategy**: `simple_semantic` with structured document detection
+- **Implementation**: [chunking_service.py](mdc:backend/services/chunking_service.py)
+- **Key Features**:
+  - Detects structured specs with `###` headers and bullet points
+  - Preserves complete specification sections
+  - Prevents mid-specification cutoffs
+  - Groups related specifications together
+
+### Requirements Documents (RFC 2119)
+- **Strategy**: `simple_semantic` with requirement boundary detection
+- **Format**: Sentence-based with MUST/SHALL/SHOULD/MAY keywords
+- **Structure**: Organized by requirement type and constraint level
+- **Example**: [disaster_response_requirements.md](mdc:data/disaster_response_requirements.md)
+
+### Analysis Templates and Decision Matrices
+- **Strategy**: `simple_semantic` with structured framework detection
+- **Format**: Weighted scoring with step-by-step processes
+- **Structure**: Criteria, scoring, methodology sections
+- **Example**: [decision_matrix_template.md](mdc:data/decision_matrix_template.md)
+
+## Chunking Configuration
+
+### Default Configuration
+```python
+default_config = {
+    "chunk_size": 512,           # Optimal for retrieval granularity
+    "chunk_overlap": 100,        # 20% overlap for continuity
+    "min_chunk_size": 100,       # Minimum viable chunk
+    "max_chunk_size": 1024,      # Maximum for complete sections
+    "strategy": "simple_semantic", # Use improved semantic strategy
+    "preserve_structure": True,   # Maintain document structure
+    "split_on_sentence": True,    # Prefer sentence boundaries
+    "confidence_threshold": 0.3   # Lower threshold for better coverage
+}
+```
+
+### Structured Document Detection
+```python
+def _is_structured_specification(text: str) -> bool:
+    # Look for specification patterns
+    header_pattern = r'###\s+\w+.*(?:\(.*UAS\)|Specification|Model|System)'
+    bullet_pattern = r'^\s*-\s+\*\*[^*]+\*\*:'
+    
+    headers = len(re.findall(header_pattern, text, re.MULTILINE | re.IGNORECASE))
+    bullets = len(re.findall(bullet_pattern, text, re.MULTILINE))
+    
+    return headers >= 3 and bullets >= 20
+```
+
+## Document Formatting Best Practices
+
+### UAS Specifications
+- Include UAS type in headers: `### SkyEagle X500 (Fixed-Wing UAS)`
+- Add explicit type field: `**UAS Type**: Fixed-Wing UAS`
+- Group by category: Fixed-Wing, Multirotor, Hybrid VTOL
+- Complete specifications in each section
+
+### Requirements Documents
+- Use RFC 2119 keywords: MUST, SHALL, SHOULD, MAY
+- Mark thresholds: `[T]` and objectives: `[O]`
+- Include KPPs and KPCs with specific values
+- Organize by requirement type and constraint level
+
+### Analysis Templates
+- Structure by criteria type and evaluation method
+- Include step-by-step processes with formulas
+- Provide examples and usage instructions
+- Add sensitivity analysis frameworks
+
+## RAG Integration
+
+### Embedding Model Selection
+- **Fast Model**: `all-MiniLM-L6-v2` (384 dims) for general documents
+- **Better Model**: `all-mpnet-base-v2` (768 dims) for technical specifications
+- **Collections**: Automatic selection based on model dimensions
+
+### Query Optimization
+- **Similarity Threshold**: 0.3 for comprehensive coverage
+- **Max Chunks**: 5-10 for balanced context
+- **Search Strategy**: Search both collections and deduplicate
+- **SQL Read-through**: Enabled for authoritative text content
+
+## Testing and Validation
+
+### Expected Results
+- All 9 UAS found in specifications
+- Complete requirement extraction with RFC 2119 keywords
+- Decision matrix criteria and weights accessible
+- No cut-off specifications or incomplete chunks
+
+### Performance Metrics
+- Chunk count: 2-5 chunks per document
+- Coverage: 100% of structured sections preserved
+- Retrieval: All entities findable via semantic search
+- Response quality: Complete, accurate information

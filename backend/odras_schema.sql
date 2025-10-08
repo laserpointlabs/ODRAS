@@ -802,3 +802,594 @@ COMMENT ON COLUMN doc_chunk.text IS 'Full text content - source of truth for RAG
 COMMENT ON COLUMN chat_message.role IS 'Message role: user or assistant';
 COMMENT ON COLUMN project_event.event_data IS 'Full event data stored in SQL, not vectors';
 COMMENT ON COLUMN project_event.semantic_summary IS 'Optional semantic summary for embedding';
+
+-- =====================================
+-- REQUIREMENTS WORKBENCH SCHEMA
+-- =====================================
+
+-- Enhanced requirements table for comprehensive requirements management
+CREATE TABLE IF NOT EXISTS requirements_enhanced (
+    requirement_id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    project_id UUID NOT NULL REFERENCES public.projects(project_id) ON DELETE CASCADE,
+    
+    -- Basic requirement information
+    requirement_identifier VARCHAR(100) NOT NULL, -- REQ-001, SYS-REQ-001, etc.
+    requirement_title VARCHAR(500) NOT NULL,
+    requirement_text TEXT NOT NULL,
+    requirement_rationale TEXT,
+    
+    -- Categorization
+    requirement_type VARCHAR(50) NOT NULL CHECK (requirement_type IN ('functional', 'non_functional', 'performance', 'safety', 'security', 'interface', 'operational', 'design', 'implementation')),
+    category VARCHAR(100), -- Navigation, Communications, Power, etc.
+    subcategory VARCHAR(100), -- GPS, INS, Radio, etc.
+    
+    -- Priority and status
+    priority VARCHAR(20) DEFAULT 'medium' CHECK (priority IN ('critical', 'high', 'medium', 'low')),
+    state VARCHAR(20) DEFAULT 'draft' CHECK (state IN ('draft', 'review', 'approved', 'published', 'deprecated', 'cancelled', 'imported')),
+    
+    -- Import tracking
+    is_immutable BOOLEAN DEFAULT false,
+    source_requirement_id UUID, -- Original requirement ID from source project
+    source_project_id UUID REFERENCES projects(project_id) ON DELETE SET NULL,
+    source_project_iri VARCHAR(1000), -- Source project IRI for complete traceability
+    source_namespace_path VARCHAR(500), -- Source project namespace path
+    source_namespace_prefix VARCHAR(100), -- Source project namespace prefix
+    
+    -- Traceability
+    source_document_id UUID REFERENCES files(id) ON DELETE SET NULL,
+    source_section VARCHAR(255), -- Section 3.2.1, Page 45, etc.
+    parent_requirement_id UUID REFERENCES requirements_enhanced(requirement_id) ON DELETE SET NULL,
+    derived_from_requirement_id UUID REFERENCES requirements_enhanced(requirement_id) ON DELETE SET NULL,
+    
+    -- Verification
+    verification_method VARCHAR(50) CHECK (verification_method IN ('test', 'analysis', 'inspection', 'demonstration', 'review')),
+    verification_criteria TEXT,
+    verification_status VARCHAR(20) DEFAULT 'not_started' CHECK (verification_status IN ('not_started', 'in_progress', 'passed', 'failed', 'waived')),
+    verification_results TEXT,
+    verification_date TIMESTAMPTZ,
+    
+    -- Publishing
+    is_published BOOLEAN DEFAULT FALSE,
+    published_at TIMESTAMPTZ,
+    published_by UUID REFERENCES public.users(user_id) ON DELETE SET NULL,
+    
+    -- Metadata
+    iri VARCHAR(1000) UNIQUE,
+    tags JSONB DEFAULT '[]',
+    metadata JSONB DEFAULT '{}',
+    
+    -- Auditing
+    created_by UUID REFERENCES public.users(user_id) ON DELETE SET NULL,
+    created_at TIMESTAMPTZ DEFAULT NOW(),
+    updated_by UUID REFERENCES public.users(user_id) ON DELETE SET NULL,
+    updated_at TIMESTAMPTZ DEFAULT NOW(),
+    version INTEGER DEFAULT 1,
+    
+    -- Extraction metadata
+    extraction_confidence DECIMAL(3,2), -- 0.00 to 1.00
+    extraction_method VARCHAR(50), -- manual, regex, ai, keyword
+    extraction_job_id UUID,
+    
+    UNIQUE(project_id, requirement_identifier)
+);
+
+-- Constraints table for thresholds, objectives, KPCs, KPPs
+CREATE TABLE IF NOT EXISTS requirements_constraints (
+    constraint_id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    requirement_id UUID NOT NULL REFERENCES requirements_enhanced(requirement_id) ON DELETE CASCADE,
+    
+    -- Constraint identification
+    constraint_type VARCHAR(50) NOT NULL CHECK (constraint_type IN ('threshold', 'objective', 'kpc', 'kpp', 'design', 'interface', 'environmental', 'equation')),
+    constraint_name VARCHAR(200) NOT NULL,
+    constraint_description TEXT NOT NULL,
+    
+    -- Quantitative values
+    value_type VARCHAR(20) CHECK (value_type IN ('numeric', 'range', 'enumeration', 'boolean', 'text', 'equation')),
+    numeric_value DECIMAL(20,6),
+    numeric_unit VARCHAR(50),
+    range_min DECIMAL(20,6),
+    range_max DECIMAL(20,6),
+    range_unit VARCHAR(50),
+    text_value TEXT,
+    enumeration_values JSONB, -- Array of allowed values
+    equation_expression TEXT, -- Mathematical constraint equations (SysMLv2-lite ready)
+    equation_parameters JSONB, -- Parameters and their ontology IRIs for future SysMLv2-lite integration
+    
+    -- Verification
+    measurement_method VARCHAR(100),
+    tolerance DECIMAL(10,4),
+    tolerance_unit VARCHAR(50),
+    
+    -- Metadata
+    priority VARCHAR(20) DEFAULT 'medium' CHECK (priority IN ('critical', 'high', 'medium', 'low')),
+    source_document_id UUID REFERENCES files(id) ON DELETE SET NULL,
+    source_section VARCHAR(255),
+    
+    -- Auditing
+    created_by UUID REFERENCES public.users(user_id) ON DELETE SET NULL,
+    created_at TIMESTAMPTZ DEFAULT NOW(),
+    updated_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+-- Multi-user notes for requirements collaboration
+CREATE TABLE IF NOT EXISTS requirements_notes (
+    note_id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    requirement_id UUID NOT NULL REFERENCES requirements_enhanced(requirement_id) ON DELETE CASCADE,
+    
+    -- Note content
+    note_text TEXT NOT NULL,
+    note_type VARCHAR(50) DEFAULT 'general' CHECK (note_type IN ('general', 'issue', 'clarification', 'change_request', 'verification', 'review')),
+    
+    -- Collaboration
+    is_resolved BOOLEAN DEFAULT FALSE,
+    resolved_at TIMESTAMPTZ,
+    resolved_by UUID REFERENCES public.users(user_id) ON DELETE SET NULL,
+    resolution_text TEXT,
+    
+    -- Visibility
+    visibility VARCHAR(20) DEFAULT 'project' CHECK (visibility IN ('private', 'project', 'public')),
+    
+    -- References
+    references_note_id UUID REFERENCES requirements_notes(note_id) ON DELETE SET NULL, -- For replies
+    
+    -- Auditing
+    created_by UUID REFERENCES public.users(user_id) ON DELETE SET NULL,
+    created_at TIMESTAMPTZ DEFAULT NOW(),
+    updated_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+-- Requirements change history for tracking all changes
+CREATE TABLE IF NOT EXISTS requirements_history (
+    history_id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    requirement_id UUID NOT NULL REFERENCES requirements_enhanced(requirement_id) ON DELETE CASCADE,
+    
+    -- Change details
+    change_type VARCHAR(50) NOT NULL CHECK (change_type IN ('created', 'text_updated', 'status_changed', 'verification_updated', 'published', 'deprecated')),
+    change_description TEXT,
+    
+    -- Previous and new values
+    field_name VARCHAR(100),
+    old_value TEXT,
+    new_value TEXT,
+    
+    -- Change metadata
+    change_reason TEXT,
+    impact_assessment TEXT,
+    
+    -- Auditing
+    changed_by UUID REFERENCES public.users(user_id) ON DELETE SET NULL,
+    changed_at TIMESTAMPTZ DEFAULT NOW(),
+    version_before INTEGER,
+    version_after INTEGER
+);
+
+-- Requirements extraction configuration for document parsing
+CREATE TABLE IF NOT EXISTS requirements_extraction_config (
+    config_id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    project_id UUID NOT NULL REFERENCES public.projects(project_id) ON DELETE CASCADE,
+    
+    -- Configuration details
+    config_name VARCHAR(200) NOT NULL,
+    description TEXT,
+    
+    -- Keyword patterns for extraction
+    functional_keywords JSONB DEFAULT '["shall", "must", "will", "should"]',
+    performance_keywords JSONB DEFAULT '["performance", "speed", "accuracy", "throughput", "latency"]',
+    constraint_keywords JSONB DEFAULT '["threshold", "objective", "minimum", "maximum", "limit", "range"]',
+    
+    -- Regex patterns
+    requirement_patterns JSONB DEFAULT '["\\b[A-Z]+-[0-9]+\\b", "\\bREQ-[0-9]+\\b", "\\b[0-9]+\\.[0-9]+\\.[0-9]+\\b"]',
+    constraint_patterns JSONB DEFAULT '["\\b(minimum|maximum|at least|no more than|between)\\s+[0-9]+", "\\b[0-9]+(\\.[0-9]+)?\\s*(m|ft|kg|lb|sec|min|hr)\\b"]',
+    
+    -- Processing options
+    ignore_case BOOLEAN DEFAULT TRUE,
+    min_confidence DECIMAL(3,2) DEFAULT 0.7,
+    extract_context BOOLEAN DEFAULT TRUE,
+    context_window_size INTEGER DEFAULT 100,
+    
+    -- Document type specific settings
+    document_types JSONB DEFAULT '["requirements", "specification", "sow", "cdd"]',
+    section_filters JSONB DEFAULT '[]', -- Only extract from specific sections
+    
+    -- Status
+    is_active BOOLEAN DEFAULT TRUE,
+    is_default BOOLEAN DEFAULT FALSE,
+    
+    -- Auditing
+    created_by UUID REFERENCES public.users(user_id) ON DELETE SET NULL,
+    created_at TIMESTAMPTZ DEFAULT NOW(),
+    updated_at TIMESTAMPTZ DEFAULT NOW(),
+    
+    UNIQUE(project_id, config_name)
+);
+
+-- Requirements extraction jobs for tracking document processing
+CREATE TABLE IF NOT EXISTS requirements_extraction_jobs (
+    job_id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    project_id UUID NOT NULL REFERENCES public.projects(project_id) ON DELETE CASCADE,
+    config_id UUID REFERENCES requirements_extraction_config(config_id) ON DELETE SET NULL,
+    
+    -- Job details
+    job_name VARCHAR(200),
+    source_document_id UUID REFERENCES files(id) ON DELETE CASCADE,
+    extraction_type VARCHAR(50) DEFAULT 'document' CHECK (extraction_type IN ('document', 'batch', 'manual')),
+    
+    -- Processing status
+    status VARCHAR(20) DEFAULT 'pending' CHECK (status IN ('pending', 'running', 'completed', 'failed', 'cancelled')),
+    progress_percent INTEGER DEFAULT 0,
+    
+    -- Results
+    requirements_found INTEGER DEFAULT 0,
+    constraints_found INTEGER DEFAULT 0,
+    requirements_created INTEGER DEFAULT 0,
+    constraints_created INTEGER DEFAULT 0,
+    
+    -- Processing details
+    processing_log TEXT,
+    error_message TEXT,
+    
+    -- Timing
+    started_at TIMESTAMPTZ,
+    completed_at TIMESTAMPTZ,
+    processing_duration_seconds INTEGER,
+    
+    -- Auditing
+    created_by UUID REFERENCES public.users(user_id) ON DELETE SET NULL,
+    created_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+-- DAS review sessions for tracking AI-assisted requirement reviews
+CREATE TABLE IF NOT EXISTS requirements_das_reviews (
+    review_id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    requirement_id UUID NOT NULL REFERENCES requirements_enhanced(requirement_id) ON DELETE CASCADE,
+    
+    -- Review details
+    review_type VARCHAR(50) DEFAULT 'improvement' CHECK (review_type IN ('improvement', 'validation', 'gap_analysis', 'consistency')),
+    original_text TEXT NOT NULL,
+    suggested_text TEXT,
+    
+    -- DAS analysis
+    das_confidence DECIMAL(3,2), -- 0.00 to 1.00
+    improvement_areas JSONB DEFAULT '[]', -- Array of improvement categories
+    issues_found JSONB DEFAULT '[]', -- Array of specific issues
+    suggestions JSONB DEFAULT '[]', -- Array of specific suggestions
+    
+    -- User feedback
+    user_rating INTEGER CHECK (user_rating >= 1 AND user_rating <= 5),
+    user_feedback TEXT,
+    accepted BOOLEAN,
+    applied_suggestions JSONB DEFAULT '[]', -- Which suggestions were applied
+    
+    -- Review metadata
+    das_model_version VARCHAR(50),
+    review_context JSONB DEFAULT '{}', -- Context provided to DAS
+    
+    -- Auditing
+    reviewed_by UUID REFERENCES public.users(user_id) ON DELETE SET NULL,
+    reviewed_at TIMESTAMPTZ DEFAULT NOW(),
+    updated_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+-- =====================================
+-- REQUIREMENTS WORKBENCH INDEXES
+-- =====================================
+
+-- Requirements enhanced indexes
+CREATE INDEX IF NOT EXISTS idx_requirements_enhanced_project ON requirements_enhanced(project_id);
+CREATE INDEX IF NOT EXISTS idx_requirements_enhanced_identifier ON requirements_enhanced(project_id, requirement_identifier);
+CREATE INDEX IF NOT EXISTS idx_requirements_enhanced_type ON requirements_enhanced(requirement_type);
+CREATE INDEX IF NOT EXISTS idx_requirements_enhanced_state ON requirements_enhanced(state);
+CREATE INDEX IF NOT EXISTS idx_requirements_enhanced_priority ON requirements_enhanced(priority);
+CREATE INDEX IF NOT EXISTS idx_requirements_enhanced_published ON requirements_enhanced(is_published);
+CREATE INDEX IF NOT EXISTS idx_requirements_enhanced_source ON requirements_enhanced(source_document_id);
+CREATE INDEX IF NOT EXISTS idx_requirements_enhanced_parent ON requirements_enhanced(parent_requirement_id);
+CREATE INDEX IF NOT EXISTS idx_requirements_enhanced_verification ON requirements_enhanced(verification_status);
+CREATE INDEX IF NOT EXISTS idx_requirements_enhanced_created_by ON requirements_enhanced(created_by);
+CREATE INDEX IF NOT EXISTS idx_requirements_enhanced_tags ON requirements_enhanced USING GIN(tags);
+CREATE INDEX IF NOT EXISTS idx_requirements_enhanced_metadata ON requirements_enhanced USING GIN(metadata);
+CREATE INDEX IF NOT EXISTS idx_requirements_enhanced_iri ON requirements_enhanced(iri);
+
+-- Constraints indexes
+CREATE INDEX IF NOT EXISTS idx_constraints_requirement ON requirements_constraints(requirement_id);
+CREATE INDEX IF NOT EXISTS idx_constraints_type ON requirements_constraints(constraint_type);
+CREATE INDEX IF NOT EXISTS idx_constraints_source ON requirements_constraints(source_document_id);
+CREATE INDEX IF NOT EXISTS idx_constraints_priority ON requirements_constraints(priority);
+
+-- Notes indexes
+CREATE INDEX IF NOT EXISTS idx_notes_requirement ON requirements_notes(requirement_id);
+CREATE INDEX IF NOT EXISTS idx_notes_type ON requirements_notes(note_type);
+CREATE INDEX IF NOT EXISTS idx_notes_resolved ON requirements_notes(is_resolved);
+CREATE INDEX IF NOT EXISTS idx_notes_created_by ON requirements_notes(created_by);
+CREATE INDEX IF NOT EXISTS idx_notes_references ON requirements_notes(references_note_id);
+CREATE INDEX IF NOT EXISTS idx_notes_created_at ON requirements_notes(created_at);
+
+-- History indexes
+CREATE INDEX IF NOT EXISTS idx_history_requirement ON requirements_history(requirement_id);
+CREATE INDEX IF NOT EXISTS idx_history_change_type ON requirements_history(change_type);
+CREATE INDEX IF NOT EXISTS idx_history_changed_by ON requirements_history(changed_by);
+CREATE INDEX IF NOT EXISTS idx_history_changed_at ON requirements_history(changed_at);
+
+-- Extraction config indexes
+CREATE INDEX IF NOT EXISTS idx_extraction_config_project ON requirements_extraction_config(project_id);
+CREATE INDEX IF NOT EXISTS idx_extraction_config_active ON requirements_extraction_config(is_active);
+CREATE INDEX IF NOT EXISTS idx_extraction_config_default ON requirements_extraction_config(is_default);
+
+-- Extraction jobs indexes
+CREATE INDEX IF NOT EXISTS idx_extraction_jobs_project ON requirements_extraction_jobs(project_id);
+CREATE INDEX IF NOT EXISTS idx_extraction_jobs_status ON requirements_extraction_jobs(status);
+CREATE INDEX IF NOT EXISTS idx_extraction_jobs_document ON requirements_extraction_jobs(source_document_id);
+CREATE INDEX IF NOT EXISTS idx_extraction_jobs_created ON requirements_extraction_jobs(created_at);
+
+-- DAS reviews indexes
+CREATE INDEX IF NOT EXISTS idx_das_reviews_requirement ON requirements_das_reviews(requirement_id);
+CREATE INDEX IF NOT EXISTS idx_das_reviews_type ON requirements_das_reviews(review_type);
+CREATE INDEX IF NOT EXISTS idx_das_reviews_accepted ON requirements_das_reviews(accepted);
+CREATE INDEX IF NOT EXISTS idx_das_reviews_reviewed_by ON requirements_das_reviews(reviewed_by);
+CREATE INDEX IF NOT EXISTS idx_das_reviews_reviewed_at ON requirements_das_reviews(reviewed_at);
+
+-- =====================================
+-- REQUIREMENTS WORKBENCH FUNCTIONS
+-- =====================================
+
+-- Function to update requirement version and history
+CREATE OR REPLACE FUNCTION update_requirement_version()
+RETURNS TRIGGER AS $$
+BEGIN
+    -- Increment version
+    NEW.version = OLD.version + 1;
+    NEW.updated_at = NOW();
+    
+    -- Create history entry for the change
+    INSERT INTO requirements_history (
+        requirement_id,
+        change_type,
+        change_description,
+        field_name,
+        old_value,
+        new_value,
+        changed_by,
+        version_before,
+        version_after
+    ) VALUES (
+        NEW.requirement_id,
+        'text_updated',
+        'Requirement text updated',
+        'requirement_text',
+        OLD.requirement_text,
+        NEW.requirement_text,
+        NEW.updated_by,
+        OLD.version,
+        NEW.version
+    );
+    
+    RETURN NEW;
+END;
+$$ LANGUAGE plpgsql;
+
+-- Function to create extraction statistics
+CREATE OR REPLACE FUNCTION update_extraction_job_stats(job_id_param UUID)
+RETURNS void AS $$
+BEGIN
+    UPDATE requirements_extraction_jobs 
+    SET 
+        requirements_created = (
+            SELECT COUNT(*) FROM requirements_enhanced 
+            WHERE extraction_job_id = job_id_param
+        ),
+        constraints_created = (
+            SELECT COUNT(*) FROM requirements_constraints rc
+            JOIN requirements_enhanced re ON rc.requirement_id = re.requirement_id
+            WHERE re.extraction_job_id = job_id_param
+        ),
+        updated_at = NOW()
+    WHERE job_id = job_id_param;
+END;
+$$ LANGUAGE plpgsql;
+
+-- Function to auto-assign requirement identifiers
+CREATE OR REPLACE FUNCTION auto_assign_requirement_identifier()
+RETURNS TRIGGER AS $$
+DECLARE
+    next_number INTEGER;
+    new_identifier VARCHAR(100);
+BEGIN
+    -- Only auto-assign if identifier is not provided
+    IF NEW.requirement_identifier IS NULL OR NEW.requirement_identifier = '' THEN
+        -- Get the next sequential number for this project
+        SELECT COALESCE(MAX(
+            CAST(REGEXP_REPLACE(requirement_identifier, '^REQ-', '') AS INTEGER)
+        ), 0) + 1
+        INTO next_number
+        FROM requirements_enhanced
+        WHERE project_id = NEW.project_id 
+        AND requirement_identifier ~ '^REQ-[0-9]+$';
+        
+        -- Format as REQ-001, REQ-002, etc.
+        new_identifier = 'REQ-' || LPAD(next_number::TEXT, 3, '0');
+        
+        -- Ensure uniqueness (in case of race conditions)
+        WHILE EXISTS (
+            SELECT 1 FROM requirements_enhanced 
+            WHERE project_id = NEW.project_id 
+            AND requirement_identifier = new_identifier
+        ) LOOP
+            next_number = next_number + 1;
+            new_identifier = 'REQ-' || LPAD(next_number::TEXT, 3, '0');
+        END LOOP;
+        
+        NEW.requirement_identifier = new_identifier;
+    END IF;
+    
+    RETURN NEW;
+END;
+$$ LANGUAGE plpgsql;
+
+-- =====================================
+-- REQUIREMENTS WORKBENCH TRIGGERS
+-- =====================================
+
+-- Trigger to update requirement version when text changes
+CREATE TRIGGER trigger_requirement_version_update
+    BEFORE UPDATE ON requirements_enhanced
+    FOR EACH ROW
+    WHEN (OLD.requirement_text IS DISTINCT FROM NEW.requirement_text)
+    EXECUTE FUNCTION update_requirement_version();
+
+-- Trigger to update timestamps
+CREATE TRIGGER trigger_requirements_enhanced_updated_at
+    BEFORE UPDATE ON requirements_enhanced
+    FOR EACH ROW
+    EXECUTE FUNCTION update_updated_at_column();
+
+CREATE TRIGGER trigger_requirements_constraints_updated_at
+    BEFORE UPDATE ON requirements_constraints
+    FOR EACH ROW
+    EXECUTE FUNCTION update_updated_at_column();
+
+CREATE TRIGGER trigger_requirements_notes_updated_at
+    BEFORE UPDATE ON requirements_notes
+    FOR EACH ROW
+    EXECUTE FUNCTION update_updated_at_column();
+
+CREATE TRIGGER trigger_requirements_extraction_config_updated_at
+    BEFORE UPDATE ON requirements_extraction_config
+    FOR EACH ROW
+    EXECUTE FUNCTION update_updated_at_column();
+
+CREATE TRIGGER trigger_requirements_das_reviews_updated_at
+    BEFORE UPDATE ON requirements_das_reviews
+    FOR EACH ROW
+    EXECUTE FUNCTION update_updated_at_column();
+
+-- Trigger to auto-assign requirement identifiers
+CREATE TRIGGER trigger_auto_assign_requirement_identifier
+    BEFORE INSERT ON requirements_enhanced
+    FOR EACH ROW
+    EXECUTE FUNCTION auto_assign_requirement_identifier();
+
+-- =====================================
+-- REQUIREMENTS WORKBENCH COMMENTS
+-- =====================================
+
+-- Table comments
+COMMENT ON TABLE requirements_enhanced IS 'Comprehensive requirements management with full workbench capabilities';
+COMMENT ON TABLE requirements_constraints IS 'Constraints, thresholds, objectives, KPCs, and KPPs associated with requirements';
+COMMENT ON TABLE requirements_notes IS 'Multi-user collaborative notes and comments on requirements';
+COMMENT ON TABLE requirements_history IS 'Complete change history and audit trail for all requirements';
+COMMENT ON TABLE requirements_extraction_config IS 'Configuration for automated requirements extraction from documents';
+COMMENT ON TABLE requirements_extraction_jobs IS 'Tracking of document processing and requirements extraction jobs';
+COMMENT ON TABLE requirements_das_reviews IS 'DAS AI-assisted requirement review sessions and improvements';
+
+-- Column comments for requirements_enhanced
+COMMENT ON COLUMN requirements_enhanced.requirement_identifier IS 'Unique identifier within project (REQ-001, SYS-REQ-001, etc.)';
+COMMENT ON COLUMN requirements_enhanced.requirement_rationale IS 'Explanation of why this requirement exists';
+COMMENT ON COLUMN requirements_enhanced.verification_method IS 'How the requirement will be verified (test, analysis, inspection, demonstration, review)';
+COMMENT ON COLUMN requirements_enhanced.is_published IS 'Whether requirement is available for use in other projects';
+COMMENT ON COLUMN requirements_enhanced.extraction_confidence IS 'AI confidence score for automatically extracted requirements';
+COMMENT ON COLUMN requirements_enhanced.extraction_job_id IS 'Reference to extraction job that created this requirement';
+
+-- Column comments for constraints
+COMMENT ON COLUMN requirements_constraints.constraint_type IS 'Type of constraint: threshold, objective, KPC, KPP, design, interface, environmental';
+COMMENT ON COLUMN requirements_constraints.value_type IS 'Data type of constraint value: numeric, range, enumeration, boolean, text';
+COMMENT ON COLUMN requirements_constraints.enumeration_values IS 'JSON array of allowed values for enumeration type constraints';
+
+-- Column comments for notes
+COMMENT ON COLUMN requirements_notes.visibility IS 'Note visibility: private (creator only), project (project members), public (all users)';
+COMMENT ON COLUMN requirements_notes.references_note_id IS 'Reference to parent note for threaded discussions';
+
+-- Column comments for DAS reviews
+COMMENT ON COLUMN requirements_das_reviews.improvement_areas IS 'JSON array of improvement categories identified by DAS';
+COMMENT ON COLUMN requirements_das_reviews.issues_found IS 'JSON array of specific issues found by DAS analysis';
+COMMENT ON COLUMN requirements_das_reviews.applied_suggestions IS 'JSON array of DAS suggestions that were applied by user';
+
+-- =====================================
+-- REQUIREMENTS WORKBENCH MIGRATIONS
+-- =====================================
+
+-- Migration: Add equation constraint support for SysMLv2-lite integration
+-- These fields support mathematical constraint expressions and ontology-based parameters
+DO $$
+BEGIN
+    -- Add equation_expression column if it doesn't exist
+    IF NOT EXISTS (
+        SELECT 1 FROM information_schema.columns 
+        WHERE table_name = 'requirements_constraints' 
+        AND column_name = 'equation_expression'
+    ) THEN
+        ALTER TABLE requirements_constraints 
+        ADD COLUMN equation_expression TEXT;
+        
+        COMMENT ON COLUMN requirements_constraints.equation_expression IS 'Mathematical constraint equations (SysMLv2-lite ready)';
+    END IF;
+
+    -- Add equation_parameters column if it doesn't exist
+    IF NOT EXISTS (
+        SELECT 1 FROM information_schema.columns 
+        WHERE table_name = 'requirements_constraints' 
+        AND column_name = 'equation_parameters'
+    ) THEN
+        ALTER TABLE requirements_constraints 
+        ADD COLUMN equation_parameters JSONB;
+        
+        COMMENT ON COLUMN requirements_constraints.equation_parameters IS 'Parameters and their ontology IRIs for SysMLv2-lite integration';
+    END IF;
+
+    -- Update constraint_type check constraint to include 'equation' type
+    ALTER TABLE requirements_constraints DROP CONSTRAINT IF EXISTS requirements_constraints_constraint_type_check;
+    ALTER TABLE requirements_constraints 
+    ADD CONSTRAINT requirements_constraints_constraint_type_check 
+    CHECK (constraint_type IN ('threshold', 'objective', 'kpc', 'kpp', 'design', 'interface', 'environmental', 'equation'));
+
+    -- Update value_type check constraint to include 'equation' type
+    ALTER TABLE requirements_constraints DROP CONSTRAINT IF EXISTS requirements_constraints_value_type_check;
+    ALTER TABLE requirements_constraints 
+    ADD CONSTRAINT requirements_constraints_value_type_check 
+    CHECK (value_type IN ('numeric', 'range', 'enumeration', 'boolean', 'text', 'equation'));
+
+    RAISE NOTICE 'Requirements constraint equation support migration completed';
+END
+$$;
+
+-- =====================================
+-- REQUIREMENTS IMPORT TRACEABILITY MIGRATION
+-- =====================================
+-- Add import traceability columns for cross-project requirements import
+-- This migration will be applied automatically if columns are missing
+
+DO $$ 
+BEGIN
+    -- Add source_project_iri if it doesn't exist
+    IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'requirements_enhanced' AND column_name = 'source_project_iri') THEN
+        ALTER TABLE requirements_enhanced ADD COLUMN source_project_iri VARCHAR(1000);
+        RAISE NOTICE 'Added source_project_iri column to requirements_enhanced';
+    END IF;
+    
+    -- Add source_namespace_path if it doesn't exist  
+    IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'requirements_enhanced' AND column_name = 'source_namespace_path') THEN
+        ALTER TABLE requirements_enhanced ADD COLUMN source_namespace_path VARCHAR(500);
+        RAISE NOTICE 'Added source_namespace_path column to requirements_enhanced';
+    END IF;
+    
+    -- Add source_namespace_prefix if it doesn't exist
+    IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'requirements_enhanced' AND column_name = 'source_namespace_prefix') THEN
+        ALTER TABLE requirements_enhanced ADD COLUMN source_namespace_prefix VARCHAR(100);
+        RAISE NOTICE 'Added source_namespace_prefix column to requirements_enhanced';
+    END IF;
+    
+    -- Ensure 'imported' state is in CHECK constraint
+    IF NOT EXISTS (
+        SELECT 1 FROM pg_constraint c 
+        JOIN pg_class t ON c.conrelid = t.oid 
+        WHERE t.relname = 'requirements_enhanced' 
+        AND c.conname = 'requirements_enhanced_state_check'
+        AND pg_get_constraintdef(c.oid) LIKE '%imported%'
+    ) THEN
+        ALTER TABLE requirements_enhanced DROP CONSTRAINT IF EXISTS requirements_enhanced_state_check;
+        ALTER TABLE requirements_enhanced ADD CONSTRAINT requirements_enhanced_state_check 
+            CHECK (state IN ('draft', 'review', 'approved', 'published', 'deprecated', 'cancelled', 'imported'));
+        RAISE NOTICE 'Updated state CHECK constraint to include imported';
+    END IF;
+    
+    RAISE NOTICE 'Requirements import traceability migration completed';
+END
+$$;

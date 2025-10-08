@@ -1,0 +1,186 @@
+---
+description: Quick setup automation patterns for rapid ODRAS deployment after rebuilds
+---
+
+# Quick Setup Automation for ODRAS
+
+## Complete Rebuild Process
+
+### Automated Rebuild Script
+Use [quick_setup.sh](mdc:scripts/quick_setup.sh) for complete system rebuild:
+
+```bash
+./scripts/quick_setup.sh
+```
+
+**Complete Process**:
+1. `./odras.sh clean-all -y` - Destroy all data and containers
+2. `docker-compose up -d` - Start fresh Docker services
+3. `./odras.sh init-db` - Initialize database with schema and users
+4. `./odras.sh start` - Start ODRAS application and workers
+5. Upload and process all markdown documents
+6. Test both embedding models
+7. Validate RAG performance
+
+### Manual Rebuild Commands
+For step-by-step rebuild:
+```bash
+# 1. Complete cleanup
+./odras.sh clean-all -y
+
+# 2. Start services
+docker-compose up -d
+
+# 3. Wait for services
+sleep 15
+
+# 4. Initialize database
+./odras.sh init-db
+
+# 5. Start application
+./odras.sh start
+
+# 6. Wait for readiness
+sleep 10
+
+# 7. Run setup
+python scripts/quick_setup.py
+```
+
+## Project Setup Automation
+
+### Default Project Configuration
+- **Name**: `core.se`
+- **Domain**: `systems-engineering`
+- **Description**: Core Systems Engineering Project with BSEO ontology and UAS specifications
+
+### Automated Document Upload
+The setup script automatically uploads and configures:
+
+| **Document** | **Type** | **Embedding Model** | **Strategy** |
+|--------------|----------|---------------------|--------------|
+| `uas_specifications.md` | specification | all-mpnet-base-v2 | simple_semantic |
+| `disaster_response_requirements.md` | requirements | all-mpnet-base-v2 | simple_semantic |
+| `decision_matrix_template.md` | analysis_template | all-MiniLM-L6-v2 | simple_semantic |
+
+### User Account Setup
+Default credentials from `./odras.sh init-db`:
+- **jdehart**: `jdehart123!` (project owner)
+- **admin**: `admin123!` (system admin)
+- **das_service**: `das_service_2024!` (automation account)
+
+## Validation and Testing
+
+### System Readiness Checks
+```python
+# Check application status
+response = await client.get("http://localhost:8000/")
+assert response.status_code == 200
+
+# Check authentication
+response = await client.post("/api/auth/login", json={
+    "username": "das_service", 
+    "password": "das_service_2024!"
+})
+assert response.status_code == 200
+```
+
+### Embedding Model Validation
+```python
+# Check Qdrant collections
+chunks_384 = requests.get('http://localhost:6333/collections/knowledge_chunks')
+chunks_768 = requests.get('http://localhost:6333/collections/knowledge_chunks_768')
+
+assert chunks_384.json()['result']['points_count'] > 0
+assert chunks_768.json()['result']['points_count'] > 0
+```
+
+### RAG Performance Validation
+```python
+# Test comprehensive UAS query
+response = await client.post("/api/das2/chat", json={
+    "message": "How many UAS are mentioned in the specifications?",
+    "project_id": project_id
+})
+
+result = response.json()
+assert result["metadata"]["chunks_found"] >= 3
+assert "UAS" in result["message"]
+```
+
+## Troubleshooting Automation
+
+### Common Failure Points
+
+#### Database Connection Issues
+```bash
+# Check database services
+docker ps | grep postgres
+
+# Restart if needed
+docker-compose restart postgres
+./odras.sh restart
+```
+
+#### Qdrant Collection Issues
+```bash
+# Check collections
+curl -s "http://localhost:6333/collections" | jq .
+
+# Recreate if needed
+curl -X PUT "http://localhost:6333/collections/knowledge_chunks" -d '{"vectors":{"size":384,"distance":"Cosine"}}'
+curl -X PUT "http://localhost:6333/collections/knowledge_chunks_768" -d '{"vectors":{"size":768,"distance":"Cosine"}}'
+```
+
+#### Ingestion Worker Issues
+```bash
+# Check worker logs
+tail -20 /tmp/odras_simple_worker.log
+tail -20 /tmp/odras_complex_worker.log
+
+# Restart workers
+./odras.sh restart
+```
+
+### Automated Recovery
+The setup scripts include automatic recovery for:
+- Service startup failures (retry with backoff)
+- Database connection issues (wait and retry)
+- File upload failures (continue with remaining files)
+- Processing timeouts (extend wait times)
+
+## Development Workflow
+
+### After Code Changes
+1. Test locally: `python scripts/test_embedders.py`
+2. If major changes: `./scripts/quick_setup.sh`
+3. Validate performance with known queries
+4. Check both embedding models work
+
+### After Database Schema Changes
+1. Always run: `./odras.sh clean-all -y`
+2. Full rebuild: `./scripts/quick_setup.sh`
+3. Validate data migration successful
+4. Test RAG functionality restored
+
+### After Chunking Service Changes
+1. Test chunking directly with sample documents
+2. Upload test documents with new chunking
+3. Verify improved chunk quality
+4. Validate RAG performance maintained or improved
+
+## Production Deployment
+
+### Pre-deployment Validation
+- Run complete test suite: `./scripts/quick_setup.sh`
+- Validate both embedding models working
+- Check all document types process correctly
+- Verify RAG performance meets expectations
+
+### Post-deployment Monitoring
+- Monitor Qdrant collection growth
+- Check RAG query response times
+- Validate chunk quality in production documents
+- Monitor database connection pool usage
+
+Use these automation patterns to ensure reliable, fast ODRAS deployment and consistent RAG performance across system rebuilds.

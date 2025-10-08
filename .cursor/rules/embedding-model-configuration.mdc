@@ -1,0 +1,138 @@
+---
+description: Cross-project embedding model configuration and dual collection patterns
+---
+
+# Embedding Model Configuration for ODRAS
+
+## Dual Embedding Model Architecture
+
+### Model Configuration
+- **Fast Model**: `all-MiniLM-L6-v2` (384 dimensions)
+  - Collection: `knowledge_chunks`
+  - Use for: General documents, quick processing
+  - Performance: Very fast, good accuracy for general text
+
+- **Better Model**: `all-mpnet-base-v2` (768 dimensions)
+  - Collection: `knowledge_chunks_768`
+  - Use for: Technical specifications, requirements
+  - Performance: Slower but superior semantic understanding
+
+### Collection Management
+
+#### Qdrant Collections
+```python
+# Collection names in RAGStoreService
+self.docs_collection = "knowledge_chunks"        # 384 dims
+self.docs_collection_768 = "knowledge_chunks_768" # 768 dims
+```
+
+#### Automatic Collection Selection
+```python
+# In store service
+collection_name = (
+    self.docs_collection_768 if model == "all-mpnet-base-v2" 
+    else self.docs_collection
+)
+```
+
+#### RAG Service Search Strategy
+```python
+# Search both collections and combine results
+results_384 = await self.qdrant_service.search_similar_chunks(
+    query_text=question,
+    collection_name="knowledge_chunks",
+    limit=max_chunks * 2,
+    score_threshold=similarity_threshold,
+)
+
+results_768 = await self.qdrant_service.search_similar_chunks(
+    query_text=question,
+    collection_name="knowledge_chunks_768", 
+    limit=max_chunks * 2,
+    score_threshold=similarity_threshold,
+)
+
+# Combine and deduplicate by chunk_id
+```
+
+## File Type to Model Mapping
+
+### Automatic Model Selection
+```python
+def _get_file_config(filename: str) -> tuple[str, str]:
+    if 'specification' in filename_lower or 'uas_' in filename_lower:
+        return 'specification', 'all-mpnet-base-v2'  # Better model
+    elif 'requirement' in filename_lower:
+        return 'requirements', 'all-mpnet-base-v2'   # Better model
+    elif 'decision_matrix' in filename_lower:
+        return 'analysis_template', 'all-MiniLM-L6-v2'  # Fast model
+    else:
+        return 'document', 'all-MiniLM-L6-v2'        # Fast model
+```
+
+### Frontend Configuration
+- **Staging UI**: Fixed to `all-mpnet-base-v2` for consistency
+- **Individual Files**: Auto-detection based on file type
+- **Processing Modal**: Shows single high-quality model
+
+## Service Integration
+
+### Key Services Updated
+1. **[store.py](mdc:backend/services/store.py)**: Collection selection logic
+2. **[rag_service.py](mdc:backend/services/rag_service.py)**: Multi-collection search
+3. **[qdrant_service.py](mdc:backend/services/qdrant_service.py)**: Model-aware queries
+4. **[ingestion_worker.py](mdc:backend/services/ingestion_worker.py)**: Consistent embedding service
+
+### Configuration Files
+- **[files.py](mdc:backend/api/files.py)**: Upload defaults to `all-mpnet-base-v2`
+- **[app.html](mdc:frontend/app.html)**: UI shows single model selection
+- **[config.py](mdc:backend/services/config.py)**: RAG settings for dual-write
+
+## Performance Optimization
+
+### RAG Query Settings
+```python
+# Optimized for better retrieval
+max_chunks: int = 10           # Increased from 5
+similarity_threshold: float = 0.3  # Lowered from 0.5
+```
+
+### SQL-First Architecture
+- **PostgreSQL**: Authoritative text storage in `doc_chunk` table
+- **Qdrant**: Vector search with IDs-only payloads
+- **Read-through**: Fetch text from SQL using vector-found chunk IDs
+
+## Testing and Validation
+
+### Expected Performance
+- **Fast Model**: 15-25 points in `knowledge_chunks`
+- **Better Model**: 10-20 points in `knowledge_chunks_768`
+- **Query Results**: 3-9 chunks found consistently
+- **Coverage**: All structured document sections accessible
+
+### Validation Queries
+- "How many UAS are mentioned in total?" → Should find all 9 UAS
+- "What is the weight of QuadCopter T4?" → Should return 2.5 kg
+- "List all MUST requirements" → Should extract RFC 2119 keywords
+- "What are the evaluation criteria?" → Should find decision matrix elements
+
+## Troubleshooting
+
+### Common Issues
+- **Dimension Mismatch**: Ensure collection dimensions match model
+- **Empty Collections**: Check dual-write enabled in config
+- **Missing Chunks**: Verify ingestion worker uses correct embedding service
+- **Query Timeouts**: Check database connection pool settings
+
+### Debug Commands
+```bash
+# Check collection status
+curl -s "http://localhost:6333/collections" | jq .
+
+# Check points count
+curl -s "http://localhost:6333/collections/knowledge_chunks" | jq '.result.points_count'
+curl -s "http://localhost:6333/collections/knowledge_chunks_768" | jq '.result.points_count'
+
+# Test embedding models
+python scripts/test_embedders.py
+```
