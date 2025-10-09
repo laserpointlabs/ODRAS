@@ -6906,13 +6906,13 @@
     function runAdvancedLayout(layoutType) {
       ensureOntologyInitialized();
       if (!ontoState.cy) return;
-      
+
       // Check if a layout is already running
       if (ontoState.layoutRunning) {
         console.log('⏭️ Layout already in progress, skipping...');
         return;
       }
-      
+
       // Suspend layout saves during layout algorithm execution
       ontoState.layoutRunning = true;
       console.log('🔄 Layout algorithm starting, suspending position saves...');
@@ -7046,20 +7046,28 @@
 
       try {
         const layout = ontoState.cy.layout(layoutOptions);
-        
+
         // Reset flag when layout completes
         layout.on('layoutstop', () => {
           console.log('✅ Layout algorithm completed');
           ontoState.layoutRunning = false;
           
-          // Manually trigger a position event to ensure debounced save happens
-          // This is needed because setting layoutRunning=false doesn't retroactively
-          // trigger saves that were skipped during the layout
-          if (ontoState.cy.nodes().length > 0) {
-            ontoState.cy.trigger('position');
-          }
+          // Update modification metadata for all moved nodes
+          ontoState.cy.nodes().forEach(node => {
+            if (!node.hasClass('imported')) {
+              const currentAttrs = node.data('attrs') || {};
+              const updatedAttrs = updateModificationMetadata(currentAttrs);
+              node.data('attrs', updatedAttrs);
+            }
+          });
+          
+          // Trigger position event on the cy instance to activate the debounced saves
+          // This ensures the layout changes are saved to both localStorage and server
+          ontoState.cy.trigger('position');
+          
+          console.log(`📍 Layout complete - updated metadata for ${ontoState.cy.nodes().filter(n => !n.hasClass('imported')).length} nodes`);
         });
-        
+
         layout.run();
 
         // Fit the graph after layout completes
@@ -7078,9 +7086,17 @@
         });
         fallbackLayout.on('layoutstop', () => {
           ontoState.layoutRunning = false;
-          if (ontoState.cy.nodes().length > 0) {
-            ontoState.cy.trigger('position');
-          }
+          // Update modification metadata for all moved nodes
+          ontoState.cy.nodes().forEach(node => {
+            if (!node.hasClass('imported')) {
+              const currentAttrs = node.data('attrs') || {};
+              const updatedAttrs = updateModificationMetadata(currentAttrs);
+              node.data('attrs', updatedAttrs);
+            }
+          });
+          // Trigger position event on cy instance
+          ontoState.cy.trigger('position');
+          console.log(`📍 Layout complete (fallback) - updated metadata for ${ontoState.cy.nodes().filter(n => !n.hasClass('imported')).length} nodes`);
         });
         fallbackLayout.run();
       }
