@@ -1,0 +1,384 @@
+{
+  "metadata": {
+    "exportedBy": "jdehart",
+    "exportedDate": "2025-10-09",
+    "exportedTimestamp": "2025-10-09T16:28:26.150Z",
+    "ontologyIri": "https://xma-adt.usnc.mil/odras/core/9b05a37d-a553-4683-88b8-a492c8ffad85/ontologies/bseo-rnm-v1",
+    "exportVersion": "1.0"
+  },
+  "model": {
+    "name": "BSEO_RNM_V1",
+    "type": "Model",
+    "comment": "Reliability & Maintainability Extension...!!!",
+    "definition": "!@#$%",
+    "version": "",
+    "namespace": "https://xma-adt.usnc.mil/odras/core/9b05a37d-a553-4683-88b8-a492c8ffad85/ontologies/bseo-rnm-v1",
+    "imports": ""
+  },
+  "nodes": [
+    {
+      "data": {
+        "id": "Class1",
+        "label": "Component",
+        "type": "class",
+        "attrs": {
+          "comment": "Physical or logical system element with an identity and interfaces.",
+          "definition": "A replaceable item of the system that can accrue failures and has associated reliability/sustainment records.",
+          "example": "“Hydraulic Pump P-17”; “EO/IR Sensor Module.”",
+          "creator": "jdehart",
+          "created_date": "2025-09-22",
+          "created_timestamp": "2025-09-22T15:30:03.539Z",
+          "last_modified_by": "jdehart",
+          "last_modified_date": "2025-10-09",
+          "last_modified_timestamp": "2025-10-09T16:27:16.532Z"
+        }
+      },
+      "position": {
+        "x": 137.9527681310839,
+        "y": 456.7528372626027
+      }
+    },
+    {
+      "data": {
+        "id": "Class2",
+        "label": "Process",
+        "type": "class",
+        "attrs": {
+          "comment": "Activity or procedure executed on, by, or for components.",
+          "definition": "A repeatable activity that can experience or induce failures and has reliability/sustainment characterization.",
+          "example": "“Pump Overhaul Procedure”; “Wing Assembly Step A3.”",
+          "creator": "jdehart",
+          "created_date": "2025-09-22",
+          "created_timestamp": "2025-09-22T15:30:05.356Z",
+          "last_modified_by": "jdehart",
+          "last_modified_date": "2025-10-09",
+          "last_modified_timestamp": "2025-10-09T16:27:16.533Z"
+        }
+      },
+      "position": {
+        "x": 134.45558057762813,
+        "y": 553.552981691182
+      }
+    },
+    {
+      "data": {
+        "id": "Class3",
+        "label": "Reliability Data",
+        "type": "class",
+        "attrs": {
+          "comment": "Quantitative reliability metrics and context.",
+          "definition": "A record containing reliability measures (e.g., failure rate, MTBF, confidence, environment, source).",
+          "example": "“MTBF=1,200 h; λ=8.3e-4 1/h; Env=A1; 90% CI; Source=TestRpt-42.”",
+          "creator": "jdehart",
+          "created_date": "2025-09-22",
+          "created_timestamp": "2025-09-22T15:30:17.495Z",
+          "last_modified_by": "jdehart",
+          "last_modified_date": "2025-10-09",
+          "last_modified_timestamp": "2025-10-09T16:27:16.534Z"
+        }
+      },
+      "position": {
+        "x": 544.6105903729475,
+        "y": 321.65366378134274
+      }
+    },
+    {
+      "data": {
+        "id": "Class4",
+        "label": "Failure Mode",
+        "type": "class",
+        "attrs": {
+          "comment": "Specific manner in which an entity fails.",
+          "definition": "A characteristic way a component or process ceases to perform its intended function.",
+          "example": "“Bearing seizure”; “Cavitation erosion”; “Improper torque sequence.”",
+          "creator": "jdehart",
+          "created_date": "2025-09-22",
+          "created_timestamp": "2025-09-22T15:30:19.252Z",
+          "last_modified_by": "jdehart",
+          "last_modified_date": "2025-10-09",
+          "last_modified_timestamp": "2025-10-09T16:27:16.534Z"
+        }
+      },
+      "position": {
+        "x": 567.5733756543748,
+        "y": 491.56377446895794
+      }
+    },
+    {
+      "data": {
+        "id": "Class5",
+        "label": "Sustainment Data",
+        "type": "class",
+        "attrs": {
+          "comment": "Maintenance, logistics, and cost/effort metrics.",
+          "definition": "A record of sustainment parameters (e.g., MTTR, spares, turnaround time, cost, manpower, tooling).",
+          "example": "“MTTR=2.4 h; Spares Level=3; Cost/repair=$1,200; 2 techs; Fixture F-09.”",
+          "creator": "jdehart",
+          "created_date": "2025-09-22",
+          "created_timestamp": "2025-09-22T15:30:22.808Z",
+          "last_modified_by": "jdehart",
+          "last_modified_date": "2025-10-09",
+          "last_modified_timestamp": "2025-10-09T16:27:16.534Z"
+        }
+      },
+      "position": {
+        "x": 525.1175198969089,
+        "y": 663.5584241892783
+      }
+    },
+    {
+      "data": {
+        "id": "Note1758555161293",
+        "label": "Note 1293",
+        "type": "note",
+        "attrs": {
+          "noteType": "Note",
+          "content": "Simple reliability and sustainment ontology.",
+          "creator": "jdehart",
+          "created_date": "2025-09-22",
+          "created_timestamp": "2025-09-22T15:32:41.293Z",
+          "last_modified_by": "jdehart",
+          "last_modified_date": "2025-10-09",
+          "last_modified_timestamp": "2025-10-09T16:27:16.535Z",
+          "author": "jdehart"
+        }
+      },
+      "position": {
+        "x": 108.69348598935622,
+        "y": 320.9643243618327
+      }
+    }
+  ],
+  "edges": [
+    {
+      "data": {
+        "id": "e1758555058916",
+        "source": "Class1",
+        "target": "Class3",
+        "predicate": "has_reliability_data",
+        "type": "objectProperty",
+        "attrs": {
+          "comment": "Associates a component with its reliability metrics/record.",
+          "definition": "Binds the component to a reliability dataset used for prediction or reporting.",
+          "example": "Pump P-17 has_reliability_data MTBF Record v3.",
+          "creator": "jdehart",
+          "created_date": "2025-09-22",
+          "created_timestamp": "2025-09-22T15:30:58.916Z",
+          "last_modified_by": "jdehart",
+          "last_modified_date": "2025-10-07",
+          "last_modified_timestamp": "2025-10-07T10:48:47.857Z",
+          "functional": false,
+          "inverse_functional": false
+        }
+      }
+    },
+    {
+      "data": {
+        "id": "e1758555061468",
+        "source": "Class1",
+        "target": "Class4",
+        "predicate": "has_failure_mode",
+        "type": "objectProperty",
+        "attrs": {
+          "comment": "Links a component to a documented failure mode.",
+          "definition": "Asserts that the component is known to fail in the specified manner.",
+          "example": "Pump P-17 has_failure_mode Bearing seizure.",
+          "creator": "jdehart",
+          "created_date": "2025-09-22",
+          "created_timestamp": "2025-09-22T15:31:01.468Z",
+          "last_modified_by": "jdehart",
+          "last_modified_date": "2025-10-07",
+          "last_modified_timestamp": "2025-10-07T10:48:06.237Z",
+          "functional": false,
+          "inverse_functional": false
+        }
+      }
+    },
+    {
+      "data": {
+        "id": "e1758555063482",
+        "source": "Class1",
+        "target": "Class5",
+        "predicate": "has_sustainment_data",
+        "type": "objectProperty",
+        "attrs": {
+          "comment": "Associates a component with sustainment/maintenance metrics and logistics data.",
+          "definition": "Binds the component to maintainability, cost, spares, and supportability records.",
+          "example": "Pump P-17 has_sustainment_data MTTR/Cost Sheet v5.",
+          "creator": "jdehart",
+          "created_date": "2025-09-22",
+          "created_timestamp": "2025-09-22T15:31:03.482Z",
+          "last_modified_by": "jdehart",
+          "last_modified_date": "2025-10-07",
+          "last_modified_timestamp": "2025-10-07T10:49:24.477Z",
+          "functional": false,
+          "inverse_functional": false
+        }
+      }
+    },
+    {
+      "data": {
+        "id": "e1758555065968",
+        "source": "Class2",
+        "target": "Class3",
+        "predicate": "has_reliability_data",
+        "type": "objectProperty",
+        "attrs": {
+          "comment": "Associates a process with reliability characterization (e.g., process yield, induced failure rate).",
+          "definition": "Binds the process to reliability metrics relevant to its execution quality.",
+          "example": "Solder Rework has_reliability_data Defect Rate Lot-22.",
+          "creator": "jdehart",
+          "created_date": "2025-09-22",
+          "created_timestamp": "2025-09-22T15:31:05.968Z",
+          "last_modified_by": "jdehart",
+          "last_modified_date": "2025-10-07",
+          "last_modified_timestamp": "2025-10-07T10:49:05.892Z",
+          "functional": false,
+          "inverse_functional": false
+        }
+      }
+    },
+    {
+      "data": {
+        "id": "e1758555067821",
+        "source": "Class2",
+        "target": "Class4",
+        "predicate": "has_failure_mode",
+        "type": "objectProperty",
+        "attrs": {
+          "comment": "Links a process to a documented failure mode (procedure-induced or procedural failure).",
+          "definition": "Asserts that executing the process can lead to, or is characterized by, the failure mode.",
+          "example": "Pump Overhaul has_failure_mode Improper torque sequence.",
+          "creator": "jdehart",
+          "created_date": "2025-09-22",
+          "created_timestamp": "2025-09-22T15:31:07.821Z",
+          "last_modified_by": "jdehart",
+          "last_modified_date": "2025-10-07",
+          "last_modified_timestamp": "2025-10-07T10:48:23.177Z",
+          "functional": false,
+          "inverse_functional": false
+        }
+      }
+    },
+    {
+      "data": {
+        "id": "e1758555069656",
+        "source": "Class2",
+        "target": "Class5",
+        "predicate": "has_sustainment_data",
+        "type": "objectProperty",
+        "attrs": {
+          "comment": "Associates a process with sustainment metrics (e.g., turnaround time, crew, tooling).",
+          "definition": "Binds the process to resources and time required to perform it in service.",
+          "example": "Pump Overhaul has_sustainment_data TAT & Manpower Spec.",
+          "creator": "jdehart",
+          "created_date": "2025-09-22",
+          "created_timestamp": "2025-09-22T15:31:09.656Z",
+          "last_modified_by": "jdehart",
+          "last_modified_date": "2025-10-07",
+          "last_modified_timestamp": "2025-10-07T10:49:40.306Z",
+          "functional": false,
+          "inverse_functional": false
+        }
+      }
+    }
+  ],
+  "namedViews": [
+    {
+      "id": "view_1760008063750",
+      "name": "Main",
+      "creator": "jdehart",
+      "created_date": "2025-10-09",
+      "created_timestamp": "2025-10-09T11:07:43.750Z",
+      "zoom": 1.0334201,
+      "pan": {
+        "x": 2.9003080668487087,
+        "y": -91.01229142618644
+      },
+      "nodePositions": {
+        "Class1": {
+          "x": 137.9527681310839,
+          "y": 456.7528372626027
+        },
+        "Class2": {
+          "x": 134.45558057762813,
+          "y": 553.552981691182
+        },
+        "Class3": {
+          "x": 544.6105903729475,
+          "y": 321.65366378134274
+        },
+        "Class4": {
+          "x": 567.5733756543748,
+          "y": 491.56377446895794
+        },
+        "Class5": {
+          "x": 525.1175198969089,
+          "y": 663.5584241892783
+        },
+        "Note1758555161293": {
+          "x": 108.69348598935622,
+          "y": 320.9643243618327
+        }
+      },
+      "visibilityState": {
+        "classes": true,
+        "dataProperties": true,
+        "notes": true,
+        "edges": true,
+        "imported": true
+      },
+      "elementVisibility": {},
+      "collapsedImports": [],
+      "visibleImports": []
+    },
+    {
+      "id": "view_1760008071543",
+      "name": "Second",
+      "creator": "jdehart",
+      "created_date": "2025-10-09",
+      "created_timestamp": "2025-10-09T11:07:51.543Z",
+      "zoom": 1.0334201,
+      "pan": {
+        "x": 2.9003080668487087,
+        "y": -91.01229142618644
+      },
+      "nodePositions": {
+        "Class1": {
+          "x": 137.9527681310839,
+          "y": 456.7528372626027
+        },
+        "Class2": {
+          "x": 134.45558057762813,
+          "y": 553.552981691182
+        },
+        "Class3": {
+          "x": 544.6105903729475,
+          "y": 321.65366378134274
+        },
+        "Class4": {
+          "x": 567.5733756543748,
+          "y": 491.56377446895794
+        },
+        "Class5": {
+          "x": 525.1175198969089,
+          "y": 663.5584241892783
+        },
+        "Note1758555161293": {
+          "x": 460,
+          "y": 220
+        }
+      },
+      "visibilityState": {
+        "classes": true,
+        "dataProperties": true,
+        "notes": true,
+        "edges": true,
+        "imported": true
+      },
+      "elementVisibility": {},
+      "collapsedImports": [],
+      "visibleImports": []
+    }
+  ]
+}
