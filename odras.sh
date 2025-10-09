@@ -2,7 +2,7 @@
 
 # ODRAS Application Management Script
 # Usage: ./odras.sh [command]
-# Commands: start, stop, restart, status, logs, down, up, clean, clean-all, init-db
+# Commands: start, stop, restart, status, logs, logs-watch, logs-tail, down, up, clean, clean-all, init-db
 
 # Configuration
 APP_NAME="odras"
@@ -187,11 +187,15 @@ show_app_status() {
     fi
 }
 
-# Show application logs
+# Show application logs (last chunk, non-hanging)
 show_app_logs() {
     if [[ -f "$LOG_FILE" ]]; then
-        print_status "Showing application logs (Ctrl+C to exit):"
-        tail -f "$LOG_FILE"
+        print_status "Showing last 50 lines of application logs:"
+        echo "----------------------------------------"
+        tail -n 50 "$LOG_FILE"
+        echo "----------------------------------------"
+        print_status "Use './odras.sh logs-watch' to follow logs continuously"
+        print_status "Use './odras.sh logs-tail N' to show last N lines"
     else
         print_warning "No log file found at $LOG_FILE"
 
@@ -326,6 +330,31 @@ up_docker() {
 show_docker_status() {
     print_status "Docker Services Status:"
     docker-compose -f "$DOCKER_COMPOSE_FILE" ps
+}
+
+# Show application logs continuously (hanging)
+show_app_logs_watch() {
+    if [[ -f "$LOG_FILE" ]]; then
+        print_status "Following application logs (Ctrl+C to exit):"
+        tail -f "$LOG_FILE"
+    else
+        print_warning "No log file found at $LOG_FILE"
+        print_status "Start the application first: ./odras.sh start"
+    fi
+}
+
+# Show last N lines of application logs
+show_app_logs_tail() {
+    local lines=${1:-50}
+    if [[ -f "$LOG_FILE" ]]; then
+        print_status "Showing last $lines lines of application logs:"
+        echo "----------------------------------------"
+        tail -n "$lines" "$LOG_FILE"
+        echo "----------------------------------------"
+    else
+        print_warning "No log file found at $LOG_FILE"
+        print_status "Start the application first: ./odras.sh start"
+    fi
 }
 
 # Show Docker logs
@@ -1601,7 +1630,9 @@ show_help() {
     echo "  stop           Stop the Python application"
     echo "  restart        Restart the Python application"
     echo "  status         Show application status"
-    echo "  logs           Show application logs"
+    echo "  logs           Show last 50 lines of application logs (non-hanging)"
+    echo "  logs-watch     Follow application logs continuously (hanging)"
+    echo "  logs-tail N    Show last N lines of application logs"
     echo ""
     echo "Docker Commands:"
     echo "  up             Start Docker Compose services (CPU mode - CI safe)"
@@ -1630,7 +1661,9 @@ show_help() {
     echo "  $0 up          # Start Docker services (CPU mode - CI safe)"
     echo "  $0 up-gpu      # Start Docker services with GPU acceleration"
     echo "  $0 status      # Check status"
-    echo "  $0 logs        # View app logs"
+    echo "  $0 logs        # View last 50 lines of app logs (non-hanging)"
+    echo "  $0 logs-watch  # Follow app logs continuously"
+    echo "  $0 logs-tail 100 # View last 100 lines of app logs"
     echo "  $0 clean       # Clean all database data for fresh testing"
     echo "  $0 init-db     # Initialize databases with default project"
     echo "  $0 -cu         # Create initial users after init-db"
@@ -1657,6 +1690,12 @@ main() {
             ;;
         logs)
             show_app_logs
+            ;;
+        logs-watch)
+            show_app_logs_watch
+            ;;
+        logs-tail)
+            show_app_logs_tail "$2"
             ;;
         up)
             start_docker
