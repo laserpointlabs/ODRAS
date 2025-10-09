@@ -6747,10 +6747,54 @@
         }
         persistOntologyToLocalStorage();
       });
-      // Bind autosave on edits (add/remove/data/position)
+      // Bind autosave on edits (add/remove/data) - NOT position changes
       try {
         const autosave = debounce(() => { try { if (activeOntologyIri) persistOntologyToLocalStorage(); } catch (_) { } }, 250);
-        ontoState.cy.on('add remove data position', autosave);
+        ontoState.cy.on('add remove data', autosave);  // Removed 'position' event
+
+        // Create a separate debounced save for layout changes with longer delay
+        const layoutSave = debounce(() => {
+          try {
+            if (activeOntologyIri) {
+              console.log('🔄 Layout save triggered after 5 second delay');
+              const nodes = ontoState.cy.nodes().filter(n => !n.hasClass('imported')).map(n => ({ data: n.data(), position: n.position() }));
+              const edges = ontoState.cy.edges().filter(e => !e.hasClass('imported')).map(e => ({ data: e.data() }));
+              saveLayoutToServer(activeOntologyIri, nodes, edges);
+            }
+          } catch (_) { }
+        }, 5000); // 5 second delay for layout saves
+
+        // Create a fast debounced save for localStorage (100ms) to prevent excessive writes
+        const localStorageSave = debounce(() => {
+          try {
+            if (activeOntologyIri) {
+              persistOntologyToLocalStorage();
+
+              // Also save layout to localStorage for quick recovery
+              const pan = ontoState.cy.pan();
+              const zoom = ontoState.cy.zoom();
+              const nodes = ontoState.cy.nodes().filter(n => !n.hasClass('imported')).map(n => ({
+                iri: n.data('id'),
+                x: n.position('x'),
+                y: n.position('y')
+              }));
+
+              const layoutData = {
+                nodes: nodes,
+                zoom: zoom,
+                pan: pan,
+                timestamp: Date.now()
+              };
+
+              const localLayoutKey = `onto_layout_${encodeURIComponent(activeOntologyIri)}`;
+              localStorage.setItem(localLayoutKey, JSON.stringify(layoutData));
+              console.log('💾 Layout saved to localStorage');
+            }
+          } catch (_) { }
+        }, 100); // Very short delay - just to batch rapid movements
+
+        ontoState.cy.on('position', layoutSave);
+        ontoState.cy.on('position', localStorageSave); // Also save to localStorage quickly
         ontoState.autosaveBound = true;
 
         // Update modification metadata when elements are moved
@@ -13525,8 +13569,8 @@ ${insertParts.join('\\n')}
           };
           localStorage.setItem(storageKeyForGraph(activeOntologyIri), JSON.stringify(storageData));
 
-          // Also save layout data to server
-          saveLayoutToServer(activeOntologyIri, nodes, edges);
+          // Layout is now saved separately with its own debounced handler
+          // No longer automatically saving layout here to prevent excessive server calls
         }
       } catch (_) { }
     }
@@ -13581,6 +13625,41 @@ ${insertParts.join('\\n')}
 
     async function loadLayoutFromServer(graphIri) {
       try {
+        // First check if we have a recent layout in localStorage
+        const localLayoutKey = `onto_layout_${encodeURIComponent(graphIri)}`;
+        const localLayout = localStorage.getItem(localLayoutKey);
+
+        if (localLayout) {
+          try {
+            const layoutData = JSON.parse(localLayout);
+            // Check if local layout is recent (within last 30 seconds)
+            if (layoutData.timestamp && (Date.now() - layoutData.timestamp) < 30000) {
+              console.log('📍 Using recent layout from localStorage (saved within last 30 seconds)');
+
+              // Apply node positions from local storage
+              if (layoutData.nodes) {
+                layoutData.nodes.forEach(nodeLayout => {
+                  const node = ontoState.cy.$(`#${nodeLayout.iri}`);
+                  if (node.length > 0) {
+                    node.position({ x: nodeLayout.x, y: nodeLayout.y });
+                  }
+                });
+              }
+
+              // Apply zoom and pan
+              if (layoutData.zoom && layoutData.pan) {
+                ontoState.cy.zoom(layoutData.zoom);
+                ontoState.cy.pan(layoutData.pan);
+              }
+
+              return true;
+            }
+          } catch (e) {
+            console.warn('Error parsing local layout:', e);
+          }
+        }
+
+        // If no recent local layout, load from server
         const response = await authenticatedFetch(`/api/ontology/layout?graph=${encodeURIComponent(graphIri)}`);
 
         if (response.ok) {
