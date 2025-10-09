@@ -4397,6 +4397,7 @@
       isCanvasActive: false,
       suspendAutosave: false,
       autosaveBound: false,
+      layoutRunning: false,     // Flag to prevent saves during layout algorithms
       // CAD-like features
       snapToGrid: true,         // Snap to grid enabled by default
       gridSize: 20,             // Grid size (matches CSS background)
@@ -6755,11 +6756,13 @@
         // Create a separate debounced save for layout changes with longer delay
         const layoutSave = debounce(() => {
           try {
-            if (activeOntologyIri) {
+            if (activeOntologyIri && !ontoState.layoutRunning) {
               console.log('🔄 Layout save triggered after 5 second delay');
               const nodes = ontoState.cy.nodes().filter(n => !n.hasClass('imported')).map(n => ({ data: n.data(), position: n.position() }));
               const edges = ontoState.cy.edges().filter(e => !e.hasClass('imported')).map(e => ({ data: e.data() }));
               saveLayoutToServer(activeOntologyIri, nodes, edges);
+            } else if (ontoState.layoutRunning) {
+              console.log('⏸️ Layout save skipped - layout algorithm is running');
             }
           } catch (_) { }
         }, 5000); // 5 second delay for layout saves
@@ -6767,7 +6770,7 @@
         // Create a fast debounced save for localStorage (100ms) to prevent excessive writes
         const localStorageSave = debounce(() => {
           try {
-            if (activeOntologyIri) {
+            if (activeOntologyIri && !ontoState.layoutRunning) {
               persistOntologyToLocalStorage();
 
               // Also save layout to localStorage for quick recovery
