@@ -6907,6 +6907,12 @@
       ensureOntologyInitialized();
       if (!ontoState.cy) return;
       
+      // Check if a layout is already running
+      if (ontoState.layoutRunning) {
+        console.log('⏭️ Layout already in progress, skipping...');
+        return;
+      }
+      
       // Suspend layout saves during layout algorithm execution
       ontoState.layoutRunning = true;
       console.log('🔄 Layout algorithm starting, suspending position saves...');
@@ -7046,11 +7052,11 @@
           console.log('✅ Layout algorithm completed');
           ontoState.layoutRunning = false;
           
-          // Trigger a single layout save after algorithm completes
-          if (activeOntologyIri) {
-            const nodes = ontoState.cy.nodes().filter(n => !n.hasClass('imported')).map(n => ({ data: n.data(), position: n.position() }));
-            const edges = ontoState.cy.edges().filter(e => !e.hasClass('imported')).map(e => ({ data: e.data() }));
-            saveLayoutToServer(activeOntologyIri, nodes, edges);
+          // Manually trigger a position event to ensure debounced save happens
+          // This is needed because setting layoutRunning=false doesn't retroactively
+          // trigger saves that were skipped during the layout
+          if (ontoState.cy.nodes().length > 0) {
+            ontoState.cy.trigger('position');
           }
         });
         
@@ -7072,6 +7078,9 @@
         });
         fallbackLayout.on('layoutstop', () => {
           ontoState.layoutRunning = false;
+          if (ontoState.cy.nodes().length > 0) {
+            ontoState.cy.trigger('position');
+          }
         });
         fallbackLayout.run();
       }
