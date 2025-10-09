@@ -7061,9 +7061,42 @@
             }
           });
           
-          // Trigger position event on the cy instance to activate the debounced saves
-          // This ensures the layout changes are saved to both localStorage and server
-          ontoState.cy.trigger('position');
+          // Directly save to localStorage and trigger server save
+          if (activeOntologyIri) {
+            console.log('💾 Saving layout after algorithm completion...');
+            
+            // Save to localStorage immediately
+            persistOntologyToLocalStorage();
+            
+            // Save layout to localStorage for quick recovery
+            const pan = ontoState.cy.pan();
+            const zoom = ontoState.cy.zoom();
+            const nodes = ontoState.cy.nodes().filter(n => !n.hasClass('imported')).map(n => ({
+              iri: n.data('id'),
+              x: n.position('x'),
+              y: n.position('y')
+            }));
+            
+            const layoutData = {
+              nodes: nodes,
+              zoom: zoom,
+              pan: pan,
+              timestamp: Date.now()
+            };
+            
+            const localLayoutKey = `onto_layout_${encodeURIComponent(activeOntologyIri)}`;
+            localStorage.setItem(localLayoutKey, JSON.stringify(layoutData));
+            console.log('💾 Layout saved to localStorage');
+            
+            // Trigger server save after 5 seconds
+            setTimeout(() => {
+              if (activeOntologyIri) {
+                const nodes = ontoState.cy.nodes().filter(n => !n.hasClass('imported')).map(n => ({ data: n.data(), position: n.position() }));
+                const edges = ontoState.cy.edges().filter(e => !e.hasClass('imported')).map(e => ({ data: e.data() }));
+                saveLayoutToServer(activeOntologyIri, nodes, edges);
+              }
+            }, 5000);
+          }
           
           console.log(`📍 Layout complete - updated metadata for ${ontoState.cy.nodes().filter(n => !n.hasClass('imported')).length} nodes`);
         });
@@ -7094,8 +7127,40 @@
               node.data('attrs', updatedAttrs);
             }
           });
-          // Trigger position event on cy instance
-          ontoState.cy.trigger('position');
+          
+          // Directly save layout (same as main layout handler)
+          if (activeOntologyIri) {
+            console.log('💾 Saving layout after fallback algorithm completion...');
+            persistOntologyToLocalStorage();
+            
+            const pan = ontoState.cy.pan();
+            const zoom = ontoState.cy.zoom();
+            const nodes = ontoState.cy.nodes().filter(n => !n.hasClass('imported')).map(n => ({
+              iri: n.data('id'),
+              x: n.position('x'),
+              y: n.position('y')
+            }));
+            
+            const layoutData = {
+              nodes: nodes,
+              zoom: zoom,
+              pan: pan,
+              timestamp: Date.now()
+            };
+            
+            const localLayoutKey = `onto_layout_${encodeURIComponent(activeOntologyIri)}`;
+            localStorage.setItem(localLayoutKey, JSON.stringify(layoutData));
+            console.log('💾 Layout saved to localStorage (fallback)');
+            
+            setTimeout(() => {
+              if (activeOntologyIri) {
+                const nodes = ontoState.cy.nodes().filter(n => !n.hasClass('imported')).map(n => ({ data: n.data(), position: n.position() }));
+                const edges = ontoState.cy.edges().filter(e => !e.hasClass('imported')).map(e => ({ data: e.data() }));
+                saveLayoutToServer(activeOntologyIri, nodes, edges);
+              }
+            }, 5000);
+          }
+          
           console.log(`📍 Layout complete (fallback) - updated metadata for ${ontoState.cy.nodes().filter(n => !n.hasClass('imported')).length} nodes`);
         });
         fallbackLayout.run();
