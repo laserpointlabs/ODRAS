@@ -6859,6 +6859,10 @@
     function runAdvancedLayout(layoutType) {
       ensureOntologyInitialized();
       if (!ontoState.cy) return;
+      
+      // Suspend layout saves during layout algorithm execution
+      ontoState.layoutRunning = true;
+      console.log('🔄 Layout algorithm starting, suspending position saves...');
 
       let layoutOptions = {
         animate: true,
@@ -6989,6 +6993,20 @@
 
       try {
         const layout = ontoState.cy.layout(layoutOptions);
+        
+        // Reset flag when layout completes
+        layout.on('layoutstop', () => {
+          console.log('✅ Layout algorithm completed');
+          ontoState.layoutRunning = false;
+          
+          // Trigger a single layout save after algorithm completes
+          if (activeOntologyIri) {
+            const nodes = ontoState.cy.nodes().filter(n => !n.hasClass('imported')).map(n => ({ data: n.data(), position: n.position() }));
+            const edges = ontoState.cy.edges().filter(e => !e.hasClass('imported')).map(e => ({ data: e.data() }));
+            saveLayoutToServer(activeOntologyIri, nodes, edges);
+          }
+        });
+        
         layout.run();
 
         // Fit the graph after layout completes
@@ -6998,11 +7016,15 @@
 
       } catch (error) {
         console.error('Layout error:', error);
+        ontoState.layoutRunning = false; // Reset flag on error
         // Fallback to basic cose layout
         const fallbackLayout = ontoState.cy.layout({
           name: 'cose',
           animate: true,
           animationDuration: 500
+        });
+        fallbackLayout.on('layoutstop', () => {
+          ontoState.layoutRunning = false;
         });
         fallbackLayout.run();
       }
