@@ -4397,6 +4397,7 @@
       isCanvasActive: false,
       suspendAutosave: false,
       autosaveBound: false,
+      layoutRunning: false,     // Flag to prevent saves during layout algorithms
       // CAD-like features
       snapToGrid: true,         // Snap to grid enabled by default
       gridSize: 20,             // Grid size (matches CSS background)
@@ -6755,11 +6756,13 @@
         // Create a separate debounced save for layout changes with longer delay
         const layoutSave = debounce(() => {
           try {
-            if (activeOntologyIri) {
+            if (activeOntologyIri && !ontoState.layoutRunning) {
               console.log('🔄 Layout save triggered after 5 second delay');
               const nodes = ontoState.cy.nodes().filter(n => !n.hasClass('imported')).map(n => ({ data: n.data(), position: n.position() }));
               const edges = ontoState.cy.edges().filter(e => !e.hasClass('imported')).map(e => ({ data: e.data() }));
               saveLayoutToServer(activeOntologyIri, nodes, edges);
+            } else if (ontoState.layoutRunning) {
+              console.log('⏸️ Layout save skipped - layout algorithm is running');
             }
           } catch (_) { }
         }, 5000); // 5 second delay for layout saves
@@ -6767,7 +6770,7 @@
         // Create a fast debounced save for localStorage (100ms) to prevent excessive writes
         const localStorageSave = debounce(() => {
           try {
-            if (activeOntologyIri) {
+            if (activeOntologyIri && !ontoState.layoutRunning) {
               persistOntologyToLocalStorage();
 
               // Also save layout to localStorage for quick recovery
@@ -6904,6 +6907,16 @@
       ensureOntologyInitialized();
       if (!ontoState.cy) return;
 
+      // Check if a layout is already running
+      if (ontoState.layoutRunning) {
+        console.log('⏭️ Layout already in progress, skipping...');
+        return;
+      }
+
+      // Suspend layout saves during layout algorithm execution
+      ontoState.layoutRunning = true;
+      console.log('🔄 Layout algorithm starting, suspending position saves...');
+
       let layoutOptions = {
         animate: true,
         animationDuration: 800,
@@ -7033,6 +7046,61 @@
 
       try {
         const layout = ontoState.cy.layout(layoutOptions);
+
+        // Reset flag when layout completes
+        layout.on('layoutstop', () => {
+          console.log('✅ Layout algorithm completed');
+          ontoState.layoutRunning = false;
+
+          // Update modification metadata for all moved nodes
+          ontoState.cy.nodes().forEach(node => {
+            if (!node.hasClass('imported')) {
+              const currentAttrs = node.data('attrs') || {};
+              const updatedAttrs = updateModificationMetadata(currentAttrs);
+              node.data('attrs', updatedAttrs);
+            }
+          });
+
+          // Directly save to localStorage and trigger server save
+          if (activeOntologyIri) {
+            console.log('💾 Saving layout after algorithm completion...');
+
+            // Save to localStorage immediately
+            persistOntologyToLocalStorage();
+
+            // Save layout to localStorage for quick recovery
+            const pan = ontoState.cy.pan();
+            const zoom = ontoState.cy.zoom();
+            const nodes = ontoState.cy.nodes().filter(n => !n.hasClass('imported')).map(n => ({
+              iri: n.data('id'),
+              x: n.position('x'),
+              y: n.position('y')
+            }));
+
+            const layoutData = {
+              nodes: nodes,
+              zoom: zoom,
+              pan: pan,
+              timestamp: Date.now()
+            };
+
+            const localLayoutKey = `onto_layout_${encodeURIComponent(activeOntologyIri)}`;
+            localStorage.setItem(localLayoutKey, JSON.stringify(layoutData));
+            console.log('💾 Layout saved to localStorage');
+
+            // Trigger server save after 5 seconds
+            setTimeout(() => {
+              if (activeOntologyIri) {
+                const nodes = ontoState.cy.nodes().filter(n => !n.hasClass('imported')).map(n => ({ data: n.data(), position: n.position() }));
+                const edges = ontoState.cy.edges().filter(e => !e.hasClass('imported')).map(e => ({ data: e.data() }));
+                saveLayoutToServer(activeOntologyIri, nodes, edges);
+              }
+            }, 5000);
+          }
+
+          console.log(`📍 Layout complete - updated metadata for ${ontoState.cy.nodes().filter(n => !n.hasClass('imported')).length} nodes`);
+        });
+
         layout.run();
 
         // Fit the graph after layout completes
@@ -7042,11 +7110,58 @@
 
       } catch (error) {
         console.error('Layout error:', error);
+        ontoState.layoutRunning = false; // Reset flag on error
         // Fallback to basic cose layout
         const fallbackLayout = ontoState.cy.layout({
           name: 'cose',
           animate: true,
           animationDuration: 500
+        });
+        fallbackLayout.on('layoutstop', () => {
+          ontoState.layoutRunning = false;
+          // Update modification metadata for all moved nodes
+          ontoState.cy.nodes().forEach(node => {
+            if (!node.hasClass('imported')) {
+              const currentAttrs = node.data('attrs') || {};
+              const updatedAttrs = updateModificationMetadata(currentAttrs);
+              node.data('attrs', updatedAttrs);
+            }
+          });
+
+          // Directly save layout (same as main layout handler)
+          if (activeOntologyIri) {
+            console.log('💾 Saving layout after fallback algorithm completion...');
+            persistOntologyToLocalStorage();
+
+            const pan = ontoState.cy.pan();
+            const zoom = ontoState.cy.zoom();
+            const nodes = ontoState.cy.nodes().filter(n => !n.hasClass('imported')).map(n => ({
+              iri: n.data('id'),
+              x: n.position('x'),
+              y: n.position('y')
+            }));
+
+            const layoutData = {
+              nodes: nodes,
+              zoom: zoom,
+              pan: pan,
+              timestamp: Date.now()
+            };
+
+            const localLayoutKey = `onto_layout_${encodeURIComponent(activeOntologyIri)}`;
+            localStorage.setItem(localLayoutKey, JSON.stringify(layoutData));
+            console.log('💾 Layout saved to localStorage (fallback)');
+
+            setTimeout(() => {
+              if (activeOntologyIri) {
+                const nodes = ontoState.cy.nodes().filter(n => !n.hasClass('imported')).map(n => ({ data: n.data(), position: n.position() }));
+                const edges = ontoState.cy.edges().filter(e => !e.hasClass('imported')).map(e => ({ data: e.data() }));
+                saveLayoutToServer(activeOntologyIri, nodes, edges);
+              }
+            }, 5000);
+          }
+
+          console.log(`📍 Layout complete (fallback) - updated metadata for ${ontoState.cy.nodes().filter(n => !n.hasClass('imported')).length} nodes`);
         });
         fallbackLayout.run();
       }
@@ -15572,8 +15687,22 @@ ${insertParts.join('\\n')}
         const json = await res.json().catch(() => ({}));
         if (res.ok) {
           console.log('✅ Ontology saved to Fuseki successfully!');
-          console.log('🎉 Keyboard shortcut save complete!');
-          alert('Saved to Fuseki');
+
+          // Also save layout data when using Ctrl+S
+          if (ontoState.cy) {
+            console.log('💾 Saving layout data...');
+            const nodes = ontoState.cy.nodes().filter(n => !n.hasClass('imported')).map(n => ({ data: n.data(), position: n.position() }));
+            const edges = ontoState.cy.edges().filter(e => !e.hasClass('imported')).map(e => ({ data: e.data() }));
+
+            console.log('💾 Layout nodes:', nodes.length);
+            console.log('💾 Layout edges:', edges.length);
+
+            await saveLayoutToServer(activeOntologyIri, nodes, edges);
+            console.log('✅ Layout data saved successfully!');
+          }
+
+          console.log('🎉 Complete save operation successful!');
+          alert('Ontology and layout saved successfully!');
         } else {
           console.error('❌ Fuseki save failed:', json);
           console.error('❌ Response status:', res.status);

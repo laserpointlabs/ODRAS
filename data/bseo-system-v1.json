@@ -1,0 +1,200 @@
+{
+  "metadata": {
+    "exportedBy": "jdehart",
+    "exportedDate": "2025-10-09",
+    "exportedTimestamp": "2025-10-09T14:39:08.384Z",
+    "ontologyIri": "https://xma-adt.usnc.mil/odras/core/d0d2e980-2492-4fa4-8176-3fc19ba21c29/ontologies/bseo-system-v",
+    "exportVersion": "1.0"
+  },
+  "model": {
+    "name": "BSEO_SYSTEM_V1",
+    "type": "Model",
+    "comment": "",
+    "definition": "",
+    "version": "",
+    "namespace": "https://xma-adt.usnc.mil/odras/core/d0d2e980-2492-4fa4-8176-3fc19ba21c29/ontologies/bseo-system-v",
+    "imports": ""
+  },
+  "nodes": [
+    {
+      "data": {
+        "id": "Class1",
+        "label": "System",
+        "type": "class",
+        "attrs": {
+          "creator": "jdehart",
+          "created_date": "2025-10-09",
+          "created_timestamp": "2025-10-09T12:58:11.374Z",
+          "last_modified_by": "jdehart",
+          "last_modified_date": "2025-10-09",
+          "last_modified_timestamp": "2025-10-09T14:32:20.527Z"
+        }
+      },
+      "position": {
+        "x": 240,
+        "y": 60
+      }
+    },
+    {
+      "data": {
+        "id": "Class2",
+        "label": "Subsystem",
+        "type": "class",
+        "attrs": {
+          "creator": "jdehart",
+          "created_date": "2025-10-09",
+          "created_timestamp": "2025-10-09T12:58:18.151Z",
+          "last_modified_by": "jdehart",
+          "last_modified_date": "2025-10-09",
+          "last_modified_timestamp": "2025-10-09T14:32:20.528Z"
+        }
+      },
+      "position": {
+        "x": 240,
+        "y": 260
+      }
+    },
+    {
+      "data": {
+        "id": "Class3",
+        "label": "Component",
+        "type": "class",
+        "attrs": {
+          "creator": "jdehart",
+          "created_date": "2025-10-09",
+          "created_timestamp": "2025-10-09T12:59:14.181Z",
+          "last_modified_by": "jdehart",
+          "last_modified_date": "2025-10-09",
+          "last_modified_timestamp": "2025-10-09T14:32:20.530Z"
+        }
+      },
+      "position": {
+        "x": 240,
+        "y": 460
+      }
+    },
+    {
+      "data": {
+        "id": "Note1760020348182",
+        "label": "Note 8182",
+        "type": "note",
+        "attrs": {
+          "noteType": "Issue",
+          "creator": "jdehart",
+          "created_date": "2025-10-09",
+          "created_timestamp": "2025-10-09T14:32:28.182Z",
+          "last_modified_by": "jdehart",
+          "last_modified_date": "2025-10-09",
+          "last_modified_timestamp": "2025-10-09T14:33:16.004Z",
+          "author": "jdehart",
+          "content": "We are seeing (2) links because there are two nested models, I'll fix to only a single nest"
+        }
+      },
+      "position": {
+        "x": -40,
+        "y": 340
+      }
+    }
+  ],
+  "edges": [
+    {
+      "data": {
+        "id": "e1760014761779",
+        "source": "Class2",
+        "target": "Class3",
+        "predicate": "is_comprosed_of",
+        "type": "objectProperty",
+        "attrs": {
+          "creator": "jdehart",
+          "created_date": "2025-10-09",
+          "created_timestamp": "2025-10-09T12:59:21.779Z",
+          "last_modified_by": "jdehart",
+          "last_modified_date": "2025-10-09",
+          "last_modified_timestamp": "2025-10-09T12:59:35.267Z",
+          "functional": false,
+          "inverse_functional": false
+        },
+        "minCount": 1,
+        "maxCount": null,
+        "multiplicityDisplay": "(1..*)"
+      }
+    },
+    {
+      "data": {
+        "id": "e1760014711057",
+        "source": "Class1",
+        "target": "Class2",
+        "predicate": "is_comprised_of",
+        "type": "objectProperty",
+        "attrs": {
+          "creator": "jdehart",
+          "created_date": "2025-10-09",
+          "created_timestamp": "2025-10-09T12:58:31.057Z",
+          "last_modified_by": "jdehart",
+          "last_modified_date": "2025-10-09",
+          "last_modified_timestamp": "2025-10-09T12:58:53.486Z",
+          "functional": false,
+          "inverse_functional": false
+        },
+        "minCount": 1,
+        "maxCount": null,
+        "multiplicityDisplay": "(1..*)"
+      }
+    },
+    {
+      "data": {
+        "id": "enote1760020356238",
+        "source": "Note1760020348182",
+        "target": "Class3",
+        "predicate": "note_for",
+        "type": "note",
+        "attrs": {
+          "creator": "jdehart",
+          "created_date": "2025-10-09",
+          "created_timestamp": "2025-10-09T14:32:36.238Z",
+          "last_modified_by": "jdehart",
+          "last_modified_date": "2025-10-09",
+          "last_modified_timestamp": "2025-10-09T14:32:36.238Z"
+        }
+      }
+    }
+  ],
+  "namedViews": [
+    {
+      "id": "view_1760020338596",
+      "name": "Main",
+      "creator": "jdehart",
+      "created_date": "2025-10-09",
+      "created_timestamp": "2025-10-09T14:32:18.596Z",
+      "zoom": 1.9825708061002179,
+      "pan": {
+        "x": -1.8169934640523024,
+        "y": -40.46840958605662
+      },
+      "nodePositions": {
+        "Class1": {
+          "x": 240,
+          "y": 60
+        },
+        "Class2": {
+          "x": 240,
+          "y": 260
+        },
+        "Class3": {
+          "x": 240,
+          "y": 460
+        }
+      },
+      "visibilityState": {
+        "classes": true,
+        "dataProperties": true,
+        "notes": true,
+        "edges": true,
+        "imported": true
+      },
+      "elementVisibility": {},
+      "collapsedImports": [],
+      "visibleImports": []
+    }
+  ]
+}
