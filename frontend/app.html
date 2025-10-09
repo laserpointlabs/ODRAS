@@ -15622,8 +15622,22 @@ ${insertParts.join('\\n')}
         const json = await res.json().catch(() => ({}));
         if (res.ok) {
           console.log('✅ Ontology saved to Fuseki successfully!');
-          console.log('🎉 Keyboard shortcut save complete!');
-          alert('Saved to Fuseki');
+          
+          // Also save layout data when using Ctrl+S
+          if (ontoState.cy) {
+            console.log('💾 Saving layout data...');
+            const nodes = ontoState.cy.nodes().filter(n => !n.hasClass('imported')).map(n => ({ data: n.data(), position: n.position() }));
+            const edges = ontoState.cy.edges().filter(e => !e.hasClass('imported')).map(e => ({ data: e.data() }));
+            
+            console.log('💾 Layout nodes:', nodes.length);
+            console.log('💾 Layout edges:', edges.length);
+            
+            await saveLayoutToServer(activeOntologyIri, nodes, edges);
+            console.log('✅ Layout data saved successfully!');
+          }
+          
+          console.log('🎉 Complete save operation successful!');
+          alert('Ontology and layout saved successfully!');
         } else {
           console.error('❌ Fuseki save failed:', json);
           console.error('❌ Response status:', res.status);
