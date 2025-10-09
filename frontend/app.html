@@ -874,6 +874,10 @@
       border: 1px solid var(--border);
       border-radius: 8px;
       background: #0a0f1f;
+      background-image:
+        linear-gradient(to right, rgba(255, 255, 255, 0.08) .1px, transparent 1px),
+        linear-gradient(to bottom, rgba(255, 255, 255, 0.08) .1px, transparent 1px);
+      background-size: 20px 20px;
     }
 
     .onto-layout {
@@ -2375,6 +2379,123 @@
                 </div>
               </div>
 
+              <!-- CAD Tools Menu -->
+              <div class="menu-group">
+                <button class="menu-btn" id="cadToolsMenuBtn">
+                  <svg class="menu-icon" viewBox="0 0 24 24" fill="none" stroke-width="1.6" stroke-linecap="round"
+                    stroke-linejoin="round">
+                    <path
+                      d="M14.7 6.3a1 1 0 0 0 0 1.4l1.6 1.6a1 1 0 0 0 1.4 0l3.77-3.77a6 6 0 0 1-7.94 7.94l-6.91 6.91a2.12 2.12 0 0 1-3-3l6.91-6.91a6 6 0 0 1 7.94-7.94l-3.76 3.76z" />
+                  </svg>
+                  Tools
+                </button>
+                <div class="menu-dropdown" id="cadToolsMenu">
+                  <div class="menu-section">
+                    <div class="menu-label">Grid Settings</div>
+                    <button class="menu-item" id="snapGridBtn" onclick="toggleSnapToGrid()">
+                      <svg class="menu-icon" viewBox="0 0 24 24" fill="none" stroke-width="1.6">
+                        <rect x="3" y="3" width="18" height="18" rx="2" ry="2" />
+                        <path d="M9 9h.01M15 9h.01M9 15h.01M15 15h.01" />
+                      </svg>
+                      <span id="snapGridStatus">Grid Snap: ON</span>
+                    </button>
+                    <div style="display: flex; align-items: center; gap: 8px; padding: 4px 12px;">
+                      <label style="font-size: 11px; color: var(--muted); min-width: 60px;">Grid Size:</label>
+                      <select id="gridSizeSelector" onchange="updateGridSize(this.value)"
+                        style="flex: 1; font-size: 11px; background: var(--panel); color: var(--text); border: 1px solid var(--border); border-radius: 3px; padding: 2px;">
+                        <option value="10">Fine (10px)</option>
+                        <option value="20" selected>Normal (20px)</option>
+                        <option value="40">Coarse (40px)</option>
+                        <option value="80">Large (80px)</option>
+                        <option value="custom">Custom...</option>
+                      </select>
+                    </div>
+                  </div>
+                  <div class="menu-divider"></div>
+                  <div class="menu-section">
+                    <div class="menu-label">Align</div>
+                    <div style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 2px;">
+                      <button class="btn btn-sm" onclick="alignElements('left')" title="Align Left (Ctrl+L)">⇤</button>
+                      <button class="btn btn-sm" onclick="alignElements('center')" title="Center (Ctrl+M)">⬌</button>
+                      <button class="btn btn-sm" onclick="alignElements('right')"
+                        title="Align Right (Ctrl+R)">⇥</button>
+                      <button class="btn btn-sm" onclick="alignElements('top')" title="Align Top (Ctrl+T)">⇈</button>
+                      <button class="btn btn-sm" onclick="alignElements('distribute-vertical')"
+                        title="Distribute V">⬍</button>
+                      <button class="btn btn-sm" onclick="alignElements('bottom')"
+                        title="Align Bottom (Ctrl+B)">⇊</button>
+                    </div>
+                    <button class="menu-item" onclick="alignElements('distribute-horizontal')"
+                      title="Distribute Horizontal (Ctrl+Shift+H)">
+                      <svg class="menu-icon" viewBox="0 0 24 24" fill="none" stroke-width="1.6">
+                        <rect x="4" y="6" width="3" height="12" />
+                        <rect x="10" y="6" width="4" height="12" />
+                        <rect x="17" y="6" width="3" height="12" />
+                      </svg>
+                      Distribute Horizontal
+                    </button>
+                  </div>
+                  <div class="menu-divider"></div>
+                  <div class="menu-section">
+                    <div class="menu-label">Edit</div>
+                    <button class="menu-item" onclick="copySelectedElements()" title="Copy (Ctrl+C)">
+                      <svg class="menu-icon" viewBox="0 0 24 24" fill="none" stroke-width="1.6">
+                        <rect x="9" y="9" width="13" height="13" rx="2" ry="2" />
+                        <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1" />
+                      </svg>
+                      Copy Selected
+                    </button>
+                    <button class="menu-item" onclick="pasteElements()" title="Paste (Ctrl+V)">
+                      <svg class="menu-icon" viewBox="0 0 24 24" fill="none" stroke-width="1.6">
+                        <rect x="8" y="2" width="8" height="4" rx="1" ry="1" />
+                        <path d="M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2" />
+                      </svg>
+                      Paste
+                    </button>
+                    <button class="menu-item" onclick="performUndo()" title="Undo (Ctrl+Z)">
+                      <svg class="menu-icon" viewBox="0 0 24 24" fill="none" stroke-width="1.6">
+                        <path d="M3 7v6h6" />
+                        <path d="M21 17a9 9 0 0 0-9-9 9 9 0 0 0-6 2.3L3 13" />
+                      </svg>
+                      Undo
+                    </button>
+                    <button class="menu-item" onclick="performRedo()" title="Redo (Ctrl+Y)">
+                      <svg class="menu-icon" viewBox="0 0 24 24" fill="none" stroke-width="1.6">
+                        <path d="M21 7v6h-6" />
+                        <path d="M3 17a9 9 0 0 1 9-9 9 9 0 0 1 6 2.3l3 2.7" />
+                      </svg>
+                      Redo
+                    </button>
+                  </div>
+                  <div class="menu-divider"></div>
+                  <div class="menu-section">
+                    <div class="menu-label">View</div>
+                    <button class="menu-item" onclick="zoomToSelection()" title="Zoom to Selection (Ctrl+F)">
+                      <svg class="menu-icon" viewBox="0 0 24 24" fill="none" stroke-width="1.6">
+                        <circle cx="11" cy="11" r="8" />
+                        <path d="M21 21l-4.35-4.35" />
+                        <rect x="8" y="8" width="6" height="6" />
+                      </svg>
+                      Zoom to Selection
+                    </button>
+                    <button class="menu-item" onclick="zoomToFitAll()" title="Fit All (F)">
+                      <svg class="menu-icon" viewBox="0 0 24 24" fill="none" stroke-width="1.6">
+                        <path
+                          d="M8 3H5a2 2 0 0 0-2 2v3m18 0V5a2 2 0 0 0-2-2h-3m0 18h3a2 2 0 0 0 2-2v-3M3 16v3a2 2 0 0 0 2 2h3" />
+                      </svg>
+                      Fit All
+                    </button>
+                    <button class="menu-item" onclick="zoomTo100Percent()" title="100% Zoom (Ctrl+1)">
+                      <svg class="menu-icon" viewBox="0 0 24 24" fill="none" stroke-width="1.6">
+                        <circle cx="12" cy="12" r="8" />
+                        <text x="12" y="16" text-anchor="middle" font-size="8" fill="currentColor">1:1</text>
+                      </svg>
+                      100% Zoom
+                    </button>
+                  </div>
+                </div>
+              </div>
+
               <div class="menu-group">
                 <button class="menu-btn" id="ontoEditMenuBtn">
                   <svg class="menu-icon" viewBox="0 0 24 24" fill="none" stroke-width="1.6" stroke-linecap="round"
@@ -2480,6 +2601,131 @@
                     </div>
                   </div>
 
+                  <!-- SHACL Constraints (for Object and Datatype Properties) -->
+                  <div id="shaclConstraintsSection" class="props-section" style="display: none;">
+                    <h4 class="props-section-title">SHACL Constraints</h4>
+
+                    <!-- Multiplicity (for Object Properties) -->
+                    <div id="multiplicitySubsection">
+                      <h5 style="font-size: 12px; color: var(--muted); margin: 10px 0 6px 0;">Multiplicity</h5>
+                      <div class="form-group">
+                        <label class="form-label">Quick Presets</label>
+                        <div style="display: flex; gap: 4px; flex-wrap: wrap;">
+                          <button type="button" class="btn btn-sm" data-multiplicity="none">None</button>
+                          <button type="button" class="btn btn-sm" data-multiplicity="1">Exactly (1)</button>
+                          <button type="button" class="btn btn-sm" data-multiplicity="0..1">Zero or one (0..1)</button>
+                          <button type="button" class="btn btn-sm" data-multiplicity="0..*">Zero or more (0..*)</button>
+                          <button type="button" class="btn btn-sm" data-multiplicity="1..*">One or more (1..*)</button>
+                        </div>
+                      </div>
+                      <div class="form-group">
+                        <label class="form-label" for="propMinCount">Minimum Count</label>
+                        <input id="propMinCount" type="number" class="form-input" min="0"
+                          placeholder="Leave empty for no minimum" />
+                      </div>
+                      <div class="form-group">
+                        <label class="form-label" for="propMaxCount">Maximum Count</label>
+                        <input id="propMaxCount" type="number" class="form-input" min="0"
+                          placeholder="Leave empty for unlimited" />
+                      </div>
+                      <div class="form-group">
+                        <label class="form-label">Multiplicity Display</label>
+                        <div id="multiplicityDisplay" class="form-text-display"
+                          style="font-family: monospace; font-weight: bold; color: var(--accent);">
+                          No constraints
+                        </div>
+                      </div>
+                    </div>
+
+                    <!-- Datatype Constraints (for Datatype Properties) -->
+                    <div id="datatypeSubsection">
+                      <h5 style="font-size: 12px; color: var(--muted); margin: 15px 0 6px 0;">Datatype Validation</h5>
+                      <div class="form-group">
+                        <label class="form-label" for="propDatatypeConstraint">Required Datatype</label>
+                        <select id="propDatatypeConstraint" class="form-input">
+                          <option value="">No constraint</option>
+                          <option value="xsd:string">String (text)</option>
+                          <option value="xsd:integer">Integer (whole numbers)</option>
+                          <option value="xsd:decimal">Decimal (numbers with fractions)</option>
+                          <option value="xsd:double">Double (floating-point)</option>
+                          <option value="xsd:boolean">Boolean (true/false)</option>
+                          <option value="xsd:date">Date (YYYY-MM-DD)</option>
+                          <option value="xsd:dateTime">DateTime (YYYY-MM-DDTHH:MM:SS)</option>
+                          <option value="xsd:time">Time (HH:MM:SS)</option>
+                          <option value="xsd:anyURI">URI/URL</option>
+                        </select>
+                      </div>
+                      <div class="form-group">
+                        <label class="form-label">Datatype Display</label>
+                        <div id="datatypeDisplay" class="form-text-display"
+                          style="font-family: monospace; color: var(--accent);">
+                          No datatype constraint
+                        </div>
+                      </div>
+                    </div>
+
+                    <!-- Enumeration Constraints -->
+                    <div id="enumerationSubsection">
+                      <h5 style="font-size: 12px; color: var(--muted); margin: 15px 0 6px 0;">Valid Values (Enumeration)
+                      </h5>
+                      <div class="form-group">
+                        <label class="form-label">Quick Presets</label>
+                        <div style="display: flex; gap: 4px; flex-wrap: wrap; margin-bottom: 8px;">
+                          <button type="button" class="btn btn-sm" data-enumeration="requirement-status">Req
+                            Status</button>
+                          <button type="button" class="btn btn-sm" data-enumeration="criticality">Criticality</button>
+                          <button type="button" class="btn btn-sm" data-enumeration="risk-level">Risk Level</button>
+                          <button type="button" class="btn btn-sm" data-enumeration="priority">Priority</button>
+                          <button type="button" class="btn btn-sm" data-enumeration="custom">Custom...</button>
+                        </div>
+                      </div>
+                      <div class="form-group">
+                        <label class="form-label" for="propEnumerationValues">Valid Values</label>
+                        <textarea id="propEnumerationValues" class="form-input" rows="3"
+                          placeholder="Enter valid values (one per line):&#10;Draft&#10;Reviewed&#10;Approved"></textarea>
+                        <small style="color: var(--muted); font-size: 11px;">One value per line</small>
+                      </div>
+                      <div class="form-group">
+                        <label class="form-label">Enumeration Display</label>
+                        <div id="enumerationDisplay" class="form-text-display"
+                          style="font-family: monospace; color: var(--accent);">
+                          No enumeration constraint
+                        </div>
+                      </div>
+                    </div>
+
+                    <!-- Constraint Summary -->
+                    <div class="form-group"
+                      style="margin-top: 15px; padding-top: 10px; border-top: 1px solid var(--border);">
+                      <label class="form-label">All Constraints Preview</label>
+                      <div id="allConstraintsDisplay" class="form-text-display"
+                        style="font-family: monospace; font-size: 11px; line-height: 1.4; color: var(--text);">
+                        No constraints defined
+                      </div>
+                    </div>
+                  </div>
+
+                  <!-- CAD-like Precise Positioning (for nodes only) -->
+                  <div id="positioningSection" class="props-section" style="display: none;">
+                    <h4 class="props-section-title">Precise Positioning</h4>
+                    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 8px;">
+                      <div class="form-group">
+                        <label class="form-label" for="propPosX">X Coordinate</label>
+                        <input id="propPosX" type="number" class="form-input" step="1" placeholder="X position" />
+                      </div>
+                      <div class="form-group">
+                        <label class="form-label" for="propPosY">Y Coordinate</label>
+                        <input id="propPosY" type="number" class="form-input" step="1" placeholder="Y position" />
+                      </div>
+                    </div>
+                    <div class="form-group">
+                      <div style="display: flex; gap: 4px; flex-wrap: wrap;">
+                        <button type="button" class="btn btn-sm" onclick="snapNodeToGrid()">Snap to Grid</button>
+                        <button type="button" class="btn btn-sm" onclick="centerNodeInView()">Center in View</button>
+                      </div>
+                    </div>
+                  </div>
+
                   <!-- Annotations -->
                   <div class="props-section">
                     <div class="props-section-header">
@@ -2527,6 +2773,73 @@
             <div class="menu-divider"></div>
             <div class="menu-section">
               <button id="menuCancel" class="menu-item menu-item-secondary">Cancel</button>
+            </div>
+          </div>
+
+          <!-- Edge Context Menu for Multiplicity -->
+          <div id="edgeContextMenu" class="onto-menu">
+            <div class="menu-header"
+              style="padding: 8px 12px; background: var(--panel-1); font-weight: 600; border-bottom: 1px solid var(--border); border-radius: 8px 8px 0 0; margin: -4px 0 4px;">
+              <svg class="menu-icon" viewBox="0 0 24 24" fill="none" stroke-width="1.6" stroke-linecap="round"
+                stroke-linejoin="round" style="display: inline; vertical-align: middle; margin-right: 6px;">
+                <path d="M3 12h18M12 3v18" />
+              </svg>
+              Multiplicity Constraint
+            </div>
+            <div class="menu-section">
+              <button data-action="mult-none" class="menu-item">
+                <svg class="menu-icon" viewBox="0 0 24 24" fill="none" stroke-width="1.6" stroke-linecap="round"
+                  stroke-linejoin="round">
+                  <path d="M18 6L6 18M6 6l12 12" />
+                </svg>
+                No constraint
+              </button>
+              <button data-action="mult-1" class="menu-item">
+                <svg class="menu-icon" viewBox="0 0 24 24" fill="none" stroke-width="1.6" stroke-linecap="round"
+                  stroke-linejoin="round">
+                  <path d="M10 2v20M16 8l-4-4-4 4" />
+                </svg>
+                Exactly one (1)
+              </button>
+              <button data-action="mult-0-1" class="menu-item">
+                <svg class="menu-icon" viewBox="0 0 24 24" fill="none" stroke-width="1.6" stroke-linecap="round"
+                  stroke-linejoin="round">
+                  <path d="M8 12h8M16 8l-4-4-4 4" />
+                </svg>
+                Zero or one (0..1)
+              </button>
+              <button data-action="mult-0-*" class="menu-item">
+                <svg class="menu-icon" viewBox="0 0 24 24" fill="none" stroke-width="1.6" stroke-linecap="round"
+                  stroke-linejoin="round">
+                  <path d="M12 2v10M8 18h8" />
+                </svg>
+                Zero or more (0..*)
+              </button>
+              <button data-action="mult-1-*" class="menu-item">
+                <svg class="menu-icon" viewBox="0 0 24 24" fill="none" stroke-width="1.6" stroke-linecap="round"
+                  stroke-linejoin="round">
+                  <path d="M10 2v10M14 18h-8" />
+                </svg>
+                One or more (1..*)
+              </button>
+              <button data-action="mult-custom" class="menu-item">
+                <svg class="menu-icon" viewBox="0 0 24 24" fill="none" stroke-width="1.6" stroke-linecap="round"
+                  stroke-linejoin="round">
+                  <path d="M12 2v20M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6" />
+                </svg>
+                Custom range...
+              </button>
+            </div>
+            <div class="menu-divider"></div>
+            <div class="menu-section">
+              <button data-action="edit-edge" class="menu-item">
+                <svg class="menu-icon" viewBox="0 0 24 24" fill="none" stroke-width="1.6" stroke-linecap="round"
+                  stroke-linejoin="round">
+                  <path d="M12 20h9M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z" />
+                </svg>
+                Edit relationship
+              </button>
+              <button id="edgeMenuCancel" class="menu-item menu-item-secondary">Cancel</button>
             </div>
           </div>
 
@@ -4084,6 +4397,13 @@
       isCanvasActive: false,
       suspendAutosave: false,
       autosaveBound: false,
+      // CAD-like features
+      snapToGrid: true,         // Snap to grid enabled by default
+      gridSize: 20,             // Grid size (matches CSS background)
+      undoStack: [],            // Undo history
+      redoStack: [],            // Redo history
+      maxUndoLevels: 50,        // Maximum undo levels
+      clipboard: null,          // Copy/paste clipboard
       visibilityState: {
         classes: true,
         dataProperties: true,
@@ -5661,15 +5981,21 @@
             localStorage.setItem(`onto_active_iri__${pid}`, iri);
             // Set model name for properties panel based on discovered label or IRI tail
             const friendly = (li.dataset.label && li.dataset.label.trim()) || iri.split('/').pop() || iri;
-            localStorage.setItem(`onto_model_name__${pid}`, friendly);
+            // FIXED: Use ontology-specific localStorage keys consistently  
+            const ontologyKey = iri ? iri.split('/').pop() : 'default';
+            const modelNameKey = `onto_model_name__${pid}__${ontologyKey}`;
+            const modelAttrsKey = `onto_model_attrs__${pid}__${ontologyKey}`;
+
+            localStorage.setItem(modelNameKey, friendly);
             // Also store display label, graph, and namespace in model attributes
             let attrs = {};
-            try { attrs = JSON.parse(localStorage.getItem(`onto_model_attrs__${pid}`) || '{}'); } catch (_) { attrs = {}; }
+
+            try { attrs = JSON.parse(localStorage.getItem(modelAttrsKey) || '{}'); } catch (_) { attrs = {}; }
             attrs.displayLabel = friendly;
             attrs.graphIri = iri;
             // Set namespace based on installation configuration
             attrs.namespace = iri;  // Use the actual graph IRI as namespace
-            localStorage.setItem(`onto_model_attrs__${pid}`, JSON.stringify(attrs));
+            localStorage.setItem(modelAttrsKey, JSON.stringify(attrs));
             // Keep project-scoped label map in sync so the top node reflects selection
             try { saveOntologyLabel(iri, friendly); } catch (_) { }
 
@@ -5745,7 +6071,7 @@
         // Handle named view selection with toggle functionality
         const viewId = li.dataset.viewId;
         if (viewId) {
-          const views = loadNamedViews(activeOntologyIri);
+          const views = await loadNamedViews(activeOntologyIri);
           const view = views.find(v => v.id === viewId);
           if (view) {
             if (ontoState.activeNamedView === viewId) {
@@ -5813,6 +6139,12 @@
       ontoState.cy = cytoscape({
         container,
         layout: { name: 'grid', padding: 10, avoidOverlap: true },
+        wheelSensitivity: 0.15,  // Much more gentle mouse wheel zoom (default: 1)
+        minZoom: 0.1,
+        maxZoom: 3,
+        // CAD-like features
+        boxSelectionEnabled: true,  // Enable selection box like SolidWorks
+        selectionType: 'single',   // Single selection by default, Ctrl+click for multi-select
         style: [
           {
             selector: 'node', style: {
@@ -5852,7 +6184,26 @@
               'text-rotation': 'autorotate',
               'text-background-color': '#0b1220',
               'text-background-opacity': 0.6,
-              'text-background-padding': 2
+              'text-background-padding': 2,
+              // Multiplicity label at target (arrow tip) - only for edges with multiplicity
+              'target-label': 'data(multiplicityDisplay)',
+              'target-text-offset': 15,  // Distance from arrow tip
+              'target-text-rotation': 0,  // Keep horizontal
+              'target-text-color': '#60a5fa',  // Accent color for visibility
+              'target-text-background-color': '#0b1220',
+              'target-text-background-opacity': 0.8,
+              'target-text-background-padding': 3,
+              'target-text-border-width': 1,
+              'target-text-border-color': '#60a5fa',
+              'target-text-border-opacity': 0.5
+            }
+          },
+          {
+            selector: 'edge[type = "note"], edge[predicate = "note_for"]', style: {
+              'target-arrow-shape': 'circle',
+              'target-arrow-color': '#9ca3af',
+              'arrow-scale': 0.8,
+              'source-arrow-shape': 'none'
             }
           },
           {
@@ -5874,7 +6225,7 @@
           },
           {
             selector: 'node[type = "note"], .note', style: {
-              'shape': 'round-rectangle',
+              'shape': 'rectangle',
               'background-color': function (ele) {
                 const noteType = ele.data('attrs') && ele.data('attrs').noteType;
                 return getNoteTypeStyle(noteType || 'Note').backgroundColor;
@@ -5884,7 +6235,7 @@
                 return getNoteTypeStyle(noteType || 'Note').borderColor;
               },
               'border-style': 'solid',
-              'border-width': 2,
+              'border-width': 1,
               'label': function (ele) {
                 const noteType = ele.data('attrs') && ele.data('attrs').noteType;
                 const symbol = getNoteTypeStyle(noteType || 'Note').symbol;
@@ -6051,6 +6402,7 @@
           ontoState.cy.$(':selected').unselect();
           updatePropertiesPanelFromSelection();
           hideMenu();
+          hideEdgeMenu();
           clearConnectState();
         }
       });
@@ -6090,6 +6442,30 @@
         menu.dataset.nodeId = n.id();
         menu.dataset.nodeType = t;
       });
+
+      // Edge right-click context menu for multiplicity constraints
+      ontoState.cy.on('cxttap', 'edge', (ev) => {
+        const edge = ev.target;
+        const edgeData = edge.data();
+
+        // Only show context menu for object properties (relationships)
+        if (edgeData.type !== 'objectProperty') return;
+
+        // Don't allow editing of imported elements
+        if (edge.hasClass('imported')) {
+          console.log('🔍 Cannot edit imported edge:', edge.data('predicate'));
+          return;
+        }
+
+        const rect = qs('#cy').getBoundingClientRect();
+        const rp = ev.renderedPosition || edge.renderedMidpoint();
+
+        showEdgeMenuAt(rect.left + rp.x + 6, rect.top + rp.y + 6);
+        const edgeMenu = qs('#edgeContextMenu');
+        if (edgeMenu) {
+          edgeMenu.dataset.edgeId = edge.id();
+        }
+      });
       function showInlineEditor(target) {
         // Don't allow editing of imported elements
         if (target.hasClass('imported')) {
@@ -6100,7 +6476,23 @@
         const input = qs('#ontoInlineEdit'); if (!input) return;
         const pos = target.renderedPosition();
         const rect = qs('#cy').getBoundingClientRect();
-        const current = target.isNode() ? (target.data('label') || '') : (target.data('predicate') || '');
+
+        let current = '';
+        if (target.isNode()) {
+          const nodeType = target.data('type') || 'class';
+          if (nodeType === 'note') {
+            // For notes, show the current rdfs:comment from attributes  
+            const attrs = target.data('attrs') || {};
+            current = attrs.content || '';  // Use 'content' to match the template mapping
+          } else {
+            // For other nodes, show the label as before
+            current = target.data('label') || '';
+          }
+        } else {
+          // For edges, show predicate
+          current = target.data('predicate') || '';
+        }
+
         input.value = current;
         input.style.left = (rect.left + pos.x - Math.min(100, rect.width * 0.2)) + 'px';
         input.style.top = (rect.top + pos.y - 12) + 'px';
@@ -6111,11 +6503,22 @@
           if (save) {
             const v = input.value.trim();
             if (target.isNode()) {
-              target.data('label', v || current);
-              // Update modification metadata for inline label changes
-              const currentAttrs = target.data('attrs') || {};
-              const updatedAttrs = updateModificationMetadata(currentAttrs);
-              target.data('attrs', updatedAttrs);
+              const nodeType = target.data('type') || 'class';
+
+              if (nodeType === 'note') {
+                // For notes, update the rdfs:comment in attributes, not the label
+                const currentAttrs = target.data('attrs') || {};
+                currentAttrs.content = v || current;  // Use 'content' to match the template mapping
+                const updatedAttrs = updateModificationMetadata(currentAttrs);
+                target.data('attrs', updatedAttrs);
+              } else {
+                // For other nodes (classes, etc.), update the label as before
+                target.data('label', v || current);
+                // Update modification metadata for inline label changes
+                const currentAttrs = target.data('attrs') || {};
+                const updatedAttrs = updateModificationMetadata(currentAttrs);
+                target.data('attrs', updatedAttrs);
+              }
             } else {
               target.data('predicate', v || current);
               // Update modification metadata for inline predicate changes
@@ -6140,6 +6543,32 @@
       });
       // Double-click to edit
       ontoState.cy.on('dblclick', 'node,edge', (ev) => showInlineEditor(ev.target));
+
+      // CAD-like snap-to-grid (only on drag end for smooth experience)
+      ontoState.cy.on('dragfree', 'node', (ev) => {
+        const node = ev.target;
+        if (ontoState.snapToGrid && !node.hasClass('imported')) {
+          const snappedPos = snapToGrid(node.position());
+          node.position(snappedPos);
+          showTemporaryMessage(`Snapped to grid (${snappedPos.x}, ${snappedPos.y})`, 800);
+        }
+      });
+
+      // Add to undo stack on significant changes
+      ontoState.cy.on('add remove', (ev) => {
+        const actionType = ev.type;
+        const elementType = ev.target.isNode() ? 'node' : 'edge';
+        addToUndoStack(actionType, { elementType, count: 1 });
+      });
+
+      // Update position inputs when nodes are moved (CAD-like coordinate display)
+      ontoState.cy.on('position', 'node', (ev) => {
+        // Only update if this node is currently selected
+        const node = ev.target;
+        if (node.selected()) {
+          updatePositionInputs();
+        }
+      });
 
       // Context menu actions
       document.addEventListener('click', (e) => {
@@ -6170,6 +6599,62 @@
           refreshOntologyTree(); persistOntologyToLocalStorage();
           return;
         }
+      });
+
+      // Edge context menu actions for multiplicity constraints
+      document.addEventListener('click', (e) => {
+        const edgeMenu = qs('#edgeContextMenu');
+        if (!edgeMenu || edgeMenu.style.display === 'none') return;
+
+        const action = e.target.dataset.action;
+        if (!action && e.target.id !== 'edgeMenuCancel') return;
+
+        if (e.target.id === 'edgeMenuCancel') {
+          hideEdgeMenu();
+          return;
+        }
+
+        const edgeId = edgeMenu.dataset.edgeId;
+        const edge = edgeId ? ontoState.cy.$('#' + edgeId)[0] : null;
+
+        if (!edge) {
+          hideEdgeMenu();
+          return;
+        }
+
+        let minCount = null, maxCount = null;
+
+        switch (action) {
+          case 'mult-none':
+            minCount = null; maxCount = null;
+            break;
+          case 'mult-1':
+            minCount = 1; maxCount = 1;
+            break;
+          case 'mult-0-1':
+            minCount = 0; maxCount = 1;
+            break;
+          case 'mult-0-*':
+            minCount = 0; maxCount = null;
+            break;
+          case 'mult-1-*':
+            minCount = 1; maxCount = null;
+            break;
+          case 'mult-custom':
+            hideEdgeMenu();
+            showCustomMultiplicityDialog(edge);
+            return;
+          case 'edit-edge':
+            hideEdgeMenu();
+            showInlineEditor(edge);
+            return;
+          default:
+            return;
+        }
+
+        // Update edge multiplicity
+        updateEdgeMultiplicity(edge, minCount, maxCount);
+        hideEdgeMenu();
       });
       // Clicking a target after 'Add relationship' completes the edge
       ontoState.cy.on('tap', 'node', (ev) => {
@@ -6712,20 +7197,84 @@
       }
     }
 
-    function exportOntologyJSON() {
+    async function exportOntologyJSON() {
       ensureOntologyInitialized();
       ensureAttributesExist(); // Make sure all elements have attrs property
+
+      // Get ontology name for filename
+      const modelNameField = document.querySelector('#propName');
+      const ontologyName = modelNameField?.value || 'Ontology Model';
+      const safeFilename = ontologyName.toLowerCase()
+        .replace(/[^a-z0-9]+/g, '-')
+        .replace(/^-+|-+$/g, '')
+        .replace(/-+/g, '-');
+
+      // Capture graph data
       const nodes = ontoState.cy.nodes().map(n => ({ data: n.data(), position: n.position() }));
       const edges = ontoState.cy.edges().map(e => ({ data: e.data() }));
-      const payload = { nodes, edges };
+
+      // Get model metadata from properties panel
+      const modelMetadata = {};
+      if (activeOntologyIri) {
+        const pid = (activeProject && (activeProject.id || activeProject.project_id)) ? (activeProject.id || activeProject.project_id) : 'default';
+        const ontologyKey = activeOntologyIri ? activeOntologyIri.split('/').pop() : 'default';
+        const modelNameKey = `onto_model_name__${pid}__${ontologyKey}`;
+        const modelAttrsKey = `onto_model_attrs__${pid}__${ontologyKey}`;
+
+        modelMetadata.name = localStorage.getItem(modelNameKey) || ontologyName;
+        modelMetadata.type = 'Model';
+
+        try {
+          const attrs = JSON.parse(localStorage.getItem(modelAttrsKey) || '{}');
+          modelMetadata.comment = attrs.comment || '';
+          modelMetadata.definition = attrs.definition || '';
+          modelMetadata.version = attrs.version || '';
+          modelMetadata.namespace = attrs.namespace || activeOntologyIri;
+          modelMetadata.imports = attrs.imports || '';
+        } catch (_) {
+          modelMetadata.comment = '';
+          modelMetadata.definition = '';
+          modelMetadata.version = '';
+          modelMetadata.namespace = activeOntologyIri;
+          modelMetadata.imports = '';
+        }
+      }
+
+      // Get named views
+      let namedViews = [];
+      try {
+        namedViews = await loadNamedViews(activeOntologyIri);
+      } catch (error) {
+        console.warn('Could not load named views for export:', error);
+        namedViews = [];
+      }
+
+      // Create complete export payload
+      const payload = {
+        metadata: {
+          exportedBy: getCurrentUsername(),
+          exportedDate: getCurrentDate(),
+          exportedTimestamp: getCurrentTimestamp(),
+          ontologyIri: activeOntologyIri,
+          exportVersion: '1.0'
+        },
+        model: modelMetadata,
+        nodes: nodes,
+        edges: edges,
+        namedViews: namedViews
+      };
+
       const blob = new Blob([JSON.stringify(payload, null, 2)], { type: 'application/json' });
       const a = document.createElement('a');
       a.href = URL.createObjectURL(blob);
-      a.download = 'ontology.json';
+      a.download = `${safeFilename}.json`;
       document.body.appendChild(a);
       a.click();
       URL.revokeObjectURL(a.href);
       a.remove();
+
+      console.log(`📋 Exported ontology as: ${safeFilename}.json`);
+      console.log('📋 Export includes:', Object.keys(payload));
     }
 
     function slugId(text) {
@@ -6808,17 +7357,23 @@
           try {
             const labels = loadOntologyLabelMap(activeProject);
             const pid = (activeProject && (activeProject.id || activeProject.project_id)) ? (activeProject.id || activeProject.project_id) : 'default';
-            const scopedName = localStorage.getItem(`onto_model_name__${pid}`) || '';
+
+            // FIXED: Use ontology-specific localStorage keys
+            const ontologyKey = graphIri ? graphIri.split('/').pop() : 'default';
+            const modelNameKey = `onto_model_name__${pid}__${ontologyKey}`;
+            const modelAttrsKey = `onto_model_attrs__${pid}__${ontologyKey}`;
+
+            const scopedName = localStorage.getItem(modelNameKey) || '';
             const mapLabel = labels[graphIri] || '';
             const tail = (graphIri.split('/').pop() || graphIri);
             // Prefer the actively edited model name, then label map, then IRI tail
             const chosen = ((activeOntologyIri === graphIri && scopedName.trim()) || mapLabel || tail);
             const lbl = String(chosen || '');
 
-            // Get ontology metadata attributes from localStorage
+            // Get ontology metadata attributes from localStorage using ontology-specific key
             let ontologyAttrs = {};
             try {
-              ontologyAttrs = JSON.parse(localStorage.getItem(`onto_model_attrs__${pid}`) || '{}');
+              ontologyAttrs = JSON.parse(localStorage.getItem(modelAttrsKey) || '{}');
             } catch (_) {
               ontologyAttrs = {};
             }
@@ -7673,6 +8228,842 @@
       m.style.left = x + 'px'; m.style.top = y + 'px'; m.style.display = 'block'; cmState.visible = true;
     }
     function hideMenu() { const m = qs('#ontoContextMenu'); if (!m) return; m.style.display = 'none'; cmState.visible = false; }
+
+    // Edge context menu helpers for multiplicity constraints
+    function showEdgeMenuAt(x, y) {
+      const m = qs('#edgeContextMenu'); if (!m) return;
+      m.style.left = x + 'px'; m.style.top = y + 'px'; m.style.display = 'block';
+      // Hide node context menu if visible
+      hideMenu();
+
+      // Auto-hide on outside click
+      setTimeout(() => {
+        const hideOnOutsideClick = (e) => {
+          if (!m.contains(e.target)) {
+            hideEdgeMenu();
+            document.removeEventListener('click', hideOnOutsideClick);
+          }
+        };
+        document.addEventListener('click', hideOnOutsideClick);
+      }, 0);
+    }
+    function hideEdgeMenu() { const m = qs('#edgeContextMenu'); if (!m) return; m.style.display = 'none'; }
+
+    // Update edge label with multiplicity information
+    function updateEdgeLabel(edge) {
+      const minCount = edge.data('minCount');
+      const maxCount = edge.data('maxCount');
+      const basePredicate = edge.data('predicate') || 'relatedTo';
+
+      let multiplicity = '';
+      if (minCount !== null && minCount !== undefined || maxCount !== null && maxCount !== undefined) {
+        if (minCount === 1 && maxCount === 1) multiplicity = ' (1)';
+        else if (minCount === 0 && (maxCount === null || maxCount === undefined)) multiplicity = ' (0..*)';
+        else if (minCount === 1 && (maxCount === null || maxCount === undefined)) multiplicity = ' (1..*)';
+        else if (minCount === 0 && maxCount === 1) multiplicity = ' (0..1)';
+        else if (minCount !== null && minCount !== undefined && maxCount !== null && maxCount !== undefined && minCount === maxCount)
+          multiplicity = ` (${minCount})`;
+        else if (minCount !== null && minCount !== undefined && maxCount !== null && maxCount !== undefined)
+          multiplicity = ` (${minCount}..${maxCount})`;
+        else if (minCount !== null && minCount !== undefined) multiplicity = ` (${minCount}..*)`;
+        else if (maxCount !== null && maxCount !== undefined) multiplicity = ` (0..${maxCount})`;
+      }
+
+      // Store multiplicity display  
+      edge.data('multiplicityDisplay', multiplicity.trim());
+      edge.data('predicate', basePredicate);  // Keep relationship name clean
+
+      // FORCE CYTOSCAPE VISUAL REFRESH
+      if (ontoState.cy) {
+        ontoState.cy.style().update();
+        // Small delay then force redraw
+        setTimeout(() => {
+          ontoState.cy.forceRender();
+        }, 10);
+      }
+
+      console.log(`🎯 Updated edge: "${basePredicate}" with multiplicity at arrow tip: "${multiplicity.trim()}"`);
+
+      // Trigger refresh
+      refreshOntologyTree();
+      persistOntologyToLocalStorage();
+    }
+
+    // Apply multiplicity constraint to edge
+    function updateEdgeMultiplicity(edge, minCount, maxCount) {
+      // Store multiplicity in edge data
+      edge.data('minCount', minCount);
+      edge.data('maxCount', maxCount);
+
+      // Update modification metadata
+      const currentAttrs = edge.data('attrs') || {};
+      const updatedAttrs = updateModificationMetadata(currentAttrs);
+      edge.data('attrs', updatedAttrs);
+
+      // Update visual display
+      updateEdgeLabel(edge);
+
+      // PERSIST TO BACKEND: Save all SHACL constraint changes to RDF store
+      saveShaclConstraintsToBackend(edge);
+    }
+
+    // Save all SHACL constraints to backend RDF store
+    async function saveShaclConstraintsToBackend(edge) {
+      const minCount = edge.data('minCount');
+      const maxCount = edge.data('maxCount');
+      const datatypeConstraint = edge.data('datatypeConstraint');
+      const enumerationValues = edge.data('enumerationValues');
+      try {
+        if (!activeOntologyIri) {
+          console.log('❌ No active ontology IRI for saving multiplicity');
+          return;
+        }
+
+        const propertyName = edge.data('predicate');
+        const edgeType = edge.data('type');
+
+        if (edgeType !== 'objectProperty') {
+          console.log('⚠️ Skipping multiplicity save for non-object property');
+          return;
+        }
+
+        console.log(`💾 Saving SHACL constraints to backend for: ${propertyName}`);
+        console.log(`   - Multiplicity: min=${minCount} max=${maxCount}`);
+        console.log(`   - Datatype: ${datatypeConstraint || 'none'}`);
+        console.log(`   - Enumeration: ${enumerationValues ? enumerationValues.join(', ') : 'none'}`);
+        console.log(`🔍 Active ontology IRI: ${activeOntologyIri}`);
+
+        // Build SPARQL UPDATE to add/update all SHACL constraints
+        const propertyUri = `${activeOntologyIri}#${propertyName}`;
+        console.log(`🔍 Property URI: ${propertyUri}`);
+
+        let sparqlUpdate = `
+        PREFIX owl: <http://www.w3.org/2002/07/owl#>
+        PREFIX odras: <http://odras.ai/ontology/>
+        
+        DELETE {
+          GRAPH <${activeOntologyIri}> {
+            <${propertyUri}> odras:minCount ?oldMin .
+            <${propertyUri}> odras:maxCount ?oldMax .
+            <${propertyUri}> odras:datatypeConstraint ?oldDatatype .
+            <${propertyUri}> odras:enumerationValues ?oldEnum .
+          }
+        }
+        WHERE {
+          GRAPH <${activeOntologyIri}> {
+            OPTIONAL { <${propertyUri}> odras:minCount ?oldMin }
+            OPTIONAL { <${propertyUri}> odras:maxCount ?oldMax }
+            OPTIONAL { <${propertyUri}> odras:datatypeConstraint ?oldDatatype }
+            OPTIONAL { <${propertyUri}> odras:enumerationValues ?oldEnum }
+          }
+        }
+        `;
+
+        // Add new constraints (if any exist)
+        if (minCount !== null || maxCount !== null || datatypeConstraint || enumerationValues) {
+          sparqlUpdate += `;
+          
+          INSERT {
+            GRAPH <${activeOntologyIri}> {
+          `;
+
+          // Multiplicity constraints
+          if (minCount !== null) {
+            sparqlUpdate += `    <${propertyUri}> odras:minCount ${minCount} .
+`;
+          }
+          if (maxCount !== null) {
+            sparqlUpdate += `    <${propertyUri}> odras:maxCount ${maxCount} .
+`;
+          }
+
+          // Datatype constraint
+          if (datatypeConstraint) {
+            sparqlUpdate += `    <${propertyUri}> odras:datatypeConstraint "${datatypeConstraint}" .
+`;
+          }
+
+          // Enumeration constraint (as JSON string)
+          if (enumerationValues && enumerationValues.length > 0) {
+            const enumJson = JSON.stringify(enumerationValues).replace(/\"/g, '\\\\"');
+            sparqlUpdate += `    <${propertyUri}> odras:enumerationValues "${enumJson}" .
+`;
+          }
+
+          sparqlUpdate += `  }
+        } WHERE {}`;
+        }
+
+        console.log('🔍 SPARQL Update:');
+        console.log(sparqlUpdate);
+
+        // Execute SPARQL update directly to Fuseki update endpoint
+        const fusekiUpdateUrl = 'http://localhost:3030/odras/update';
+        console.log(`🔍 Sending UPDATE to: ${fusekiUpdateUrl}`);
+
+        try {
+          const response = await fetch(fusekiUpdateUrl, {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/sparql-update'
+            },
+            body: sparqlUpdate
+          });
+
+          console.log(`🔍 Response status: ${response.status}`);
+          console.log(`🔍 Response ok: ${response.ok}`);
+
+          if (response.ok) {
+            console.log(`✅ SHACL constraints saved to RDF store for ${propertyName}`);
+          } else {
+            const errorText = await response.text();
+            console.log(`❌ Failed to save SHACL constraints: ${response.status}`);
+            console.log(`❌ Error response: ${errorText}`);
+          }
+
+        } catch (fetchError) {
+          console.log(`❌ Network error saving SHACL constraints: ${fetchError}`);
+          console.log(`❌ Error details: ${JSON.stringify(fetchError)}`);
+        }
+
+      } catch (error) {
+        console.error('❌ Error saving SHACL constraints to backend:', error);
+      }
+    }
+
+    // Save model-level metadata to backend RDF store
+    async function saveModelMetadataToBackend(ontologyIri, modelName, attrs) {
+      try {
+        console.log(`💾 Saving model metadata for: ${modelName}`);
+        console.log(`🔍 Ontology IRI: ${ontologyIri}`);
+        console.log(`📋 Attributes:`, attrs);
+
+        // Build SPARQL UPDATE for ontology metadata
+        const ontologyUri = ontologyIri;  // The ontology IRI itself is the subject
+
+        let sparqlUpdate = `
+        PREFIX owl: <http://www.w3.org/2002/07/owl#>
+        PREFIX rdfs: <http://www.w3.org/2000/01/rdf-schema#>
+        PREFIX skos: <http://www.w3.org/2004/02/skos/core#>
+        PREFIX dcterms: <http://purl.org/dc/terms/>
+        
+        DELETE {
+          GRAPH <${ontologyIri}> {
+            <${ontologyUri}> rdfs:label ?oldLabel .
+            <${ontologyUri}> rdfs:comment ?oldComment .
+            <${ontologyUri}> skos:definition ?oldDefinition .
+            <${ontologyUri}> owl:versionInfo ?oldVersion .
+            <${ontologyUri}> dcterms:description ?oldDescription .
+          }
+        }
+        WHERE {
+          GRAPH <${ontologyIri}> {
+            OPTIONAL { <${ontologyUri}> rdfs:label ?oldLabel }
+            OPTIONAL { <${ontologyUri}> rdfs:comment ?oldComment }
+            OPTIONAL { <${ontologyUri}> skos:definition ?oldDefinition }
+            OPTIONAL { <${ontologyUri}> owl:versionInfo ?oldVersion }
+            OPTIONAL { <${ontologyUri}> dcterms:description ?oldDescription }
+          }
+        }
+        `;
+
+        // Add new metadata if exists
+        let hasInserts = false;
+        let insertParts = [];
+
+        // Add label (model name)
+        if (modelName && modelName.trim()) {
+          const escapedName = modelName.replace(/\\\\/g, '\\\\\\\\').replace(/"/g, '\\\\"').replace(/\\n/g, '\\\\n').replace(/\\r/g, '\\\\r');
+          insertParts.push(`    <${ontologyUri}> rdfs:label "${escapedName}" .`);
+          hasInserts = true;
+        }
+
+        // Add comment  
+        if (attrs.comment && attrs.comment.trim()) {
+          const escapedComment = attrs.comment.replace(/\\\\/g, '\\\\\\\\').replace(/"/g, '\\\\"').replace(/\\n/g, '\\\\n').replace(/\\r/g, '\\\\r');
+          insertParts.push(`    <${ontologyUri}> rdfs:comment "${escapedComment}" .`);
+          hasInserts = true;
+        }
+
+        // Add definition
+        if (attrs.definition && attrs.definition.trim()) {
+          const escapedDefinition = attrs.definition.replace(/\\\\/g, '\\\\\\\\').replace(/"/g, '\\\\"').replace(/\\n/g, '\\\\n').replace(/\\r/g, '\\\\r');
+          insertParts.push(`    <${ontologyUri}> skos:definition "${escapedDefinition}" .`);
+          hasInserts = true;
+        }
+
+        // Add version info
+        if (attrs.versionInfo && attrs.versionInfo.trim()) {
+          const escapedVersion = attrs.versionInfo.replace(/\\\\/g, '\\\\\\\\').replace(/"/g, '\\\\"').replace(/\\n/g, '\\\\n').replace(/\\r/g, '\\\\r');
+          insertParts.push(`    <${ontologyUri}> owl:versionInfo "${escapedVersion}" .`);
+          hasInserts = true;
+        }
+
+        // Add description
+        if (attrs.description && attrs.description.trim()) {
+          const escapedDescription = attrs.description.replace(/\\\\/g, '\\\\\\\\').replace(/"/g, '\\\\"').replace(/\\n/g, '\\\\n').replace(/\\r/g, '\\\\r');
+          insertParts.push(`    <${ontologyUri}> dcterms:description "${escapedDescription}" .`);
+          hasInserts = true;
+        }
+
+        if (hasInserts) {
+          sparqlUpdate += `;
+          
+          INSERT {
+            GRAPH <${ontologyIri}> {
+${insertParts.join('\\n')}
+            }
+          } WHERE {}`;
+        }
+
+        console.log('🔍 Model metadata SPARQL Update:');
+        console.log(sparqlUpdate);
+
+        // Execute SPARQL update
+        const fusekiUpdateUrl = 'http://localhost:3030/odras/update';
+        console.log(`🔍 Sending model metadata UPDATE to: ${fusekiUpdateUrl}`);
+
+        try {
+          const response = await fetch(fusekiUpdateUrl, {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/sparql-update'
+            },
+            body: sparqlUpdate
+          });
+
+          console.log(`🔍 Model metadata response status: ${response.status}`);
+          console.log(`🔍 Model metadata response ok: ${response.ok}`);
+
+          if (response.ok) {
+            console.log(`✅ Model metadata saved to RDF store for ${modelName}`);
+          } else {
+            const errorText = await response.text();
+            console.log(`❌ Failed to save model metadata: ${response.status}`);
+            console.log(`❌ Error response: ${errorText}`);
+          }
+
+        } catch (fetchError) {
+          console.log(`❌ Network error saving model metadata: ${fetchError}`);
+        }
+
+      } catch (error) {
+        console.error('❌ Error saving model metadata to backend:', error);
+      }
+    }
+
+    // ========== CAD-LIKE FEATURES ==========
+
+    // Snap position to grid
+    function snapToGrid(position) {
+      if (!ontoState.snapToGrid) return position;
+
+      const gridSize = ontoState.gridSize;
+      return {
+        x: Math.round(position.x / gridSize) * gridSize,
+        y: Math.round(position.y / gridSize) * gridSize
+      };
+    }
+
+    // Toggle snap-to-grid with visual feedback
+    function toggleSnapToGrid() {
+      ontoState.snapToGrid = !ontoState.snapToGrid;
+      const status = ontoState.snapToGrid ? 'ON' : 'OFF';
+      console.log(`🔧 Snap-to-grid: ${status} (Grid size: ${ontoState.gridSize}px)`);
+
+      // Update UI status text
+      const statusEl = document.querySelector('#snapGridStatus');
+      if (statusEl) {
+        statusEl.textContent = `Grid Snap: ${status}`;
+      }
+
+      // Show temporary visual feedback
+      showTemporaryMessage(`Grid Snap: ${status}`, 1500);
+    }
+
+    // Update grid size
+    function updateGridSize(newSize) {
+      if (newSize === 'custom') {
+        const customSize = prompt('Enter custom grid size in pixels:', ontoState.gridSize);
+        if (customSize && !isNaN(customSize) && customSize > 0) {
+          ontoState.gridSize = parseInt(customSize);
+        } else {
+          // Reset dropdown to current value
+          const selector = document.querySelector('#gridSizeSelector');
+          if (selector) selector.value = ontoState.gridSize;
+          return;
+        }
+      } else {
+        ontoState.gridSize = parseInt(newSize);
+      }
+
+      // Update CSS grid background to match
+      const canvasEl = document.querySelector('#cy');
+      if (canvasEl) {
+        canvasEl.style.backgroundSize = `${ontoState.gridSize}px ${ontoState.gridSize}px`;
+      }
+
+      console.log(`🔧 Grid size updated to: ${ontoState.gridSize}px`);
+      showTemporaryMessage(`Grid: ${ontoState.gridSize}px`, 1000);
+    }
+
+    // Show temporary message overlay (like CAD status messages)
+    function showTemporaryMessage(message, duration = 2000) {
+      // Remove existing message
+      const existing = document.querySelector('#cadStatusMessage');
+      if (existing) existing.remove();
+
+      const msgDiv = document.createElement('div');
+      msgDiv.id = 'cadStatusMessage';
+      msgDiv.style.cssText = `
+        position: fixed;
+        top: 80px;
+        right: 20px;
+        background: var(--panel-2);
+        color: var(--accent);
+        border: 1px solid var(--accent);
+        border-radius: 6px;
+        padding: 8px 12px;
+        font-size: 12px;
+        font-weight: 600;
+        z-index: 10000;
+        box-shadow: 0 4px 12px rgba(0,0,0,0.3);
+        transition: opacity 0.3s ease;
+      `;
+      msgDiv.textContent = message;
+      document.body.appendChild(msgDiv);
+
+      setTimeout(() => {
+        if (msgDiv) {
+          msgDiv.style.opacity = '0';
+          setTimeout(() => msgDiv.remove(), 300);
+        }
+      }, duration);
+    }
+
+    // Align selected elements
+    function alignElements(direction) {
+      if (!ontoState.cy) return;
+
+      const selected = ontoState.cy.$(':selected').nodes();
+      if (selected.length < 2) {
+        showTemporaryMessage('Select 2+ elements to align');
+        return;
+      }
+
+      const positions = selected.map(node => ({ node, pos: node.position() }));
+      let referenceValue;
+
+      switch (direction) {
+        case 'left':
+          referenceValue = Math.min(...positions.map(p => p.pos.x));
+          positions.forEach(({ node }) => {
+            const newPos = { x: referenceValue, y: node.position().y };
+            node.position(snapToGrid(newPos));
+          });
+          break;
+        case 'right':
+          referenceValue = Math.max(...positions.map(p => p.pos.x));
+          positions.forEach(({ node }) => {
+            const newPos = { x: referenceValue, y: node.position().y };
+            node.position(snapToGrid(newPos));
+          });
+          break;
+        case 'center':
+          const centerX = (Math.min(...positions.map(p => p.pos.x)) + Math.max(...positions.map(p => p.pos.x))) / 2;
+          positions.forEach(({ node }) => {
+            const newPos = { x: centerX, y: node.position().y };
+            node.position(snapToGrid(newPos));
+          });
+          break;
+        case 'top':
+          referenceValue = Math.min(...positions.map(p => p.pos.y));
+          positions.forEach(({ node }) => {
+            const newPos = { x: node.position().x, y: referenceValue };
+            node.position(snapToGrid(newPos));
+          });
+          break;
+        case 'bottom':
+          referenceValue = Math.max(...positions.map(p => p.pos.y));
+          positions.forEach(({ node }) => {
+            const newPos = { x: node.position().x, y: referenceValue };
+            node.position(snapToGrid(newPos));
+          });
+          break;
+        case 'distribute-horizontal':
+          if (selected.length < 3) {
+            showTemporaryMessage('Need 3+ elements to distribute');
+            return;
+          }
+          positions.sort((a, b) => a.pos.x - b.pos.x);
+          const minX = positions[0].pos.x;
+          const maxX = positions[positions.length - 1].pos.x;
+          const spacingX = (maxX - minX) / (positions.length - 1);
+          positions.forEach(({ node }, index) => {
+            const newPos = { x: minX + (index * spacingX), y: node.position().y };
+            node.position(snapToGrid(newPos));
+          });
+          break;
+        case 'distribute-vertical':
+          if (selected.length < 3) {
+            showTemporaryMessage('Need 3+ elements to distribute');
+            return;
+          }
+          positions.sort((a, b) => a.pos.y - b.pos.y);
+          const minY = positions[0].pos.y;
+          const maxY = positions[positions.length - 1].pos.y;
+          const spacingY = (maxY - minY) / (positions.length - 1);
+          positions.forEach(({ node }, index) => {
+            const newPos = { x: node.position().x, y: minY + (index * spacingY) };
+            node.position(snapToGrid(newPos));
+          });
+          break;
+      }
+
+      showTemporaryMessage(`Aligned: ${direction}`);
+      addToUndoStack('align', { direction, elements: selected.length });
+      persistOntologyToLocalStorage();
+    }
+
+    // Undo/Redo system
+    function addToUndoStack(action, data) {
+      if (!ontoState.cy) return;
+
+      const state = {
+        action,
+        data,
+        timestamp: Date.now(),
+        snapshot: ontoState.cy.json() // Full canvas state
+      };
+
+      ontoState.undoStack.push(state);
+      if (ontoState.undoStack.length > ontoState.maxUndoLevels) {
+        ontoState.undoStack.shift(); // Remove oldest
+      }
+
+      // Clear redo stack when new action is performed
+      ontoState.redoStack = [];
+    }
+
+    function performUndo() {
+      if (!ontoState.cy || ontoState.undoStack.length === 0) {
+        showTemporaryMessage('Nothing to undo');
+        return;
+      }
+
+      // Save current state to redo stack
+      const currentState = {
+        action: 'undo_point',
+        data: {},
+        timestamp: Date.now(),
+        snapshot: ontoState.cy.json()
+      };
+      ontoState.redoStack.push(currentState);
+
+      // Restore previous state
+      const previousState = ontoState.undoStack.pop();
+      ontoState.cy.json(previousState.snapshot);
+
+      showTemporaryMessage(`Undid: ${previousState.action}`);
+      persistOntologyToLocalStorage();
+    }
+
+    function performRedo() {
+      if (!ontoState.cy || ontoState.redoStack.length === 0) {
+        showTemporaryMessage('Nothing to redo');
+        return;
+      }
+
+      // Save current state to undo stack
+      addToUndoStack('redo_point', {});
+      ontoState.undoStack.pop(); // Remove the redo_point we just added
+
+      // Restore redo state
+      const redoState = ontoState.redoStack.pop();
+      ontoState.cy.json(redoState.snapshot);
+
+      showTemporaryMessage('Redid action');
+      persistOntologyToLocalStorage();
+    }
+
+    // Copy selected elements
+    function copySelectedElements() {
+      if (!ontoState.cy) return;
+
+      const selected = ontoState.cy.$(':selected');
+      if (selected.length === 0) {
+        showTemporaryMessage('No elements selected to copy');
+        return;
+      }
+
+      ontoState.clipboard = {
+        nodes: selected.nodes().map(n => ({ data: n.data(), position: n.position() })),
+        edges: selected.edges().map(e => ({ data: e.data() })),
+        timestamp: Date.now()
+      };
+
+      showTemporaryMessage(`Copied ${selected.length} elements`);
+    }
+
+    // Paste elements with smart offset
+    function pasteElements() {
+      if (!ontoState.cy || !ontoState.clipboard) {
+        showTemporaryMessage('Nothing to paste');
+        return;
+      }
+
+      const offset = 40; // Offset like CAD copy operations
+      const newElements = [];
+      const idMapping = {}; // Map old IDs to new IDs for edges
+
+      // Create new nodes with offset positions
+      ontoState.clipboard.nodes.forEach(nodeData => {
+        const oldId = nodeData.data.id;
+        const newId = `${oldId}_copy_${Date.now()}_${Math.floor(Math.random() * 1000)}`;
+
+        const newPos = {
+          x: nodeData.position.x + offset,
+          y: nodeData.position.y + offset
+        };
+
+        const newNodeData = {
+          group: 'nodes',
+          data: { ...nodeData.data, id: newId },
+          position: snapToGrid(newPos)
+        };
+
+        idMapping[oldId] = newId;
+        newElements.push(newNodeData);
+      });
+
+      // Create new edges with updated source/target IDs
+      ontoState.clipboard.edges.forEach(edgeData => {
+        const newSource = idMapping[edgeData.data.source];
+        const newTarget = idMapping[edgeData.data.target];
+
+        // Only create edge if both nodes were copied
+        if (newSource && newTarget) {
+          const newId = `edge_copy_${Date.now()}_${Math.floor(Math.random() * 1000)}`;
+
+          const newEdgeData = {
+            group: 'edges',
+            data: {
+              ...edgeData.data,
+              id: newId,
+              source: newSource,
+              target: newTarget
+            }
+          };
+
+          newElements.push(newEdgeData);
+        }
+      });
+
+      // Add to canvas and select
+      ontoState.cy.add(newElements);
+      ontoState.cy.$(':selected').unselect();
+      newElements.forEach(el => {
+        if (el.group === 'nodes') {
+          ontoState.cy.$(`#${el.data.id}`).select();
+        }
+      });
+
+      showTemporaryMessage(`Pasted ${newElements.length} elements`);
+      addToUndoStack('paste', { count: newElements.length });
+      persistOntologyToLocalStorage();
+    }
+
+    // Snap selected node to grid
+    function snapNodeToGrid() {
+      if (!ontoState.cy) return;
+
+      const selected = ontoState.cy.$(':selected').nodes();
+      if (selected.length === 0) {
+        showTemporaryMessage('No node selected');
+        return;
+      }
+
+      selected.forEach(node => {
+        const snappedPos = snapToGrid(node.position());
+        node.position(snappedPos);
+      });
+
+      // Update position inputs if visible
+      updatePositionInputs();
+      showTemporaryMessage(`Snapped ${selected.length} node(s) to grid`);
+      addToUndoStack('snap', { count: selected.length });
+      persistOntologyToLocalStorage();
+    }
+
+    // Center selected node in view  
+    function centerNodeInView() {
+      if (!ontoState.cy) return;
+
+      const selected = ontoState.cy.$(':selected').nodes();
+      if (selected.length === 0) {
+        showTemporaryMessage('No node selected');
+        return;
+      }
+
+      ontoState.cy.animate({
+        center: { eles: selected },
+        zoom: Math.max(ontoState.cy.zoom(), 0.8)
+      }, {
+        duration: 300
+      });
+
+      showTemporaryMessage('Centered in view');
+    }
+
+    // Update position input fields
+    function updatePositionInputs() {
+      const posXInput = qs('#propPosX');
+      const posYInput = qs('#propPosY');
+
+      if (!posXInput || !posYInput || !ontoState.cy) return;
+
+      const selected = ontoState.cy.$(':selected').nodes();
+      if (selected.length === 1) {
+        const pos = selected[0].position();
+        posXInput.value = Math.round(pos.x);
+        posYInput.value = Math.round(pos.y);
+      } else if (selected.length > 1) {
+        posXInput.placeholder = 'Multiple selected';
+        posYInput.placeholder = 'Multiple selected';
+        posXInput.value = '';
+        posYInput.value = '';
+      } else {
+        posXInput.value = '';
+        posYInput.value = '';
+      }
+    }
+
+    // Apply position from input fields
+    function applyPositionFromInputs() {
+      const posXInput = qs('#propPosX');
+      const posYInput = qs('#propPosY');
+
+      if (!posXInput || !posYInput || !ontoState.cy) return;
+
+      const selected = ontoState.cy.$(':selected').nodes();
+      if (selected.length === 0) return;
+
+      const x = parseFloat(posXInput.value);
+      const y = parseFloat(posYInput.value);
+
+      if (isNaN(x) || isNaN(y)) return;
+
+      const newPos = { x, y };
+      const snappedPos = snapToGrid(newPos);
+
+      selected.forEach(node => {
+        node.position(snappedPos);
+      });
+
+      showTemporaryMessage(`Moved to (${snappedPos.x}, ${snappedPos.y})`);
+      addToUndoStack('position', { x: snappedPos.x, y: snappedPos.y });
+      persistOntologyToLocalStorage();
+    }
+
+    // Enhanced zoom controls (like CAD view controls)
+    function zoomToSelection() {
+      if (!ontoState.cy) return;
+
+      const selected = ontoState.cy.$(':selected');
+      if (selected.length === 0) {
+        showTemporaryMessage('No elements selected to zoom to');
+        return;
+      }
+
+      ontoState.cy.animate({
+        fit: { eles: selected, padding: 50 }
+      }, {
+        duration: 300
+      });
+
+      showTemporaryMessage('Zoomed to selection');
+    }
+
+    function zoomTo100Percent() {
+      if (!ontoState.cy) return;
+
+      ontoState.cy.animate({
+        zoom: 1.0,
+        center: { eles: ontoState.cy.elements() }
+      }, {
+        duration: 300
+      });
+
+      showTemporaryMessage('Zoom: 100%');
+    }
+
+    function zoomToFitAll() {
+      if (!ontoState.cy) return;
+
+      ontoState.cy.animate({
+        fit: { eles: ontoState.cy.elements(), padding: 30 }
+      }, {
+        duration: 300
+      });
+
+      showTemporaryMessage('Fit all elements');
+    }
+
+    // Show custom multiplicity dialog
+    function showCustomMultiplicityDialog(edge) {
+      const currentMin = edge.data('minCount');
+      const currentMax = edge.data('maxCount');
+
+      const dialog = document.createElement('div');
+      dialog.style.cssText = `
+        position: fixed; top: 50%; left: 50%; 
+        transform: translate(-50%, -50%);
+        background: var(--panel-2); border: 1px solid var(--border);
+        border-radius: 6px; padding: 20px; z-index: 10000;
+        min-width: 280px; box-shadow: 0 8px 24px rgba(0, 0, 0, .4);
+      `;
+
+      dialog.innerHTML = `
+        <h3 style="margin-top: 0; color: var(--text); font-size: 16px;">Custom Multiplicity</h3>
+        <div style="margin: 15px 0;">
+          <label style="display: block; margin-bottom: 4px; color: var(--text); font-size: 13px;">Minimum count:</label>
+          <input type="number" id="minCountInput" value="${currentMin || ''}" min="0" 
+                 style="width: 100%; padding: 6px; background: var(--panel); border: 1px solid var(--border); border-radius: 4px; color: var(--text);">
+        </div>
+        <div style="margin: 15px 0;">
+          <label style="display: block; margin-bottom: 4px; color: var(--text); font-size: 13px;">Maximum count:</label>
+          <input type="number" id="maxCountInput" value="${currentMax || ''}" min="0"
+                 style="width: 100%; padding: 6px; background: var(--panel); border: 1px solid var(--border); border-radius: 4px; color: var(--text);">
+          <small style="display: block; margin-top: 4px; color: var(--muted); font-size: 11px;">
+            Leave empty for unlimited
+          </small>
+        </div>
+        <div style="margin-top: 20px; text-align: right;">
+          <button id="cancelBtn" style="margin-right: 8px; padding: 6px 12px; background: transparent; border: 1px solid var(--border); border-radius: 4px; color: var(--text); cursor: pointer;">Cancel</button>
+          <button id="applyBtn" style="padding: 6px 12px; background: var(--accent); border: none; border-radius: 4px; color: white; cursor: pointer;">Apply</button>
+        </div>
+      `;
+
+      document.body.appendChild(dialog);
+
+      // Focus first input
+      setTimeout(() => {
+        const input = dialog.querySelector('#minCountInput');
+        if (input) input.focus();
+      }, 100);
+
+      dialog.querySelector('#cancelBtn').onclick = () => dialog.remove();
+      dialog.querySelector('#applyBtn').onclick = () => {
+        const minVal = dialog.querySelector('#minCountInput').value;
+        const maxVal = dialog.querySelector('#maxCountInput').value;
+
+        const minCount = minVal ? parseInt(minVal, 10) : null;
+        const maxCount = maxVal ? parseInt(maxVal, 10) : null;
+
+        updateEdgeMultiplicity(edge, minCount, maxCount);
+        dialog.remove();
+      };
+    }
     function startConnectFrom(node) {
       cmState.sourceId = node.id();
       node.addClass('connect-source');
@@ -7704,11 +9095,34 @@
       } catch (_) { }
     }
 
-    function importOntologyJSON(obj) {
+    async function importOntologyJSON(obj) {
       ensureOntologyInitialized();
-      if (!obj || !Array.isArray(obj.nodes) || !Array.isArray(obj.edges)) return;
+
+      // Handle enhanced export format (with metadata, model, namedViews) or legacy format (just nodes/edges)
+      let nodes, edges, modelMetadata, namedViews;
+
+      if (obj.metadata && obj.model) {
+        // Enhanced format from our new export
+        nodes = obj.nodes || [];
+        edges = obj.edges || [];
+        modelMetadata = obj.model;
+        namedViews = obj.namedViews || [];
+        console.log('📋 Importing enhanced format with model metadata and named views');
+      } else if (Array.isArray(obj.nodes) && Array.isArray(obj.edges)) {
+        // Legacy format (just nodes/edges)
+        nodes = obj.nodes;
+        edges = obj.edges;
+        modelMetadata = null;
+        namedViews = [];
+        console.log('📋 Importing legacy format (nodes/edges only)');
+      } else {
+        console.error('Invalid import format');
+        return;
+      }
+
       // Clear only base elements, keep imported overlays intact
       ontoState.cy.elements().filter(el => !el.hasClass('imported') && !el.hasClass('imported-equivalence')).remove();
+
       // Migration guard: filter out any overlays accidentally saved to JSON
       const isOverlayNode = (n) => {
         try {
@@ -7718,9 +9132,10 @@
           return !!d.importSource || id.startsWith('imp:') || cls.includes('imported');
         } catch (_) { return false; }
       };
-      const baseNodes = (obj.nodes || []).filter(n => !isOverlayNode(n));
+
+      const baseNodes = (nodes || []).filter(n => !isOverlayNode(n));
       const baseNodeIds = new Set(baseNodes.map(n => (n.data && n.data.id) || ''));
-      const baseEdges = (obj.edges || []).filter(e => {
+      const baseEdges = (edges || []).filter(e => {
         try {
           const d = (e && e.data) ? e.data : {};
           const cls = String(e.classes || d.classes || '');
@@ -7729,14 +9144,57 @@
           return baseNodeIds.has(d.source) && baseNodeIds.has(d.target);
         } catch (_) { return false; }
       });
-      // Add back base nodes and edges only
+
+      // Add back base nodes and edges
       ontoState.cy.add(baseNodes.map(n => ({ group: 'nodes', data: n.data, position: n.position })));
       ontoState.cy.add(baseEdges.map(e => ({ group: 'edges', data: e.data })));
       ontoState.cy.fit();
-      refreshOntologyTree();
-      persistOntologyToLocalStorage();
-      // Update ID counter so new classes get unique IDs
-      recomputeNextId();
+
+      // Import model metadata if available
+      if (modelMetadata && activeOntologyIri) {
+        const pid = (activeProject && (activeProject.id || activeProject.project_id)) ? (activeProject.id || activeProject.project_id) : 'default';
+        const ontologyKey = activeOntologyIri ? activeOntologyIri.split('/').pop() : 'default';
+        const modelNameKey = `onto_model_name__${pid}__${ontologyKey}`;
+        const modelAttrsKey = `onto_model_attrs__${pid}__${ontologyKey}`;
+
+        // Save model name and attributes
+        localStorage.setItem(modelNameKey, modelMetadata.name || 'Imported Ontology');
+        const attrs = {
+          comment: modelMetadata.comment || '',
+          definition: modelMetadata.definition || '',
+          version: modelMetadata.version || '',
+          namespace: modelMetadata.namespace || activeOntologyIri,
+          imports: modelMetadata.imports || ''
+        };
+        localStorage.setItem(modelAttrsKey, JSON.stringify(attrs));
+
+        console.log('📋 Restored model metadata:', modelMetadata.name);
+      }
+
+      // Import named views if available
+      if (namedViews && namedViews.length > 0 && activeOntologyIri) {
+        try {
+          console.log(`📋 Importing ${namedViews.length} named views:`, namedViews.map(v => v.name));
+          await saveNamedViews(activeOntologyIri, namedViews);
+          console.log('✅ Named views saved to backend successfully');
+        } catch (error) {
+          console.error('❌ Failed to import named views:', error);
+        }
+      }
+
+      // Wait for named views to be saved before refreshing tree
+      setTimeout(async () => {
+        await refreshOntologyTree();
+        persistOntologyToLocalStorage();
+
+        // Update ID counter so new classes get unique IDs
+        recomputeNextId();
+
+        // Update properties panel to show imported model metadata
+        updatePropertiesPanelFromSelection();
+
+        console.log('✅ Import complete including tree refresh');
+      }, 200);
     }
 
     // Auth/UI gating
@@ -8923,14 +10381,20 @@
             const labels = loadOntologyLabelMap(project);
             const pid2 = (project && (project.id || project.project_id)) ? (project.id || project.project_id) : 'default';
             const friendly = (labels[savedIri] && String(labels[savedIri]).trim()) || (savedIri.split('/').pop() || savedIri);
-            localStorage.setItem(`onto_model_name__${pid2}`, friendly);
+            // FIXED: Use ontology-specific localStorage keys consistently
+            const ontologyKey = savedIri ? savedIri.split('/').pop() : 'default';
+            const modelNameKey = `onto_model_name__${pid2}__${ontologyKey}`;
+            const modelAttrsKey = `onto_model_attrs__${pid2}__${ontologyKey}`;
+
+            localStorage.setItem(modelNameKey, friendly);
             let attrs = {};
-            try { attrs = JSON.parse(localStorage.getItem(`onto_model_attrs__${pid2}`) || '{}'); } catch (_) { attrs = {}; }
+
+            try { attrs = JSON.parse(localStorage.getItem(modelAttrsKey) || '{}'); } catch (_) { attrs = {}; }
             attrs.displayLabel = friendly;
             attrs.graphIri = savedIri;
             // Set namespace based on installation configuration
             attrs.namespace = iri;  // Use the actual graph IRI as namespace
-            localStorage.setItem(`onto_model_attrs__${pid2}`, JSON.stringify(attrs));
+            localStorage.setItem(modelAttrsKey, JSON.stringify(attrs));
             updatePropertiesPanelFromSelection();
           } catch (_) { }
           // Attempt to load saved canvas for this active IRI
@@ -8974,16 +10438,22 @@
                   row.querySelector('.node-label').textContent = newLabel; li.dataset.label = newLabel; saveOntologyLabel(li.dataset.iri, newLabel);
                   if (activeOntologyIri === li.dataset.iri) {
                     const pid = project.id || project.project_id || 'default';
-                    localStorage.setItem(`onto_model_name__${pid}`, newLabel);
+                    // FIXED: Use ontology-specific localStorage keys consistently
+                    const ontologyKey = (li.dataset.iri || activeOntologyIri) ? (li.dataset.iri || activeOntologyIri).split('/').pop() : 'default';
+                    const modelNameKey = `onto_model_name__${pid}__${ontologyKey}`;
+                    const modelAttrsKey = `onto_model_attrs__${pid}__${ontologyKey}`;
+
+                    localStorage.setItem(modelNameKey, newLabel);
                     try {
                       let attrs = {};
-                      try { attrs = JSON.parse(localStorage.getItem(`onto_model_attrs__${pid}`) || '{}'); } catch (_) { attrs = {}; }
+
+                      try { attrs = JSON.parse(localStorage.getItem(modelAttrsKey) || '{}'); } catch (_) { attrs = {}; }
                       attrs.displayLabel = newLabel;
                       // Ensure namespace matches the graph IRI
                       if (!attrs.namespace || attrs.namespace.endsWith('/ontology')) {
                         attrs.namespace = li.dataset.iri || activeOntologyIri;
                       }
-                      localStorage.setItem(`onto_model_attrs__${pid}`, JSON.stringify(attrs));
+                      localStorage.setItem(modelAttrsKey, JSON.stringify(attrs));
                     } catch (_) { }
                     updateOntoGraphLabel();
                     // Immediately update properties panel model name
@@ -9818,7 +11288,7 @@
       });
     })();
 
-    function refreshOntologyTree() {
+    async function refreshOntologyTree() {
       const root = qs('#ontoTreeRoot');
       if (!root || !ontoState.cy) return;
 
@@ -10169,7 +11639,7 @@
       }
 
       // Add Named Views section
-      const namedViews = loadNamedViews(activeOntologyIri);
+      const namedViews = await loadNamedViews(activeOntologyIri);
       if (namedViews.length > 0 || true) { // Always show section even if empty
         const viewChildren = namedViews.map(view => {
           const isActive = ontoState.activeNamedView === view.id;
@@ -10720,7 +12190,7 @@
         definition: { type: 'textarea', label: 'Definition (skos:definition)', placeholder: 'Formal definition of the ontology' },
         version: { type: 'text', label: 'Version (owl:versionInfo)', placeholder: 'Ontology version' },
         namespace: { type: 'text', label: 'Namespace', placeholder: 'Base namespace URI' },
-        imports: { type: 'textarea', label: 'Imports (owl:imports)', placeholder: 'Imported ontology URIs' }
+        imports: { type: 'textarea', label: 'Imports (owl:imports)', placeholder: 'Enter ontology URIs (one per line):\nhttps://example.com/ontology1\nhttps://example.com/ontology2', rows: 4 }
       }
     };
 
@@ -10797,18 +12267,45 @@
     }
 
     // Named views persistence
-    function namedViewsKey(baseIri) { return 'onto_named_views__' + encodeURIComponent(baseIri || ''); }
-    function loadNamedViews(baseIri) {
+    // Load named views from backend API instead of localStorage
+    async function loadNamedViews(baseIri) {
+      if (!baseIri) return [];
+
       try {
-        return JSON.parse(localStorage.getItem(namedViewsKey(baseIri)) || '[]');
-      } catch (_) {
+        const response = await authenticatedFetch(`/api/ontology/named-views?graph=${encodeURIComponent(baseIri)}`);
+        if (response.ok) {
+          const result = await response.json();
+          return result.data || [];
+        } else {
+          console.warn('Failed to load named views from backend, falling back to empty array');
+          return [];
+        }
+      } catch (error) {
+        console.warn('Error loading named views from backend:', error);
         return [];
       }
     }
-    function saveNamedViews(baseIri, views) {
+
+    // Save named views to backend API instead of localStorage  
+    async function saveNamedViews(baseIri, views) {
+      if (!baseIri) return;
+
       try {
-        localStorage.setItem(namedViewsKey(baseIri), JSON.stringify(views || []));
-      } catch (_) { }
+        const response = await authenticatedFetch(`/api/ontology/named-views?graph=${encodeURIComponent(baseIri)}`, {
+          method: 'PUT',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(views || [])
+        });
+
+        if (response.ok) {
+          const result = await response.json();
+          console.log('✅ Named views saved to backend:', result.message);
+        } else {
+          console.error('Failed to save named views to backend:', response.status, response.statusText);
+        }
+      } catch (error) {
+        console.error('Error saving named views to backend:', error);
+      }
     }
 
     // Named view data structure functions
@@ -10818,15 +12315,25 @@
       const currentUser = getCurrentUsername();
       const timestamp = getCurrentTimestamp();
 
+      // Capture individual node positions for complete layout snapshot
+      const nodePositions = {};
+      ontoState.cy.nodes().forEach(node => {
+        nodePositions[node.id()] = {
+          x: node.position().x,
+          y: node.position().y
+        };
+      });
+
       return {
         id: `view_${Date.now()}`,
         name: name,
         creator: currentUser,
         created_date: getCurrentDate(),
         created_timestamp: timestamp,
-        // Canvas state
+        // Complete canvas state (layout snapshot)
         zoom: ontoState.cy.zoom(),
         pan: ontoState.cy.pan(),
+        nodePositions: nodePositions, // Individual node positions for true snapshot
         // Visibility state
         visibilityState: { ...ontoState.visibilityState },
         elementVisibility: { ...ontoState.elementVisibility },
@@ -10855,7 +12362,21 @@
 
       // Refresh imports overlay to apply import visibility changes
       overlayImportsRefresh().then(() => {
-        // After imports are refreshed, restore canvas position and zoom
+        // Restore individual node positions for complete layout snapshot
+        if (view.nodePositions) {
+          ontoState.cy.nodes().forEach(node => {
+            const savedPosition = view.nodePositions[node.id()];
+            if (savedPosition) {
+              node.position({
+                x: savedPosition.x,
+                y: savedPosition.y
+              });
+            }
+          });
+          console.log('🔍 Restored node positions from named view');
+        }
+
+        // After positions are restored, restore canvas position and zoom
         ontoState.cy.animate({
           zoom: view.zoom || 1,
           pan: view.pan || { x: 0, y: 0 }
@@ -10901,6 +12422,20 @@
 
       // Refresh imports overlay
       overlayImportsRefresh().then(() => {
+        // Restore individual node positions for original state
+        if (beforeState.nodePositions) {
+          ontoState.cy.nodes().forEach(node => {
+            const savedPosition = beforeState.nodePositions[node.id()];
+            if (savedPosition) {
+              node.position({
+                x: savedPosition.x,
+                y: savedPosition.y
+              });
+            }
+          });
+          console.log('🔍 Restored original node positions');
+        }
+
         // Restore canvas position and zoom
         ontoState.cy.animate({
           zoom: beforeState.zoom || 1,
@@ -10926,7 +12461,7 @@
     }
 
     // Named view management functions
-    function createNamedView() {
+    async function createNamedView() {
       if (!activeOntologyIri) return;
 
       const name = prompt('Enter a name for this view:');
@@ -10935,18 +12470,18 @@
       const view = captureCurrentView(name.trim());
       if (!view) return;
 
-      const views = loadNamedViews(activeOntologyIri);
+      const views = await loadNamedViews(activeOntologyIri);
       views.push(view);
-      saveNamedViews(activeOntologyIri, views);
+      await saveNamedViews(activeOntologyIri, views);
 
       refreshOntologyTree();
       console.log('🔍 Created named view:', name, 'with visible imports:', view.visibleImports);
     }
 
-    function renameNamedView(viewId) {
+    async function renameNamedView(viewId) {
       if (!activeOntologyIri) return;
 
-      const views = loadNamedViews(activeOntologyIri);
+      const views = await loadNamedViews(activeOntologyIri);
       const view = views.find(v => v.id === viewId);
       if (!view) return;
 
@@ -10954,25 +12489,25 @@
       if (!newName || newName.trim() === '' || newName.trim() === view.name) return;
 
       view.name = newName.trim();
-      saveNamedViews(activeOntologyIri, views);
+      await saveNamedViews(activeOntologyIri, views);
 
-      refreshOntologyTree();
+      await refreshOntologyTree();
       console.log('🔍 Renamed view to:', newName);
     }
 
-    function deleteNamedView(viewId) {
+    async function deleteNamedView(viewId) {
       if (!activeOntologyIri) return;
 
-      const views = loadNamedViews(activeOntologyIri);
+      const views = await loadNamedViews(activeOntologyIri);
       const view = views.find(v => v.id === viewId);
       if (!view) return;
 
       if (!confirm(`Delete view "${view.name}"?`)) return;
 
       const updatedViews = views.filter(v => v.id !== viewId);
-      saveNamedViews(activeOntologyIri, updatedViews);
+      await saveNamedViews(activeOntologyIri, updatedViews);
 
-      refreshOntologyTree();
+      await refreshOntologyTree();
       console.log('🔍 Deleted view:', view.name);
     }
 
@@ -11056,6 +12591,13 @@
         currentAttrs = n.data('attrs') || {};
         objectType = nodeType;
 
+        // Show positioning section for nodes
+        const positioningSection = qs('#positioningSection');
+        if (positioningSection) {
+          positioningSection.style.display = 'block';
+          updatePositionInputs(); // Populate current position
+        }
+
         // Lazy load additional metadata for imported ontologies
         if (activeOntologyIri && activeOntologyIri.includes('/onto/') && !currentAttrs.definition) {
           loadAdditionalMetadataForElement(n.id(), activeOntologyIri);
@@ -11067,18 +12609,100 @@
         typeValueEl.textContent = getTypeDisplayName(edgeType);
         currentAttrs = e.data('attrs') || {};
 
+        // Show/hide SHACL constraints section based on edge type
+        const shaclSection = qs('#shaclConstraintsSection');
+        if (shaclSection) {
+          if (edgeType === 'objectProperty' || edgeType === 'dataProperty') {
+            shaclSection.style.display = 'block';
+
+            // Show/hide appropriate subsections
+            const multiplicitySubsection = qs('#multiplicitySubsection');
+            const datatypeSubsection = qs('#datatypeSubsection');
+            const enumerationSubsection = qs('#enumerationSubsection');
+
+            if (edgeType === 'objectProperty') {
+              // Object properties: show multiplicity and enumeration, hide datatype
+              if (multiplicitySubsection) multiplicitySubsection.style.display = 'block';
+              if (datatypeSubsection) datatypeSubsection.style.display = 'none';
+              if (enumerationSubsection) enumerationSubsection.style.display = 'block';
+              updateMultiplicityFields(e);
+              updateEnumerationFields(e);
+            } else if (edgeType === 'dataProperty') {
+              // Datatype properties: show datatype and enumeration, hide multiplicity
+              if (multiplicitySubsection) multiplicitySubsection.style.display = 'none';
+              if (datatypeSubsection) datatypeSubsection.style.display = 'block';
+              if (enumerationSubsection) enumerationSubsection.style.display = 'block';
+              updateDatatypeFields(e);
+              updateEnumerationFields(e);
+            }
+
+            // Always update constraint summary
+            updateAllConstraintsDisplay(e);
+          } else {
+            shaclSection.style.display = 'none';
+          }
+        }
+
+        // Hide positioning section for edges
+        const positioningSection = qs('#positioningSection');
+        if (positioningSection) {
+          positioningSection.style.display = 'none';
+        }
+
         // Lazy load additional metadata for imported ontologies
         if (activeOntologyIri && activeOntologyIri.includes('/onto/') && !currentAttrs.definition) {
           loadAdditionalMetadataForElement(e.id(), activeOntologyIri);
         }
         objectType = edgeType;
       } else {
+        // Hide SHACL constraints section when no edge is selected
+        const shaclSection = qs('#shaclConstraintsSection');
+        if (shaclSection) {
+          shaclSection.style.display = 'none';
+        }
+
+        // Hide positioning section when no node is selected
+        const positioningSection = qs('#positioningSection');
+        if (positioningSection) {
+          positioningSection.style.display = 'none';
+        }
+
         const pid = (activeProject && (activeProject.id || activeProject.project_id)) ? (activeProject.id || activeProject.project_id) : 'default';
-        nameEl.value = localStorage.getItem(`onto_model_name__${pid}`) || 'Ontology Model';
+        // FIXED: Make model metadata ontology-specific, not just project-specific
+        const ontologyKey = activeOntologyIri ? activeOntologyIri.split('/').pop() : 'default';
+        const modelNameKey = `onto_model_name__${pid}__${ontologyKey}`;
+        const modelAttrsKey = `onto_model_attrs__${pid}__${ontologyKey}`;
+
+        nameEl.value = localStorage.getItem(modelNameKey) || 'Ontology Model';
         typeValueEl.textContent = getTypeDisplayName('model');
         objectType = 'model';
         try {
-          currentAttrs = JSON.parse(localStorage.getItem(`onto_model_attrs__${pid}`) || '{}');
+          currentAttrs = JSON.parse(localStorage.getItem(modelAttrsKey) || '{}');
+
+          // POPULATE IMPORTS: Read current imports from localStorage and add to attributes
+          if (activeOntologyIri) {
+            const importsKey = 'onto_imports__' + encodeURIComponent(activeOntologyIri);
+            try {
+              const imports = JSON.parse(localStorage.getItem(importsKey) || '[]');
+              if (imports && imports.length > 0) {
+                // Clean up imports and format properly (one per line)
+                const cleanImports = imports.map(imp => {
+                  // Remove any Turtle syntax artifacts
+                  let cleanImp = String(imp).trim();
+                  if (cleanImp.startsWith('@')) cleanImp = cleanImp.substring(1);
+                  if (cleanImp.startsWith('<')) cleanImp = cleanImp.slice(1, -1);
+                  return cleanImp;
+                }).filter(imp => imp.length > 0);
+
+                currentAttrs.imports = cleanImports.join('\n');
+                console.log(`📋 Loaded ${cleanImports.length} clean imports:`, cleanImports);
+              } else {
+                currentAttrs.imports = '';
+              }
+            } catch (_) {
+              currentAttrs.imports = '';
+            }
+          }
         } catch (_) { currentAttrs = {}; }
       }
 
@@ -11088,6 +12712,339 @@
 
       // Update element IRI display
       updateElementIriDisplay();
+    }
+
+    // Update multiplicity fields in properties panel
+    function updateMultiplicityFields(edge) {
+      const minCountInput = qs('#propMinCount');
+      const maxCountInput = qs('#propMaxCount');
+      const displayEl = qs('#multiplicityDisplay');
+
+      if (!minCountInput || !maxCountInput || !displayEl) return;
+
+      // Get multiplicity data from edge
+      const minCount = edge.data('minCount');
+      const maxCount = edge.data('maxCount');
+
+      // Populate input fields
+      minCountInput.value = minCount !== null && minCount !== undefined ? minCount : '';
+      maxCountInput.value = maxCount !== null && maxCount !== undefined ? maxCount : '';
+
+      // Update display
+      updateMultiplicityDisplay();
+    }
+
+    // Update multiplicity display based on current input values
+    function updateMultiplicityDisplay() {
+      const minCountInput = qs('#propMinCount');
+      const maxCountInput = qs('#propMaxCount');
+      const displayEl = qs('#multiplicityDisplay');
+
+      if (!minCountInput || !maxCountInput || !displayEl) return;
+
+      const minVal = minCountInput.value ? parseInt(minCountInput.value) : null;
+      const maxVal = maxCountInput.value ? parseInt(maxCountInput.value) : null;
+
+      let display = 'No constraints';
+
+      if (minVal !== null || maxVal !== null) {
+        if (minVal === 1 && maxVal === 1) display = '(1)';
+        else if (minVal === 0 && maxVal === null) display = '(0..*)';
+        else if (minVal === 1 && maxVal === null) display = '(1..*)';
+        else if (minVal === 0 && maxVal === 1) display = '(0..1)';
+        else if (minVal !== null && maxVal !== null && minVal === maxVal) display = `(${minVal})`;
+        else if (minVal !== null && maxVal !== null) display = `(${minVal}..${maxVal})`;
+        else if (minVal !== null) display = `(${minVal}..*)`;
+        else if (maxVal !== null) display = `(0..${maxVal})`;
+      }
+
+      displayEl.textContent = display;
+    }
+
+    // Update datatype constraint fields in properties panel
+    function updateDatatypeFields(edge) {
+      const datatypeSelect = qs('#propDatatypeConstraint');
+      const displayEl = qs('#datatypeDisplay');
+
+      if (!datatypeSelect || !displayEl) return;
+
+      // Get datatype constraint from edge data
+      const datatypeConstraint = edge.data('datatypeConstraint');
+
+      // Populate select field
+      datatypeSelect.value = datatypeConstraint || '';
+
+      // Update display
+      updateDatatypeDisplay();
+    }
+
+    // Update datatype display based on current selection
+    function updateDatatypeDisplay() {
+      const datatypeSelect = qs('#propDatatypeConstraint');
+      const displayEl = qs('#datatypeDisplay');
+
+      if (!datatypeSelect || !displayEl) return;
+
+      const selectedType = datatypeSelect.value;
+
+      if (selectedType) {
+        displayEl.textContent = `Datatype: ${selectedType}`;
+        displayEl.style.color = 'var(--accent)';
+      } else {
+        displayEl.textContent = 'No datatype constraint';
+        displayEl.style.color = 'var(--muted)';
+      }
+    }
+
+    // Update enumeration fields in properties panel
+    function updateEnumerationFields(edge) {
+      const enumerationTextarea = qs('#propEnumerationValues');
+      const displayEl = qs('#enumerationDisplay');
+
+      if (!enumerationTextarea || !displayEl) return;
+
+      // Get enumeration values from edge data
+      const enumerationValues = edge.data('enumerationValues');
+
+      // Populate textarea (one value per line)
+      if (enumerationValues && Array.isArray(enumerationValues)) {
+        enumerationTextarea.value = enumerationValues.join('\\n');
+      } else {
+        enumerationTextarea.value = '';
+      }
+
+      // Update display
+      updateEnumerationDisplay();
+    }
+
+    // Update enumeration display based on current values
+    function updateEnumerationDisplay() {
+      const enumerationTextarea = qs('#propEnumerationValues');
+      const displayEl = qs('#enumerationDisplay');
+
+      if (!enumerationTextarea || !displayEl) return;
+
+      const values = enumerationTextarea.value.split('\\n').filter(v => v.trim()).map(v => v.trim());
+
+      if (values.length > 0) {
+        displayEl.textContent = `Values: {${values.join(', ')}}`;
+        displayEl.style.color = 'var(--accent)';
+      } else {
+        displayEl.textContent = 'No enumeration constraint';
+        displayEl.style.color = 'var(--muted)';
+      }
+    }
+
+    // Update all constraints summary display
+    function updateAllConstraintsDisplay(edge) {
+      const displayEl = qs('#allConstraintsDisplay');
+      if (!displayEl) return;
+
+      const constraints = [];
+
+      // Multiplicity
+      const minCount = edge.data('minCount');
+      const maxCount = edge.data('maxCount');
+      if (minCount !== null && minCount !== undefined || maxCount !== null && maxCount !== undefined) {
+        let multiplicity = '';
+        if (minCount === 1 && maxCount === 1) multiplicity = '(1)';
+        else if (minCount === 0 && !maxCount) multiplicity = '(0..*)';
+        else if (minCount === 1 && !maxCount) multiplicity = '(1..*)';
+        else if (minCount === 0 && maxCount === 1) multiplicity = '(0..1)';
+        else if (minCount !== null && maxCount !== null && minCount === maxCount) multiplicity = `(${minCount})`;
+        else if (minCount !== null && maxCount !== null) multiplicity = `(${minCount}..${maxCount})`;
+        else if (minCount !== null) multiplicity = `(${minCount}..*)`;
+        else if (maxCount !== null) multiplicity = `(0..${maxCount})`;
+
+        if (multiplicity) constraints.push(`Multiplicity: ${multiplicity}`);
+      }
+
+      // Datatype
+      const datatypeConstraint = edge.data('datatypeConstraint');
+      if (datatypeConstraint) {
+        constraints.push(`Datatype: ${datatypeConstraint}`);
+      }
+
+      // Enumeration
+      const enumerationValues = edge.data('enumerationValues');
+      if (enumerationValues && Array.isArray(enumerationValues) && enumerationValues.length > 0) {
+        const valuesList = enumerationValues.slice(0, 3).join(', ');
+        const suffix = enumerationValues.length > 3 ? `... (+${enumerationValues.length - 3} more)` : '';
+        constraints.push(`Enumeration: {${valuesList}${suffix}}`);
+      }
+
+      if (constraints.length > 0) {
+        displayEl.innerHTML = constraints.join('<br>');
+        displayEl.style.color = 'var(--text)';
+      } else {
+        displayEl.textContent = 'No constraints defined';
+        displayEl.style.color = 'var(--muted)';
+      }
+    }
+
+    // Apply multiplicity preset
+    function applyMultiplicityPreset(preset) {
+      const minCountInput = qs('#propMinCount');
+      const maxCountInput = qs('#propMaxCount');
+
+      if (!minCountInput || !maxCountInput) return;
+
+      switch (preset) {
+        case 'none':
+          minCountInput.value = '';
+          maxCountInput.value = '';
+          break;
+        case '1':
+          minCountInput.value = '1';
+          maxCountInput.value = '1';
+          break;
+        case '0..1':
+          minCountInput.value = '0';
+          maxCountInput.value = '1';
+          break;
+        case '0..*':
+          minCountInput.value = '0';
+          maxCountInput.value = '';
+          break;
+        case '1..*':
+          minCountInput.value = '1';
+          maxCountInput.value = '';
+          break;
+      }
+
+      updateMultiplicityDisplay();
+      applyMultiplicityToEdge();
+    }
+
+    // Apply enumeration preset
+    function applyEnumerationPreset(preset) {
+      const enumerationTextarea = qs('#propEnumerationValues');
+
+      if (!enumerationTextarea) return;
+
+      let values = '';
+      switch (preset) {
+        case 'requirement-status':
+          values = 'Draft\\nReviewed\\nApproved\\nImplemented';
+          break;
+        case 'criticality':
+          values = 'Low\\nMedium\\nHigh\\nCritical';
+          break;
+        case 'risk-level':
+          values = 'Negligible\\nLow\\nMedium\\nHigh\\nCatastrophic';
+          break;
+        case 'priority':
+          values = 'Low\\nMedium\\nHigh\\nUrgent';
+          break;
+        case 'custom':
+          const customValues = prompt('Enter enumeration values (one per line):', 'Value1\\nValue2\\nValue3');
+          if (customValues) {
+            values = customValues;
+          }
+          break;
+      }
+
+      if (values) {
+        enumerationTextarea.value = values;
+        updateEnumerationDisplay();
+        applyEnumerationToEdge();
+      }
+    }
+
+    // Apply datatype constraint to edge
+    function applyDatatypeToEdge() {
+      if (!ontoState.cy) return;
+
+      const sel = ontoState.cy.$(':selected');
+      if (sel.length !== 1 || !sel[0].isEdge()) return;
+
+      const edge = sel[0];
+      const datatypeSelect = qs('#propDatatypeConstraint');
+
+      if (!datatypeSelect) return;
+
+      const datatypeConstraint = datatypeSelect.value || null;
+
+      console.log(`🎯 Applying datatype constraint: ${datatypeConstraint}`);
+
+      // Update edge data
+      edge.data('datatypeConstraint', datatypeConstraint);
+
+      // Update modification metadata
+      const currentAttrs = edge.data('attrs') || {};
+      const updatedAttrs = updateModificationMetadata(currentAttrs);
+      edge.data('attrs', updatedAttrs);
+
+      // Save to backend
+      saveShaclConstraintsToBackend(edge);
+
+      // Update displays
+      updateAllConstraintsDisplay(edge);
+      persistOntologyToLocalStorage();
+    }
+
+    // Apply enumeration constraint to edge
+    function applyEnumerationToEdge() {
+      if (!ontoState.cy) return;
+
+      const sel = ontoState.cy.$(':selected');
+      if (sel.length !== 1 || !sel[0].isEdge()) return;
+
+      const edge = sel[0];
+      const enumerationTextarea = qs('#propEnumerationValues');
+
+      if (!enumerationTextarea) return;
+
+      const values = enumerationTextarea.value.split('\\n').filter(v => v.trim()).map(v => v.trim());
+      const enumerationValues = values.length > 0 ? values : null;
+
+      console.log(`🎯 Applying enumeration constraint:`, enumerationValues);
+
+      // Update edge data
+      edge.data('enumerationValues', enumerationValues);
+
+      // Update modification metadata
+      const currentAttrs = edge.data('attrs') || {};
+      const updatedAttrs = updateModificationMetadata(currentAttrs);
+      edge.data('attrs', updatedAttrs);
+
+      // Save to backend
+      saveShaclConstraintsToBackend(edge);
+
+      // Update displays
+      updateAllConstraintsDisplay(edge);
+      persistOntologyToLocalStorage();
+    }
+
+    // Apply multiplicity changes to the selected edge
+    function applyMultiplicityToEdge() {
+      if (!ontoState.cy) {
+        console.log('❌ No Cytoscape instance available');
+        return;
+      }
+
+      const sel = ontoState.cy.$(':selected');
+      if (sel.length !== 1 || !sel[0].isEdge()) {
+        console.log('❌ No edge selected or multiple items selected');
+        return;
+      }
+
+      const edge = sel[0];
+      const minCountInput = qs('#propMinCount');
+      const maxCountInput = qs('#propMaxCount');
+
+      if (!minCountInput || !maxCountInput) {
+        console.log('❌ Multiplicity input fields not found');
+        return;
+      }
+
+      const minCount = minCountInput.value ? parseInt(minCountInput.value) : null;
+      const maxCount = maxCountInput.value ? parseInt(maxCountInput.value) : null;
+
+      console.log(`🎯 Applying multiplicity to edge: min=${minCount}, max=${maxCount}`);
+
+      // Update edge multiplicity using our existing function
+      updateEdgeMultiplicity(edge, minCount, maxCount);
     }
 
     function updateAttributeEditor(objectType, currentAttrs, isReadOnly = false) {
@@ -11199,8 +13156,16 @@
         input.checked = value === true || value === 'true';
       } else if (config.type === 'textarea') {
         input = document.createElement('textarea');
-        input.rows = 3;
-        input.value = value || '';
+        input.rows = config.rows || 3;
+
+        // Special handling for imports field to ensure clean display
+        let displayValue = value || '';
+        if (key === 'imports') {
+          // Clean up any Turtle syntax that might have leaked in
+          displayValue = displayValue.replace(/^@/, '').replace(/\\\\n/g, '\n');
+        }
+
+        input.value = displayValue;
         input.style.width = '100%';
         input.style.background = '#0b1220';
         input.style.color = '#e5e7eb';
@@ -11330,10 +13295,15 @@
         return activeOntologyIri;
       }
 
-      // Try to get from stored attributes
+      // Try to get from stored attributes using ontology-specific keys
       const pid = (activeProject && (activeProject.id || activeProject.project_id)) ? (activeProject.id || activeProject.project_id) : 'default';
+
+      // FIXED: Use ontology-specific localStorage keys consistently
+      const ontologyKey = activeOntologyIri ? activeOntologyIri.split('/').pop() : 'default';
+      const modelAttrsKey = `onto_model_attrs__${pid}__${ontologyKey}`;
+
       try {
-        const modelAttrs = JSON.parse(localStorage.getItem(`onto_model_attrs__${pid}`) || '{}');
+        const modelAttrs = JSON.parse(localStorage.getItem(modelAttrsKey) || '{}');
         if (modelAttrs.namespace && !modelAttrs.namespace.endsWith('/ontology')) {
           console.log('🔧 getModelNamespace using stored namespace:', modelAttrs.namespace);
           return modelAttrs.namespace;
@@ -11342,7 +13312,7 @@
         if (modelAttrs.graphIri) {
           console.log('🔧 getModelNamespace updating stored namespace to use graphIri:', modelAttrs.graphIri);
           modelAttrs.namespace = modelAttrs.graphIri;
-          localStorage.setItem(`onto_model_attrs__${pid}`, JSON.stringify(modelAttrs));
+          localStorage.setItem(modelAttrsKey, JSON.stringify(modelAttrs));
           return modelAttrs.graphIri;
         }
       } catch (_) { }
@@ -11625,7 +13595,12 @@
     // graphKeyForActive not used; per-project keys are used via storageKeyForGraph
     function attrsFromModel() {
       const pid = (activeProject && (activeProject.id || activeProject.project_id)) ? (activeProject.id || activeProject.project_id) : 'default';
-      try { return JSON.parse(localStorage.getItem(`onto_model_attrs__${pid}`) || '{}'); } catch (_) { return {}; }
+
+      // FIXED: Use ontology-specific localStorage keys consistently
+      const ontologyKey = activeOntologyIri ? activeOntologyIri.split('/').pop() : 'default';
+      const modelAttrsKey = `onto_model_attrs__${pid}__${ontologyKey}`;
+
+      try { return JSON.parse(localStorage.getItem(modelAttrsKey) || '{}'); } catch (_) { return {}; }
     }
     function loadOntologyLabelMap(project) {
       const pid = project?.id || project?.project_id || (activeProject && (activeProject.id || activeProject.project_id)) || 'default';
@@ -11807,14 +13782,36 @@
       const objectProps = ontologyData.object_properties || [];
       objectProps.forEach(prop => {
         if (prop.domain && prop.range && classNameToId[prop.domain] && classNameToId[prop.range]) {
+          // Format multiplicity constraints for display  
+          const minCount = prop.min_count;
+          const maxCount = prop.max_count;
+          let multiplicity = '';
+          if (minCount !== null && minCount !== undefined || maxCount !== null && maxCount !== undefined) {
+            if (minCount === 1 && maxCount === 1) multiplicity = ' (1)';
+            else if (minCount === 0 && (maxCount === null || maxCount === undefined)) multiplicity = ' (0..*)';
+            else if (minCount === 1 && (maxCount === null || maxCount === undefined)) multiplicity = ' (1..*)';
+            else if (minCount === 0 && maxCount === 1) multiplicity = ' (0..1)';
+            else if (minCount !== null && minCount !== undefined && maxCount !== null && maxCount !== undefined && minCount === maxCount)
+              multiplicity = ` (${minCount})`;
+            else if (minCount !== null && minCount !== undefined && maxCount !== null && maxCount !== undefined)
+              multiplicity = ` (${minCount}..${maxCount})`;
+            else if (minCount !== null && minCount !== undefined) multiplicity = ` (${minCount}..*)`;
+            else if (maxCount !== null && maxCount !== undefined) multiplicity = ` (0..${maxCount})`;
+          }
+
+          const displayLabel = prop.label || prop.name;
+
           const edge = {
             data: {
               id: `e${edgeId}`,
               source: classNameToId[prop.domain],
               target: classNameToId[prop.range],
               predicate: prop.name,
-              label: prop.label || prop.name,
+              label: displayLabel,  // Clean relationship name in middle
               type: 'objectProperty',
+              minCount: minCount,       // Store multiplicity data
+              maxCount: maxCount,
+              multiplicityDisplay: multiplicity.trim(),  // Store formatted multiplicity
               attrs: {}
             }
           };
@@ -11935,14 +13932,34 @@
           const richProp = propertyMetadataMap[prop.uri] || {};
           const displayLabel = richProp.label || prop.label || prop.name;
 
+          // Format multiplicity constraints for display
+          const minCount = prop.min_count;
+          const maxCount = prop.max_count;
+          let multiplicity = '';
+          if (minCount !== null && minCount !== undefined || maxCount !== null && maxCount !== undefined) {
+            if (minCount === 1 && maxCount === 1) multiplicity = ' (1)';
+            else if (minCount === 0 && (maxCount === null || maxCount === undefined)) multiplicity = ' (0..*)';
+            else if (minCount === 1 && (maxCount === null || maxCount === undefined)) multiplicity = ' (1..*)';
+            else if (minCount === 0 && maxCount === 1) multiplicity = ' (0..1)';
+            else if (minCount !== null && minCount !== undefined && maxCount !== null && maxCount !== undefined && minCount === maxCount)
+              multiplicity = ` (${minCount})`;
+            else if (minCount !== null && minCount !== undefined && maxCount !== null && maxCount !== undefined)
+              multiplicity = ` (${minCount}..${maxCount})`;
+            else if (minCount !== null && minCount !== undefined) multiplicity = ` (${minCount}..*)`;
+            else if (maxCount !== null && maxCount !== undefined) multiplicity = ` (0..${maxCount})`;
+          }
+
           const edge = {
             data: {
               id: `e${edgeId}`,
               source: classNameToId[prop.domain],
               target: classNameToId[prop.range],
-              predicate: displayLabel,  // Use display label for predicate (what Cytoscape shows)
-              label: displayLabel,      // Also set label for consistency
+              predicate: displayLabel,  // Base predicate name
+              label: displayLabel,      // Clean relationship name in middle
               type: 'objectProperty',
+              minCount: minCount,       // Store multiplicity data
+              maxCount: maxCount,
+              multiplicityDisplay: multiplicity.trim(),  // Store formatted multiplicity
               attrs: richProp.attrs || {}
             }
           };
@@ -12494,7 +14511,7 @@
             else alert('No identical classes found');
           } catch (err) { console.error(err); alert('Link check failed'); }
         } else if (e.target === qs('#ontoExportBtn')) {
-          exportOntologyJSON();
+          await exportOntologyJSON();
         } else if (e.target === qs('#ontoImportBtn')) {
           const inp = qs('#ontoImportFile'); if (inp) inp.click();
         } else if (e.target === qs('#treeToggle') || e.target.closest('#treeToggle')) {
@@ -12550,9 +14567,53 @@
               const updatedAttrs = updateModificationMetadata(attrs);
               ed.data('attrs', updatedAttrs);
             } else {
+              // Model-level metadata save
               const pid = (activeProject && (activeProject.id || activeProject.project_id)) ? (activeProject.id || activeProject.project_id) : 'default';
-              localStorage.setItem(`onto_model_name__${pid}`, nameEl.value.trim() || 'Ontology Model');
-              localStorage.setItem(`onto_model_attrs__${pid}`, JSON.stringify(attrs));
+              const modelName = nameEl.value.trim() || 'Ontology Model';
+
+              // FIXED: Make model metadata ontology-specific, not just project-specific
+              const ontologyKey = activeOntologyIri ? activeOntologyIri.split('/').pop() : 'default';
+              const modelNameKey = `onto_model_name__${pid}__${ontologyKey}`;
+              const modelAttrsKey = `onto_model_attrs__${pid}__${ontologyKey}`;
+
+              // HANDLE IMPORTS: Save imports field to separate localStorage key
+              if (attrs.imports !== undefined && activeOntologyIri) {
+                const importsKey = 'onto_imports__' + encodeURIComponent(activeOntologyIri);
+                try {
+                  // Parse imports from textarea (one per line, filter empty lines and clean syntax)
+                  const rawImports = attrs.imports || '';
+                  const importLines = rawImports.split(/[\n\r]+/)
+                    .map(line => {
+                      let clean = line.trim();
+                      // Remove Turtle syntax artifacts
+                      if (clean.startsWith('@')) clean = clean.substring(1);
+                      if (clean.startsWith('<') && clean.endsWith('>')) clean = clean.slice(1, -1);
+                      return clean;
+                    })
+                    .filter(line => line.length > 0 && line.startsWith('http'));
+
+                  // Save imports to their specific localStorage key
+                  localStorage.setItem(importsKey, JSON.stringify(importLines));
+                  console.log(`📋 Updated imports for ${activeOntologyIri}:`, importLines);
+
+                  // Remove imports from attrs since it's stored separately
+                  delete attrs.imports;
+                } catch (_) {
+                  console.log('⚠️ Error processing imports field');
+                }
+              }
+
+              // Save to localStorage with ontology-specific keys
+              localStorage.setItem(modelNameKey, modelName);
+              localStorage.setItem(modelAttrsKey, JSON.stringify(attrs));
+
+              // SAVE TO BACKEND RDF STORE
+              if (activeOntologyIri) {
+                console.log('💾 Saving model-level metadata to RDF store...');
+                saveModelMetadataToBackend(activeOntologyIri, modelName, attrs);
+              } else {
+                console.log('⚠️ No active ontology IRI for saving model metadata');
+              }
             }
             refreshOntologyTree();
             persistOntologyToLocalStorage();
@@ -12581,9 +14642,214 @@
               objectType = 'model';
             }
           }
+        } else if (e.target.hasAttribute('data-multiplicity')) {
+          // Handle multiplicity preset buttons
+          const preset = e.target.getAttribute('data-multiplicity');
+          applyMultiplicityPreset(preset);
+        } else if (e.target.hasAttribute('data-enumeration')) {
+          // Handle enumeration preset buttons
+          const preset = e.target.getAttribute('data-enumeration');
+          applyEnumerationPreset(preset);
           updateAttributeEditor(objectType, {});
         }
       });
+      // Add input event listeners for all constraint fields
+      const minCountInput = qs('#propMinCount');
+      const maxCountInput = qs('#propMaxCount');
+      const datatypeSelect = qs('#propDatatypeConstraint');
+      const enumerationTextarea = qs('#propEnumerationValues');
+
+      if (minCountInput) {
+        minCountInput.addEventListener('input', () => {
+          updateMultiplicityDisplay();
+          applyMultiplicityToEdge();
+        });
+      }
+      if (maxCountInput) {
+        maxCountInput.addEventListener('input', () => {
+          updateMultiplicityDisplay();
+          applyMultiplicityToEdge();
+        });
+      }
+      if (datatypeSelect) {
+        datatypeSelect.addEventListener('change', () => {
+          updateDatatypeDisplay();
+          applyDatatypeToEdge();
+        });
+      }
+      if (enumerationTextarea) {
+        enumerationTextarea.addEventListener('input', () => {
+          updateEnumerationDisplay();
+          applyEnumerationToEdge();
+        });
+      }
+
+      // Add input event listeners for precise positioning
+      const posXInput = qs('#propPosX');
+      const posYInput = qs('#propPosY');
+      if (posXInput) {
+        posXInput.addEventListener('input', applyPositionFromInputs);
+        posXInput.addEventListener('keydown', (e) => {
+          if (e.key === 'Enter') {
+            applyPositionFromInputs();
+            posXInput.blur();
+          }
+        });
+      }
+      if (posYInput) {
+        posYInput.addEventListener('input', applyPositionFromInputs);
+        posYInput.addEventListener('keydown', (e) => {
+          if (e.key === 'Enter') {
+            applyPositionFromInputs();
+            posYInput.blur();
+          }
+        });
+      }
+
+      // CAD-like keyboard shortcuts
+      document.addEventListener('keydown', (e) => {
+        // Only handle shortcuts when ontology workbench is active
+        const isOntologyActive = document.querySelector('#wb-ontology.workbench.active');
+        if (!isOntologyActive || !ontoState.cy) return;
+
+        // Prevent shortcuts when typing in inputs
+        if (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA') return;
+
+        const isCtrl = e.ctrlKey || e.metaKey;
+        const isShift = e.shiftKey;
+
+        switch (e.key.toLowerCase()) {
+          case 's':
+            if (isCtrl) {
+              // Ctrl+S already handled by existing save
+            } else if (!isCtrl) {
+              // S alone = toggle snap-to-grid (like CAD tools)
+              e.preventDefault();
+              toggleSnapToGrid();
+            }
+            break;
+
+          case 'z':
+            if (isCtrl && !isShift) {
+              // Ctrl+Z = Undo
+              e.preventDefault();
+              performUndo();
+            } else if (isCtrl && isShift) {
+              // Ctrl+Shift+Z = Redo (alternative)
+              e.preventDefault();
+              performRedo();
+            }
+            break;
+
+          case 'y':
+            if (isCtrl) {
+              // Ctrl+Y = Redo
+              e.preventDefault();
+              performRedo();
+            }
+            break;
+
+          case 'c':
+            if (isCtrl) {
+              // Ctrl+C = Copy
+              e.preventDefault();
+              copySelectedElements();
+            }
+            break;
+
+          case 'v':
+            if (isCtrl) {
+              // Ctrl+V = Paste
+              e.preventDefault();
+              pasteElements();
+            }
+            break;
+
+          case 'a':
+            if (isCtrl) {
+              // Ctrl+A = Select all
+              e.preventDefault();
+              if (ontoState.cy) {
+                ontoState.cy.elements().select();
+                showTemporaryMessage(`Selected all elements`);
+              }
+            }
+            break;
+
+          case 'escape':
+            // Escape = Clear selection (like CAD)
+            if (ontoState.cy) {
+              ontoState.cy.$(':selected').unselect();
+              showTemporaryMessage('Selection cleared');
+            }
+            break;
+
+          case 'f':
+            if (isCtrl) {
+              // Ctrl+F = Zoom to fit selected elements (like CAD zoom to selection)
+              e.preventDefault();
+              zoomToSelection();
+            } else {
+              // F = Fit to view (like CAD fit all)
+              ontoState.cy.fit(undefined, 20);
+              showTemporaryMessage('Fit to view');
+            }
+            break;
+
+          case '1':
+            if (isCtrl) {
+              // Ctrl+1 = 1:1 zoom (100%)
+              e.preventDefault();
+              zoomTo100Percent();
+            }
+            break;
+
+          // Alignment shortcuts (like CAD align tools)
+          case 'l':
+            if (isCtrl) {
+              e.preventDefault();
+              alignElements('left');
+            }
+            break;
+          case 'r':
+            if (isCtrl) {
+              e.preventDefault();
+              alignElements('right');
+            }
+            break;
+          case 'm':
+            if (isCtrl) {
+              e.preventDefault();
+              alignElements('center');
+            }
+            break;
+          case 't':
+            if (isCtrl) {
+              e.preventDefault();
+              alignElements('top');
+            }
+            break;
+          case 'b':
+            if (isCtrl) {
+              e.preventDefault();
+              alignElements('bottom');
+            }
+            break;
+          case 'h':
+            if (isCtrl && isShift) {
+              e.preventDefault();
+              alignElements('distribute-horizontal');
+            }
+            break;
+          case 'v':
+            if (isCtrl && isShift) {
+              e.preventDefault();
+              alignElements('distribute-vertical');
+            }
+            break;
+        }
+      });
+
       // Keep Cytoscape sized correctly in fullscreen and update button title
       document.addEventListener('fullscreenchange', () => {
         const btn = qs('#ontoFullscreenBtn');
@@ -12622,7 +14888,7 @@
           try {
             const text = await file.text();
             const json = JSON.parse(text);
-            importOntologyJSON(json);
+            await importOntologyJSON(json);
           } catch (_) {
             alert('Invalid ontology JSON');
           } finally {
@@ -21678,7 +23944,7 @@ def hello_world():
       });
 
       // Handle menu button clicks
-      const menuButtons = ['ontoLayoutMenuBtn', 'ontoViewMenuBtn', 'ontoEditMenuBtn', 'ontoFileMenuBtn'];
+      const menuButtons = ['ontoLayoutMenuBtn', 'ontoViewMenuBtn', 'ontoEditMenuBtn', 'ontoFileMenuBtn', 'cadToolsMenuBtn'];
       menuButtons.forEach(btnId => {
         const btn = document.getElementById(btnId);
         if (btn) {

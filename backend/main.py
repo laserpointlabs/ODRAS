@@ -2444,7 +2444,11 @@ async def get_camunda_deployments():
 
 @app.get("/", response_class=HTMLResponse)
 async def index():
-    # Minimal HTML UI
+    # Redirect to the main app since the original interface is deprecated
+    from fastapi.responses import RedirectResponse
+    return RedirectResponse(url="/app", status_code=302)
+    
+    # Original deprecated HTML content (kept for reference)
     html = """
     <!DOCTYPE html>
     <html>

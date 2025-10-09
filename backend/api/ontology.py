@@ -6,6 +6,7 @@ Provides REST API for ontology management operations.
 import logging
 from datetime import datetime
 from typing import Any, Dict, List, Optional
+import json
 
 from fastapi import APIRouter, Body, Depends, HTTPException
 from pydantic import BaseModel, Field
@@ -33,6 +34,12 @@ class OntologyProperty(BaseModel):
     comment: Optional[str] = Field(None, description="Description of the property")
     domain: Optional[str] = Field(None, description="Domain class name")
     range: Optional[str] = Field(None, description="Range class name or datatype")
+    
+    # SHACL constraints
+    min_count: Optional[int] = Field(None, description="Minimum cardinality (SHACL sh:minCount)")
+    max_count: Optional[int] = Field(None, description="Maximum cardinality (SHACL sh:maxCount)")
+    datatype_constraint: Optional[str] = Field(None, description="Required datatype (SHACL sh:datatype)")
+    enumeration_values: Optional[List[str]] = Field(None, description="Valid enumeration values (SHACL sh:in)")
 
 
 class OntologyUpdate(BaseModel):
@@ -328,6 +335,7 @@ async def add_class(
 @router.post("/properties", response_model=OntologyResponse)
 async def add_property(
     property_data: OntologyProperty,
+    graph: Optional[str] = None,
     manager: OntologyManager = Depends(get_ontology_manager),
 ):
     """
@@ -335,11 +343,16 @@ async def add_property(
 
     Args:
         property_data: Property information
+        graph: Optional graph IRI to store property in
 
     Returns:
         Operation result
     """
     try:
+        # Set graph context if provided
+        if graph:
+            manager.set_graph_context(graph, "")
+            
         result = manager.add_property(property_data.dict())
 
         if result["success"]:
@@ -598,6 +611,61 @@ async def save_layout(
     except Exception as e:
         logger.error(f"Failed to save layout: {e}")
         raise HTTPException(status_code=500, detail=f"Failed to save layout: {str(e)}")
+
+
+@router.get("/named-views", response_model=Dict[str, Any])
+async def get_named_views(graph: str, manager: OntologyManager = Depends(get_ontology_manager)):
+    """
+    Retrieve named views data for a specific ontology graph.
+
+    Args:
+        graph: Graph IRI to retrieve named views for
+
+    Returns:
+        Named views data for the ontology
+    """
+    try:
+        named_views_data = manager.get_named_views_by_graph(graph)
+        return {
+            "success": True,
+            "data": named_views_data,
+        }
+    except Exception as e:
+        logger.error(f"Failed to get named views: {e}")
+        raise HTTPException(status_code=500, detail=f"Failed to retrieve named views: {str(e)}")
+
+
+@router.put("/named-views", response_model=OntologyResponse)
+async def save_named_views(
+    graph: str,
+    named_views_data: List[Dict[str, Any]] = Body(...),
+    manager: OntologyManager = Depends(get_ontology_manager),
+):
+    """
+    Save named views data for a specific ontology graph.
+
+    Args:
+        graph: Graph IRI to save named views for
+        named_views_data: Named views data including view definitions and settings
+
+    Returns:
+        Save operation result
+    """
+    try:
+        result = manager.save_named_views_by_graph(graph, named_views_data)
+
+        if result["success"]:
+            return OntologyResponse(
+                success=True,
+                message=result["message"],
+                data={"views_count": len(named_views_data)},
+            )
+        else:
+            raise HTTPException(status_code=400, detail=result["error"])
+
+    except Exception as e:
+        logger.error(f"Failed to save named views: {e}")
+        raise HTTPException(status_code=500, detail=f"Failed to save named views: {str(e)}")
 
 
 @router.post("/mint-iri", response_model=Dict[str, Any])

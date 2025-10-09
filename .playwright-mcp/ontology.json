@@ -1,0 +1,131 @@
+{
+  "nodes": [
+    {
+      "data": {
+        "id": "Class1",
+        "label": "Class 1",
+        "type": "class",
+        "attrs": {
+          "creator": "das_service",
+          "created_date": "2025-10-09",
+          "created_timestamp": "2025-10-09T09:29:15.441Z",
+          "last_modified_by": "das_service",
+          "last_modified_date": "2025-10-09",
+          "last_modified_timestamp": "2025-10-09T10:22:06.160Z"
+        }
+      },
+      "position": {
+        "x": 140,
+        "y": 220
+      }
+    },
+    {
+      "data": {
+        "id": "Class2",
+        "label": "Class 2",
+        "type": "class",
+        "attrs": {
+          "creator": "das_service",
+          "created_date": "2025-10-09",
+          "created_timestamp": "2025-10-09T09:29:17.700Z",
+          "last_modified_by": "das_service",
+          "last_modified_date": "2025-10-09",
+          "last_modified_timestamp": "2025-10-09T10:22:06.164Z"
+        }
+      },
+      "position": {
+        "x": 460,
+        "y": 220
+      }
+    },
+    {
+      "data": {
+        "id": "Note1760005205460",
+        "label": "Note 5460",
+        "type": "note",
+        "attrs": {
+          "noteType": "Note",
+          "author": "das_service",
+          "comment": "This is a test note comment",
+          "created": "2025-10-09",
+          "createdTimestamp": "2025-10-09T10:20:05.460Z",
+          "lastModified": "2025-10-09",
+          "lastModifiedTimestamp": "2025-10-09T10:20:05.460Z",
+          "lastModifiedBy": "das_service",
+          "last_modified_by": "das_service",
+          "last_modified_date": "2025-10-09",
+          "last_modified_timestamp": "2025-10-09T10:22:06.167Z"
+        }
+      },
+      "position": {
+        "x": 300,
+        "y": 300
+      }
+    },
+    {
+      "data": {
+        "id": "Note1760005219631",
+        "label": "Note 9631",
+        "type": "note",
+        "attrs": {
+          "noteType": "Note",
+          "author": "das_service",
+          "creator": "das_service",
+          "created_date": "2025-10-09",
+          "created_timestamp": "2025-10-09T10:20:19.631Z",
+          "last_modified_by": "das_service",
+          "last_modified_date": "2025-10-09",
+          "last_modified_timestamp": "2025-10-09T10:31:21.088Z"
+        }
+      },
+      "position": {
+        "x": 429,
+        "y": 394
+      }
+    },
+    {
+      "data": {
+        "id": "Note1760005320837",
+        "label": "Note 0837",
+        "type": "note",
+        "attrs": {
+          "noteType": "Note",
+          "author": "das_service",
+          "creator": "das_service",
+          "created_date": "2025-10-09",
+          "created_timestamp": "2025-10-09T10:22:00.837Z",
+          "last_modified_by": "das_service",
+          "last_modified_date": "2025-10-09",
+          "last_modified_timestamp": "2025-10-09T10:31:45.701Z",
+          "content": "Fixed inline editing test content"
+        }
+      },
+      "position": {
+        "x": 316,
+        "y": 538
+      }
+    }
+  ],
+  "edges": [
+    {
+      "data": {
+        "id": "e1760002162798",
+        "source": "Class1",
+        "target": "Class2",
+        "predicate": "relatedTo",
+        "type": "objectProperty",
+        "attrs": {
+          "creator": "das_service",
+          "created_date": "2025-10-09",
+          "created_timestamp": "2025-10-09T09:29:22.798Z",
+          "last_modified_by": "das_service",
+          "last_modified_date": "2025-10-09",
+          "last_modified_timestamp": "2025-10-09T10:06:40.661Z"
+        },
+        "minCount": 1,
+        "maxCount": 1,
+        "multiplicityDisplay": "(1)"
+      }
+    }
+  ]
+}

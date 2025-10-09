@@ -324,6 +324,30 @@ class OntologyManager:
                     range_uri = URIRef(f"{self.base_uri}#{property_data['range']}")
                 triples.append((prop_uri, RDFS.range, range_uri))
 
+            # Add SHACL constraints as custom properties (MVP approach)
+            # Multiplicity constraints
+            if property_data.get("min_count") is not None:
+                min_count_uri = URIRef("http://odras.ai/ontology/minCount")
+                triples.append((prop_uri, min_count_uri, Literal(property_data["min_count"], datatype=XSD.integer)))
+            
+            if property_data.get("max_count") is not None:
+                max_count_uri = URIRef("http://odras.ai/ontology/maxCount")
+                triples.append((prop_uri, max_count_uri, Literal(property_data["max_count"], datatype=XSD.integer)))
+            
+            # Datatype constraints
+            if property_data.get("datatype_constraint"):
+                datatype_uri = URIRef("http://odras.ai/ontology/datatypeConstraint")
+                triples.append((prop_uri, datatype_uri, Literal(property_data["datatype_constraint"])))
+            
+            # Enumeration constraints  
+            if property_data.get("enumeration_values"):
+                enumeration_uri = URIRef("http://odras.ai/ontology/enumerationValues")
+                # Store as JSON array string with proper escaping
+                import json
+                enum_json = json.dumps(property_data["enumeration_values"])
+                # Escape for SPARQL - use Literal with proper datatype
+                triples.append((prop_uri, enumeration_uri, Literal(enum_json, datatype=XSD.string)))
+
             # Add to Fuseki
             result = self._add_triples_to_fuseki(triples)
 
@@ -659,6 +683,37 @@ class OntologyManager:
                     prop_obj["domain"] = extract_name(domain_uris[0])
                 if range_uris:
                     prop_obj["range"] = extract_name(range_uris[0])
+                
+                # Extract SHACL constraints (MVP approach using custom properties)
+                # Multiplicity constraints
+                min_count_uris = props.get("http://odras.ai/ontology/minCount", [])
+                max_count_uris = props.get("http://odras.ai/ontology/maxCount", [])
+                if min_count_uris:
+                    try:
+                        prop_obj["min_count"] = int(min_count_uris[0])
+                    except (ValueError, TypeError):
+                        pass
+                if max_count_uris:
+                    try:
+                        prop_obj["max_count"] = int(max_count_uris[0])
+                    except (ValueError, TypeError):
+                        pass
+                
+                # Datatype constraints
+                datatype_constraint_uris = props.get("http://odras.ai/ontology/datatypeConstraint", [])
+                if datatype_constraint_uris:
+                    prop_obj["datatype_constraint"] = datatype_constraint_uris[0]
+                
+                # Enumeration constraints
+                enumeration_uris = props.get("http://odras.ai/ontology/enumerationValues", [])
+                if enumeration_uris:
+                    try:
+                        import json
+                        enumeration_values = json.loads(enumeration_uris[0])
+                        prop_obj["enumeration_values"] = enumeration_values
+                    except (ValueError, TypeError, json.JSONDecodeError):
+                        pass
+                
                 ontology_json["object_properties"].append(prop_obj)
 
             elif str(OWL.DatatypeProperty) in types:
@@ -675,6 +730,37 @@ class OntologyManager:
                         prop_obj["range"] = "xsd:" + extract_name(range_uri)
                     else:
                         prop_obj["range"] = extract_name(range_uri)
+                
+                # Extract SHACL constraints for datatype properties too
+                # Multiplicity constraints
+                min_count_uris = props.get("http://odras.ai/ontology/minCount", [])
+                max_count_uris = props.get("http://odras.ai/ontology/maxCount", [])
+                if min_count_uris:
+                    try:
+                        prop_obj["min_count"] = int(min_count_uris[0])
+                    except (ValueError, TypeError):
+                        pass
+                if max_count_uris:
+                    try:
+                        prop_obj["max_count"] = int(max_count_uris[0])
+                    except (ValueError, TypeError):
+                        pass
+                
+                # Datatype constraints
+                datatype_constraint_uris = props.get("http://odras.ai/ontology/datatypeConstraint", [])
+                if datatype_constraint_uris:
+                    prop_obj["datatype_constraint"] = datatype_constraint_uris[0]
+                
+                # Enumeration constraints
+                enumeration_uris = props.get("http://odras.ai/ontology/enumerationValues", [])
+                if enumeration_uris:
+                    try:
+                        import json
+                        enumeration_values = json.loads(enumeration_uris[0])
+                        prop_obj["enumeration_values"] = enumeration_values
+                    except (ValueError, TypeError, json.JSONDecodeError):
+                        pass
+                        
                 ontology_json["datatype_properties"].append(prop_obj)
 
         return ontology_json
@@ -970,7 +1056,14 @@ class OntologyManager:
             insert_data = []
             for s, p, o in triples:
                 if isinstance(o, Literal):
-                    insert_data.append(f'<{s}> <{p}> "{o}" .')
+                    # Properly escape quotes in literal values for SPARQL
+                    escaped_value = str(o).replace('"', '\\"').replace('\n', '\\n').replace('\r', '\\r')
+                    if o.datatype:
+                        insert_data.append(f'<{s}> <{p}> "{escaped_value}"^^<{o.datatype}> .')
+                    elif o.language:
+                        insert_data.append(f'<{s}> <{p}> "{escaped_value}"@{o.language} .')
+                    else:
+                        insert_data.append(f'<{s}> <{p}> "{escaped_value}" .')
                 else:
                     insert_data.append(f"<{s}> <{p}> <{o}> .")
 
@@ -1169,6 +1262,103 @@ class OntologyManager:
 
         except Exception as e:
             logger.error(f"Failed to save layout for {graph_iri}: {e}")
+            return {"success": False, "error": f"Save failed: {str(e)}"}
+
+    def get_named_views_by_graph(self, graph_iri: str) -> List[Dict[str, Any]]:
+        """
+        Retrieve named views data for a specific ontology graph.
+
+        Args:
+            graph_iri: The IRI of the named graph to retrieve named views for
+
+        Returns:
+            List of named views data for the ontology
+        """
+        try:
+            # Query for named views data in a separate named-views graph
+            views_graph_iri = f"{graph_iri}#named-views"
+            query = f"""
+            PREFIX views: <{self.base_uri}/views#>
+
+            SELECT ?views WHERE {{
+                GRAPH <{views_graph_iri}> {{
+                    ?viewsData views:data ?views .
+                }}
+            }}
+            """
+
+            sparql = SPARQLWrapper(self.fuseki_query_url)
+            sparql.setQuery(query)
+            sparql.setReturnFormat(SPARQL_JSON)
+            results = sparql.query().convert()
+
+            if results["results"]["bindings"]:
+                binding = results["results"]["bindings"][0]
+                views_json = binding.get("views", {}).get("value", "[]")
+                return json.loads(views_json)
+            else:
+                # Return empty array if no named views exist
+                return []
+
+        except Exception as e:
+            logger.error(f"Failed to retrieve named views for {graph_iri}: {e}")
+            # Return empty array on error
+            return []
+
+    def save_named_views_by_graph(self, graph_iri: str, named_views_data: List[Dict[str, Any]]) -> Dict[str, Any]:
+        """
+        Save named views data for a specific ontology graph.
+
+        Args:
+            graph_iri: The IRI of the named graph to save named views for
+            named_views_data: Named views data including view definitions and settings
+
+        Returns:
+            Dict containing save operation result
+        """
+        try:
+            views_graph_iri = f"{graph_iri}#named-views"
+            views_id = str(uuid.uuid4())
+
+            # Clear existing named views data
+            clear_query = f"""
+            DELETE WHERE {{
+                GRAPH <{views_graph_iri}> {{
+                    ?s ?p ?o .
+                }}
+            }}
+            """
+
+            # Insert new named views data
+            views_json = json.dumps(named_views_data).replace('"', '\\"')
+
+            insert_query = f"""
+            INSERT DATA {{
+                GRAPH <{views_graph_iri}> {{
+                    <{views_graph_iri}#{views_id}> <{self.base_uri}/views#data> "{views_json}" .
+                }}
+            }}
+            """
+
+            # Execute clear and insert
+            clear_result = self._execute_sparql_update(clear_query)
+            if not clear_result["success"]:
+                return {"success": False, "error": "Failed to clear existing named views"}
+
+            insert_result = self._execute_sparql_update(insert_query)
+            if insert_result["success"]:
+                return {
+                    "success": True,
+                    "message": f"Named views saved successfully for {graph_iri}",
+                    "views_id": views_id,
+                    "views_count": len(named_views_data),
+                    "timestamp": datetime.now(timezone.utc).isoformat(),
+                }
+            else:
+                return {"success": False, "error": "Failed to save named views data"}
+
+        except Exception as e:
+            logger.error(f"Failed to save named views for {graph_iri}: {e}")
             return {"success": False, "error": f"Save failed: {str(e)}"}
 
     def mint_unique_iri(self, base_name: str, entity_type: str, graph_iri: str = None) -> str:

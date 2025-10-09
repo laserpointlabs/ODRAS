@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 """
-Simple script to count lines of code by file type in the ODRAS project.
+Script to count actual lines of working code by file type in the ODRAS project.
+Excludes comments, empty lines, docstrings, and configuration files.
 """
 
 import os
@@ -8,10 +9,103 @@ import glob
 from collections import defaultdict
 
 def count_lines_in_file(file_path):
-    """Count lines in a single file."""
+    """Count actual lines of code in a single file (excluding comments, empty lines, docstrings)."""
     try:
         with open(file_path, 'r', encoding='utf-8', errors='ignore') as f:
-            return len(f.readlines())
+            lines = f.readlines()
+        
+        # Get file extension to determine comment style
+        ext = get_file_extension(file_path)
+        
+        code_lines = 0
+        in_multiline_comment = False
+        in_docstring = False
+        
+        for line in lines:
+            stripped = line.strip()
+            
+            # Skip empty lines
+            if not stripped:
+                continue
+                
+            # Handle different comment styles based on file type
+            if ext in ['py']:
+                # Python: # comments, """ or ''' docstrings
+                if stripped.startswith('#'):
+                    continue
+                if '"""' in stripped or "'''" in stripped:
+                    if stripped.count('"""') == 1 or stripped.count("'''") == 1:
+                        in_docstring = not in_docstring
+                    continue
+                if in_docstring:
+                    continue
+                    
+            elif ext in ['js', 'jsx', 'ts', 'tsx']:
+                # JavaScript/TypeScript: // and /* */ comments
+                if stripped.startswith('//'):
+                    continue
+                if '/*' in stripped and '*/' in stripped:
+                    continue
+                if '/*' in stripped:
+                    in_multiline_comment = True
+                    continue
+                if '*/' in stripped:
+                    in_multiline_comment = False
+                    continue
+                if in_multiline_comment:
+                    continue
+                    
+            elif ext in ['html', 'htm', 'xml']:
+                # HTML/XML: <!-- --> comments
+                if stripped.startswith('<!--') and stripped.endswith('-->'):
+                    continue
+                if '<!--' in stripped:
+                    in_multiline_comment = True
+                    continue
+                if '-->' in stripped:
+                    in_multiline_comment = False
+                    continue
+                if in_multiline_comment:
+                    continue
+                    
+            elif ext in ['css', 'scss', 'sass']:
+                # CSS: /* */ comments
+                if stripped.startswith('/*') and stripped.endswith('*/'):
+                    continue
+                if '/*' in stripped:
+                    in_multiline_comment = True
+                    continue
+                if '*/' in stripped:
+                    in_multiline_comment = False
+                    continue
+                if in_multiline_comment:
+                    continue
+                    
+            elif ext in ['sh', 'bash']:
+                # Shell: # comments
+                if stripped.startswith('#'):
+                    continue
+                    
+            elif ext in ['sql']:
+                # SQL: -- and /* */ comments
+                if stripped.startswith('--'):
+                    continue
+                if stripped.startswith('/*') and stripped.endswith('*/'):
+                    continue
+                if '/*' in stripped:
+                    in_multiline_comment = True
+                    continue
+                if '*/' in stripped:
+                    in_multiline_comment = False
+                    continue
+                if in_multiline_comment:
+                    continue
+            
+            # If we get here, it's a line of actual code
+            code_lines += 1
+            
+        return code_lines
+        
     except Exception as e:
         print(f"Error reading {file_path}: {e}")
         return 0
@@ -24,21 +118,16 @@ def get_file_extension(file_path):
 
 def count_lines_by_type():
     """Count lines of code by file type."""
-    # File type patterns to search for
+    # File type patterns to search for (actual code files only)
     patterns = {
         'python': ['**/*.py'],
         'javascript': ['**/*.js', '**/*.jsx'],
         'typescript': ['**/*.ts', '**/*.tsx'],
         'html': ['**/*.html', '**/*.htm'],
         'css': ['**/*.css', '**/*.scss', '**/*.sass'],
-        'json': ['**/*.json'],
-        'yaml': ['**/*.yml', '**/*.yaml'],
-        'xml': ['**/*.xml'],
         'sql': ['**/*.sql'],
         'shell': ['**/*.sh', '**/*.bash'],
-        'docker': ['**/Dockerfile*', '**/*.dockerfile'],
-        'text': ['**/*.txt'],
-        'config': ['**/*.ini', '**/*.cfg', '**/*.conf', '**/*.env']
+        'docker': ['**/Dockerfile*', '**/*.dockerfile']
     }
 
     # Count lines by type
@@ -100,7 +189,7 @@ def count_lines_by_type():
 
 def main():
     """Main function to run the line count analysis."""
-    print("ODRAS Lines of Code Counter")
+    print("ODRAS Working Code Lines Counter")
     print("=" * 50)
 
     counts, file_counts = count_lines_by_type()
