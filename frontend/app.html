@@ -27755,13 +27755,23 @@ def hello_world():
       try {
         const token = localStorage.getItem(tokenKey);
 
-        // Query SPARQL directly to get classes for this specific graph
+        // Query SPARQL to get classes AND their data properties for this specific graph
         const sparqlQuery = `
-          SELECT ?class ?label ?comment WHERE {
+          SELECT ?class ?classLabel ?classComment ?dataProp ?dataPropLabel ?dataPropComment ?dataPropRange WHERE {
             GRAPH <${graphIri}> {
+              # Get all classes
               ?class a <http://www.w3.org/2002/07/owl#Class> .
-              OPTIONAL { ?class <http://www.w3.org/2000/01/rdf-schema#label> ?label }
-              OPTIONAL { ?class <http://www.w3.org/2000/01/rdf-schema#comment> ?comment }
+              OPTIONAL { ?class <http://www.w3.org/2000/01/rdf-schema#label> ?classLabel }
+              OPTIONAL { ?class <http://www.w3.org/2000/01/rdf-schema#comment> ?classComment }
+              
+              # Get data properties for each class  
+              OPTIONAL {
+                ?dataProp a <http://www.w3.org/2002/07/owl#DatatypeProperty> .
+                ?dataProp <http://www.w3.org/2000/01/rdf-schema#domain> ?class .
+                OPTIONAL { ?dataProp <http://www.w3.org/2000/01/rdf-schema#label> ?dataPropLabel }
+                OPTIONAL { ?dataProp <http://www.w3.org/2000/01/rdf-schema#comment> ?dataPropComment }
+                OPTIONAL { ?dataProp <http://www.w3.org/2000/01/rdf-schema#range> ?dataPropRange }
+              }
             }
           }
         `;
@@ -27782,41 +27792,81 @@ def hello_world():
         const sparqlResult = await sparqlResponse.json();
         console.log('🔍 SPARQL result:', sparqlResult);
 
-        // Transform SPARQL results to ontology structure
-        const classes = [];
+        // Transform SPARQL results to ontology structure with data properties
+        const classesMap = new Map();
+        const dataProperties = [];
         const bindings = sparqlResult.results?.bindings || [];
 
-        console.log(`🔍 Found ${bindings.length} class bindings`);
+        console.log(`🔍 Found ${bindings.length} bindings (classes + data properties)`);
 
+        // Process all bindings to build classes with their data properties
         for (const binding of bindings) {
           const classUri = binding.class?.value || '';
-          const classLabel = binding.label?.value || '';
-          const classComment = binding.comment?.value || '';
+          const classLabel = binding.classLabel?.value || '';
+          const classComment = binding.classComment?.value || '';
 
           // Extract class name from label or URI
           const className = classLabel && classLabel !== 'None' ? classLabel : classUri.split('#').pop().split('/').pop();
 
-          if (className) {
-            classes.push({
+          if (className && !classesMap.has(className)) {
+            classesMap.set(className, {
               name: className,
               uri: classUri,
               comment: classComment,
-              definition: classComment
+              definition: classComment,
+              dataProperties: []
             });
             console.log(`🔍 Added class: ${className}`);
           }
+
+          // Process data properties
+          if (binding.dataProp?.value) {
+            const propUri = binding.dataProp.value;
+            const propLabel = binding.dataPropLabel?.value || propUri.split('#').pop().split('/').pop();
+            const propComment = binding.dataPropComment?.value || '';
+            const propRange = binding.dataPropRange?.value || 'xsd:string';
+
+            const dataProperty = {
+              name: propLabel,
+              uri: propUri,
+              comment: propComment,
+              range: propRange.split('#').pop().split('/').pop(), // Get just the type name
+              domain: className
+            };
+
+            // Add to class's data properties
+            const classData = classesMap.get(className);
+            if (classData && !classData.dataProperties.find(dp => dp.name === propLabel)) {
+              classData.dataProperties.push(dataProperty);
+              console.log(`🔍 Added data property ${propLabel} to class ${className}`);
+            }
+
+            // Also add to global data properties list
+            if (!dataProperties.find(dp => dp.name === propLabel && dp.domain === className)) {
+              dataProperties.push(dataProperty);
+            }
+          }
         }
+
+        const classes = Array.from(classesMap.values());
 
         // Build ontology structure for Individual Tables
         const ontologyStructure = {
           name: `Ontology (${classes.length} classes)`,
           classes: classes,
           object_properties: [],
-          datatype_properties: [],
+          datatype_properties: dataProperties,
           constraints: {},
           form_configs: {},
           enumerations: {}
         };
+
+        // Log data properties for each class
+        classes.forEach(cls => {
+          if (cls.dataProperties.length > 0) {
+            console.log(`🔍 Class ${cls.name} has ${cls.dataProperties.length} data properties:`, cls.dataProperties.map(dp => dp.name));
+          }
+        });
 
         console.log('🔍 Final ontology structure:', ontologyStructure);
         return ontologyStructure;
@@ -28061,12 +28111,31 @@ def hello_world():
     }
 
     /**
-     * Get properties for a specific class
+     * Get properties for a specific class - DYNAMIC based on ontology
      */
     function getClassProperties(className, ontologyData) {
       const properties = [];
 
-      // Add object properties that have this class as domain
+      // Get the specific class data
+      const classData = ontologyData.classes?.find(c => c.name === className);
+
+      if (classData && classData.dataProperties) {
+        // Add data properties as table columns
+        classData.dataProperties.forEach(prop => {
+          properties.push({
+            name: prop.name,
+            label: prop.name, // Use the actual property label 
+            type: 'datatype',
+            range: prop.range,
+            comment: prop.comment,
+            constraints: {}
+          });
+        });
+
+        console.log(`🔍 Class ${className} properties for table:`, properties.map(p => p.name));
+      }
+
+      // Also add object properties that have this class as domain (for future use)
       if (ontologyData.object_properties) {
         ontologyData.object_properties.forEach(prop => {
           if (prop.domain === className) {
@@ -28074,21 +28143,6 @@ def hello_world():
               name: prop.name,
               label: prop.label || prop.name,
               type: 'object',
-              range: prop.range,
-              constraints: prop.constraints || {}
-            });
-          }
-        });
-      }
-
-      // Add datatype properties that have this class as domain
-      if (ontologyData.datatype_properties) {
-        ontologyData.datatype_properties.forEach(prop => {
-          if (prop.domain === className) {
-            properties.push({
-              name: prop.name,
-              label: prop.label || prop.name,
-              type: 'datatype',
               range: prop.range,
               constraints: prop.constraints || {}
             });
