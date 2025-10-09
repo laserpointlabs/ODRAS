@@ -27949,10 +27949,13 @@ def hello_world():
 
         ontologyData.classes.forEach(cls => {
           const icon = getClassIcon(cls.name);
+          const dataPropertyCount = cls.dataProperties ? cls.dataProperties.length : 0;
+          const tabDisplayName = dataPropertyCount > 0 ? `${cls.name} (${dataPropertyCount})` : cls.name;
+
           tabsHtml += `
             <button class="individuals-tab-item" data-class="${cls.name}" onclick="showIndividualTable('${cls.name}')">
               <span class="individuals-tab-icon">${icon}</span>
-              <span class="individuals-tab-label">${cls.name}</span>
+              <span class="individuals-tab-label">${tabDisplayName}</span>
             </button>
           `;
         });
@@ -28046,13 +28049,17 @@ def hello_world():
 
         ontologyData.classes.forEach(cls => {
           const icon = getClassIcon(cls.name);
+          const dataPropertyCount = cls.dataProperties ? cls.dataProperties.length : 0;
+          const classDisplayName = dataPropertyCount > 0 ? `${cls.name} (${dataPropertyCount})` : cls.name;
+
           html += `
             <div class="class-summary-card" style="background: var(--panel); border: 1px solid var(--border); border-radius: 8px; padding: 16px;">
               <div class="card-header" style="display: flex; align-items: center; margin-bottom: 12px;">
                 <span style="font-size: 24px; margin-right: 8px;">${icon}</span>
                 <div>
-                  <h4 style="margin: 0; color: var(--text);">${cls.name}</h4>
+                  <h4 style="margin: 0; color: var(--text);">${classDisplayName}</h4>
                   <p style="margin: 0; color: var(--muted); font-size: 14px;">${cls.comment || cls.definition || 'No description'}</p>
+                  ${dataPropertyCount > 0 ? `<p style="margin: 0; color: var(--accent); font-size: 12px; margin-top: 4px;">📊 ${dataPropertyCount} data ${dataPropertyCount === 1 ? 'property' : 'properties'}</p>` : ''}
                 </div>
               </div>
               <div class="card-stats">
