@@ -25,7 +25,7 @@ jobs:
 
             - name: Install minimal dependencies
               run: |
-                  pip install requests pytest psycopg2-binary qdrant-client
+                  pip install requests pytest psycopg2-binary qdrant-client neo4j
 
             - name: Run quick validation script
               run: |
