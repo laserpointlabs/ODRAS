@@ -17,44 +17,36 @@ async def db_monitor_task(db_service):
     """Background task to monitor and clean database connection pool."""
     while True:
         try:
-            # Wait 5 minutes between checks
-            await asyncio.sleep(300)
+            # Wait 2 minutes between checks (reduced from 5)
+            await asyncio.sleep(120)
 
             # Log pool status
             status = db_service.get_pool_status()
             active = status.get("active_connections", 0)
             total = status.get("maxconn", 0)
+            tracked_in_use = status.get("tracked_in_use", 0)
+            oldest_age = status.get("oldest_in_use_age", 0)
+            leaked_count = status.get("leaked_connections", 0)
 
-            logger.info(f"DB Pool Status: {active}/{total} connections in use")
+            logger.info(f"DB Pool Status: {active}/{total} connections active, {tracked_in_use} tracked in-use")
 
             # Warn if pool is getting full
             if active > total * 0.8:
                 logger.warning(f"High connection pool usage: {active}/{total} connections")
 
-            # Try to clean up stale connections
-            try:
-                # Test a few connections from the pool
-                for _ in range(min(3, total)):
-                    try:
-                        conn = db_service.pool.getconn()
-                        try:
-                            # Test if connection is alive
-                            with conn.cursor() as cur:
-                                cur.execute("SELECT 1")
-                                cur.fetchone()
-                            # Connection is good, return it
-                            db_service.pool.putconn(conn)
-                        except (psycopg2.OperationalError, psycopg2.InterfaceError) as e:
-                            logger.warning(f"Found dead connection, closing it: {e}")
-                            try:
-                                db_service.pool.putconn(conn, close=True)
-                            except Exception:
-                                pass
-                    except Exception as e:
-                        logger.warning(f"Error testing connection: {e}")
+            # Check for leaked connections (in-use >10 minutes)
+            if leaked_count > 0:
+                logger.warning(f"Detected {leaked_count} connections in use >10 minutes - potential leaks")
 
+            # Check for very old connections
+            if oldest_age > 300:  # 5 minutes
+                logger.warning(f"Oldest connection in use for {oldest_age:.1f}s")
+
+            # Call prune_old_connections to log potential leaks
+            try:
+                db_service.prune_old_connections()
             except Exception as e:
-                logger.error(f"Error cleaning connection pool: {e}")
+                logger.warning(f"Error pruning old connections: {e}")
 
             # Clean up expired auth tokens
             from backend.services.auth import cleanup_expired_tokens
@@ -86,4 +78,3 @@ def stop_db_monitor():
     if _monitor_task and not _monitor_task.done():
         _monitor_task.cancel()
         logger.info("Database connection pool monitor stopped")
-

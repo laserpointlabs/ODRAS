@@ -1,5 +1,6 @@
 import hashlib
 import logging
+import time
 from typing import Dict, Optional
 
 from fastapi import Header, HTTPException
@@ -11,6 +12,8 @@ logger = logging.getLogger(__name__)
 
 # Keep in-memory cache for performance, but use DB as source of truth
 TOKENS_CACHE: Dict[str, Dict] = {}
+# Rate-limiting cache for token last_used updates (5 minute throttle)
+LAST_UPDATE_CACHE: Dict[str, float] = {}  # token_hash -> last_update_timestamp
 
 
 def _hash_token(token: str) -> str:
@@ -25,7 +28,12 @@ def _get_db_service() -> DatabaseService:
 
 
 def _update_token_last_used(token_hash: str):
-    """Update the last used timestamp for a token (background operation)."""
+    """Update the last used timestamp for a token (rate-limited to once per 5 minutes)."""
+    # Check if we updated recently
+    last_update = LAST_UPDATE_CACHE.get(token_hash)
+    if last_update and (time.time() - last_update < 300):  # 5 minutes
+        return  # Skip update
+    
     try:
         db = _get_db_service()
         conn = db._conn()
@@ -36,6 +44,8 @@ def _update_token_last_used(token_hash: str):
                     (token_hash,),
                 )
                 conn.commit()
+                # Update cache with current time
+                LAST_UPDATE_CACHE[token_hash] = time.time()
         finally:
             db._return(conn)
     except Exception as e:
@@ -207,4 +217,3 @@ def get_admin_user(authorization: Optional[str] = Header(None)):
 def is_user_admin(user: Dict) -> bool:
     """Check if user has admin privileges."""
     return user.get("is_admin", False)
-

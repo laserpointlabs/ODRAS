@@ -31,15 +31,17 @@ class DatabaseService:
             keepalives_interval=10,
             keepalives_count=5,
         )
-        self._connection_creation_time = {}
+        self._connections_in_use = {}  # Track connections currently checked out
         logger.info(f"Database connection pool initialized: min={settings.postgres_pool_min_connections}, max={settings.postgres_pool_max_connections}")
 
     def _conn(self):
         try:
             conn = self.pool.getconn()
-            # Track connection creation time for pruning
             conn_id = id(conn)
-            self._connection_creation_time[conn_id] = time.time()
+            current_time = time.time()
+            
+            # Track connection checkout time
+            self._connections_in_use[conn_id] = current_time
 
             # Validate connection is alive - test with a simple query
             try:
@@ -53,13 +55,13 @@ class DatabaseService:
                     conn.close()
                 except Exception:
                     pass
-                # Remove from pool tracking
-                if conn_id in self._connection_creation_time:
-                    del self._connection_creation_time[conn_id]
+                # Remove from in-use tracking
+                if conn_id in self._connections_in_use:
+                    del self._connections_in_use[conn_id]
                 # Get a new connection
                 conn = self.pool.getconn()
                 conn_id = id(conn)
-                self._connection_creation_time[conn_id] = time.time()
+                self._connections_in_use[conn_id] = current_time
 
             return conn
         except psycopg2.pool.PoolError as e:
@@ -70,8 +72,21 @@ class DatabaseService:
     def _return(self, conn):
         try:
             conn_id = id(conn)
-            if conn_id in self._connection_creation_time:
-                del self._connection_creation_time[conn_id]
+            current_time = time.time()
+            
+            # Remove from in-use tracking
+            if conn_id in self._connections_in_use:
+                checkout_time = self._connections_in_use[conn_id]
+                del self._connections_in_use[conn_id]
+                
+                # Check if connection is too old (>30 minutes)
+                if current_time - checkout_time > 1800:  # 30 minutes
+                    logger.info(f"Recycling old connection (age: {current_time - checkout_time:.1f}s)")
+                    try:
+                        self.pool.putconn(conn, close=True)
+                    except Exception:
+                        pass
+                    return
 
             # Check if connection is still valid before returning to pool
             try:
@@ -99,34 +114,51 @@ class DatabaseService:
     def get_pool_status(self) -> Dict[str, Any]:
         """Get current connection pool status for monitoring."""
         try:
+            current_time = time.time()
+            in_use_count = len(self._connections_in_use)
+            
+            # Calculate oldest in-use connection age
+            oldest_age = 0
+            if self._connections_in_use:
+                oldest_checkout = min(self._connections_in_use.values())
+                oldest_age = current_time - oldest_checkout
+            
+            # Detect leaked connections (>10 minutes in use)
+            leaked_count = sum(1 for checkout_time in self._connections_in_use.values() 
+                             if current_time - checkout_time > 600)  # 10 minutes
+            
             return {
                 "minconn": self.pool.minconn,
                 "maxconn": self.pool.maxconn,
                 "closed": self.pool.closed,
                 "available_connections": len(self.pool._pool),
                 "active_connections": self.pool.maxconn - len(self.pool._pool),
-                "connection_creation_times": len(self._connection_creation_time)
+                "tracked_in_use": in_use_count,
+                "oldest_in_use_age": round(oldest_age, 1),
+                "has_leaked_connections": leaked_count > 0,
+                "leaked_connections": leaked_count
             }
         except Exception as e:
             return {"error": str(e)}
 
     def prune_old_connections(self):
-        """Prune connections that have been alive for too long."""
+        """Prune connections that have been in use for too long."""
         current_time = time.time()
         lifetime_threshold = self.settings.postgres_pool_connection_lifetime
 
         # Get connections that are too old
         old_connections = [
-            conn_id for conn_id, creation_time in self._connection_creation_time.items()
-            if current_time - creation_time > lifetime_threshold
+            conn_id for conn_id, checkout_time in self._connections_in_use.items()
+            if current_time - checkout_time > lifetime_threshold
         ]
 
         if old_connections:
-            logger.info(f"Pruning {len(old_connections)} old connections")
-            # Note: psycopg2 doesn't provide direct connection pruning
-            # This is a placeholder for future implementation
+            logger.warning(f"Found {len(old_connections)} connections in use >{lifetime_threshold}s - potential leaks")
+            # Note: We can't directly close connections that are in use
+            # This is logged for monitoring purposes
             for conn_id in old_connections:
-                del self._connection_creation_time[conn_id]
+                age = current_time - self._connections_in_use[conn_id]
+                logger.warning(f"Connection {conn_id} in use for {age:.1f}s")
 
     # Users
     def get_or_create_user(
