@@ -48,6 +48,37 @@ async def db_monitor_task(db_service):
             except Exception as e:
                 logger.warning(f"Error pruning old connections: {e}")
 
+            # Emergency recovery: Kill PostgreSQL connections that are idle too long
+            if leaked_count > 0 or (active >= total):
+                logger.warning("Attempting emergency connection recovery")
+                try:
+                    # Get a fresh connection directly from pool to run admin query
+                    conn = db_service._conn()
+                    try:
+                        with conn.cursor() as cur:
+                            # Find and kill connections idle for >30 minutes
+                            cur.execute("""
+                                SELECT pg_terminate_backend(pid)
+                                FROM pg_stat_activity
+                                WHERE datname = current_database()
+                                  AND pid <> pg_backend_pid()
+                                  AND state = 'idle'
+                                  AND state_change < (NOW() - INTERVAL '30 minutes')
+                            """)
+                            terminated = cur.rowcount
+                            if terminated > 0:
+                                logger.warning(f"Terminated {terminated} idle PostgreSQL connections")
+                            conn.commit()
+                    finally:
+                        db_service._return(conn)
+                except Exception as e:
+                    logger.error(f"Error during emergency connection recovery: {e}")
+
+            # Reset tracking if severely inconsistent
+            if tracked_in_use == 0 and active > 10:
+                logger.error(f"Connection tracking lost! {active} active but 0 tracked. Resetting tracking.")
+                db_service._connections_in_use.clear()
+
             # Clean up expired auth tokens
             from backend.services.auth import cleanup_expired_tokens
             try:
