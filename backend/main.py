@@ -1201,7 +1201,7 @@ async def get_rag_config(user: Dict = Depends(get_admin_user)):
                     "available_implementations": ["hardcoded", "bpmn"]
                 }
         finally:
-            conn.close()
+            db._return(conn)
     except HTTPException:
         raise
     except Exception as e:
@@ -1237,7 +1237,7 @@ async def get_file_processing_config(user: Dict = Depends(get_admin_user)):
                     "available_implementations": ["hardcoded", "bpmn"]
                 }
         finally:
-            conn.close()
+            db._return(conn)
 
     except Exception as e:
         logger.error(f"Failed to retrieve file processing configuration: {str(e)}")
@@ -1282,7 +1282,7 @@ async def update_file_processing_config(
             }
 
         finally:
-            conn.close()
+            db._return(conn)
 
     except HTTPException:
         raise
@@ -1344,7 +1344,7 @@ async def update_rag_config(
                     "message": f"RAG configuration updated to {rag_implementation}"
                 }
         finally:
-            conn.close()
+            db._return(conn)
     except HTTPException:
         raise
     except Exception as e:
@@ -1437,7 +1437,7 @@ async def get_rag_config(current_user: dict = Depends(get_user)):
                     "rag_model_version": result[2]
                 }
         finally:
-            conn.close()
+            db._return(conn)
 
     except Exception as e:
         logger.error(f"Failed to get RAG config: {str(e)}")

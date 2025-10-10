@@ -1,0 +1,49 @@
+---
+alwaysApply: true
+---
+# Git Workflow Standards
+
+## Branch Management (CRITICAL)
+
+### After Squash-Merge
+1. **ALWAYS delete the feature branch both locally and remotely**
+2. **Clean branch structure**: Keep only active branches (main + current work)
+3. **Branch cleanup commands**:
+   ```bash
+   git branch -D feature/branch-name              # Delete local branch
+   git push origin --delete feature/branch-name   # Delete remote branch
+   ```
+4. **Never accumulate** old feature branches - clean as you go
+
+### Before Any Merge Operation
+1. **Verify current branch**: Always run `git branch --show-current` first
+2. **Feature branches merge to main only** - never to other feature branches
+3. **Never merge main into feature branch** without explicit user permission
+4. **Document what will happen** before executing any merge
+
+### Merge Process
+- Use GitHub CLI when possible: `gh pr create` and `gh pr merge --squash --delete-branch`
+- For feature → main: Always use squash-merge to keep history clean
+- For main → feature: ASK FIRST - user decides when to incorporate main changes
+
+### Communication Requirements
+Before any cross-branch operation, state:
+- Current branch name
+- Target branch name
+- What will be merged
+- Expected outcome
+- Wait for explicit confirmation
+
+## GitHub Integration
+- Use GitHub CLI ('gh') instead of git commands when interacting with the repository
+- Check GitHub build status and don't mark tasks as complete until build passes
+- Only delete/clean up old branches after merging and main branch shows green for all tests
+
+## Before Committing
+- Don't commit code until it has been reviewed and tested
+- Check the GitHub build status after committing and pushing code
+- Verify all tests pass before claiming success
+
+## References
+- Detailed guidelines: [docs/development/CURSOR_GIT_WORKFLOW_GUIDELINES.md](mdc:docs/development/CURSOR_GIT_WORKFLOW_GUIDELINES.md)
+- Git workflow best practices are critical to prevent mixing unrelated changes between branches
