@@ -1,5 +1,6 @@
 <!DOCTYPE html>
 <html lang="en">
+
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -27,7 +28,7 @@
             background: white;
             padding: 20px;
             border-radius: 8px;
-            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
             margin-bottom: 20px;
         }
 
@@ -40,7 +41,7 @@
             display: flex;
             background: white;
             border-radius: 8px;
-            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
             margin-bottom: 20px;
         }
 
@@ -69,7 +70,7 @@
             background: white;
             padding: 20px;
             border-radius: 8px;
-            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
             margin-bottom: 20px;
         }
 
@@ -238,7 +239,7 @@
             background: white;
             padding: 20px;
             border-radius: 8px;
-            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
             text-align: center;
         }
 
@@ -254,6 +255,7 @@
         }
     </style>
 </head>
+
 <body>
     <div class="container">
         <div class="header">
@@ -276,7 +278,7 @@
                     <button class="btn btn-success" onclick="showAddClassForm()">➕ Add Class</button>
                     <button class="btn btn-success" onclick="showAddPropertyForm()">🔗 Add Property</button>
                     <button class="btn btn-warning" onclick="exportOntology()">📤 Export</button>
-                    
+
                     <div id="ontology-viewer" class="ontology-viewer">
                         <div class="loading">Loading ontology...</div>
                     </div>
@@ -299,14 +301,16 @@
             <div class="grid">
                 <div>
                     <h2>Upload Requirements Document</h2>
-                    
-                    <div class="file-drop-zone" id="file-drop-zone" onclick="document.getElementById('file-input').click()">
+
+                    <div class="file-drop-zone" id="file-drop-zone"
+                        onclick="document.getElementById('file-input').click()">
                         <p>📁 Click to select file or drag and drop</p>
                         <p style="color: #6c757d; font-size: 14px;">Supported: .txt, .md, .pdf, .docx</p>
                     </div>
-                    
-                    <input type="file" id="file-input" style="display: none;" accept=".txt,.md,.pdf,.docx" onchange="handleFileSelect(event)">
-                    
+
+                    <input type="file" id="file-input" style="display: none;" accept=".txt,.md,.pdf,.docx"
+                        onchange="handleFileSelect(event)">
+
                     <div class="form-group">
                         <label for="project-id">Project ID (optional)</label>
                         <input type="text" id="project-id" placeholder="Enter project identifier">
@@ -351,7 +355,7 @@
         <!-- Statistics Tab -->
         <div id="stats-tab" class="tab-content">
             <h2>System Statistics</h2>
-            
+
             <div class="stats-grid" id="stats-grid">
                 <div class="stat-card">
                     <div class="stat-number" id="stat-classes">-</div>
@@ -372,7 +376,7 @@
             </div>
 
             <button class="btn" onclick="loadStats()">🔄 Refresh Statistics</button>
-            
+
             <div id="stats-details" style="margin-top: 20px;"></div>
         </div>
     </div>
@@ -386,18 +390,18 @@
             document.querySelectorAll('.tab-content').forEach(content => {
                 content.classList.remove('active');
             });
-            
+
             // Remove active from all tabs
             document.querySelectorAll('.tab').forEach(tab => {
                 tab.classList.remove('active');
             });
-            
+
             // Show selected tab content
             document.getElementById(tabName + '-tab').classList.add('active');
-            
+
             // Activate selected tab
             event.target.classList.add('active');
-            
+
             // Load content based on tab
             if (tabName === 'ontology') {
                 loadOntology();
@@ -481,7 +485,7 @@
             try {
                 const jsonText = document.getElementById('ontology-json').value;
                 const ontologyData = JSON.parse(jsonText);
-                
+
                 const response = await fetch('/api/ontology/', {
                     method: 'PUT',
                     headers: {
@@ -489,7 +493,7 @@
                     },
                     body: JSON.stringify(ontologyData)
                 });
-                
+
                 const result = await response.json();
                 if (result.success) {
                     showStatus('ontology-status', 'Ontology updated successfully!', 'success');
@@ -506,7 +510,7 @@
             try {
                 const jsonText = document.getElementById('ontology-json').value;
                 const ontologyData = JSON.parse(jsonText);
-                
+
                 const response = await fetch('/api/ontology/validate', {
                     method: 'POST',
                     headers: {
@@ -514,7 +518,7 @@
                     },
                     body: JSON.stringify(ontologyData)
                 });
-                
+
                 const result = await response.json();
                 if (result.success) {
                     showStatus('ontology-status', 'Ontology is valid!', 'success');
@@ -541,7 +545,7 @@
         async function uploadFile() {
             const fileInput = document.getElementById('file-input');
             const file = fileInput.files[0];
-            
+
             if (!file) {
                 showStatus('upload-status', 'Please select a file first', 'error');
                 return;
@@ -555,12 +559,12 @@
 
             try {
                 showStatus('upload-status', 'Uploading and processing...', 'info');
-                
+
                 const response = await fetch('/api/upload', {
                     method: 'POST',
                     body: formData
                 });
-                
+
                 const result = await response.json();
                 if (result.success || result.run_id) {
                     showStatus('upload-status', `File uploaded successfully! Process ID: ${result.process_id || result.run_id}`, 'success');
@@ -576,7 +580,7 @@
         async function uploadOnly() {
             const fileInput = document.getElementById('file-input');
             const file = fileInput.files[0];
-            
+
             if (!file) {
                 showStatus('upload-status', 'Please select a file first', 'error');
                 return;
@@ -588,12 +592,12 @@
 
             try {
                 showStatus('upload-status', 'Uploading...', 'info');
-                
+
                 const response = await fetch('/api/files/upload', {
                     method: 'POST',
                     body: formData
                 });
-                
+
                 const result = await response.json();
                 if (result.success) {
                     showStatus('upload-status', `File uploaded successfully! File ID: ${result.file_id}`, 'success');
@@ -622,7 +626,7 @@
 
         function displayFiles(files) {
             const container = document.getElementById('files-list');
-            
+
             if (files.length === 0) {
                 container.innerHTML = '<div class="loading">No files uploaded yet</div>';
                 return;
@@ -676,7 +680,7 @@
                 const response = await fetch(`/api/files/${fileId}`, {
                     method: 'DELETE'
                 });
-                
+
                 if (response.ok) {
                     showStatus('upload-status', 'File deleted successfully', 'success');
                     loadFiles();
@@ -718,7 +722,7 @@
         function showStatus(elementId, message, type) {
             const element = document.getElementById(elementId);
             element.innerHTML = `<div class="status ${type}">${message}</div>`;
-            
+
             // Auto-hide success messages after 5 seconds
             if (type === 'success') {
                 setTimeout(() => {
@@ -729,24 +733,24 @@
 
         // File drag and drop
         const dropZone = document.getElementById('file-drop-zone');
-        
+
         dropZone.addEventListener('dragover', (e) => {
             e.preventDefault();
             dropZone.classList.add('dragover');
         });
-        
+
         dropZone.addEventListener('dragleave', () => {
             dropZone.classList.remove('dragover');
         });
-        
+
         dropZone.addEventListener('drop', (e) => {
             e.preventDefault();
             dropZone.classList.remove('dragover');
-            
+
             const files = e.dataTransfer.files;
             if (files.length > 0) {
                 document.getElementById('file-input').files = files;
-                handleFileSelect({target: {files: files}});
+                handleFileSelect({ target: { files: files } });
             }
         });
 
@@ -756,4 +760,5 @@
         });
     </script>
 </body>
+
 </html>

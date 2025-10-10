@@ -911,6 +911,103 @@ CREATE TABLE IF NOT EXISTS requirements_constraints (
     updated_at TIMESTAMPTZ DEFAULT NOW()
 );
 
+-- Individual Tables configuration for ontology individual management
+CREATE TABLE IF NOT EXISTS individual_tables_config (
+    table_id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    project_id UUID NOT NULL,
+    graph_iri TEXT NOT NULL,
+    ontology_label VARCHAR(255) NOT NULL,
+    ontology_structure JSONB NOT NULL,
+    
+    -- Auditing
+    created_by UUID REFERENCES public.users(user_id) ON DELETE SET NULL,
+    created_at TIMESTAMPTZ DEFAULT NOW(),
+    updated_at TIMESTAMPTZ DEFAULT NOW(),
+    
+    -- Unique constraint per project-ontology combination
+    UNIQUE(project_id, graph_iri)
+);
+
+-- Individual instances stored as structured data with ontology validation
+CREATE TABLE IF NOT EXISTS individual_instances (
+    instance_id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    table_id UUID NOT NULL REFERENCES individual_tables_config(table_id) ON DELETE CASCADE,
+    class_name VARCHAR(100) NOT NULL,
+    instance_name VARCHAR(255) NOT NULL,
+    instance_uri TEXT NOT NULL,
+    
+    -- Properties stored as JSON for flexibility
+    properties JSONB NOT NULL DEFAULT '{}',
+    
+    -- Validation status
+    validation_status VARCHAR(20) DEFAULT 'pending' CHECK (validation_status IN ('valid', 'invalid', 'pending', 'warning')),
+    validation_errors JSONB DEFAULT '[]',
+    
+    -- Source information
+    source_type VARCHAR(50) DEFAULT 'manual' CHECK (source_type IN ('manual', 'requirements_workbench', 'external_import', 'das_generated')),
+    source_reference TEXT,
+    
+    -- Auditing
+    created_by UUID REFERENCES public.users(user_id) ON DELETE SET NULL,
+    created_at TIMESTAMPTZ DEFAULT NOW(),
+    updated_at TIMESTAMPTZ DEFAULT NOW(),
+    
+    -- Unique constraint per table-class-name combination
+    UNIQUE(table_id, class_name, instance_name)
+);
+
+-- Data mapping configurations for external data import
+CREATE TABLE IF NOT EXISTS data_mapping_configs (
+    mapping_id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    table_id UUID NOT NULL REFERENCES individual_tables_config(table_id) ON DELETE CASCADE,
+    mapping_name VARCHAR(255) NOT NULL,
+    source_format VARCHAR(50) NOT NULL, -- 'json', 'csv', 'xml', 'markdown'
+    target_class VARCHAR(100) NOT NULL,
+    
+    -- Mapping configuration as JSON
+    field_mappings JSONB NOT NULL,
+    transformation_rules JSONB DEFAULT '{}',
+    
+    -- Status
+    is_active BOOLEAN DEFAULT true,
+    
+    -- Auditing
+    created_by UUID REFERENCES public.users(user_id) ON DELETE SET NULL,
+    created_at TIMESTAMPTZ DEFAULT NOW(),
+    updated_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+-- Import history tracking
+CREATE TABLE IF NOT EXISTS individual_import_history (
+    import_id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    table_id UUID NOT NULL REFERENCES individual_tables_config(table_id) ON DELETE CASCADE,
+    mapping_id UUID REFERENCES data_mapping_configs(mapping_id) ON DELETE SET NULL,
+    
+    -- Import details
+    import_type VARCHAR(50) NOT NULL, -- 'requirements_workbench', 'external_data', 'das_analysis'
+    source_info JSONB NOT NULL,
+    records_processed INTEGER DEFAULT 0,
+    records_successful INTEGER DEFAULT 0,
+    records_failed INTEGER DEFAULT 0,
+    
+    -- Results
+    import_status VARCHAR(20) DEFAULT 'pending' CHECK (import_status IN ('pending', 'completed', 'failed', 'partial')),
+    error_log JSONB DEFAULT '[]',
+    
+    -- Auditing
+    created_by UUID REFERENCES public.users(user_id) ON DELETE SET NULL,
+    created_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+-- Indexes for Individual Tables
+CREATE INDEX IF NOT EXISTS idx_individual_tables_project ON individual_tables_config(project_id);
+CREATE INDEX IF NOT EXISTS idx_individual_tables_graph ON individual_tables_config(graph_iri);
+CREATE INDEX IF NOT EXISTS idx_individual_instances_table ON individual_instances(table_id);
+CREATE INDEX IF NOT EXISTS idx_individual_instances_class ON individual_instances(class_name);
+CREATE INDEX IF NOT EXISTS idx_individual_instances_validation ON individual_instances(validation_status);
+CREATE INDEX IF NOT EXISTS idx_data_mapping_table ON data_mapping_configs(table_id);
+CREATE INDEX IF NOT EXISTS idx_import_history_table ON individual_import_history(table_id);
+
 -- Multi-user notes for requirements collaboration
 CREATE TABLE IF NOT EXISTS requirements_notes (
     note_id UUID PRIMARY KEY DEFAULT gen_random_uuid(),

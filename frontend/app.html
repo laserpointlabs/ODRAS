@@ -753,6 +753,106 @@
       flex: 0 0 auto;
     }
 
+    /* Workbench Tabs */
+    .workbench-tabs {
+      display: flex;
+      background: var(--panel);
+      border-bottom: 1px solid var(--border);
+      padding: 0 12px;
+      margin-bottom: 8px;
+    }
+
+    .workbench-tab {
+      background: none;
+      border: none;
+      padding: 12px 20px;
+      color: var(--muted);
+      cursor: pointer;
+      font-size: 14px;
+      border-bottom: 2px solid transparent;
+      transition: all 0.2s ease;
+    }
+
+    .workbench-tab:hover {
+      color: var(--text);
+      background: rgba(255, 255, 255, 0.05);
+    }
+
+    .workbench-tab.active {
+      color: var(--accent);
+      border-bottom-color: var(--accent);
+    }
+
+    .workbench-tab svg {
+      width: 16px;
+      height: 16px;
+      vertical-align: middle;
+      margin-right: 6px;
+      stroke: currentColor;
+    }
+
+    /* Individual Tables Content */
+    .individuals-content {
+      display: none;
+      height: calc(100vh - 200px);
+    }
+
+    .individuals-content.active {
+      display: flex;
+    }
+
+    .individuals-tabs-nav {
+      width: 200px;
+      background: var(--panel-2);
+      border-right: 1px solid var(--border);
+      padding: 8px;
+    }
+
+    .individuals-tab-item {
+      display: flex;
+      align-items: center;
+      padding: 8px 12px;
+      margin-bottom: 4px;
+      background: none;
+      border: none;
+      color: var(--text);
+      cursor: pointer;
+      border-radius: 4px;
+      width: 100%;
+      text-align: left;
+      transition: background 0.2s ease;
+    }
+
+    .individuals-tab-item:hover {
+      background: rgba(255, 255, 255, 0.05);
+    }
+
+    .individuals-tab-item.active {
+      background: var(--accent);
+      color: white;
+    }
+
+    .individuals-tab-icon {
+      margin-right: 8px;
+      font-size: 16px;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    .individuals-tab-icon svg {
+      width: 16px;
+      height: 16px;
+      stroke: currentColor;
+    }
+
+    .individuals-table-area {
+      flex: 1;
+      padding: 16px;
+      overflow-y: auto;
+      background: var(--bg);
+    }
+
     .header-left {
       display: flex;
       flex-direction: column;
@@ -2530,6 +2630,33 @@
               </div>
             </div>
           </div>
+
+          <!-- Workbench Tabs -->
+          <div class="workbench-tabs">
+            <button class="workbench-tab active" id="ontologyTab" onclick="switchWorkbenchTab('ontology')">
+              <svg viewBox="0 0 24 24" fill="none" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round">
+                <circle cx="6" cy="6" r="2" />
+                <circle cx="18" cy="6" r="2" />
+                <circle cx="6" cy="18" r="2" />
+                <circle cx="18" cy="18" r="2" />
+                <line x1="8" y1="6" x2="16" y2="6" />
+                <line x1="6" y1="8" x2="6" y2="16" />
+                <line x1="18" y1="8" x2="18" y2="16" />
+                <line x1="8" y1="18" x2="16" y2="18" />
+              </svg>
+              Ontologies
+            </button>
+            <button class="workbench-tab" id="individualsTab" onclick="switchWorkbenchTab('individuals')">
+              <svg viewBox="0 0 24 24" fill="none" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round">
+                <rect x="3" y="3" width="18" height="18" rx="2" ry="2" />
+                <line x1="7" y1="9" x2="17" y2="9" />
+                <line x1="7" y1="13" x2="17" y2="13" />
+                <line x1="7" y1="17" x2="13" y2="17" />
+              </svg>
+              Individuals
+            </button>
+          </div>
+
           <div id="ontoEmpty" class="card onto-empty-state">
             Create or Select an Ontology to begin
           </div>
@@ -2852,6 +2979,24 @@
               <button id="ontoCopyIriBtn" class="btn btn-sm iri-copy-btn" title="Copy IRI to clipboard">Copy</button>
             </div>
           </div>
+
+          <!-- Individual Tables Content Area -->
+          <div id="individualsContent" class="individuals-content">
+            <div class="individuals-tabs-nav">
+              <div id="individualsTabList" class="individuals-tab-list">
+                <div style="padding: 20px; text-align: center; color: var(--muted);">Loading...</div>
+              </div>
+            </div>
+            <div class="individuals-table-area">
+              <div id="individualsTableContent">
+                <div style="padding: 40px; text-align: center; color: var(--muted);">
+                  <h3>Individual Tables</h3>
+                  <p>Select an ontology to view its individual instances</p>
+                </div>
+              </div>
+            </div>
+          </div>
+
         </section>
         <section id="wb-files" class="workbench">
           <h2>File Management</h2>
@@ -7442,7 +7587,9 @@
 
     function iriMapKey(graphIri) { return 'onto_iri_map__' + encodeURIComponent(graphIri); }
     function loadIriMap(graphIri) { try { return JSON.parse(localStorage.getItem(iriMapKey(graphIri)) || '{}'); } catch (_) { return {}; } }
-    function saveIriMap(graphIri, map) { try { localStorage.setItem(iriMapKey(graphIri), JSON.stringify(map || {})); } catch (_) { } }
+    function saveIriMap(graphIri, map) {
+      try { localStorage.setItem(iriMapKey(graphIri), JSON.stringify(map || {})); } catch (_) { }
+    }
 
     /**
      * Extract RDF property URI from attribute template label
@@ -10773,6 +10920,7 @@ ${insertParts.join('\\n')}
                   }
                 };
               }
+
 
               if (deleteBtn) {
                 deleteBtn.onclick = async () => {
@@ -24607,7 +24755,7 @@ def hello_world():
               <li><strong>all-MiniLM-L6-v2:</strong> Fast, efficient 384-dimensional embeddings</li>
               <li><strong>all-mpnet-base-v2:</strong> Higher quality 768-dimensional embeddings</li>
             </ul>
-          </div>
+          </v>
         </div>
       `;
       document.body.appendChild(modal);
@@ -27476,7 +27624,7 @@ def hello_world():
         if (response.ok) {
           const data = await response.json();
           console.log('✅ Requirements data:', data);
-          console.log('   - Total requirements:', data.requirements?.length || 0);
+          console.log('   - Total requirements:', data.requiremts?.length || 0);
           console.log('   - First requirement:', data.requirements?.[0]);
         } else {
           const error = await response.text();
@@ -27490,6 +27638,658 @@ def hello_world():
     };
 
     // End of Requirements Workbench JavaScript
+
+    // =====================================
+    // INDIVIDUAL TABLES SYSTEM
+    // =====================================
+
+    /**
+     * Load Individual Tables for the currently selected ontology
+     */
+    async function loadIndividualTablesForCurrentOntology() {
+      const currentGraphIri = getCurrentOntologyGraphIri();
+      const currentLabel = getCurrentOntologyLabel();
+
+      if (!currentGraphIri) {
+        const content = document.getElementById('individualsTableContent');
+        if (content) {
+          content.innerHTML = `
+            <div style="padding: 40px; text-align: center; color: var(--muted);">
+              <h3>No Ontology Selected</h3>
+              <p>Please select an ontology from the tree to view its individuals</p>
+            </div>
+          `;
+        }
+        return;
+      }
+
+      try {
+        // Load ontology structure
+        const ontologyData = await analyzeOntologyStructure(currentGraphIri);
+        await loadIndividualTablesInterface(currentGraphIri, currentLabel || 'Ontology', ontologyData);
+      } catch (error) {
+        console.error('❌ Error loading Individual Tables:', error);
+        const content = document.getElementById('individualsTableContent');
+        if (content) {
+          content.innerHTML = `
+            <div style="padding: 40px; text-align: center; color: var(--err);">
+              <h3>Error Loading Individuals</h3>
+              <p>${error.message}</p>
+            </div>
+          `;
+        }
+      }
+    }
+
+    /**
+     * Get currently selected ontology graph IRI
+     */
+    function getCurrentOntologyGraphIri() {
+      // Try multiple ways to get the current ontology
+
+      // Method 1: From ontoState (most reliable)
+      if (window.ontoState && window.ontoState.currentGraph) {
+        console.log('🔍 Found ontology from ontoState:', window.ontoState.currentGraph);
+        return window.ontoState.currentGraph;
+      }
+
+      // Method 2: From localStorage active ontology
+      const projectId = localStorage.getItem('active_project_id');
+      if (projectId) {
+        const activeIri = localStorage.getItem(`onto_active_iri__${projectId}`);
+        if (activeIri) {
+          console.log('🔍 Found ontology from localStorage:', activeIri);
+          return activeIri;
+        }
+      }
+
+      // Method 3: From graph label dataset
+      const graphLabel = document.getElementById('ontoGraphLabel');
+      if (graphLabel && graphLabel.dataset.graphIri) {
+        console.log('🔍 Found ontology from graph label:', graphLabel.dataset.graphIri);
+        return graphLabel.dataset.graphIri;
+      }
+
+      // Method 4: Parse from URL hash if available
+      try {
+        const hash = window.location.hash;
+        const params = new URLSearchParams(hash.replace('#', ''));
+        const graphParam = params.get('graph');
+        if (graphParam) {
+          const graphIri = decodeURIComponent(graphParam);
+          console.log('🔍 Found ontology from URL hash:', graphIri);
+          return graphIri;
+        }
+      } catch (e) {
+        console.log('🔍 No ontology found in URL hash');
+      }
+
+      console.log('❌ No ontology found');
+      return null;
+    }
+
+    /**
+     * Get currently selected ontology label
+     */
+    function getCurrentOntologyLabel() {
+      const graphLabel = document.getElementById('ontoGraphLabel');
+      if (graphLabel && graphLabel.textContent !== 'No graph selected') {
+        return graphLabel.textContent;
+      }
+
+      // Try to get from localStorage model name
+      const projectId = localStorage.getItem('active_project_id');
+      if (projectId) {
+        const modelName = localStorage.getItem(`onto_model_name__${projectId}`);
+        if (modelName) {
+          return modelName;
+        }
+      }
+
+      return 'Unknown Ontology';
+    }
+
+    /**
+     * Switch between Ontologies and Individuals tabs
+     * @param {string} tabName - 'ontology' or 'individuals' 
+     */
+    window.switchWorkbenchTab = function (tabName) {
+      console.log('🔍 Switching workbench tab to:', tabName);
+
+      // Update tab buttons
+      const ontologyTab = document.getElementById('ontologyTab');
+      const individualsTab = document.getElementById('individualsTab');
+
+      if (ontologyTab) ontologyTab.classList.toggle('active', tabName === 'ontology');
+      if (individualsTab) individualsTab.classList.toggle('active', tabName === 'individuals');
+
+      // Show/hide content areas
+      const ontoLayout = document.getElementById('ontoLayoutSection');
+      const individualsContent = document.getElementById('individualsContent');
+
+      if (tabName === 'ontology') {
+        if (ontoLayout) ontoLayout.style.display = 'grid';
+        if (individualsContent) individualsContent.classList.remove('active');
+      } else if (tabName === 'individuals') {
+        if (ontoLayout) ontoLayout.style.display = 'none';
+        if (individualsContent) individualsContent.classList.add('active');
+
+        // Load individuals for currently selected ontology
+        loadIndividualTablesForCurrentOntology();
+      }
+    };
+
+    /**
+     * Analyze ontology structure to extract classes, properties, and constraints
+     */
+    async function analyzeOntologyStructure(graphIri) {
+      console.log('🔍 Analyzing ontology structure for:', graphIri);
+
+      try {
+        const token = localStorage.getItem(tokenKey);
+
+        // Query SPARQL to get classes AND their data properties for this specific graph
+        const sparqlQuery = `
+          SELECT ?class ?classLabel ?classComment ?dataProp ?dataPropLabel ?dataPropComment ?dataPropRange WHERE {
+            GRAPH <${graphIri}> {
+              # Get all classes
+              ?class a <http://www.w3.org/2002/07/owl#Class> .
+              OPTIONAL { ?class <http://www.w3.org/2000/01/rdf-schema#label> ?classLabel }
+              OPTIONAL { ?class <http://www.w3.org/2000/01/rdf-schema#comment> ?classComment }
+              
+              # Get data properties for each class  
+              OPTIONAL {
+                ?dataProp a <http://www.w3.org/2002/07/owl#DatatypeProperty> .
+                ?dataProp <http://www.w3.org/2000/01/rdf-schema#domain> ?class .
+                OPTIONAL { ?dataProp <http://www.w3.org/2000/01/rdf-schema#label> ?dataPropLabel }
+                OPTIONAL { ?dataProp <http://www.w3.org/2000/01/rdf-schema#comment> ?dataPropComment }
+                OPTIONAL { ?dataProp <http://www.w3.org/2000/01/rdf-schema#range> ?dataPropRange }
+              }
+            }
+          }
+        `;
+
+        const sparqlResponse = await fetch('/api/ontology/sparql', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': 'Bearer ' + token
+          },
+          body: JSON.stringify({ query: sparqlQuery })
+        });
+
+        if (!sparqlResponse.ok) {
+          throw new Error(`SPARQL query failed: ${sparqlResponse.statusText}`);
+        }
+
+        const sparqlResult = await sparqlResponse.json();
+        console.log('🔍 SPARQL result:', sparqlResult);
+
+        // Transform SPARQL results to ontology structure with data properties
+        const classesMap = new Map();
+        const dataProperties = [];
+        const bindings = sparqlResult.results?.bindings || [];
+
+        console.log(`🔍 Found ${bindings.length} bindings (classes + data properties)`);
+
+        // Process all bindings to build classes with their data properties
+        for (const binding of bindings) {
+          const classUri = binding.class?.value || '';
+          const classLabel = binding.classLabel?.value || '';
+          const classComment = binding.classComment?.value || '';
+
+          // Extract class name from label or URI
+          const className = classLabel && classLabel !== 'None' ? classLabel : classUri.split('#').pop().split('/').pop();
+
+          if (className && !classesMap.has(className)) {
+            classesMap.set(className, {
+              name: className,
+              uri: classUri,
+              comment: classComment,
+              definition: classComment,
+              dataProperties: []
+            });
+            console.log(`🔍 Added class: ${className}`);
+          }
+
+          // Process data properties
+          if (binding.dataProp?.value) {
+            const propUri = binding.dataProp.value;
+            const propLabel = binding.dataPropLabel?.value || propUri.split('#').pop().split('/').pop();
+            const propComment = binding.dataPropComment?.value || '';
+            const propRange = binding.dataPropRange?.value || 'xsd:string';
+
+            const dataProperty = {
+              name: propLabel,
+              uri: propUri,
+              comment: propComment,
+              range: propRange.split('#').pop().split('/').pop(), // Get just the type name
+              domain: className
+            };
+
+            // Add to class's data properties
+            const classData = classesMap.get(className);
+            if (classData && !classData.dataProperties.find(dp => dp.name === propLabel)) {
+              classData.dataProperties.push(dataProperty);
+              console.log(`🔍 Added data property ${propLabel} to class ${className}`);
+            }
+
+            // Also add to global data properties list
+            if (!dataProperties.find(dp => dp.name === propLabel && dp.domain === className)) {
+              dataProperties.push(dataProperty);
+            }
+          }
+        }
+
+        const classes = Array.from(classesMap.values());
+
+        // Build ontology structure for Individual Tables
+        const ontologyStructure = {
+          name: `Ontology (${classes.length} classes)`,
+          classes: classes,
+          object_properties: [],
+          datatype_properties: dataProperties,
+          constraints: {},
+          form_configs: {},
+          enumerations: {}
+        };
+
+        // Log data properties for each class
+        classes.forEach(cls => {
+          if (cls.dataProperties.length > 0) {
+            console.log(`🔍 Class ${cls.name} has ${cls.dataProperties.length} data properties:`, cls.dataProperties.map(dp => dp.name));
+          }
+        });
+
+        console.log('🔍 Final ontology structure:', ontologyStructure);
+        return ontologyStructure;
+
+      } catch (error) {
+        console.error('❌ Error analyzing ontology structure:', error);
+
+        // Return empty structure with error info
+        return {
+          name: 'Error Loading Ontology',
+          classes: [],
+          object_properties: [],
+          datatype_properties: [],
+          constraints: {},
+          form_configs: {},
+          enumerations: {},
+          error: error.message
+        };
+      }
+    }
+
+    // Simplified Individual Tables - Load interfaces when needed
+    async function loadIndividualTablesInterface(graphIri, ontologyLabel, ontologyData) {
+      console.log('🔍 Loading Individual Tables interface for:', ontologyLabel);
+
+      try {
+        // Update content area with loading state
+        const content = document.getElementById('individualsTableContent');
+        if (content) {
+          content.innerHTML = `
+            <div style="padding: 40px; text-align: center; color: var(--muted);">
+              <div style="animation: spin 1s linear infinite; width:24px; height:24px; margin:0 auto 12px;">
+                <svg viewBox="0 0 24 24" fill="none" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" style="width:24px; height:24px; stroke:currentColor;">
+                  <circle cx="12" cy="12" r="3" />
+                  <path d="M12 1v6m0 6v6m-5.2-2.2l4.2-4.2m0 0l4.2-4.2M1 12h6m6 0h6m-2.2 5.2l-4.2-4.2m0 0l-4.2-4.2" />
+                </svg>
+              </div>
+              Loading individual tables for ${ontologyLabel}...
+            </div>
+          `;
+        }
+
+        // Generate tabs for each class
+        generateClassTabs(ontologyData);
+
+        // Load default tab (overall ontology)
+        showIndividualTable('_ontology', ontologyData);
+
+        console.log('✅ Individual Tables interface loaded');
+
+      } catch (error) {
+        console.error('❌ Error loading Individual Tables interface:', error);
+        const content = document.getElementById('individualsTableContent');
+        if (content) {
+          content.innerHTML = `
+            <div style="padding: 40px; text-align: center; color: var(--err);">
+              <h3>Error Loading Individual Tables</h3>
+              <p>${error.message}</p>
+            </div>
+          `;
+        }
+      }
+    }
+
+    /**
+     * Generate tabs for each ontology class - FULLY DYNAMIC
+     */
+    function generateClassTabs(ontologyData) {
+      const tabList = document.getElementById('individualsTabList');
+      if (!tabList) return;
+
+      let tabsHtml = '';
+
+      // Overall ontology tab (always present)
+      tabsHtml += `
+        <button class="individuals-tab-item active" data-class="_ontology" onclick="showIndividualTable('_ontology')">
+          <span class="individuals-tab-icon">
+            <svg viewBox="0 0 24 24" fill="none" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round">
+              <circle cx="6" cy="6" r="2" />
+              <circle cx="18" cy="6" r="2" />
+              <circle cx="6" cy="18" r="2" />
+              <circle cx="18" cy="18" r="2" />
+              <line x1="8" y1="6" x2="16" y2="6" />
+              <line x1="6" y1="8" x2="6" y2="16" />
+              <line x1="18" y1="8" x2="18" y2="16" />
+              <line x1="8" y1="18" x2="16" y2="18" />
+            </svg>
+          </span>
+          <span class="individuals-tab-label">${ontologyData.name || 'Overview'}</span>
+        </button>
+      `;
+
+      // Dynamic class-specific tabs - ONLY for classes that actually exist in the ontology
+      if (ontologyData.classes && ontologyData.classes.length > 0) {
+        console.log(`🔍 Creating ${ontologyData.classes.length} dynamic class tabs:`, ontologyData.classes.map(c => c.name));
+
+        ontologyData.classes.forEach(cls => {
+          const icon = getClassIcon(cls.name);
+          const dataPropertyCount = cls.dataProperties ? cls.dataProperties.length : 0;
+          const tabDisplayName = dataPropertyCount > 0 ? `${cls.name} (${dataPropertyCount})` : cls.name;
+
+          tabsHtml += `
+            <button class="individuals-tab-item" data-class="${cls.name}" onclick="showIndividualTable('${cls.name}')">
+              <span class="individuals-tab-icon">${icon}</span>
+              <span class="individuals-tab-label">${tabDisplayName}</span>
+            </button>
+          `;
+        });
+      } else {
+        console.log('🔍 No classes found in ontology - only overview tab will be shown');
+      }
+
+      tabList.innerHTML = tabsHtml;
+
+      // Store ontology data globally for tab functions to access
+      window.currentOntologyData = ontologyData;
+    }
+
+    /**
+     * Get appropriate icon for ontology class
+     */
+    function getClassIcon(className) {
+      const iconMap = {
+        'Requirement': '<svg viewBox="0 0 24 24" fill="none" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" style="width:20px; height:20px; vertical-align:middle; stroke:currentColor;"><rect x="3" y="3" width="18" height="18" rx="2" ry="2" /><line x1="7" y1="9" x2="17" y2="9" /><line x1="7" y1="13" x2="17" y2="13" /><line x1="7" y1="17" x2="13" y2="17" /></svg>',
+        'Component': '<svg viewBox="0 0 24 24" fill="none" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" style="width:20px; height:20px; vertical-align:middle; stroke:currentColor;"><path d="M14.7 6.3a1 1 0 0 0 0 1.4l1.6 1.6a1 1 0 0 0 1.4 0l3.77-3.77a6 6 0 0 1-7.94 7.94l-6.91 6.91a2.12 2.12 0 0 1-3-3l6.91-6.91a6 6 0 0 1 7.94-7.94l-3.76 3.76z" /></svg>',
+        'Process': '<svg viewBox="0 0 24 24" fill="none" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" style="width:20px; height:20px; vertical-align:middle; stroke:currentColor;"><circle cx="12" cy="12" r="3" /><path d="M12 1v6m0 6v6m-5.2-2.2l4.2-4.2m0 0l4.2-4.2M1 12h6m6 0h6m-2.2 5.2l-4.2-4.2m0 0l-4.2-4.2" /></svg>',
+        'Function': '<svg viewBox="0 0 24 24" fill="none" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" style="width:20px; height:20px; vertical-align:middle; stroke:currentColor;"><circle cx="12" cy="12" r="10" /><circle cx="12" cy="12" r="6" /><circle cx="12" cy="12" r="2" /></svg>',
+        'Interface': '<svg viewBox="0 0 24 24" fill="none" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" style="width:20px; height:20px; vertical-align:middle; stroke:currentColor;"><path d="M12 2v4m0 12v4M4.93 4.93l2.83 2.83m8.48 8.48l2.83 2.83M2 12h4m12 0h4M4.93 19.07l2.83-2.83m8.48-8.48l2.83-2.83" /></svg>',
+        'Constraint': '<svg viewBox="0 0 24 24" fill="none" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" style="width:20px; height:20px; vertical-align:middle; stroke:currentColor;"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z" /><line x1="12" y1="9" x2="12" y2="13" /><line x1="12" y1="17" x2="12.01" y2="17" /></svg>',
+        'System': '<svg viewBox="0 0 24 24" fill="none" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" style="width:20px; height:20px; vertical-align:middle; stroke:currentColor;"><rect x="3" y="3" width="7" height="7" /><rect x="14" y="3" width="7" height="7" /><rect x="14" y="14" width="7" height="7" /><rect x="3" y="14" width="7" height="7" /></svg>'
+      };
+      return iconMap[className] || '<svg viewBox="0 0 24 24" fill="none" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" style="width:20px; height:20px; vertical-align:middle; stroke:currentColor;"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" /><polyline points="14,2 14,8 20,8" /></svg>';
+    }
+
+    /**
+     * Show individual table for specific class - FULLY DYNAMIC
+     */
+    function showIndividualTable(className) {
+      console.log('🔍 Showing individual table for class:', className);
+
+      // Get current ontology data
+      const ontologyData = window.currentOntologyData;
+      if (!ontologyData) {
+        console.error('❌ No ontology data available');
+        return;
+      }
+
+      // Update active tab
+      const tabList = document.getElementById('individualsTabList');
+      if (tabList) {
+        tabList.querySelectorAll('.individuals-tab-item').forEach(t => t.classList.remove('active'));
+        const activeTab = tabList.querySelector(`[data-class="${className}"]`);
+        if (activeTab) activeTab.classList.add('active');
+      }
+
+      const content = document.getElementById('individualsTableContent');
+      if (!content) return;
+
+      if (className === '_ontology') {
+        // Show overall ontology view with ALL classes from ontology
+        showOntologyOverview(ontologyData);
+      } else {
+        // Show specific class table (only if class exists in ontology)
+        const classExists = ontologyData.classes?.some(c => c.name === className);
+        if (!classExists) {
+          content.innerHTML = `
+            <div style="padding: 40px; text-align: center; color: var(--err);">
+              <h3>Class Not Found</h3>
+              <p>Class "${className}" does not exist in the current ontology.</p>
+            </div>
+          `;
+          return;
+        }
+
+        showClassTable(className, ontologyData);
+      }
+    }
+
+    /**
+     * Show overall ontology overview
+     */
+    function showOntologyOverview(ontologyData) {
+      const content = document.getElementById('individualsTableContent');
+      if (!content) return;
+
+      let html = `
+        <div class="ontology-overview">
+          <h3>${ontologyData.name || 'Ontology Overview'}</h3>
+          <p style="color: var(--muted); margin-bottom: 20px;">Manage individuals across all ontology classes</p>
+          
+          <div class="class-summary-grid" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 16px;">
+      `;
+
+      if (ontologyData.classes && ontologyData.classes.length > 0) {
+        console.log(`🔍 Generating overview cards for ${ontologyData.classes.length} classes from ontology:`, ontologyData.classes.map(c => c.name));
+
+        ontologyData.classes.forEach(cls => {
+          const icon = getClassIcon(cls.name);
+          const dataPropertyCount = cls.dataProperties ? cls.dataProperties.length : 0;
+          const classDisplayName = dataPropertyCount > 0 ? `${cls.name} (${dataPropertyCount})` : cls.name;
+
+          html += `
+            <div class="class-summary-card" style="background: var(--panel); border: 1px solid var(--border); border-radius: 8px; padding: 16px;">
+              <div class="card-header" style="display: flex; align-items: center; margin-bottom: 12px;">
+                <span style="font-size: 24px; margin-right: 8px;">${icon}</span>
+                <div>
+                  <h4 style="margin: 0; color: var(--text);">${classDisplayName}</h4>
+                  <p style="margin: 0; color: var(--muted); font-size: 14px;">${cls.comment || cls.definition || 'No description'}</p>
+                  ${dataPropertyCount > 0 ? `<p style="margin: 0; color: var(--accent); font-size: 12px; margin-top: 4px;"><svg viewBox="0 0 24 24" fill="none" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" style="width:12px; height:12px; vertical-align:middle; margin-right:4px; stroke:currentColor;"><line x1="18" y1="20" x2="18" y2="10" /><line x1="12" y1="20" x2="12" y2="4" /><line x1="6" y1="20" x2="6" y2="14" /></svg>${dataPropertyCount} data ${dataPropertyCount === 1 ? 'property' : 'properties'}</p>` : ''}
+                </div>
+              </div>
+              <div class="card-stats">
+                <div style="display: flex; justify-content: space-between; align-items: center;">
+                  <span style="color: var(--muted);">Individuals: <strong>0</strong></span>
+                  <button class="btn" style="background: var(--accent); color: white; font-size: 12px;" onclick="showIndividualTable('${cls.name}')">
+                    View Table →
+                  </button>
+                </div>
+              </div>
+            </div>
+          `;
+        });
+      } else {
+        html += `
+          <div style="padding: 40px; text-align: center; color: var(--muted);">
+            <h4>No Classes Found</h4>
+            <p>This ontology doesn't have any classes to create individuals for.</p>
+          </div>
+        `;
+      }
+
+      html += `
+          </div>
+        </div>
+      `;
+
+      content.innerHTML = html;
+    }
+
+    /**
+     * Show table for specific class
+     */
+    function showClassTable(className, ontologyData) {
+      console.log('🔍 Showing table for class:', className);
+
+      const content = document.getElementById('individualsTableContent');
+      if (!content) return;
+
+      // Find class definition
+      const classData = ontologyData.classes?.find(c => c.name === className);
+      if (!classData) {
+        content.innerHTML = `
+          <div style="padding: 40px; text-align: center; color: var(--err);">
+            <h3>Class Not Found</h3>
+            <p>Class "${className}" not found in ontology structure.</p>
+          </div>
+        `;
+        return;
+      }
+
+      // Generate table structure based on class properties
+      const properties = getClassProperties(className, ontologyData);
+      const tableHtml = generateClassTable(className, classData, properties);
+      content.innerHTML = tableHtml;
+    }
+
+    /**
+     * Get properties for a specific class - DYNAMIC based on ontology
+     */
+    function getClassProperties(className, ontologyData) {
+      const properties = [];
+
+      // Get the specific class data
+      const classData = ontologyData.classes?.find(c => c.name === className);
+
+      if (classData && classData.dataProperties) {
+        // Add data properties as table columns
+        classData.dataProperties.forEach(prop => {
+          properties.push({
+            name: prop.name,
+            label: prop.name, // Use the actual property label 
+            type: 'datatype',
+            range: prop.range,
+            comment: prop.comment,
+            constraints: {}
+          });
+        });
+
+        console.log(`🔍 Class ${className} properties for table:`, properties.map(p => p.name));
+      }
+
+      // Also add object properties that have this class as domain (for future use)
+      if (ontologyData.object_properties) {
+        ontologyData.object_properties.forEach(prop => {
+          if (prop.domain === className) {
+            properties.push({
+              name: prop.name,
+              label: prop.label || prop.name,
+              type: 'object',
+              range: prop.range,
+              constraints: prop.constraints || {}
+            });
+          }
+        });
+      }
+
+      return properties;
+    }
+
+    /**
+     * Generate HTML table for class individuals
+     */
+    function generateClassTable(className, classData, properties) {
+      const icon = getClassIcon(className);
+
+      let html = `
+        <div class="class-table-container">
+          <div class="table-header" style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px;">
+            <div>
+              <h3>${icon} ${className} Individuals</h3>
+              <p style="color: var(--muted); margin: 0;">${classData.comment || classData.definition || 'No description available'}</p>
+            </div>
+            <div class="table-actions" style="display: flex; gap: 8px;">
+              <button class="btn btn-success" onclick="showAddIndividualDialog('${className}')">
+                <svg viewBox="0 0 24 24" fill="none" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" style="width:14px; height:14px; vertical-align:middle; margin-right:4px; stroke:currentColor;">
+                  <line x1="12" y1="5" x2="12" y2="19" />
+                  <line x1="5" y1="12" x2="19" y2="12" />
+                </svg>
+                Add ${className}
+              </button>
+              ${className.toLowerCase() === 'requirement' ? '<button class="btn" onclick="showImportRequirementsDialog()"><svg viewBox="0 0 24 24" fill="none" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" style="width:14px; height:14px; vertical-align:middle; margin-right:4px; stroke:currentColor;"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" /><polyline points="7,10 12,15 17,10" /><line x1="12" y1="15" x2="12" y2="3" /></svg>Import Requirements</button>' : ''}
+              <button class="btn" onclick="exportClassTable('${className}')">
+                <svg viewBox="0 0 24 24" fill="none" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" style="width:14px; height:14px; vertical-align:middle; margin-right:4px; stroke:currentColor;">
+                  <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
+                  <polyline points="17,8 12,3 7,8" />
+                  <line x1="12" y1="3" x2="12" y2="15" />
+                </svg>
+                Export
+              </button>
+            </div>
+          </div>
+          
+          <div class="table-wrapper" style="border: 1px solid var(--border); border-radius: 8px; overflow: hidden; background: var(--panel);">
+            <table style="width: 100%; border-collapse: collapse;">
+              <thead style="background: var(--panel-2);">
+                <tr>
+      `;
+
+      // Table headers
+      html += '<th style="padding: 12px; text-align: left; border-bottom: 1px solid var(--border); color: var(--text);">Name</th>';
+
+      properties.forEach(prop => {
+        html += `<th style="padding: 12px; text-align: left; border-bottom: 1px solid var(--border); color: var(--text);">${prop.label || prop.name}</th>`;
+      });
+
+      html += `
+                  <th style="padding: 12px; text-align: left; border-bottom: 1px solid var(--border); color: var(--text);">Actions</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr>
+                  <td colspan="${properties.length + 2}" style="padding: 40px; text-align: center; color: var(--muted);">
+                    No ${className.toLowerCase()} individuals yet. Click "Add ${className}" to create one.
+                  </td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+      `;
+
+      return html;
+    }
+
+    /**
+     * Placeholder functions for future implementation
+     */
+    function showAddIndividualDialog(className) {
+      alert(`Add ${className} dialog - Coming soon!`);
+    }
+
+    function showImportRequirementsDialog() {
+      alert('Import Requirements dialog - Coming soon!');
+    }
+
+    function exportClassTable(className) {
+      alert(`Export ${className} table - Coming soon!`);
+    }
+
+    // End of Individual Tables System
   </script>
 
 </body>

@@ -1,0 +1,616 @@
+{
+  "metadata": {
+    "exportedBy": "jdehart",
+    "exportedDate": "2025-10-09",
+    "exportedTimestamp": "2025-10-09T16:33:33.746Z",
+    "ontologyIri": "https://xma-adt.usnc.mil/odras/core/9b05a37d-a553-4683-88b8-a492c8ffad85/ontologies/bseo-v1",
+    "exportVersion": "1.0"
+  },
+  "model": {
+    "name": "BSEO_V1",
+    "type": "Model",
+    "comment": "\"This ontology serves as the Base Systems Engineering Ontology, providing a structured framework for defining system requirements, components, functions, and processes, facilitating effective systems engineering practices.",
+    "definition": "BSEO_V1 is an ontology designed to support the structured representation of system requirements and their relationships with components and processes, ensuring clarity and verifiability in systems engineering documentation.",
+    "version": "",
+    "namespace": "https://xma-adt.usnc.mil/odras/core/9b05a37d-a553-4683-88b8-a492c8ffad85/ontologies/bseo-v1",
+    "imports": ""
+  },
+  "nodes": [
+    {
+      "data": {
+        "id": "Class1",
+        "label": "Requirement",
+        "type": "class",
+        "attrs": {
+          "comment": "Statement of need or obligation imposed on a system.",
+          "definition": "A verifiable condition or capability the system shall satisfy.",
+          "example": "“The UAV shall achieve ≥ 4 hr endurance at 10k ft.”",
+          "creator": "jdehart",
+          "created_date": "2025-10-07",
+          "created_timestamp": "2025-10-07T10:17:53.921Z",
+          "last_modified_by": "jdehart",
+          "last_modified_date": "2025-10-09",
+          "last_modified_timestamp": "2025-10-09T16:30:42.064Z"
+        }
+      },
+      "position": {
+        "x": 340,
+        "y": 180
+      }
+    },
+    {
+      "data": {
+        "id": "Class2",
+        "label": "Component",
+        "type": "class",
+        "attrs": {
+          "comment": "Physical or logical part of the system with defined interfaces.",
+          "definition": "A replaceable system element that provides or supports functions.",
+          "example": "“EO/IR sensor module,” “Wing spar,” “Flight-control app.”",
+          "creator": "jdehart",
+          "created_date": "2025-10-07",
+          "created_timestamp": "2025-10-07T10:17:56.465Z",
+          "last_modified_by": "jdehart",
+          "last_modified_date": "2025-10-09",
+          "last_modified_timestamp": "2025-10-09T16:30:42.065Z"
+        }
+      },
+      "position": {
+        "x": 340,
+        "y": 340
+      }
+    },
+    {
+      "data": {
+        "id": "Class3",
+        "label": "Constraint",
+        "type": "class",
+        "attrs": {
+          "comment": "Limitation that restricts design or operation.",
+          "definition": "A binding limit (physical, legal, budgetary, schedule) on system states or choices.",
+          "example": "“Max takeoff weight ≤ 25 kg due to Part 107.”",
+          "creator": "jdehart",
+          "created_date": "2025-10-07",
+          "created_timestamp": "2025-10-07T10:18:00.611Z",
+          "last_modified_by": "jdehart",
+          "last_modified_date": "2025-10-09",
+          "last_modified_timestamp": "2025-10-09T16:30:42.066Z"
+        }
+      },
+      "position": {
+        "x": 660,
+        "y": 180
+      }
+    },
+    {
+      "data": {
+        "id": "Class4",
+        "label": "Interface",
+        "type": "class",
+        "attrs": {
+          "comment": "Defined boundary where Components interact.",
+          "definition": "A specification of interactions (signals, fluids, forces, data) between Components.",
+          "example": "“Ethernet UDP telemetry @ 10 Hz between Autopilot and Mission PC.”",
+          "creator": "jdehart",
+          "created_date": "2025-10-07",
+          "created_timestamp": "2025-10-07T10:18:04.485Z",
+          "last_modified_by": "jdehart",
+          "last_modified_date": "2025-10-09",
+          "last_modified_timestamp": "2025-10-09T16:30:42.066Z"
+        }
+      },
+      "position": {
+        "x": 660,
+        "y": 340
+      }
+    },
+    {
+      "data": {
+        "id": "Class5",
+        "label": "Function",
+        "type": "class",
+        "attrs": {
+          "comment": "Intended capability realized by Processes.",
+          "definition": "An abstract capability independent of specific implementation.",
+          "example": "“Stabilize attitude,” “Detect targets,” “Provide ISR.”",
+          "creator": "jdehart",
+          "created_date": "2025-10-07",
+          "created_timestamp": "2025-10-07T10:18:08.541Z",
+          "last_modified_by": "jdehart",
+          "last_modified_date": "2025-10-09",
+          "last_modified_timestamp": "2025-10-09T16:30:42.067Z"
+        }
+      },
+      "position": {
+        "x": 160,
+        "y": 540
+      }
+    },
+    {
+      "data": {
+        "id": "Class6",
+        "label": "Process",
+        "type": "class",
+        "attrs": {
+          "comment": "Activity performed by Components to produce effects.",
+          "definition": "An execution step transforming inputs into outputs under defined conditions.",
+          "example": "“Assemble wing,” “Process video frames,” “Encrypt telemetry.”",
+          "creator": "jdehart",
+          "created_date": "2025-10-07",
+          "created_timestamp": "2025-10-07T10:18:11.038Z",
+          "last_modified_by": "jdehart",
+          "last_modified_date": "2025-10-09",
+          "last_modified_timestamp": "2025-10-09T16:30:42.067Z"
+        }
+      },
+      "position": {
+        "x": 520,
+        "y": 540
+      }
+    },
+    {
+      "data": {
+        "id": "DP1759833146146",
+        "label": "CAD Model",
+        "type": "dataProperty",
+        "attrs": {
+          "comment": "Resolvable URI for the component’s authoritative CAD artifact (part/assembly), preferably versioned.",
+          "definition": "The canonical, versioned locator (URI) of a component’s CAD model file or PLM record stored in a managed repository.",
+          "example": "https://plm.example.org/cad/COMP-042/v3/COMP-042.step",
+          "range": "xsd:string",
+          "creator": "jdehart",
+          "created_date": "2025-10-07",
+          "created_timestamp": "2025-10-07T10:32:26.147Z",
+          "last_modified_by": "jdehart",
+          "last_modified_date": "2025-10-09",
+          "last_modified_timestamp": "2025-10-09T16:30:42.068Z",
+          "functional": false
+        }
+      },
+      "position": {
+        "x": 40,
+        "y": 340
+      }
+    },
+    {
+      "data": {
+        "id": "Note1759833414288",
+        "label": "Note 4288",
+        "type": "note",
+        "attrs": {
+          "noteType": "Issue",
+          "content": "@jdehart: Please review requirement annotations for content and clarity.",
+          "creator": "jdehart",
+          "created_date": "2025-10-07",
+          "created_timestamp": "2025-10-07T10:36:54.288Z",
+          "last_modified_by": "jdehart",
+          "last_modified_date": "2025-10-09",
+          "last_modified_timestamp": "2025-10-09T16:30:42.069Z",
+          "author": "jdehart"
+        }
+      },
+      "position": {
+        "x": 620,
+        "y": 80
+      }
+    },
+    {
+      "data": {
+        "id": "Class7",
+        "label": "System",
+        "type": "class",
+        "attrs": {
+          "creator": "jdehart",
+          "created_date": "2025-10-09",
+          "created_timestamp": "2025-10-09T15:44:37.001Z",
+          "last_modified_by": "jdehart",
+          "last_modified_date": "2025-10-09",
+          "last_modified_timestamp": "2025-10-09T16:30:58.408Z"
+        }
+      },
+      "position": {
+        "x": 40,
+        "y": 180
+      }
+    },
+    {
+      "data": {
+        "id": "Note1760026747804",
+        "label": "Note 7804",
+        "type": "note",
+        "attrs": {
+          "noteType": "Note",
+          "author": "jdehart",
+          "creator": "jdehart",
+          "created_date": "2025-10-09",
+          "created_timestamp": "2025-10-09T16:19:07.804Z",
+          "last_modified_by": "jdehart",
+          "last_modified_date": "2025-10-09",
+          "last_modified_timestamp": "2025-10-09T16:30:42.070Z",
+          "content": "Core SE Ontology (for Bootstrapping)"
+        }
+      },
+      "position": {
+        "x": 120,
+        "y": 80
+      }
+    }
+  ],
+  "edges": [
+    {
+      "data": {
+        "id": "e1759832364305",
+        "source": "Class2",
+        "target": "Class4",
+        "predicate": "has_interface",
+        "type": "objectProperty",
+        "attrs": {
+          "comment": "Declares an exposed or required interface of a Component.",
+          "definition": "Connects a component to an interface it implements or depends on.",
+          "example": "Autopilot-X has_interface “UDP Telemetry v2”.",
+          "creator": "jdehart",
+          "created_date": "2025-10-07",
+          "created_timestamp": "2025-10-07T10:19:24.305Z",
+          "last_modified_by": "jdehart",
+          "last_modified_date": "2025-10-09",
+          "last_modified_timestamp": "2025-10-09T16:16:00.898Z",
+          "functional": false,
+          "inverse_functional": false
+        },
+        "minCount": 1,
+        "maxCount": null,
+        "multiplicityDisplay": "(1..*)",
+        "label": "has_interface",
+        "enumerationValues": [
+          "Draft",
+          "Reviewed",
+          "Approved",
+          "Implemented"
+        ]
+      }
+    },
+    {
+      "data": {
+        "id": "e1759832366291",
+        "source": "Class2",
+        "target": "Class6",
+        "predicate": "performs",
+        "type": "objectProperty",
+        "attrs": {
+          "comment": "States an activity a Component executes.",
+          "definition": "Relates a component to a process it can or does execute.",
+          "example": "GPU-Module performs “Frame Inference”.",
+          "creator": "jdehart",
+          "created_date": "2025-10-07",
+          "created_timestamp": "2025-10-07T10:19:26.291Z",
+          "last_modified_by": "jdehart",
+          "last_modified_date": "2025-10-09",
+          "last_modified_timestamp": "2025-10-09T16:16:05.586Z",
+          "functional": false,
+          "inverse_functional": false
+        },
+        "minCount": 1,
+        "maxCount": null,
+        "multiplicityDisplay": "(1..*)"
+      }
+    },
+    {
+      "data": {
+        "id": "e1759832367921",
+        "source": "Class6",
+        "target": "Class5",
+        "predicate": "realizes",
+        "type": "objectProperty",
+        "attrs": {
+          "comment": "Binds an activity to the capability it delivers.",
+          "definition": "Indicates that execution of the process achieves the function.",
+          "example": "“Frame Inference” realizes “Detect targets”.",
+          "creator": "jdehart",
+          "created_date": "2025-10-07",
+          "created_timestamp": "2025-10-07T10:19:27.921Z",
+          "last_modified_by": "jdehart",
+          "last_modified_date": "2025-10-09",
+          "last_modified_timestamp": "2025-10-09T16:16:08.101Z",
+          "functional": false,
+          "inverse_functional": false
+        },
+        "minCount": 1,
+        "maxCount": null,
+        "multiplicityDisplay": "(1..*)"
+      }
+    },
+    {
+      "data": {
+        "id": "enote1759833416665",
+        "source": "Note1759833414288",
+        "target": "Class1",
+        "predicate": "note_for",
+        "type": "note",
+        "attrs": {
+          "creator": "jdehart",
+          "created_date": "2025-10-07",
+          "created_timestamp": "2025-10-07T10:36:56.664Z",
+          "last_modified_by": "jdehart",
+          "last_modified_date": "2025-10-07",
+          "last_modified_timestamp": "2025-10-07T10:36:56.664Z"
+        }
+      }
+    },
+    {
+      "data": {
+        "id": "edp1759833146149",
+        "source": "Class2",
+        "target": "DP1759833146146",
+        "predicate": "has_cad_model",
+        "type": "objectProperty",
+        "attrs": {
+          "comment": "Provides a resolvable link to the component’s authoritative CAD artifact.",
+          "definition": "The canonical URI of the CAD file for the component instance or type.",
+          "example": "Wing-A has_cad_model <https://repo/cad/wingA.step>.",
+          "creator": "jdehart",
+          "created_date": "2025-10-07",
+          "created_timestamp": "2025-10-07T10:32:26.149Z",
+          "last_modified_by": "jdehart",
+          "last_modified_date": "2025-10-09",
+          "last_modified_timestamp": "2025-10-09T16:20:50.712Z",
+          "functional": false,
+          "inverse_functional": false
+        },
+        "minCount": 1,
+        "maxCount": 1,
+        "multiplicityDisplay": "(1)",
+        "label": "has_cad_model"
+      }
+    },
+    {
+      "data": {
+        "id": "e1759965196006",
+        "source": "Class1",
+        "target": "Class3",
+        "predicate": "has_constraint",
+        "type": "objectProperty",
+        "attrs": {
+          "comment": "The has_constraint object property links a requirement to its associated constraints, defining the limitations and restrictions that must be adhered to for the requirement to be satisfied.",
+          "definition": "The has_constraint property establishes a relationship between a requirement and its constraints, categorizing them as mandatory or desirable conditions that govern the design and operational parameters of the system.",
+          "example": "Usage: \"The UAV has_constraint Max takeoff weight ≤ 25 kg due to Part 107.\"",
+          "creator": "jdehart",
+          "created_date": "2025-10-08",
+          "created_timestamp": "2025-10-08T23:13:16.006Z",
+          "last_modified_by": "jdehart",
+          "last_modified_date": "2025-10-09",
+          "last_modified_timestamp": "2025-10-09T16:33:22.160Z",
+          "functional": false,
+          "inverse_functional": false
+        },
+        "minCount": 0,
+        "maxCount": null,
+        "multiplicityDisplay": "(0..*)",
+        "enumerationValues": [
+          "Draft",
+          "Reviewed",
+          "Approved",
+          "Implemented"
+        ]
+      }
+    },
+    {
+      "data": {
+        "id": "e1759832370213",
+        "source": "Class5",
+        "target": "Class2",
+        "predicate": "specifically_depends_upon",
+        "type": "objectProperty",
+        "attrs": {
+          "comment": "Records concrete platform elements required for the function.",
+          "definition": "A function’s specific reliance on one or more components.",
+          "example": "“Stabilize attitude” specifically_depends_upon IMU-B.",
+          "creator": "jdehart",
+          "created_date": "2025-10-07",
+          "created_timestamp": "2025-10-07T10:19:30.213Z",
+          "last_modified_by": "jdehart",
+          "last_modified_date": "2025-10-09",
+          "last_modified_timestamp": "2025-10-09T16:16:30.425Z",
+          "functional": false,
+          "inverse_functional": false
+        },
+        "minCount": 1,
+        "maxCount": null,
+        "multiplicityDisplay": "(1..*)"
+      }
+    },
+    {
+      "data": {
+        "id": "e1759832362171",
+        "source": "Class1",
+        "target": "Class2",
+        "predicate": "deploys",
+        "type": "objectProperty",
+        "attrs": {
+          "comment": "States that satisfying the Requirement involves fielding a Component.",
+          "definition": "Indicates the component(s) required to fulfill the requirement.",
+          "example": "RQ-21 deploys EO/IR-A sensor.",
+          "creator": "jdehart",
+          "created_date": "2025-10-07",
+          "created_timestamp": "2025-10-07T10:19:22.171Z",
+          "last_modified_by": "jdehart",
+          "last_modified_date": "2025-10-09",
+          "last_modified_timestamp": "2025-10-09T16:16:41.706Z",
+          "functional": false,
+          "inverse_functional": false
+        },
+        "minCount": 1,
+        "maxCount": null,
+        "multiplicityDisplay": "(1..*)"
+      }
+    },
+    {
+      "data": {
+        "id": "e1760027462951",
+        "source": "Class7",
+        "target": "Class2",
+        "predicate": "relatedTo",
+        "type": "objectProperty",
+        "attrs": {
+          "creator": "jdehart",
+          "created_date": "2025-10-09",
+          "created_timestamp": "2025-10-09T16:31:02.951Z",
+          "last_modified_by": "jdehart",
+          "last_modified_date": "2025-10-09",
+          "last_modified_timestamp": "2025-10-09T16:31:02.951Z"
+        }
+      }
+    }
+  ],
+  "namedViews": [
+    {
+      "id": "view_1760006338724",
+      "name": "main",
+      "creator": "jdehart",
+      "created_date": "2025-10-09",
+      "created_timestamp": "2025-10-09T10:38:58.724Z",
+      "zoom": 0.857502729170194,
+      "pan": {
+        "x": 21.28625409375536,
+        "y": 102.79901749873017
+      },
+      "nodePositions": {
+        "Class1": {
+          "x": 340,
+          "y": 200
+        },
+        "Class2": {
+          "x": 340,
+          "y": 340
+        },
+        "Class3": {
+          "x": 680,
+          "y": 200
+        },
+        "Class4": {
+          "x": 680,
+          "y": 340
+        },
+        "Class5": {
+          "x": 200,
+          "y": 480
+        },
+        "Class6": {
+          "x": 500,
+          "y": 480
+        },
+        "Note1759832403575": {
+          "x": 160,
+          "y": 80
+        },
+        "DP1759833146146": {
+          "x": 80,
+          "y": 340
+        },
+        "Note1759833414288": {
+          "x": 620,
+          "y": 80
+        },
+        "Note1760005588705": {
+          "x": 440,
+          "y": 640
+        },
+        "imp:https://xma-adt.usnc.mil/odras/core/a6ba7643-4d89-4944-9f09-fa5db9354a6d/ontologies/bseo-rnm-v1#Class1": {
+          "x": 747.4116650517909,
+          "y": 483.4359016862145
+        },
+        "imp:https://xma-adt.usnc.mil/odras/core/a6ba7643-4d89-4944-9f09-fa5db9354a6d/ontologies/bseo-rnm-v1#Class2": {
+          "x": 755.6975275544403,
+          "y": 569.4131984893636
+        },
+        "imp:https://xma-adt.usnc.mil/odras/core/a6ba7643-4d89-4944-9f09-fa5db9354a6d/ontologies/bseo-rnm-v1#Class3": {
+          "x": 1080.2431990778605,
+          "y": 634.9473405406333
+        },
+        "imp:https://xma-adt.usnc.mil/odras/core/a6ba7643-4d89-4944-9f09-fa5db9354a6d/ontologies/bseo-rnm-v1#Class4": {
+          "x": 1150.1447314827428,
+          "y": 525.6025860627401
+        },
+        "imp:https://xma-adt.usnc.mil/odras/core/a6ba7643-4d89-4944-9f09-fa5db9354a6d/ontologies/bseo-rnm-v1#Class5": {
+          "x": 1064.7534663063338,
+          "y": 409.41600744911193
+        }
+      },
+      "visibilityState": {
+        "classes": true,
+        "dataProperties": true,
+        "notes": true,
+        "edges": true,
+        "imported": true
+      },
+      "elementVisibility": {},
+      "collapsedImports": [],
+      "visibleImports": [
+        "https://xma-adt.usnc.mil/odras/core/a6ba7643-4d89-4944-9f09-fa5db9354a6d/ontologies/bseo-rnm-v1"
+      ]
+    },
+    {
+      "id": "view_1760006362994",
+      "name": "no_imports",
+      "creator": "jdehart",
+      "created_date": "2025-10-09",
+      "created_timestamp": "2025-10-09T10:39:22.994Z",
+      "zoom": 1.0844354018311293,
+      "pan": {
+        "x": 249.3580874872838,
+        "y": 114.3646998982706
+      },
+      "nodePositions": {
+        "Class1": {
+          "x": 340,
+          "y": 200
+        },
+        "Class2": {
+          "x": 340,
+          "y": 340
+        },
+        "Class3": {
+          "x": 680,
+          "y": 200
+        },
+        "Class4": {
+          "x": 680,
+          "y": 340
+        },
+        "Class5": {
+          "x": 200,
+          "y": 480
+        },
+        "Class6": {
+          "x": 500,
+          "y": 480
+        },
+        "Note1759832403575": {
+          "x": 160,
+          "y": 80
+        },
+        "DP1759833146146": {
+          "x": 80,
+          "y": 340
+        },
+        "Note1759833414288": {
+          "x": 620,
+          "y": 80
+        },
+        "Note1760005588705": {
+          "x": -100,
+          "y": 440
+        }
+      },
+      "visibilityState": {
+        "classes": true,
+        "dataProperties": true,
+        "notes": true,
+        "edges": true,
+        "imported": true
+      },
+      "elementVisibility": {},
+      "collapsedImports": [],
+      "visibleImports": []
+    }
+  ]
+}
