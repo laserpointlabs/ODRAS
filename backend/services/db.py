@@ -1,5 +1,6 @@
 import logging
 import time
+from contextlib import contextmanager
 from typing import Any, Dict, List, Optional
 
 import psycopg2
@@ -74,42 +75,66 @@ class DatabaseService:
             conn_id = id(conn)
             current_time = time.time()
             
-            # Remove from in-use tracking
-            if conn_id in self._connections_in_use:
+            # Track whether this connection was in our tracking dict
+            was_tracked = conn_id in self._connections_in_use
+            checkout_time = None
+            
+            # Remove from in-use tracking if present
+            if was_tracked:
                 checkout_time = self._connections_in_use[conn_id]
                 del self._connections_in_use[conn_id]
-                
-                # Check if connection is too old (>30 minutes)
-                if current_time - checkout_time > 1800:  # 30 minutes
-                    logger.info(f"Recycling old connection (age: {current_time - checkout_time:.1f}s)")
-                    try:
-                        self.pool.putconn(conn, close=True)
-                    except Exception:
-                        pass
-                    return
-
-            # Check if connection is still valid before returning to pool
+                logger.debug(f"Returning tracked connection (age: {current_time - checkout_time:.1f}s)")
+            else:
+                logger.warning("Returning untracked connection - potential leak source")
+            
+            # Check if connection should be recycled (>30 minutes old)
+            should_recycle = checkout_time and (current_time - checkout_time > 1800)
+            
+            # Validate and return connection
             try:
+                if conn is None:
+                    logger.error("Attempted to return None connection")
+                    return
+                    
+                if conn.closed:
+                    logger.warning("Attempted to return already closed connection")
+                    return
+                
                 # Rollback any uncommitted transactions
-                if conn and not conn.closed:
+                try:
                     conn.rollback()
-                    self.pool.putconn(conn)
+                except Exception as e:
+                    logger.warning(f"Error rolling back transaction: {e}")
+                    should_recycle = True
+                
+                # Either recycle or return the connection
+                if should_recycle:
+                    logger.info(f"Recycling connection (age: {current_time - checkout_time:.1f}s if tracked)")
+                    self.pool.putconn(conn, close=True)
                 else:
-                    # Connection is closed, just remove it
-                    logger.warning("Attempted to return closed connection to pool")
-                    try:
-                        self.pool.putconn(conn, close=True)
-                    except Exception:
-                        pass
+                    self.pool.putconn(conn)
+                    
             except Exception as e:
-                logger.warning(f"Error validating connection before return: {e}")
-                # Try to close the bad connection
+                logger.error(f"Error returning connection to pool: {e}")
+                # Try to force close the connection
                 try:
                     self.pool.putconn(conn, close=True)
-                except Exception:
-                    pass
+                except Exception as close_error:
+                    logger.error(f"Failed to force close connection: {close_error}")
+                    
         except Exception as e:
-            logger.warning(f"Error returning connection to pool: {e}")
+            logger.error(f"Critical error in _return: {e}")
+
+    @contextmanager
+    def get_connection(self):
+        """Context manager for database connections that ensures cleanup."""
+        conn = None
+        try:
+            conn = self._conn()
+            yield conn
+        finally:
+            if conn:
+                self._return(conn)
 
     def get_pool_status(self) -> Dict[str, Any]:
         """Get current connection pool status for monitoring."""
