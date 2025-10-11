@@ -7730,10 +7730,22 @@
         // Skip readonly metadata fields that shouldn't be saved as RDF
         if (attrKey.includes('_timestamp') || attrKey.includes('readonly')) return;
 
-        // CRITICAL FIX: Handle inheritance array for subclass_of
-        if (attrKey === 'subclass_of' && Array.isArray(value)) {
+        // CRITICAL FIX: Handle inheritance array and comma-separated strings for subclass_of
+        if (attrKey === 'subclass_of') {
+          let parentUris = [];
+
+          if (Array.isArray(value)) {
+            parentUris = value;
+          } else if (typeof value === 'string' && value.includes(',')) {
+            // Handle comma-separated parent URIs
+            parentUris = value.split(',').map(uri => uri.trim());
+          } else if (typeof value === 'string' && value.trim()) {
+            // Handle single parent URI
+            parentUris = [value.trim()];
+          }
+
           // Convert each parent URI to a separate rdfs:subClassOf triple
-          value.forEach(parentUri => {
+          parentUris.forEach(parentUri => {
             if (parentUri && parentUri.trim()) {
               triples.push(`<${elementIri}> ${rdfProperty} <${parentUri}> .`);
               console.log(`🔍 Adding inheritance triple: ${elementIri} subClassOf ${parentUri}`);

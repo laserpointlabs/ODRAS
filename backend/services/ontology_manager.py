@@ -1627,6 +1627,18 @@ class OntologyManager:
         inheritance_paths = {}  # Track paths to detect diamonds
         conflicts = []  # Track property conflicts
         
+        # CRITICAL FIX: First resolve class name to actual URI in the graph
+        actual_class_uri = self._resolve_class_name_to_uri(class_name, graph_iri)
+        if not actual_class_uri:
+            logger.warning(f"Could not resolve class name '{class_name}' to URI in graph {graph_iri}")
+            return {
+                'properties': [],
+                'conflicts': [],
+                'error': f"Class '{class_name}' not found in graph"
+            }
+        
+        logger.info(f"🔍 Resolved class '{class_name}' to URI: {actual_class_uri}")
+        
         def collect_properties(cls_name, cls_graph, path=[]):
             # Check for cycles/diamonds
             class_key = f"{cls_graph}#{cls_name}"
@@ -1639,14 +1651,15 @@ class OntologyManager:
             visited.add(class_key)
             inheritance_paths[class_key] = path[:]
             
-            # Get direct properties for this class
-            direct_props = self._get_direct_properties(cls_name, cls_graph)
+            # Get direct properties for this class using actual URI
+            direct_props = self._get_direct_properties_by_uri(cls_name, cls_graph)
+            logger.info(f"🔍 Found {len(direct_props)} direct properties for {cls_name}")
             
             # Add/merge properties
             for prop in direct_props:
                 prop_key = prop['name']
                 if prop_key in properties:
-                    # Property already exists - check compatibility
+                    # Property already exists - handle range conflicts gracefully
                     existing_range = properties[prop_key].get('range', '')
                     new_range = prop.get('range', '')
                     
@@ -1659,10 +1672,15 @@ class OntologyManager:
                             'new_source': path[0] if path else 'direct'
                         }
                         conflicts.append(conflict_info)
-                        raise ValueError(
-                            f"Property '{prop_key}' has conflicting ranges: "
-                            f"{existing_range} vs {new_range}"
-                        )
+                        
+                        # GRACEFUL CONFLICT RESOLUTION: Choose most specific range
+                        chosen_range = self._choose_better_range(existing_range, new_range)
+                        logger.info(f"🔍 Range conflict for '{prop_key}': {existing_range} vs {new_range} → chose {chosen_range}")
+                        
+                        # Update the property with the better range
+                        properties[prop_key]['range'] = chosen_range
+                        properties[prop_key]['conflict_resolved'] = True
+                        # Don't throw error - continue processing
                 else:
                     # Add new property
                     properties[prop_key] = {
@@ -1672,13 +1690,15 @@ class OntologyManager:
                         'source': 'inherited' if len(path) > 0 else 'direct'
                     }
             
-            # Get parent classes (including cross-project)
-            parents = self._get_parent_classes(cls_name, cls_graph)
+            # Get parent classes using actual URI
+            parents = self._get_parent_classes_by_uri(cls_name, cls_graph)
+            logger.info(f"🔍 Found {len(parents)} parent classes for {cls_name}")
             for parent in parents:
                 parent_path = path + [f"{parent['graph']}#{parent['name']}"]
                 collect_properties(parent['name'], parent['graph'], parent_path)
         
         try:
+            # Use the actual class name for the initial call
             collect_properties(class_name, graph_iri)
             return {
                 'properties': list(properties.values()),
@@ -1687,7 +1707,7 @@ class OntologyManager:
         except Exception as e:
             logger.error(f"Error collecting inherited properties: {e}")
             # Fallback to just direct properties
-            direct_props = self._get_direct_properties(class_name, graph_iri)
+            direct_props = self._get_direct_properties_by_uri(class_name, graph_iri)
             return {
                 'properties': [
                     {**prop, 'inherited': False, 'source': 'direct'} 
@@ -1696,6 +1716,204 @@ class OntologyManager:
                 'conflicts': conflicts,
                 'error': str(e)
             }
+
+    def _resolve_class_name_to_uri(self, class_name: str, graph_iri: str) -> str:
+        """
+        Resolve display name to actual class URI in the graph.
+        """
+        try:
+            # Query for classes and map display names to URIs
+            query = f"""PREFIX owl: <http://www.w3.org/2002/07/owl#>
+PREFIX rdfs: <http://www.w3.org/2000/01/rdf-schema#>
+
+SELECT ?class ?label WHERE {{
+    GRAPH <{graph_iri}> {{
+        ?class a owl:Class .
+        OPTIONAL {{ ?class rdfs:label ?label }}
+    }}
+}}"""
+            
+            sparql = SPARQLWrapper(self.fuseki_query_url)
+            sparql.setQuery(query)
+            sparql.setReturnFormat(SPARQL_JSON)
+            results = sparql.query().convert()
+            
+            for binding in results["results"]["bindings"]:
+                class_uri = binding["class"]["value"]
+                class_label = binding.get("label", {}).get("value", "")
+                
+                # Check if label matches the requested class name
+                if class_label == class_name:
+                    logger.info(f"🔍 Found class by label: {class_name} → {class_uri}")
+                    return class_uri
+                
+                # Also check if URI fragment matches
+                uri_fragment = class_uri.split("#")[-1] if "#" in class_uri else class_uri.split("/")[-1]
+                if uri_fragment.lower() == class_name.lower():
+                    logger.info(f"🔍 Found class by URI fragment: {class_name} → {class_uri}")
+                    return class_uri
+            
+            # Fallback to constructing URI
+            fallback_uri = f"{graph_iri}#{class_name.lower().replace(' ', '-')}"
+            logger.info(f"🔍 Using fallback URI for {class_name}: {fallback_uri}")
+            return fallback_uri
+            
+        except Exception as e:
+            logger.error(f"Error resolving class name to URI: {e}")
+            return f"{graph_iri}#{class_name.lower().replace(' ', '-')}"
+
+    def _get_direct_properties_by_uri(self, class_name: str, graph_iri: str) -> List[Dict]:
+        """
+        Get direct properties using URI resolution.
+        """
+        class_uri = self._resolve_class_name_to_uri(class_name, graph_iri)
+        
+        try:
+            query = f"""PREFIX owl: <http://www.w3.org/2002/07/owl#>
+PREFIX rdfs: <http://www.w3.org/2000/01/rdf-schema#>
+
+SELECT ?property ?label ?comment ?range WHERE {{
+    GRAPH <{graph_iri}> {{
+        ?property a owl:DatatypeProperty .
+        ?property rdfs:domain <{class_uri}> .
+        
+        OPTIONAL {{ ?property rdfs:label ?label }}
+        OPTIONAL {{ ?property rdfs:comment ?comment }}
+        OPTIONAL {{ ?property rdfs:range ?range }}
+    }}
+}}"""
+            
+            sparql = SPARQLWrapper(self.fuseki_query_url)
+            sparql.setQuery(query)
+            sparql.setReturnFormat(SPARQL_JSON)
+            results = sparql.query().convert()
+            
+            properties = []
+            for binding in results["results"]["bindings"]:
+                property_uri = binding["property"]["value"]
+                property_name = property_uri.split("#")[-1] if "#" in property_uri else property_uri.split("/")[-1]
+                
+                prop_dict = {
+                    'name': property_name,
+                    'uri': property_uri,
+                    'label': binding.get("label", {}).get("value", property_name),
+                    'comment': binding.get("comment", {}).get("value", ""),
+                    'type': 'datatype',
+                    'range': self._extract_range_name(binding.get("range", {}).get("value", "")),
+                    'sortOrder': 0
+                }
+                properties.append(prop_dict)
+                
+            logger.info(f"🔍 Found {len(properties)} direct properties for {class_name} (URI: {class_uri})")
+            return properties
+            
+        except Exception as e:
+            logger.error(f"Error getting direct properties by URI for {class_name}: {e}")
+            return []
+
+    def _get_parent_classes_by_uri(self, class_name: str, graph_iri: str) -> List[Dict]:
+        """
+        Get parent classes using URI resolution.
+        """
+        class_uri = self._resolve_class_name_to_uri(class_name, graph_iri)
+        
+        try:
+            query = f"""PREFIX rdfs: <http://www.w3.org/2000/01/rdf-schema#>
+PREFIX owl: <http://www.w3.org/2002/07/owl#>
+
+SELECT DISTINCT ?parent WHERE {{
+    GRAPH <{graph_iri}> {{
+        <{class_uri}> rdfs:subClassOf ?parent .
+    }}
+}}"""
+            
+            sparql = SPARQLWrapper(self.fuseki_query_url)
+            sparql.setQuery(query)
+            sparql.setReturnFormat(SPARQL_JSON)
+            results = sparql.query().convert()
+            
+            parents = []
+            for binding in results["results"]["bindings"]:
+                parent_uri = binding["parent"]["value"]
+                
+                # Convert parent URI back to display name
+                parent_display_name = self._resolve_uri_to_class_name(parent_uri, graph_iri)
+                
+                parents.append({
+                    'name': parent_display_name,
+                    'uri': parent_uri,
+                    'graph': graph_iri,
+                    'type': 'local'
+                })
+                logger.info(f"🔍 Found parent: {parent_display_name} (URI: {parent_uri}) for {class_name}")
+            
+            return parents
+            
+        except Exception as e:
+            logger.error(f"Error getting parent classes by URI for {class_name}: {e}")
+            return []
+
+    def _resolve_uri_to_class_name(self, class_uri: str, graph_iri: str) -> str:
+        """
+        Resolve class URI back to display name.
+        """
+        try:
+            query = f"""PREFIX owl: <http://www.w3.org/2002/07/owl#>
+PREFIX rdfs: <http://www.w3.org/2000/01/rdf-schema#>
+
+SELECT ?label WHERE {{
+    GRAPH <{graph_iri}> {{
+        <{class_uri}> a owl:Class .
+        OPTIONAL {{ <{class_uri}> rdfs:label ?label }}
+    }}
+}}"""
+            
+            sparql = SPARQLWrapper(self.fuseki_query_url)
+            sparql.setQuery(query)
+            sparql.setReturnFormat(SPARQL_JSON)
+            results = sparql.query().convert()
+            
+            for binding in results["results"]["bindings"]:
+                label = binding.get("label", {}).get("value", "")
+                if label:
+                    return label
+            
+            # Fallback to URI fragment
+            return class_uri.split("#")[-1] if "#" in class_uri else class_uri.split("/")[-1]
+            
+        except Exception as e:
+            logger.error(f"Error resolving URI to class name: {e}")
+            return class_uri.split("#")[-1] if "#" in class_uri else class_uri.split("/")[-1]
+
+    def _choose_better_range(self, range1: str, range2: str) -> str:
+        """
+        Choose the better range when there's a conflict.
+        Prefers more specific types over generic 'string'.
+        """
+        # Priority order: specific XSD types > generic types > string
+        type_priority = {
+            'xsd:integer': 10,
+            'xsd:float': 9,
+            'xsd:double': 9,
+            'xsd:decimal': 8,
+            'xsd:boolean': 7,
+            'xsd:date': 6,
+            'xsd:dateTime': 6,
+            'xsd:time': 5,
+            'xsd:anyURI': 4,
+            'string': 1,
+            'xsd:string': 1
+        }
+        
+        priority1 = type_priority.get(range1, 2)
+        priority2 = type_priority.get(range2, 2)
+        
+        if priority1 >= priority2:
+            logger.info(f"🔍 Chose {range1} over {range2} (priority {priority1} vs {priority2})")
+            return range1
+        else:
+            logger.info(f"🔍 Chose {range2} over {range1} (priority {priority2} vs {priority1})")
+            return range2
 
     def _get_direct_properties(self, class_name: str, graph_iri: str) -> List[Dict]:
         """
