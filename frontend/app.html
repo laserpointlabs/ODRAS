@@ -28261,6 +28261,9 @@ def hello_world():
 
         console.log('✅ Individual Tables interface loaded');
 
+        // Progressive enhancement: Update property counts with inheritance data
+        updatePropertyCountsWithInheritance(ontologyData, graphIri);
+
       } catch (error) {
         console.error('❌ Error loading Individual Tables interface:', error);
         const content = document.getElementById('individualsTableContent');
@@ -28309,8 +28312,10 @@ def hello_world():
 
         ontologyData.classes.forEach(cls => {
           const icon = getClassIcon(cls.name);
-          const dataPropertyCount = cls.dataProperties ? cls.dataProperties.length : 0;
-          const tabDisplayName = dataPropertyCount > 0 ? `${cls.name} (${dataPropertyCount})` : cls.name;
+
+          // Start with direct property count, will be updated with inheritance count
+          const directPropertyCount = cls.dataProperties ? cls.dataProperties.length : 0;
+          const tabDisplayName = directPropertyCount > 0 ? `${cls.name} (${directPropertyCount})` : cls.name;
 
           tabsHtml += `
             <button class="individuals-tab-item" data-class="${cls.name}" onclick="showIndividualTable('${cls.name}')">
@@ -28409,8 +28414,10 @@ def hello_world():
 
         ontologyData.classes.forEach(cls => {
           const icon = getClassIcon(cls.name);
-          const dataPropertyCount = cls.dataProperties ? cls.dataProperties.length : 0;
-          const classDisplayName = dataPropertyCount > 0 ? `${cls.name} (${dataPropertyCount})` : cls.name;
+
+          // Start with direct property count - will update with inheritance count after rendering
+          const directPropertyCount = cls.dataProperties ? cls.dataProperties.length : 0;
+          const classDisplayName = directPropertyCount > 0 ? `${cls.name} (${directPropertyCount})` : cls.name;
 
           html += `
             <div class="class-summary-card" style="background: var(--panel); border: 1px solid var(--border); border-radius: 8px; padding: 16px;">
@@ -28419,7 +28426,14 @@ def hello_world():
                 <div>
                   <h4 style="margin: 0; color: var(--text);">${classDisplayName}</h4>
                   <p style="margin: 0; color: var(--muted); font-size: 14px;">${cls.comment || cls.definition || 'No description'}</p>
-                  ${dataPropertyCount > 0 ? `<p style="margin: 0; color: var(--accent); font-size: 12px; margin-top: 4px;"><svg viewBox="0 0 24 24" fill="none" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" style="width:12px; height:12px; vertical-align:middle; margin-right:4px; stroke:currentColor;"><line x1="18" y1="20" x2="18" y2="10" /><line x1="12" y1="20" x2="12" y2="4" /><line x1="6" y1="20" x2="6" y2="14" /></svg>${dataPropertyCount} data ${dataPropertyCount === 1 ? 'property' : 'properties'}</p>` : ''}
+                  <p id="class-property-count-${cls.name}" style="margin: 0; color: var(--accent); font-size: 12px; margin-top: 4px;">
+                    <svg viewBox="0 0 24 24" fill="none" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" style="width:12px; height:12px; vertical-align:middle; margin-right:4px; stroke:currentColor;">
+                      <line x1="18" y1="20" x2="18" y2="10" />
+                      <line x1="12" y1="20" x2="12" y2="4" />
+                      <line x1="6" y1="20" x2="6" y2="14" />
+                    </svg>
+                    <span class="property-count-text">${directPropertyCount} data ${directPropertyCount === 1 ? 'property' : 'properties'}</span>
+                  </p>
                 </div>
               </div>
               <div class="card-stats">
@@ -28561,25 +28575,27 @@ def hello_world():
           
           <div class="table-wrapper" style="border: 1px solid var(--border); border-radius: 8px; overflow: hidden; background: var(--panel);">
             <table style="width: 100%; border-collapse: collapse;">
-              <thead style="background: var(--panel-2);">
-                <tr>
+              <thead>
+                <tr style="background: #000;">
       `;
 
-      // Table headers
-      html += '<th style="padding: 12px; text-align: left; border-bottom: 1px solid var(--border); color: var(--text);">Name</th>';
+      // Table headers - first column gets left rounded corner, last gets right rounded corner
+      html += '<th style="padding: 12px; text-align: left; color: #fff; font-weight: 600; border-top-left-radius: 8px;">Name</th>';
 
-      properties.forEach(prop => {
-        html += `<th style="padding: 12px; text-align: left; border-bottom: 1px solid var(--border); color: var(--text);">${prop.label || prop.name}</th>`;
+      properties.forEach((prop, index) => {
+        html += `<th style="padding: 12px; text-align: left; color: #fff; font-weight: 600;">${prop.label || prop.name}</th>`;
       });
 
       html += `
-                  <th style="padding: 12px; text-align: left; border-bottom: 1px solid var(--border); color: var(--text);">Actions</th>
+                  <th style="padding: 12px; text-align: left; color: #fff; font-weight: 600; border-top-right-radius: 8px;">Actions</th>
                 </tr>
               </thead>
               <tbody>
-                <tr>
-                  <td colspan="${properties.length + 2}" style="padding: 40px; text-align: center; color: var(--muted);">
-                    No ${className.toLowerCase()} individuals yet. Click "Add ${className}" to create one.
+                <tr style="background: var(--panel);">
+                  <td colspan="${properties.length + 2}" style="padding: 16px;">
+                    <div style="border: 1px solid var(--border); border-radius: 6px; padding: 24px; text-align: center; color: var(--muted); background: var(--bg);">
+                      No ${className.toLowerCase()} individuals yet. Click "Add ${className}" to create one.
+                    </div>
                   </td>
                 </tr>
               </tbody>
@@ -28799,18 +28815,11 @@ def hello_world():
 
       let html = `
         <div class="class-table-container">
-          <div class="table-header" style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px;">
-            <div>
-              <h3 class="${classData.isAbstract || classData.is_abstract ? 'abstract-class-header' : ''}">${icon} ${className} Individuals ${classData.isAbstract || classData.is_abstract ? '(Abstract)' : ''}</h3>
-              <p style="color: var(--muted); margin: 0;">${classData.comment || classData.definition || 'No description available'}</p>
-            </div>
-            <div class="table-actions" style="display: flex; gap: 8px;">
-              <button class="btn btn-success" onclick="showAddIndividualDialog('${className}')" ${(classData.isAbstract || classData.is_abstract) ? 'disabled title="Cannot create individuals of abstract class"' : ''}>
-                <svg viewBox="0 0 24 24" fill="none" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" style="width:14px; height:14px; vertical-align:middle; margin-right:4px; stroke:currentColor;">
-                  <line x1="12" y1="5" x2="12" y2="19" />
-                  <line x1="5" y1="12" x2="19" y2="12" />
-                </svg>
-                Add ${className}
+          <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px;">
+            <h3 style="margin: 0; ${classData.isAbstract || classData.is_abstract ? 'font-style: italic; opacity: 0.8;' : ''}">${className} Individuals</h3>
+            <div style="display: flex; gap: 8px;">
+              <button class="btn" onclick="showAddIndividualDialog('${className}')" ${(classData.isAbstract || classData.is_abstract) ? 'disabled title="Cannot create individuals of abstract class"' : ''}>
+                ＋ Add ${className}
               </button>
               <button class="btn" onclick="exportClassTable('${className}')">
                 <svg viewBox="0 0 24 24" fill="none" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" style="width:14px; height:14px; vertical-align:middle; margin-right:4px; stroke:currentColor;">
@@ -28822,34 +28831,37 @@ def hello_world():
               </button>
             </div>
           </div>
+          <p style="color: var(--muted); margin: 0 0 16px 0; font-size: 14px;">${classData.comment || classData.definition || 'No description available'}</p>
           
-          <div class="table-wrapper" style="overflow: auto;">
-            <table class="individuals-table">
+          <div class="table-wrapper" style="border: 1px solid var(--border); border-radius: 8px; overflow: hidden; background: var(--panel);">
+            <table style="width: 100%; border-collapse: collapse;">
               <thead>
-                <tr>
-                  <th style="min-width: 120px;">Name</th>`;
+                <tr style="background: #000;">
+                  <th style="padding: 12px; text-align: left; color: #fff; font-weight: 600; min-width: 120px; border-top-left-radius: 8px;">Name</th>`;
 
       // Add column for EACH property (direct AND inherited)
-      properties.forEach(prop => {
+      properties.forEach((prop, index) => {
         const inheritedIcon = prop.inherited
-          ? '<span style="color: var(--muted); font-size: 0.8em; margin-left: 4px;" title="Inherited from ' + prop.inheritedFrom + '">↑</span>'
+          ? '<span style="color: #999; font-size: 0.8em; margin-left: 4px;" title="Inherited from ' + prop.inheritedFrom + '">↑</span>'
           : '';
         const unitsText = prop.units ? ` (${prop.units})` : '';
         const tooltip = prop.inherited
           ? `title="Inherited from ${prop.inheritedFrom}"`
           : '';
 
-        html += `<th ${tooltip} style="min-width: 100px;">${prop.label}${unitsText}${inheritedIcon}</th>`;
+        html += `<th ${tooltip} style="padding: 12px; text-align: left; color: #fff; font-weight: 600; min-width: 100px;">${prop.label}${unitsText}${inheritedIcon}</th>`;
       });
 
       html += `
-                  <th style="min-width: 100px;">Actions</th>
+                  <th style="padding: 12px; text-align: left; color: #fff; font-weight: 600; min-width: 100px; border-top-right-radius: 8px;">Actions</th>
                 </tr>
               </thead>
               <tbody>
-                <tr class="placeholder-row">
-                  <td colspan="${properties.length + 2}" style="text-align: center; padding: 40px; color: var(--muted);">
-                    No individuals yet. Click "Add ${className}" to create the first one.
+                <tr style="background: var(--panel);">
+                  <td colspan="${properties.length + 2}" style="padding: 16px;">
+                    <div style="border: 1px solid var(--border); border-radius: 6px; padding: 24px; text-align: center; color: var(--muted); background: var(--bg);">
+                      No individuals yet. Click "Add ${className}" to create the first one.
+                    </div>
                   </td>
                 </tr>
               </tbody>
@@ -28859,6 +28871,70 @@ def hello_world():
       `;
 
       return html;
+    }
+
+    /**
+     * Progressive enhancement: Update property counts with inheritance data
+     * This runs after initial render to show total property counts (direct + inherited)
+     */
+    async function updatePropertyCountsWithInheritance(ontologyData, graphIri) {
+      if (!ontologyData.classes || ontologyData.classes.length === 0) return;
+
+      console.log('🔍 Updating property counts with inheritance data...');
+
+      for (const cls of ontologyData.classes) {
+        try {
+          // Get total property count including inherited properties
+          const response = await authenticatedFetch(
+            `/api/ontology/classes/${encodeURIComponent(cls.name)}/all-properties?graph=${encodeURIComponent(graphIri)}`
+          );
+
+          if (response.ok) {
+            const data = await response.json();
+            const allProperties = data.data?.properties || [];
+            const totalPropertyCount = allProperties.length;
+            const directPropertyCount = cls.dataProperties ? cls.dataProperties.length : 0;
+            const inheritedCount = totalPropertyCount - directPropertyCount;
+
+            // Update the property count display in the card
+            const countElement = document.getElementById(`class-property-count-${cls.name}`);
+            if (countElement && totalPropertyCount > directPropertyCount) {
+              const countText = countElement.querySelector('.property-count-text');
+              if (countText) {
+                countText.textContent = `${totalPropertyCount} total data ${totalPropertyCount === 1 ? 'property' : 'properties'} (${inheritedCount} inherited)`;
+                console.log(`🔍 Updated ${cls.name}: ${totalPropertyCount} total (${directPropertyCount} direct + ${inheritedCount} inherited)`);
+              }
+            }
+
+            // CRITICAL FIX: Also update the class header title to show total count
+            if (totalPropertyCount > directPropertyCount) {
+              const cardElement = countElement?.closest('.class-summary-card');
+              if (cardElement) {
+                const headerTitle = cardElement.querySelector('h4');
+                if (headerTitle) {
+                  headerTitle.textContent = `${cls.name} (${totalPropertyCount})`;
+                  console.log(`🔍 Updated header for ${cls.name}: (${totalPropertyCount}) total properties`);
+                }
+              }
+            }
+
+            // Update tab display name if it has inheritance
+            if (totalPropertyCount > directPropertyCount) {
+              const tabButton = document.querySelector(`[data-class="${cls.name}"]`);
+              if (tabButton) {
+                const tabLabel = tabButton.querySelector('.individuals-tab-label');
+                if (tabLabel) {
+                  tabLabel.textContent = `${cls.name} (${totalPropertyCount})`;
+                }
+              }
+            }
+          }
+        } catch (error) {
+          console.warn(`Could not update property count for ${cls.name}:`, error);
+        }
+      }
+
+      console.log('✅ Property counts updated with inheritance data');
     }
 
     // End of Individual Tables System
