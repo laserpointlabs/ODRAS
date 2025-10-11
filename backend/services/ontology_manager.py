@@ -1694,6 +1694,7 @@ class OntologyManager:
             parents = self._get_parent_classes_by_uri(cls_name, cls_graph)
             logger.info(f"🔍 Found {len(parents)} parent classes for {cls_name}")
             for parent in parents:
+                logger.info(f"🔍 Processing parent: {parent['name']} from graph: {parent['graph']} (type: {parent.get('type', 'unknown')})")
                 parent_path = path + [f"{parent['graph']}#{parent['name']}"]
                 collect_properties(parent['name'], parent['graph'], parent_path)
         
@@ -1811,6 +1812,52 @@ SELECT ?property ?label ?comment ?range WHERE {{
             logger.error(f"Error getting direct properties by URI for {class_name}: {e}")
             return []
 
+    def _find_parent_graph(self, parent_uri: str) -> str:
+        """
+        Find which graph contains the parent class.
+        Critical for cross-project inheritance.
+        Handles URI case variations (display names vs internal names).
+        """
+        try:
+            # Extract class name and build URI variations
+            if "#" in parent_uri:
+                base_uri, class_name = parent_uri.rsplit("#", 1)
+            else:
+                base_uri, class_name = parent_uri.rsplit("/", 1)
+            
+            # Create URI variations to handle display name vs internal name mismatches
+            uri_variations = [
+                parent_uri,                                    # Original URI (e.g., #Object)
+                f"{base_uri}#{class_name.lower()}",          # Lowercase (e.g., #object)
+                f"{base_uri}#{class_name.lower().replace(' ', '-')}",  # Sanitized
+            ]
+            
+            for test_uri in uri_variations:
+                query = f"""PREFIX owl: <http://www.w3.org/2002/07/owl#>
+
+SELECT DISTINCT ?g WHERE {{
+    GRAPH ?g {{
+        <{test_uri}> a owl:Class .
+    }}
+}}"""
+                
+                sparql = SPARQLWrapper(self.fuseki_query_url)
+                sparql.setQuery(query)
+                sparql.setReturnFormat(SPARQL_JSON)
+                results = sparql.query().convert()
+                
+                if results["results"]["bindings"]:
+                    parent_graph = results["results"]["bindings"][0]["g"]["value"]
+                    logger.info(f"🔍 Found parent {class_name} in graph: {parent_graph.split('/')[-1]} using URI: {test_uri.split('#')[-1]}")
+                    return parent_graph
+            
+            logger.warning(f"Could not find graph for parent {parent_uri} (tried variations)")
+            return None
+            
+        except Exception as e:
+            logger.error(f"Error finding parent graph: {e}")
+            return None
+
     def _get_parent_classes_by_uri(self, class_name: str, graph_iri: str) -> List[Dict]:
         """
         Get parent classes using URI resolution.
@@ -1836,16 +1883,24 @@ SELECT DISTINCT ?parent WHERE {{
             for binding in results["results"]["bindings"]:
                 parent_uri = binding["parent"]["value"]
                 
+                # CRITICAL FIX: Find the actual graph where the parent class exists
+                actual_parent_graph = self._find_parent_graph(parent_uri)
+                if not actual_parent_graph:
+                    actual_parent_graph = graph_iri  # Fallback to current graph
+                
                 # Convert parent URI back to display name
-                parent_display_name = self._resolve_uri_to_class_name(parent_uri, graph_iri)
+                parent_display_name = self._resolve_uri_to_class_name(parent_uri, actual_parent_graph)
+                
+                # Determine if cross-project (reference) inheritance
+                parent_type = 'reference' if actual_parent_graph != graph_iri else 'local'
                 
                 parents.append({
                     'name': parent_display_name,
                     'uri': parent_uri,
-                    'graph': graph_iri,
-                    'type': 'local'
+                    'graph': actual_parent_graph,  # ✅ FIXED: Use actual parent's graph
+                    'type': parent_type
                 })
-                logger.info(f"🔍 Found parent: {parent_display_name} (URI: {parent_uri}) for {class_name}")
+                logger.info(f"🔍 Found {parent_type} parent: {parent_display_name} in graph: {actual_parent_graph.split('/')[-1]}")
             
             return parents
             
