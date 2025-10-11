@@ -253,9 +253,31 @@ class OntologyManager:
             if class_data.get("comment"):
                 triples.append((class_uri, RDFS.comment, Literal(class_data["comment"])))
 
+            # Support multiple parents (multiple inheritance)
             if class_data.get("subclass_of"):
-                parent_uri = URIRef(f"{self.base_uri}#{class_data['subclass_of']}")
-                triples.append((class_uri, RDFS.subClassOf, parent_uri))
+                # Handle both single parent (string) and multiple parents (list)
+                parents = class_data["subclass_of"]
+                if isinstance(parents, str):
+                    parents = [parents]
+                
+                for parent in parents:
+                    # Support both local and cross-project parents
+                    if parent.startswith("http"):
+                        # Full URI provided (cross-project reference)
+                        parent_uri = URIRef(parent)
+                    elif "#" in parent:
+                        # Graph#class format
+                        parent_uri = URIRef(parent)
+                    else:
+                        # Local class name
+                        parent_uri = URIRef(f"{self.base_uri}#{parent}")
+                    
+                    triples.append((class_uri, RDFS.subClassOf, parent_uri))
+                    
+            # Add abstract class flag if specified
+            if class_data.get("is_abstract", False):
+                abstract_uri = URIRef(f"{self.base_uri}/isAbstract")
+                triples.append((class_uri, abstract_uri, Literal(True)))
 
             # Add to Fuseki
             result = self._add_triples_to_fuseki(triples)
@@ -324,6 +346,23 @@ class OntologyManager:
                     range_uri = URIRef(f"{self.base_uri}#{property_data['range']}")
                 triples.append((prop_uri, RDFS.range, range_uri))
 
+            # Add inheritance system enhancements
+            if property_data.get("default_value"):
+                default_uri = URIRef(f"{self.base_uri}/defaultValue")
+                triples.append((prop_uri, default_uri, Literal(property_data["default_value"])))
+            
+            if property_data.get("required", False):
+                required_uri = URIRef(f"{self.base_uri}/required")
+                triples.append((prop_uri, required_uri, Literal(True)))
+            
+            if property_data.get("units"):
+                units_uri = URIRef(f"{self.base_uri}/units")
+                triples.append((prop_uri, units_uri, Literal(property_data["units"])))
+            
+            if property_data.get("sort_order") is not None:
+                sort_uri = URIRef(f"{self.base_uri}/sortOrder")
+                triples.append((prop_uri, sort_uri, Literal(property_data["sort_order"], datatype=XSD.integer)))
+
             # Add SHACL constraints as custom properties (MVP approach)
             # Multiplicity constraints
             if property_data.get("min_count") is not None:
@@ -378,17 +417,29 @@ class OntologyManager:
         try:
             entity_uri = URIRef(f"{self.base_uri}#{entity_name}")
 
-            # Delete all triples involving this entity
-            delete_query = f"""
+            # Delete all triples where this entity is the subject
+            delete_query_1 = f"""
             DELETE WHERE {{
                 <{entity_uri}> ?p ?o .
-            }} ;
+            }}
+            """
+            
+            # Delete all triples where this entity is the object
+            delete_query_2 = f"""
             DELETE WHERE {{
                 ?s ?p <{entity_uri}> .
             }}
             """
 
-            result = self._execute_sparql_update(delete_query)
+            # Execute both delete queries
+            result1 = self._execute_sparql_update(delete_query_1)
+            result2 = self._execute_sparql_update(delete_query_2)
+
+            # Check if at least one succeeded
+            if result1["success"] or result2["success"]:
+                result = {"success": True}
+            else:
+                result = {"success": False, "error": f"Failed to delete: {result1.get('error', 'Unknown error')}"}
 
             if result["success"]:
                 return {
@@ -1055,6 +1106,11 @@ class OntologyManager:
             # Convert triples to SPARQL INSERT format
             insert_data = []
             for s, p, o in triples:
+                # Validate URIs are not empty or None
+                if not s or not p:
+                    logger.warning(f"Skipping triple with empty subject or predicate: {s}, {p}, {o}")
+                    continue
+                    
                 if isinstance(o, Literal):
                     # Properly escape quotes in literal values for SPARQL
                     escaped_value = str(o).replace('"', '\\"').replace('\n', '\\n').replace('\r', '\\r')
@@ -1065,24 +1121,33 @@ class OntologyManager:
                     else:
                         insert_data.append(f'<{s}> <{p}> "{escaped_value}" .')
                 else:
+                    # Validate object URI is not empty
+                    if not o:
+                        logger.warning(f"Skipping triple with empty object: {s}, {p}, {o}")
+                        continue
                     insert_data.append(f"<{s}> <{p}> <{o}> .")
 
-            # Use current graph context if available
+            if not insert_data:
+                logger.warning("No valid triples to insert")
+                return {"success": True, "message": "No valid triples to insert"}
+
+            # Use current graph context if available - FIX: Use proper newline formatting
             if self.current_graph_uri:
                 query = f"""
                 INSERT DATA {{
                     GRAPH <{self.current_graph_uri}> {{
-                        {' '.join(insert_data)}
+                        {chr(10).join(insert_data)}
                     }}
                 }}
                 """
             else:
                 query = f"""
                 INSERT DATA {{
-                    {' '.join(insert_data)}
+                    {chr(10).join(insert_data)}
                 }}
                 """
 
+            logger.info(f"🔍 Generated SPARQL query:\n{query}")
             return self._execute_sparql_update(query)
 
         except Exception as e:
@@ -1551,3 +1616,448 @@ class OntologyManager:
                 "errors": [f"Validation failed: {str(e)}"],
                 "entity_count": 0,
             }
+
+    def get_class_properties_with_inherited(self, class_name: str, graph_iri: str) -> Dict[str, Any]:
+        """
+        Get all properties including inherited from multiple parents across projects.
+        Handles multiple inheritance, property merging, and diamond pattern detection.
+        """
+        properties = {}  # Use dict to merge duplicates by name
+        visited = set()  # Track visited classes for diamond detection
+        inheritance_paths = {}  # Track paths to detect diamonds
+        conflicts = []  # Track property conflicts
+        
+        def collect_properties(cls_name, cls_graph, path=[]):
+            # Check for cycles/diamonds
+            class_key = f"{cls_graph}#{cls_name}"
+            if class_key in visited:
+                # Check if this creates a diamond pattern
+                if any(ancestor in path for ancestor in inheritance_paths.get(class_key, [])):
+                    raise ValueError(f"Diamond inheritance detected via {cls_name}")
+                return
+            
+            visited.add(class_key)
+            inheritance_paths[class_key] = path[:]
+            
+            # Get direct properties for this class
+            direct_props = self._get_direct_properties(cls_name, cls_graph)
+            
+            # Add/merge properties
+            for prop in direct_props:
+                prop_key = prop['name']
+                if prop_key in properties:
+                    # Property already exists - check compatibility
+                    existing_range = properties[prop_key].get('range', '')
+                    new_range = prop.get('range', '')
+                    
+                    if existing_range != new_range and existing_range and new_range:
+                        conflict_info = {
+                            'property': prop_key,
+                            'existing_range': existing_range,
+                            'new_range': new_range,
+                            'existing_source': properties[prop_key].get('inheritedFrom', 'unknown'),
+                            'new_source': path[0] if path else 'direct'
+                        }
+                        conflicts.append(conflict_info)
+                        raise ValueError(
+                            f"Property '{prop_key}' has conflicting ranges: "
+                            f"{existing_range} vs {new_range}"
+                        )
+                else:
+                    # Add new property
+                    properties[prop_key] = {
+                        **prop,
+                        'inherited': len(path) > 0,
+                        'inheritedFrom': path[0].split('#')[-1] if path else None,
+                        'source': 'inherited' if len(path) > 0 else 'direct'
+                    }
+            
+            # Get parent classes (including cross-project)
+            parents = self._get_parent_classes(cls_name, cls_graph)
+            for parent in parents:
+                parent_path = path + [f"{parent['graph']}#{parent['name']}"]
+                collect_properties(parent['name'], parent['graph'], parent_path)
+        
+        try:
+            collect_properties(class_name, graph_iri)
+            return {
+                'properties': list(properties.values()),
+                'conflicts': conflicts
+            }
+        except Exception as e:
+            logger.error(f"Error collecting inherited properties: {e}")
+            # Fallback to just direct properties
+            direct_props = self._get_direct_properties(class_name, graph_iri)
+            return {
+                'properties': [
+                    {**prop, 'inherited': False, 'source': 'direct'} 
+                    for prop in direct_props
+                ],
+                'conflicts': conflicts,
+                'error': str(e)
+            }
+
+    def _get_direct_properties(self, class_name: str, graph_iri: str) -> List[Dict]:
+        """
+        Get direct data properties for a specific class.
+        """
+        try:
+            logger.info(f"🔍 Getting direct properties for class: {class_name} in graph: {graph_iri}")
+            
+            # First, let's see what properties exist in the graph at all
+            debug_query = f"""PREFIX owl: <http://www.w3.org/2002/07/owl#>
+PREFIX rdfs: <http://www.w3.org/2000/01/rdf-schema#>
+
+SELECT ?property ?domain ?range WHERE {{
+    GRAPH <{graph_iri}> {{
+        ?property a owl:DatatypeProperty .
+        OPTIONAL {{ ?property rdfs:domain ?domain }}
+        OPTIONAL {{ ?property rdfs:range ?range }}
+    }}
+}}"""
+            
+            sparql = SPARQLWrapper(self.fuseki_query_url)
+            sparql.setQuery(debug_query)
+            sparql.setReturnFormat(SPARQL_JSON)
+            debug_results = sparql.query().convert()
+            
+            logger.info(f"🔍 Found {len(debug_results['results']['bindings'])} data properties in graph")
+            for binding in debug_results['results']['bindings']:
+                prop_uri = binding.get('property', {}).get('value', 'Unknown')
+                domain_uri = binding.get('domain', {}).get('value', 'No domain')
+                range_uri = binding.get('range', {}).get('value', 'No range')
+                logger.info(f"🔍   Property: {prop_uri} -> Domain: {domain_uri}, Range: {range_uri}")
+            
+            # Now try multiple approaches to find properties for this class
+            # Handle class names with spaces and special characters
+            sanitized_name = class_name.lower().replace(' ', '-').replace('_', '-')
+            class_uri_variations = [
+                f"{graph_iri}#{sanitized_name}",               # sanitized (spaces to hyphens)
+                f"{graph_iri}#{class_name.lower()}",           # lowercase
+                f"{graph_iri}#{class_name}",                   # original case  
+                f"{graph_iri}#{class_name.replace(' ', '')}",  # no spaces
+                f"{graph_iri}#{class_name.replace(' ', '-')}", # spaces to hyphens
+                f"{self.base_uri}#{class_name}",               # base URI
+                f"{self.base_uri}#{sanitized_name}"            # base URI sanitized
+            ]
+            
+            all_properties = []
+            
+            for class_uri in class_uri_variations:
+                query = f"""PREFIX owl: <http://www.w3.org/2002/07/owl#>
+PREFIX rdfs: <http://www.w3.org/2000/01/rdf-schema#>
+PREFIX odras: <{self.base_uri}/>
+
+SELECT ?property ?label ?comment ?range ?defaultValue ?required ?units ?sortOrder WHERE {{
+    GRAPH <{graph_iri}> {{
+        ?property a owl:DatatypeProperty .
+        ?property rdfs:domain <{class_uri}> .
+        
+        OPTIONAL {{ ?property rdfs:label ?label }}
+        OPTIONAL {{ ?property rdfs:comment ?comment }}
+        OPTIONAL {{ ?property rdfs:range ?range }}
+        
+        OPTIONAL {{ ?property odras:defaultValue ?defaultValue }}
+        OPTIONAL {{ ?property odras:required ?required }}
+        OPTIONAL {{ ?property odras:units ?units }}
+        OPTIONAL {{ ?property odras:sortOrder ?sortOrder }}
+    }}
+}}"""
+                
+                sparql.setQuery(query)
+                sparql.setReturnFormat(SPARQL_JSON)
+                results = sparql.query().convert()
+                
+                logger.info(f"🔍 Query for class URI {class_uri}: found {len(results['results']['bindings'])} properties")
+                
+                for binding in results["results"]["bindings"]:
+                    property_uri = binding["property"]["value"]
+                    property_name = property_uri.split("#")[-1] if "#" in property_uri else property_uri.split("/")[-1]
+                    
+                    prop_dict = {
+                        'name': property_name,
+                        'uri': property_uri,
+                        'label': binding.get("label", {}).get("value", property_name),
+                        'comment': binding.get("comment", {}).get("value", ""),
+                        'type': 'datatype',
+                        'range': self._extract_range_name(binding.get("range", {}).get("value", "")),
+                        'defaultValue': binding.get("defaultValue", {}).get("value"),
+                        'required': binding.get("required", {}).get("value") == "true",
+                        'units': binding.get("units", {}).get("value"),
+                        'sortOrder': int(binding.get("sortOrder", {}).get("value", 0)) if binding.get("sortOrder") else 0
+                    }
+                    all_properties.append(prop_dict)
+                    logger.info(f"🔍 Found property: {property_name} for class URI: {class_uri}")
+            
+            # Remove duplicates based on property URI
+            seen_uris = set()
+            unique_properties = []
+            for prop in all_properties:
+                if prop['uri'] not in seen_uris:
+                    unique_properties.append(prop)
+                    seen_uris.add(prop['uri'])
+            
+            # Sort by sortOrder if specified
+            unique_properties.sort(key=lambda x: x.get('sortOrder', 0))
+            
+            logger.info(f"🔍 Returning {len(unique_properties)} unique properties for class {class_name}")
+            return unique_properties
+            
+        except Exception as e:
+            logger.error(f"Error getting direct properties for {class_name}: {e}")
+            return []
+
+    def _get_parent_classes(self, class_name: str, graph_iri: str) -> List[Dict]:
+        """
+        Get all parent classes including from reference ontologies.
+        Returns list of parent info with graph context.
+        """
+        try:
+            # Handle class names with spaces - try multiple URI variations
+            sanitized_name = class_name.lower().replace(' ', '-').replace('_', '-')
+            class_uri_variations = [
+                f"{graph_iri}#{sanitized_name}",               # sanitized (spaces to hyphens)
+                f"{graph_iri}#{class_name.lower()}",           # lowercase
+                f"{graph_iri}#{class_name}",                   # original case  
+                f"{graph_iri}#{class_name.replace(' ', '')}",  # no spaces
+                f"{graph_iri}#{class_name.replace(' ', '-')}", # spaces to hyphens
+            ]
+            
+            parents = []
+            for class_uri in class_uri_variations:
+                query = f"""PREFIX rdfs: <http://www.w3.org/2000/01/rdf-schema#>
+PREFIX owl: <http://www.w3.org/2002/07/owl#>
+
+SELECT DISTINCT ?parent ?parentGraph WHERE {{
+    GRAPH <{graph_iri}> {{
+        <{class_uri}> rdfs:subClassOf ?parent .
+    }}
+    
+    OPTIONAL {{
+        GRAPH ?parentGraph {{
+            ?parent a owl:Class .
+        }}
+    }}
+}}"""
+                
+                sparql = SPARQLWrapper(self.fuseki_query_url)
+                sparql.setQuery(query)
+                sparql.setReturnFormat(SPARQL_JSON)
+                results = sparql.query().convert()
+                
+                logger.info(f"🔍 Parent query for class URI {class_uri}: found {len(results['results']['bindings'])} parents")
+                
+                for binding in results["results"]["bindings"]:
+                    parent_uri = binding["parent"]["value"]
+                    parent_graph = binding.get("parentGraph", {}).get("value", graph_iri)  # Default to same graph
+                    
+                    # Extract parent class name
+                    parent_name = parent_uri.split("#")[-1] if "#" in parent_uri else parent_uri.split("/")[-1]
+                    
+                    # Verify this is from a reference ontology if cross-project
+                    if parent_graph != graph_iri:
+                        if self._is_reference_ontology(parent_graph):
+                            parents.append({
+                                'name': parent_name,
+                                'uri': parent_uri,
+                                'graph': parent_graph,
+                                'type': 'reference'
+                            })
+                    else:
+                        parents.append({
+                            'name': parent_name,
+                            'uri': parent_uri,
+                            'graph': parent_graph,
+                            'type': 'local'
+                        })
+                        logger.info(f"🔍 Found parent: {parent_name} (URI: {parent_uri})")
+                
+                # Break if we found parents with this URI variation
+                if parents:
+                    break
+            
+            return parents
+            
+        except Exception as e:
+            logger.error(f"Error getting parent classes for {class_name}: {e}")
+            return []
+
+    def _is_reference_ontology(self, graph_iri: str) -> bool:
+        """
+        Check if the given graph IRI is a reference ontology.
+        """
+        try:
+            from .db import DatabaseService
+            db = DatabaseService(self.settings)
+            
+            # Get project_id for database query
+            project_id = self.current_project_id
+            if not project_id:
+                project_id = self.uri_service.parse_project_from_uri(graph_iri) if self.uri_service else None
+            
+            if project_id:
+                ref_ontologies = db.list_ontologies(project_id=project_id)
+            else:
+                logger.warning("No project_id available for checking reference ontology")
+                try:
+                    ref_ontologies = db.list_ontologies(project_id="")
+                except:
+                    ref_ontologies = []
+            
+            for ontology in ref_ontologies:
+                if ontology.get('graph_iri') == graph_iri and ontology.get('is_reference', False):
+                    return True
+            return False
+            
+        except Exception as e:
+            logger.error(f"Error checking if {graph_iri} is reference ontology: {e}")
+            return False
+
+    def _extract_range_name(self, range_uri: str) -> str:
+        """
+        Extract readable range name from URI.
+        """
+        if not range_uri:
+            return ""
+            
+        if range_uri.startswith("http://www.w3.org/2001/XMLSchema#"):
+            return range_uri.replace("http://www.w3.org/2001/XMLSchema#", "xsd:")
+        elif "#" in range_uri:
+            return range_uri.split("#")[-1]
+        else:
+            return range_uri.split("/")[-1]
+
+    def get_available_parent_classes(self, current_graph: str) -> List[Dict]:
+        """
+        Get all classes available as parents:
+        - Local classes from current ontology
+        - All classes from reference ontologies
+        """
+        available = []
+        
+        try:
+            # Get local classes
+            local_classes = self._get_classes_in_graph(current_graph)
+            available.extend([
+                {"name": c["name"], "graph": current_graph, "type": "local"}
+                for c in local_classes
+            ])
+            
+            # Get reference ontology classes
+            from .db import DatabaseService
+            db = DatabaseService(self.settings)
+            
+            # Get project_id from current graph URI for database query
+            project_id = self.current_project_id
+            if not project_id:
+                project_id = self.uri_service.parse_project_from_uri(current_graph) if self.uri_service else None
+            
+            if project_id:
+                ref_ontologies = db.list_ontologies(project_id=project_id)
+            else:
+                logger.warning("No project_id available, using all ontologies")
+                try:
+                    ref_ontologies = db.list_ontologies(project_id="")
+                except:
+                    ref_ontologies = []
+            
+            for ref in ref_ontologies:
+                if ref.get('is_reference', False) and ref.get('graph_iri') != current_graph:
+                    ref_classes = self._get_classes_in_graph(ref["graph_iri"])
+                    available.extend([
+                        {
+                            "name": c["name"], 
+                            "graph": ref["graph_iri"],
+                            "type": "reference",
+                            "ontology_label": ref.get("label", "Unknown")
+                        }
+                        for c in ref_classes
+                    ])
+            
+            return available
+            
+        except Exception as e:
+            logger.error(f"Error getting available parent classes: {e}")
+            return []
+
+    def _get_classes_in_graph(self, graph_iri: str) -> List[Dict]:
+        """
+        Get all classes defined in a specific graph.
+        """
+        try:
+            # Debug the query first
+            logger.info(f"Getting classes from graph: {graph_iri}")
+            logger.info(f"Using base_uri: {self.base_uri}")
+            
+            # First try a simple query to see what classes exist
+            simple_query = f"""PREFIX owl: <http://www.w3.org/2002/07/owl#>
+PREFIX rdfs: <http://www.w3.org/2000/01/rdf-schema#>
+
+SELECT ?class WHERE {{
+    GRAPH <{graph_iri}> {{
+        ?class a owl:Class .
+    }}
+}}"""
+            
+            sparql = SPARQLWrapper(self.fuseki_query_url)
+            sparql.setQuery(simple_query)
+            sparql.setReturnFormat(SPARQL_JSON)
+            simple_results = sparql.query().convert()
+            
+            logger.info(f"Simple query found {len(simple_results['results']['bindings'])} classes")
+            
+            # Now try the full query with flexible abstract class detection
+            query = f"""PREFIX owl: <http://www.w3.org/2002/07/owl#>
+PREFIX rdfs: <http://www.w3.org/2000/01/rdf-schema#>
+
+SELECT ?class ?label ?comment ?isAbstract WHERE {{
+    GRAPH <{graph_iri}> {{
+        ?class a owl:Class .
+        OPTIONAL {{ ?class rdfs:label ?label }}
+        OPTIONAL {{ ?class rdfs:comment ?comment }}
+        
+        OPTIONAL {{ 
+            {{ ?class <{self.base_uri}/isAbstract> ?isAbstract }} UNION
+            {{ ?class <{graph_iri}/isAbstract> ?isAbstract }} UNION
+            {{ ?class <http://odras.ai/ontology/isAbstract> ?isAbstract }}
+        }}
+    }}
+}}"""
+            
+            sparql.setQuery(query)
+            sparql.setReturnFormat(SPARQL_JSON)
+            results = sparql.query().convert()
+            
+            logger.info(f"Full query found {len(results['results']['bindings'])} classes")
+            
+            classes = []
+            for binding in results["results"]["bindings"]:
+                class_uri = binding["class"]["value"]
+                class_name = class_uri.split("#")[-1] if "#" in class_uri else class_uri.split("/")[-1]
+                
+                # Skip blank nodes or invalid URIs
+                if not class_name or class_name.startswith('_:'):
+                    continue
+                
+                # Use label as the display name if available, fall back to URI fragment
+                class_label = binding.get("label", {}).get("value", "")
+                display_name = class_label if class_label else class_name
+                
+                class_dict = {
+                    'name': display_name,  # Use label for display if available
+                    'id': class_name,      # Keep original ID for internal reference
+                    'uri': class_uri,
+                    'label': class_label,
+                    'comment': binding.get("comment", {}).get("value", ""),
+                    'isAbstract': binding.get("isAbstract", {}).get("value") == "true"
+                }
+                classes.append(class_dict)
+                
+                logger.info(f"Found class: {display_name} (ID: {class_name}, URI: {class_uri})")
+            
+            logger.info(f"Returning {len(classes)} classes from graph {graph_iri}")
+            return classes
+            
+        except Exception as e:
+            logger.error(f"Error getting classes in graph {graph_iri}: {e}")
+            return []
