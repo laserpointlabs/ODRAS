@@ -156,6 +156,9 @@ jobs:
           echo "🧪 Step 4: RAG System Stability Test..."
           python tests/test_rag_system_stability.py
 
+          echo "🧪 Step 5: Ontology Inheritance System Test..."
+          python -m pytest tests/test_inheritance_system.py -v --tb=short
+
           echo "✅ COMPLETE ODRAS system validation finished"
         env:
           PYTHONPATH: ${{ github.workspace }}
