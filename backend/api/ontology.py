@@ -5,10 +5,10 @@ Provides REST API for ontology management operations.
 
 import logging
 from datetime import datetime
-from typing import Any, Dict, List, Optional
+from typing import Any, Dict, List, Optional, Union
 import json
 
-from fastapi import APIRouter, Body, Depends, HTTPException
+from fastapi import APIRouter, Body, Depends, HTTPException, Query
 from pydantic import BaseModel, Field
 
 from ..services.config import Settings
@@ -24,7 +24,8 @@ class OntologyClass(BaseModel):
     name: str = Field(..., description="Class name")
     label: Optional[str] = Field(None, description="Human-readable label")
     comment: Optional[str] = Field(None, description="Description of the class")
-    subclass_of: Optional[str] = Field(None, description="Parent class name")
+    subclass_of: Optional[Union[str, List[str]]] = Field(None, description="Parent class name(s) - supports multiple inheritance")
+    is_abstract: Optional[bool] = Field(False, description="Whether this class is abstract (cannot be instantiated)")
 
 
 class OntologyProperty(BaseModel):
@@ -34,6 +35,12 @@ class OntologyProperty(BaseModel):
     comment: Optional[str] = Field(None, description="Description of the property")
     domain: Optional[str] = Field(None, description="Domain class name")
     range: Optional[str] = Field(None, description="Range class name or datatype")
+    
+    # Inheritance system enhancements
+    default_value: Optional[str] = Field(None, description="Default value for individuals")
+    required: Optional[bool] = Field(False, description="Whether property is required")
+    units: Optional[str] = Field(None, description="Units of measure (e.g., 'm', 'kg', 'ft')")
+    sort_order: Optional[int] = Field(0, description="Display order in individuals table")
     
     # SHACL constraints
     min_count: Optional[int] = Field(None, description="Minimum cardinality (SHACL sh:minCount)")
@@ -723,3 +730,191 @@ async def validate_ontology_integrity(
     except Exception as e:
         logger.error(f"Failed to validate integrity: {e}")
         raise HTTPException(status_code=500, detail=f"Failed to validate integrity: {str(e)}")
+
+
+@router.get("/classes/{class_name}/all-properties", response_model=Dict[str, Any])
+async def get_class_all_properties(
+    class_name: str,
+    graph: str = Query(..., description="Graph IRI"),
+    include_inherited: bool = Query(True, description="Include inherited properties"),
+    manager: OntologyManager = Depends(get_ontology_manager),
+    user: dict = Depends(get_user),
+):
+    """
+    Get all properties for a class including inherited ones from parent classes.
+    Supports multiple inheritance and cross-project inheritance.
+    
+    Args:
+        class_name: Name of the class
+        graph: Graph IRI where the class is defined
+        include_inherited: Whether to include inherited properties
+        
+    Returns:
+        Dictionary with properties list and any conflicts detected
+    """
+    try:
+        # Set the graph context
+        manager.set_graph_context(graph)
+        
+        if include_inherited:
+            # Get all properties including inherited
+            result = manager.get_class_properties_with_inherited(class_name, graph)
+        else:
+            # Get only direct properties
+            direct_props = manager._get_direct_properties(class_name, graph)
+            result = {
+                'properties': [
+                    {**prop, 'inherited': False, 'source': 'direct'} 
+                    for prop in direct_props
+                ],
+                'conflicts': []
+            }
+        
+        return {
+            "success": True,
+            "data": result,
+            "message": f"Properties retrieved for class {class_name}",
+        }
+        
+    except Exception as e:
+        logger.error(f"Failed to get class properties: {e}")
+        raise HTTPException(status_code=500, detail=f"Failed to get class properties: {str(e)}")
+
+
+@router.get("/available-parents", response_model=Dict[str, Any])
+async def get_available_parent_classes(
+    current_graph: str = Query(..., description="Current ontology graph IRI"),
+    manager: OntologyManager = Depends(get_ontology_manager),
+    user: dict = Depends(get_user),
+):
+    """
+    Get all classes available as parents for inheritance:
+    - Local classes from current ontology
+    - All classes from reference ontologies
+    
+    Args:
+        current_graph: Current ontology graph IRI
+        
+    Returns:
+        List of available parent classes grouped by type (local/reference)
+    """
+    try:
+        available_parents = manager.get_available_parent_classes(current_graph)
+        
+        return {
+            "success": True,
+            "data": {"parents": available_parents},
+            "message": "Available parent classes retrieved successfully",
+        }
+        
+    except Exception as e:
+        logger.error(f"Failed to get available parents: {e}")
+        raise HTTPException(status_code=500, detail=f"Failed to get available parents: {str(e)}")
+
+
+@router.get("/classes/{class_name}/hierarchy", response_model=Dict[str, Any])
+async def get_class_hierarchy(
+    class_name: str,
+    graph: str = Query(..., description="Graph IRI"),
+    manager: OntologyManager = Depends(get_ontology_manager),
+    user: dict = Depends(get_user),
+):
+    """
+    Get the complete inheritance hierarchy for a class.
+    Shows all parent classes up the inheritance chain.
+    
+    Args:
+        class_name: Name of the class
+        graph: Graph IRI where the class is defined
+        
+    Returns:
+        Inheritance hierarchy tree structure
+    """
+    try:
+        # Set the graph context
+        manager.set_graph_context(graph)
+        
+        # Build hierarchy tree
+        def build_hierarchy(cls_name, cls_graph, visited=None):
+            if visited is None:
+                visited = set()
+                
+            class_key = f"{cls_graph}#{cls_name}"
+            if class_key in visited:
+                return {"name": cls_name, "graph": cls_graph, "circular": True}
+                
+            visited.add(class_key)
+            
+            parents = manager._get_parent_classes(cls_name, cls_graph)
+            hierarchy_node = {
+                "name": cls_name,
+                "graph": cls_graph,
+                "parents": []
+            }
+            
+            for parent in parents:
+                parent_hierarchy = build_hierarchy(
+                    parent["name"], 
+                    parent["graph"], 
+                    visited.copy()
+                )
+                hierarchy_node["parents"].append(parent_hierarchy)
+                
+            return hierarchy_node
+        
+        hierarchy = build_hierarchy(class_name, graph)
+        
+        return {
+            "success": True,
+            "data": {"hierarchy": hierarchy},
+            "message": f"Hierarchy retrieved for class {class_name}",
+        }
+        
+    except Exception as e:
+        logger.error(f"Failed to get class hierarchy: {e}")
+        raise HTTPException(status_code=500, detail=f"Failed to get class hierarchy: {str(e)}")
+
+
+@router.put("/classes/{class_name}", response_model=OntologyResponse)
+async def update_class(
+    class_name: str,
+    class_data: OntologyClass,
+    graph: str = Query(..., description="Graph IRI"),
+    manager: OntologyManager = Depends(get_ontology_manager),
+    user: dict = Depends(get_user),
+):
+    """
+    Update an existing class with inheritance and abstract properties.
+    
+    Args:
+        class_name: Name of the class to update
+        class_data: Class information including inheritance data
+        graph: Graph IRI where the class is defined
+        
+    Returns:
+        Operation result
+    """
+    try:
+        # Set the graph context
+        manager.set_graph_context(graph)
+        
+        # First delete existing class
+        delete_result = manager.delete_entity(class_name, "class")
+        if not delete_result["success"]:
+            logger.warning(f"Could not delete existing class {class_name}: {delete_result.get('error', 'Unknown error')}")
+        
+        # Then create updated class with inheritance data
+        result = manager.add_class(class_data.dict())
+        
+        if result["success"]:
+            return OntologyResponse(
+                success=True,
+                message=result["message"],
+                data={"class_uri": result.get("class_uri")},
+            )
+        else:
+            raise HTTPException(status_code=400, detail=result["error"])
+            
+    except Exception as e:
+        logger.error(f"Failed to update class: {e}")
+        raise HTTPException(status_code=500, detail=f"Failed to update class: {str(e)}")

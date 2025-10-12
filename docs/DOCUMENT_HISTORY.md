@@ -2,6 +2,47 @@
 
 This document tracks all documentation changes, consolidations, and deletions to maintain historical record.
 
+## New Documentation - October 11, 2025
+
+### Ontology Inheritance System Implementation
+**Created:** `docs/features/ONTOLOGY_INHERITANCE_SYSTEM.md`
+**Purpose:** Comprehensive documentation of successful ontology inheritance system implementation
+**Issue:** Need for class inheritance with "is_a" relationships where child classes inherit parent properties in individuals tables
+**Solution:** Complete inheritance system with multiple parents, cross-project support, conflict resolution
+**Size:** 350+ lines
+**Status:** Active - Core inheritance system operational
+
+**Key Features Implemented:**
+- Multiple parent inheritance with conflict resolution
+- Cross-project inheritance from reference ontologies
+- Abstract class support with UI validation  
+- Enhanced properties panel with parent selection dropdown
+- Individuals tables show inherited properties with visual indicators (↑)
+- Property range conflict resolution (xsd:float > string)
+- URI mapping between display names and RDF storage
+
+**Test Case Confirmed Working:**
+- Object class (ID property) → PhysicalObject class (Mass, Length properties) → Aircraft class (vendor property)
+- Aircraft individuals table correctly displays: Name, ID↑, Mass↑, Length↑, vendor, Actions
+- All inherited properties properly marked with inheritance indicators
+
+**Modified Files:**
+- `backend/services/ontology_manager.py` - Core inheritance engine with recursive resolution
+- `backend/api/ontology.py` - New inheritance API endpoints 
+- `frontend/app.html` - Multi-select parent UI, RDF conversion fixes, inheritance table generation
+
+**API Endpoints Added:**
+- `GET /api/ontology/classes/{class_name}/all-properties` - Returns inherited properties
+- `GET /api/ontology/available-parents` - Lists available parent classes
+- `GET /api/ontology/classes/{class_name}/hierarchy` - Returns inheritance tree
+- `PUT /api/ontology/classes/{class_name}` - Updates class with inheritance data
+
+**Remaining Minor Issues Identified:**
+- Property duplication in RDF (workaround: conflict resolution active)
+- UI field duplication in properties panel (cosmetic)
+- Abstract class checkbox persistence refinement needed
+- Parent selection persistence timing improvements
+
 ## New Documentation - October 7, 2025
 
 ### RAG System Stabilization Guide
