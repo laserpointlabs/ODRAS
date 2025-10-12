@@ -2,6 +2,50 @@
 
 This document tracks all documentation changes, consolidations, and deletions to maintain historical record.
 
+## New Documentation - October 12, 2025
+
+### Ontology Imports Persistence Issues - Lessons Learned
+**Created:** `docs/development/ONTOLOGY_IMPORTS_PERSISTENCE_ISSUES.md`
+**Purpose:** Document failed attempt to fix ontology imports persistence for future reference
+**Branch:** `fix/ontology_imports` (16 commits, October 11, 2025)
+**Outcome:** Branch abandoned without merge - architectural refactor needed instead
+**Size:** 450+ lines
+**Status:** Reference documentation - Do not merge branch code
+
+**Problems Documented:**
+- Import disappearance on browser refresh
+- LocalStorage vs Fuseki synchronization issues
+- Data corruption during save operations
+- Imported node position persistence failures
+- Three-way state management conflicts (Canvas ↔ LocalStorage ↔ Fuseki)
+
+**Attempted Solutions (All Failed):**
+1. Backend synchronization - Fuseki as source of truth
+2. Import system overhaul - atomic imports only
+3. LocalStorage restoration fixes
+4. Imported node position persistence changes
+5. Data corruption prevention measures
+
+**Diagnostic Tools Created:**
+- Debug functions: `debugImports()`, `checkDataIntegrity()`, `emergencyReload()`
+- Extensive logging with emoji prefixes
+- Import synchronization verification
+- Position persistence testing
+
+**Root Causes Identified:**
+- No clear source of truth between three storage layers
+- Missing import lifecycle state machine
+- Race conditions between async operations
+- 15,000+ line monolithic frontend file (architectural debt)
+
+**Recommended Future Approach:**
+- Full architectural refactor with proper state management library
+- Single source of truth (Fuseki) with localStorage as cache only
+- Break up monolithic app.html into testable modules
+- Test-driven development for import lifecycle
+
+**Key Lesson:** Incremental fixes on architectural problems don't work - need planned refactor
+
 ## New Documentation - October 11, 2025
 
 ### Ontology Inheritance System Implementation
