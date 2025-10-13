@@ -6,13 +6,17 @@ This script manages individual requirements for clean ODRAS demonstrations.
 It can clean out all individuals and inject fresh requirements for testing.
 
 Usage:
-    python demo_requirements_manager.py clean                    # Clean all individuals
-    python demo_requirements_manager.py inject simple           # Inject simple_system_requirements.md to BSEO.A
-    python demo_requirements_manager.py inject compact          # Inject req_example.md to BSEO.A
-    python demo_requirements_manager.py inject compact --ontology base --class A  # Inject to different ontology/class
-    python demo_requirements_manager.py reset simple            # Clean + inject simple requirements
-    python demo_requirements_manager.py reset compact           # Clean + inject compact requirements  
-    python demo_requirements_manager.py status                  # Show current individual counts
+    python demo_requirements_manager.py clean                                    # Clean all individuals
+    python demo_requirements_manager.py inject simple                           # Inject 5 requirements (default)
+    python demo_requirements_manager.py inject simple --count 1                 # Inject just 1 requirement
+    python demo_requirements_manager.py inject compact --ontology bseo-v1       # Inject to bseo-v1 ontology
+    python demo_requirements_manager.py inject compact --ontology BSEO_V1 --class Requirement --count 1  # Inject 1 to custom ontology/class
+    python demo_requirements_manager.py reset simple --ontology bseo-a          # Clean + inject 5 requirements
+    python demo_requirements_manager.py status                                  # Show current individual counts
+    
+Note: --ontology matches the suffix of the graph IRI (e.g., 'bseo-v1d' for .../ontologies/bseo-v1d)
+      --class defaults to 'Requirement' if not specified
+      --count defaults to 5 (all requirements) but can be set to 1 for single requirement
 """
 
 import argparse
@@ -96,11 +100,25 @@ class DemoRequirementsManager:
         
         cursor = self.connection.cursor(cursor_factory=RealDictCursor)
         
+        # Show available ontologies
+        cursor.execute("""
+            SELECT label, graph_iri 
+            FROM ontologies_registry 
+            ORDER BY label
+        """)
+        ontologies = cursor.fetchall()
+        
+        if ontologies:
+            print("\n🗂️  Available Ontologies:")
+            for ont in ontologies:
+                ontology_suffix = ont['graph_iri'].split('/')[-1]
+                print(f"  - {ont['label']}: {ontology_suffix}")
+        
         # Total individuals
         cursor.execute("SELECT COUNT(*) as count FROM individual_instances")
         result = cursor.fetchone()
         total = result['count'] if result else 0
-        print(f"Total Individuals: {total}")
+        print(f"\n📦 Total Individuals: {total}")
         
         # By ontology 
         cursor.execute("""
@@ -112,10 +130,18 @@ class DemoRequirementsManager:
         """)
         ontology_counts = cursor.fetchall()
         
-        print("\nBy Ontology:")
-        for row in ontology_counts:
-            ontology_name = row['graph_iri'].split('/')[-1] if '/' in row['graph_iri'] else row['graph_iri']
-            print(f"  {ontology_name}: {row['count']}")
+        if ontology_counts:
+            print("\nBy Ontology (with individuals):")
+            for row in ontology_counts:
+                # Try to get the label from ontologies_registry
+                cursor.execute("""
+                    SELECT label FROM ontologies_registry 
+                    WHERE graph_iri = %s
+                """, (row['graph_iri'],))
+                label_result = cursor.fetchone()
+                label = label_result['label'] if label_result else row['graph_iri'].split('/')[-1]
+                ontology_suffix = row['graph_iri'].split('/')[-1]
+                print(f"  {label} ({ontology_suffix}): {row['count']}")
             
         # By class
         cursor.execute("""
@@ -178,9 +204,9 @@ class DemoRequirementsManager:
         print(f"✅ Deleted {config_count} DAS configurations")
         print("🎯 Database cleaned for fresh demo")
         
-    def extract_requirements_from_markdown(self, file_path, req_type, prefix):
+    def extract_requirements_from_markdown(self, file_path, req_type, prefix, max_count=5):
         """Extract requirements from markdown file"""
-        print(f"\n📋 Extracting requirements from {file_path}...")
+        print(f"\n📋 Extracting requirements from {file_path} (limit: {max_count})...")
         
         if not os.path.exists(file_path):
             print(f"❌ Requirements file not found: {file_path}")
@@ -192,7 +218,7 @@ class DemoRequirementsManager:
         requirements = []
         
         if req_type == 'compact':
-            # Extract compact format requirements (each line is a requirement) - LIMITED TO 5 FOR DEMO
+            # Extract compact format requirements (each line is a requirement)
             lines = content.strip().split('\n')
             req_num = 1
             
@@ -207,12 +233,12 @@ class DemoRequirementsManager:
                     })
                     req_num += 1
                     
-                    # DEMO LIMIT: Stop after 5 requirements for faster presentation
-                    if req_num > 5:
+                    # Stop after reaching max_count
+                    if req_num > max_count:
                         break
                     
         elif req_type == 'simple':
-            # Extract narrative format requirements (lines with SHALL/MUST) - LIMITED TO 5 FOR DEMO
+            # Extract narrative format requirements (lines with SHALL/MUST)
             lines = content.split('\n')
             req_num = 1
             
@@ -237,65 +263,144 @@ class DemoRequirementsManager:
                         })
                         req_num += 1
                         
-                        # DEMO LIMIT: Stop after 5 requirements for faster presentation
-                        if req_num > 5:
+                        # Stop after reaching max_count
+                        if req_num > max_count:
                             break
                         
         print(f"✅ Extracted {len(requirements)} requirements")
         return requirements
         
-    def inject_requirements(self, req_type, ontology_name='bseo.a', class_name=None):
+    def inject_requirements(self, req_type, ontology_name='bseo-a', class_name='Requirement', count=5):
         """Inject requirements as individuals"""
         if req_type not in REQUIREMENTS_DATA:
             print(f"❌ Unknown requirements type: {req_type}")
             print(f"Available types: {list(REQUIREMENTS_DATA.keys())}")
             return
             
-        if ontology_name not in ONTOLOGY_MAP:
-            print(f"❌ Unknown ontology: {ontology_name}")
-            print(f"Available ontologies: {list(ONTOLOGY_MAP.keys())}")
-            return
-            
         req_config = REQUIREMENTS_DATA[req_type]
-        onto_config = ONTOLOGY_MAP[ontology_name]
         
-        # Use provided class name or ontology default
-        target_class = class_name if class_name else onto_config['default_class']
-        target_ontology = onto_config['iri']
-        target_prefix = onto_config['prefix']
-        
-        print(f"\n🚀 Injecting {req_config['description']}...")
-        print(f"📍 Target Ontology: {ontology_name} → {target_class} class")
-        
-        # Extract requirements
-        requirements = self.extract_requirements_from_markdown(req_config['file'], req_type, target_prefix)
-        
-        if not requirements:
-            print("❌ No requirements found to inject")
-            return
-            
+        # Query database to find matching ontology
         cursor = self.connection.cursor(cursor_factory=RealDictCursor)
         
-        # Get table configuration for the target ontology
+        # Try to find ontology in ontologies_registry by label or graph_iri suffix
+        cursor.execute("""
+            SELECT id, project_id, graph_iri, label 
+            FROM ontologies_registry 
+            WHERE LOWER(label) = LOWER(%s) 
+               OR graph_iri ILIKE %s 
+               OR graph_iri ILIKE %s
+            ORDER BY id DESC
+            LIMIT 1
+        """, (ontology_name, f'%/{ontology_name}', f'%/{ontology_name.lower()}'))
+        
+        ontology_record = cursor.fetchone()
+        
+        if not ontology_record:
+            print(f"❌ No ontology found matching: {ontology_name}")
+            print("\nAvailable ontologies:")
+            cursor.execute("SELECT label, graph_iri FROM ontologies_registry ORDER BY label")
+            for row in cursor.fetchall():
+                ontology_suffix = row['graph_iri'].split('/')[-1]
+                print(f"  - {row['label']}: {ontology_suffix} → {row['graph_iri']}")
+            cursor.close()
+            return
+            
+        target_ontology = ontology_record['graph_iri']
+        project_id = ontology_record['project_id']
+        target_class = class_name
+        target_prefix = ontology_name.replace('_', '-').replace('.', '-').lower()
+        
+        # Check if individual_tables_config exists for this ontology, create if not
         cursor.execute("""
             SELECT table_id, project_id, graph_iri 
             FROM individual_tables_config 
             WHERE graph_iri = %s
         """, (target_ontology,))
+        
         table_config = cursor.fetchone()
         
         if not table_config:
-            print(f"❌ No table configuration found for ontology: {target_ontology}")
-            print("Available ontologies:")
-            cursor.execute("SELECT graph_iri FROM individual_tables_config")
-            for row in cursor.fetchall():
-                ontology_name = row['graph_iri'].split('/')[-1]
-                print(f"  - {ontology_name}: {row['graph_iri']}")
-            cursor.close()
+            # Create individual_tables_config entry for this ontology with proper structure
+            print(f"📝 Creating individual table configuration for {ontology_name}...")
+            
+            # Define BSEO-style ontology structure with classes and object properties
+            ontology_structure = {
+                "name": f"{ontology_record['label']} Ontology",
+                "classes": [
+                    {
+                        "name": "Requirement",
+                        "comment": "Statement of need or obligation imposed on a system.",
+                        "dataProperties": [
+                            {"name": "Text", "range": "string", "comment": "Requirement text description"},
+                            {"name": "ID", "range": "string", "comment": "Requirement identifier"}
+                        ],
+                        "objectProperties": [
+                            {"name": "has_constraint", "range": "Constraint", "minCount": 0, "maxCount": None, "comment": "Links a requirement to its constraints"},
+                            {"name": "specifies", "range": "Component", "minCount": 1, "maxCount": None, "comment": "Indicates components required to fulfill the requirement"}
+                        ]
+                    },
+                    {
+                        "name": "Component",
+                        "comment": "Physical or logical part of the system",
+                        "objectProperties": [
+                            {"name": "has_interface", "range": "Interface", "minCount": 1, "maxCount": None, "comment": "Declares an exposed or required interface"},
+                            {"name": "performs", "range": "Process", "minCount": 1, "maxCount": None, "comment": "States an activity a Component executes"}
+                        ]
+                    },
+                    {
+                        "name": "Process",
+                        "comment": "Activity performed by Components",
+                        "objectProperties": [
+                            {"name": "realizes", "range": "Function", "minCount": 1, "maxCount": None, "comment": "Binds an activity to the capability it delivers"},
+                            {"name": "requires", "range": "Component", "minCount": 1, "maxCount": None, "comment": "Indicates component needed for the process"},
+                            {"name": "enabled_by", "range": "Component", "minCount": 0, "maxCount": None, "comment": "Component that enables this process"}
+                        ]
+                    },
+                    {
+                        "name": "Function",
+                        "comment": "Intended capability realized by Processes",
+                        "objectProperties": [
+                            {"name": "specifically_depends_upon", "range": "Component", "minCount": 1, "maxCount": None, "comment": "Concrete components required for the function"}
+                        ]
+                    },
+                    {"name": "Constraint", "comment": "Limitation that restricts design or operation"},
+                    {"name": "Interface", "comment": "Defined boundary where Components interact"}
+                ]
+            }
+            
+            cursor.execute("""
+                INSERT INTO individual_tables_config (
+                    project_id, 
+                    graph_iri, 
+                    ontology_label, 
+                    ontology_structure
+                )
+                VALUES (%s, %s, %s, %s)
+                RETURNING table_id
+            """, (project_id, target_ontology, ontology_record['label'], json.dumps(ontology_structure)))
+            result = cursor.fetchone()
+            table_id = result['table_id']
+            self.connection.commit()
+            print(f"✅ Created table configuration with BSEO structure (table_id: {table_id})")
+        else:
+            table_id = table_config['table_id']
+        
+        print(f"\n🚀 Injecting {req_config['description']}...")
+        print(f"📍 Target Ontology: {ontology_record['label']} ({ontology_name})")
+        print(f"📍 Target Class: {target_class}")
+        print(f"📍 Full IRI: {target_ontology}")
+        
+        cursor.close()
+        
+        # Extract requirements
+        requirements = self.extract_requirements_from_markdown(req_config['file'], req_type, target_prefix, count)
+        
+        if not requirements:
+            print("❌ No requirements found to inject")
             return
             
-        table_id = table_config['table_id']
-        project_id = table_config['project_id']
+        # Create new cursor for insertions
+        cursor = self.connection.cursor(cursor_factory=RealDictCursor)
         
         # Insert requirements as individuals
         inserted = 0
@@ -307,24 +412,19 @@ class DemoRequirementsManager:
                 cursor.execute("""
                     INSERT INTO individual_instances (
                         table_id, class_name, instance_name, instance_uri,
-                        properties
-                    ) VALUES (%s, %s, %s, %s, %s)
+                        properties, source_type
+                    ) VALUES (%s, %s, %s, %s, %s, %s)
                 """, (
                     table_id,
                     target_class, 
                     req['id'],
                     instance_uri,
                     json.dumps({
-                        'Text': req['text'],           # Requirement text (matches table column)
-                        'ID': req['id'],               # Requirement ID (matches table column)
-                        'Title': req['name'],          # Requirement title (matches table column)
-                        'Source': req['source'], 
-                        'Created': datetime.now().isoformat(),
-                        'Type': 'Root Requirement',
-                        'DemoInjected': True,
-                        'TargetOntology': ontology_name,
-                        'TargetClass': target_class
-                    })
+                        'Text': req['text'],           # Requirement text (BSEO data property)
+                        'ID': req['id'],               # Requirement ID (BSEO data property)
+                        'displayName': req['name']     # Human-readable name (used by conceptualizer)
+                    }),
+                    'manual'
                 ))
                 inserted += 1
                 print(f"  ✅ {req['id']}: {req['name'][:50]}...")
@@ -349,8 +449,11 @@ def main():
 Examples:
   python demo_requirements_manager.py status
   python demo_requirements_manager.py clean  
-  python demo_requirements_manager.py inject simple
-  python demo_requirements_manager.py reset compact
+  python demo_requirements_manager.py inject simple                                   # Inject 5 requirements
+  python demo_requirements_manager.py inject simple --count 1                         # Inject 1 requirement
+  python demo_requirements_manager.py inject compact --ontology bseo-v1d --count 1
+  python demo_requirements_manager.py inject simple --ontology BSEO_V1 --class Requirement --count 5
+  python demo_requirements_manager.py reset compact --ontology bseo-applied
         """
     )
     
@@ -362,12 +465,17 @@ Examples:
                        choices=['simple', 'compact'],
                        help='Requirements dataset (required for inject/reset)')
     parser.add_argument('--ontology', 
-                       default='bseo.a',
-                       choices=list(ONTOLOGY_MAP.keys()),
-                       help='Target ontology name (default: bseo.a)')
+                       default='bseo-a',
+                       help='Target ontology name - matches the ontology suffix in graph IRI (e.g., bseo-a, bseo-v1, BSEO_V1)')
     parser.add_argument('--class', 
                        dest='class_name',
-                       help='Target class name (default: use ontology default)')
+                       default='Requirement',
+                       help='Target class name (default: Requirement)')
+    parser.add_argument('--count',
+                       type=int,
+                       default=5,
+                       choices=[1, 5],
+                       help='Number of requirements to inject: 1 for single requirement, 5 for all (default: 5)')
     
     args = parser.parse_args()
     
@@ -389,11 +497,11 @@ Examples:
             manager.clean_all()
             
         elif args.command == 'inject':
-            manager.inject_requirements(args.dataset, args.ontology, args.class_name)
+            manager.inject_requirements(args.dataset, args.ontology, args.class_name, args.count)
             
         elif args.command == 'reset':
             manager.clean_all()
-            manager.inject_requirements(args.dataset, args.ontology, args.class_name)
+            manager.inject_requirements(args.dataset, args.ontology, args.class_name, args.count)
             
     except Exception as e:
         print(f"❌ Operation failed: {e}")
