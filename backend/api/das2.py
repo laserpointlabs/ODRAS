@@ -19,6 +19,7 @@ API Endpoints:
 """
 
 import logging
+from datetime import datetime
 from typing import Any, Dict, List, Optional
 from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel
@@ -28,6 +29,7 @@ from ..services.config import Settings
 from ..services.rag_service import RAGService
 from ..services.project_thread_manager import ProjectThreadManager
 from ..services.auth import get_user
+from ..services.db import DatabaseService
 
 logger = logging.getLogger(__name__)
 
@@ -125,6 +127,18 @@ async def das2_chat_stream(
                 return
 
             print(f"DAS2_API_STREAM: Processing message='{request.message}' for project={request.project_id}")
+            
+            # Monitor connection pool before processing
+            try:
+                settings = Settings()
+                db_service = DatabaseService(settings)
+                pool_status = db_service.get_pool_status()
+                logger.info(f"🔍 DAS2_STREAM: Pool status before - In use: {pool_status.get('connections_in_use', 0)}/{pool_status.get('maxconn', 40)}")
+                
+                if pool_status.get('leaked_connections', 0) > 0:
+                    logger.warning(f"⚠️ DAS2_STREAM: {pool_status['leaked_connections']} potentially leaked connections detected")
+            except Exception as e:
+                logger.warning(f"Failed to check pool status: {e}")
 
             # Process with DAS2 engine and stream the response
             response_stream = engine.process_message_stream(
@@ -137,6 +151,19 @@ async def das2_chat_stream(
             # Stream the response
             async for chunk in response_stream:
                 yield f"data: {json.dumps(chunk)}\n\n"
+                
+            # Monitor connection pool after processing
+            try:
+                post_pool_status = db_service.get_pool_status()
+                logger.info(f"🔍 DAS2_STREAM: Pool status after - In use: {post_pool_status.get('connections_in_use', 0)}/{post_pool_status.get('maxconn', 40)}")
+                
+                # Detect connection leaks (increase in connections during request)
+                pre_connections = pool_status.get('connections_in_use', 0)
+                post_connections = post_pool_status.get('connections_in_use', 0)
+                if post_connections > pre_connections:
+                    logger.warning(f"🚨 DAS2_STREAM: Possible connection leak - increased from {pre_connections} to {post_connections}")
+            except Exception as e:
+                logger.warning(f"Failed to check pool status after processing: {e}")
 
         except Exception as e:
             logger.error(f"DAS2 stream error: {e}")
@@ -548,6 +575,37 @@ Provide a natural, helpful response using whatever context is relevant. Referenc
         logger.error(f"Error getting prompt context: {e}")
         import traceback
         traceback.print_exc()
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@router.get("/health/connections")
+async def get_connection_health(user: dict = Depends(get_user)):
+    """
+    Get database connection pool health status for DAS monitoring
+    """
+    try:
+        settings = Settings()
+        db_service = DatabaseService(settings)
+        
+        pool_status = db_service.get_pool_status()
+        
+        # Add warnings for potential issues
+        warnings = []
+        if pool_status.get("leaked_connections", 0) > 0:
+            warnings.append(f"{pool_status['leaked_connections']} potentially leaked connections detected")
+            
+        if pool_status.get("connections_in_use", 0) > (pool_status.get("maxconn", 40) * 0.8):
+            warnings.append(f"High connection usage: {pool_status['connections_in_use']}/{pool_status['maxconn']}")
+        
+        return {
+            "status": "healthy" if not warnings else "warning",
+            "pool_status": pool_status,
+            "warnings": warnings,
+            "timestamp": datetime.now().isoformat()
+        }
+        
+    except Exception as e:
+        logger.error(f"Error getting connection health: {e}")
         raise HTTPException(status_code=500, detail=str(e))
 
 

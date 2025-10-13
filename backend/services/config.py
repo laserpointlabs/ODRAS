@@ -42,9 +42,9 @@ class Settings(BaseSettings):
     postgres_user: str = "postgres"
     postgres_password: str = "password"
 
-    # Database Connection Pool Configuration
-    postgres_pool_min_connections: int = 2
-    postgres_pool_max_connections: int = 20  # Reduced from 50 to prevent connection exhaustion
+    # Database Connection Pool Configuration  
+    postgres_pool_min_connections: int = 5   # Increased for DAS heavy usage
+    postgres_pool_max_connections: int = 40  # Increased from 20 for DAS conversation persistence
     postgres_pool_connection_timeout: int = 30
     postgres_pool_connection_lifetime: int = 1800  # 30 minutes (reduced from 1 hour)
 

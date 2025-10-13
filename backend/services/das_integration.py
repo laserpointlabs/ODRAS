@@ -11,21 +11,23 @@ from datetime import datetime, timezone
 from typing import Dict, List, Any, Optional
 
 from backend.services.config import Settings
+from backend.services.db import DatabaseService
 import psycopg2
 import psycopg2.extras
 
 logger = logging.getLogger(__name__)
 
-def get_db_connection():
-    """Get database connection"""
-    settings = Settings()
-    return psycopg2.connect(
-        host=settings.postgres_host,
-        user=settings.postgres_user,
-        password=settings.postgres_password,
-        database=settings.postgres_database,
-        port=settings.postgres_port
-    )
+# Shared database service instance to prevent multiple connection pools
+_db_service_instance = None
+
+def get_db_service():
+    """Get shared database service instance (connection pool)"""
+    global _db_service_instance
+    if _db_service_instance is None:
+        settings = Settings()
+        _db_service_instance = DatabaseService(settings)
+        logger.info("DAS Integration: Using shared connection pool")
+    return _db_service_instance
 
 class DASIntegration:
     """
@@ -49,8 +51,10 @@ class DASIntegration:
         try:
             job_id = str(uuid.uuid4())
             
-            # Store job in database
-            with get_db_connection() as conn:
+            # Store job in database using connection pool
+            db_service = get_db_service()
+            conn = db_service._conn()
+            try:
                 cursor = conn.cursor()
                 
                 cursor.execute("""
@@ -68,6 +72,10 @@ class DASIntegration:
                 ))
                 
                 conn.commit()
+                logger.info(f"✅ DAS Integration: Job {job_id} stored using connection pool")
+                
+            finally:
+                db_service._return(conn)
             
             # Start background task
             asyncio.create_task(self._process_batch_generation(job_id, project_id, requirement_ids, das_options))
@@ -84,7 +92,9 @@ class DASIntegration:
         Get status of DAS generation job
         """
         try:
-            with get_db_connection() as conn:
+            db_service = get_db_service()
+            conn = db_service._conn()
+            try:
                 cursor = conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
                 
                 cursor.execute("""
@@ -110,6 +120,9 @@ class DASIntegration:
                     job["errors"] = json.loads(job["errors"])
                 
                 return job
+                
+            finally:
+                db_service._return(conn)
                 
         except Exception as e:
             logger.error(f"❌ Error getting job status: {e}")
@@ -303,7 +316,9 @@ class DASIntegration:
         Get requirements that need configuration generation
         """
         try:
-            with get_db_connection() as conn:
+            db_service = get_db_service()
+            conn = db_service._conn()
+            try:
                 cursor = conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
                 
                 if requirement_ids:
@@ -338,6 +353,9 @@ class DASIntegration:
                 
                 return requirements
                 
+            finally:
+                db_service._return(conn)
+                
         except Exception as e:
             logger.error(f"❌ Error getting requirements: {e}")
             return []
@@ -345,7 +363,9 @@ class DASIntegration:
     async def _update_job_status(self, job_id: str, status: str, error: str = None):
         """Update job status"""
         try:
-            with get_db_connection() as conn:
+            db_service = get_db_service()
+            conn = db_service._conn()
+            try:
                 cursor = conn.cursor()
                 
                 cursor.execute("""
@@ -355,6 +375,10 @@ class DASIntegration:
                 """, (status, error, datetime.now(timezone.utc), job_id))
                 
                 conn.commit()
+                logger.debug(f"✅ DAS Integration: Job {job_id} status updated to {status}")
+                
+            finally:
+                db_service._return(conn)
                 
         except Exception as e:
             logger.error(f"❌ Error updating job status: {e}")
@@ -362,7 +386,9 @@ class DASIntegration:
     async def _update_job_progress(self, job_id: str, progress: float):
         """Update job progress"""
         try:
-            with get_db_connection() as conn:
+            db_service = get_db_service()
+            conn = db_service._conn()
+            try:
                 cursor = conn.cursor()
                 
                 cursor.execute("""
@@ -372,6 +398,10 @@ class DASIntegration:
                 """, (progress, datetime.now(timezone.utc), job_id))
                 
                 conn.commit()
+                logger.debug(f"✅ DAS Integration: Job {job_id} progress updated to {progress:.1f}%")
+                
+            finally:
+                db_service._return(conn)
                 
         except Exception as e:
             logger.error(f"❌ Error updating job progress: {e}")
@@ -385,7 +415,9 @@ class DASIntegration:
     ):
         """Update job with final results"""
         try:
-            with get_db_connection() as conn:
+            db_service = get_db_service()
+            conn = db_service._conn()
+            try:
                 cursor = conn.cursor()
                 
                 cursor.execute("""
@@ -403,6 +435,10 @@ class DASIntegration:
                 ))
                 
                 conn.commit()
+                logger.debug(f"✅ DAS Integration: Job {job_id} results updated - {len(configurations)} configs")
+                
+            finally:
+                db_service._return(conn)
                 
         except Exception as e:
             logger.error(f"❌ Error updating job results: {e}")

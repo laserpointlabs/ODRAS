@@ -259,15 +259,19 @@ def get_recent_events(conn, project_thread_id: str, limit: int = 10) -> List[Dic
     return results
 
 
-def get_conversation_history(conn, project_thread_id: str, limit: int = 20) -> List[Dict[str, Any]]:
-    """Get conversation history for a project thread"""
+def get_conversation_history(conn, project_thread_id: str, limit: int = 50) -> List[Dict[str, Any]]:
+    """Get conversation history for a project thread - FIXED: Gets newest conversations in chronological order"""
     with conn.cursor() as cur:
         cur.execute("""
             SELECT conversation_id, project_thread_id, role, content, metadata, created_at
-            FROM thread_conversation
-            WHERE project_thread_id = %s
+            FROM (
+                SELECT conversation_id, project_thread_id, role, content, metadata, created_at
+                FROM thread_conversation
+                WHERE project_thread_id = %s
+                ORDER BY created_at DESC
+                LIMIT %s
+            ) recent_conversations
             ORDER BY created_at ASC
-            LIMIT %s
         """, (project_thread_id, limit))
 
         cols = [desc[0] for desc in cur.description]
@@ -280,4 +284,3 @@ def get_conversation_history(conn, project_thread_id: str, limit: int = 20) -> L
 
     logger.debug(f"Retrieved {len(results)} conversation messages for thread {project_thread_id}")
     return results
-
