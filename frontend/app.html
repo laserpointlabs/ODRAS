@@ -840,6 +840,488 @@
       justify-content: center;
     }
 
+    /* ===== CONCEPTUALIZER WORKBENCH STYLES ===== */
+
+    .conceptualizer-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 8px 12px;
+      background: var(--panel-2);
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      margin-bottom: 8px;
+      flex: 0 0 auto;
+    }
+
+    .conceptualizer-layout {
+      display: flex;
+      height: calc(100vh - 160px);
+      gap: 8px;
+    }
+
+    /* Configuration Browser (Left Panel) */
+    .config-browser {
+      width: 350px;
+      background: var(--panel-2);
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      display: flex;
+      flex-direction: column;
+      overflow: hidden;
+    }
+
+    .browser-header {
+      padding: 12px;
+      background: var(--panel);
+      border-bottom: 1px solid var(--border);
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+
+    .browser-title {
+      font-weight: 600;
+      color: var(--text);
+    }
+
+    .browser-controls {
+      display: flex;
+      gap: 8px;
+      align-items: center;
+    }
+
+    .search-input {
+      padding: 4px 8px;
+      background: var(--bg);
+      border: 1px solid var(--border);
+      border-radius: 4px;
+      color: var(--text);
+      font-size: 12px;
+      width: 150px;
+    }
+
+    .browser-filters {
+      padding: 12px;
+      background: var(--panel);
+      border-bottom: 1px solid var(--border);
+    }
+
+    .filter-group {
+      margin-bottom: 8px;
+    }
+
+    .filter-group label {
+      display: block;
+      font-size: 11px;
+      color: var(--muted);
+      margin-bottom: 4px;
+      font-weight: 500;
+    }
+
+    .filter-group select,
+    .filter-group input {
+      width: 100%;
+      padding: 4px 6px;
+      background: var(--bg);
+      border: 1px solid var(--border);
+      border-radius: 3px;
+      color: var(--text);
+      font-size: 12px;
+    }
+
+    .config-list {
+      flex: 1;
+      overflow-y: auto;
+      padding: 8px;
+    }
+
+    .config-list-loading {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      height: 200px;
+      color: var(--muted);
+    }
+
+    .loading-spinner {
+      width: 20px;
+      height: 20px;
+      border: 2px solid var(--border);
+      border-top: 2px solid var(--accent);
+      border-radius: 50%;
+      animation: spin 1s linear infinite;
+      margin-bottom: 8px;
+    }
+
+    .config-item {
+      padding: 8px;
+      margin-bottom: 4px;
+      background: var(--panel);
+      border: 1px solid var(--border);
+      border-radius: 4px;
+      cursor: pointer;
+      transition: all 0.2s ease;
+    }
+
+    .config-item:hover {
+      background: rgba(255, 255, 255, 0.05);
+      border-color: var(--accent);
+    }
+
+    .config-item.selected {
+      background: var(--accent);
+      color: white;
+    }
+
+    .config-item-title {
+      font-weight: 500;
+      font-size: 13px;
+      margin-bottom: 4px;
+    }
+
+    .config-item-meta {
+      display: flex;
+      justify-content: space-between;
+      font-size: 11px;
+      color: var(--muted);
+    }
+
+    .config-item.selected .config-item-meta {
+      color: rgba(255, 255, 255, 0.8);
+    }
+
+    /* DAS confidence indicators */
+    .das-unknown {
+      background: #ff6b47 !important;
+      /* Orange/red to indicate missing confidence */
+      color: white !important;
+    }
+
+    /* Nested display styles for root individuals and DAS configurations */
+    .root-config-group {
+      margin-bottom: 12px;
+    }
+
+    .root-config-item {
+      padding: 8px;
+      background: var(--panel);
+      border: 1px solid var(--border);
+      border-radius: 4px 4px 0 0;
+      cursor: pointer;
+      transition: all 0.2s ease;
+      border-bottom: none;
+    }
+
+    .root-config-item:hover {
+      background: rgba(255, 255, 255, 0.05);
+      border-color: var(--accent);
+    }
+
+    .root-config-item.selected {
+      background: var(--accent);
+      color: white;
+    }
+
+    .root-config-item .config-item-title {
+      font-weight: 600;
+      font-size: 13px;
+      margin-bottom: 4px;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .root-indicator {
+      font-size: 12px;
+    }
+
+    .nested-configs {
+      border: 1px solid var(--border);
+      border-top: none;
+      border-radius: 0 0 4px 4px;
+      background: rgba(0, 0, 0, 0.1);
+    }
+
+    .nested-config-item {
+      padding: 6px 12px;
+      background: transparent;
+      border: none;
+      border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+      cursor: pointer;
+      transition: all 0.2s ease;
+      margin-left: 12px;
+      border-left: 2px solid var(--border);
+    }
+
+    .nested-config-item:last-child {
+      border-bottom: none;
+    }
+
+    .nested-config-item:hover {
+      background: rgba(255, 255, 255, 0.05);
+      border-left-color: var(--accent);
+    }
+
+    .nested-config-item.selected {
+      background: var(--accent);
+      color: white;
+      border-left-color: rgba(255, 255, 255, 0.5);
+    }
+
+    .nested-config-item .config-item-title {
+      font-size: 12px;
+      font-weight: 500;
+      margin-bottom: 3px;
+    }
+
+    .nested-config-item .config-item-meta {
+      font-size: 10px;
+    }
+
+    .nested-config-item.selected .config-item-meta {
+      color: rgba(255, 255, 255, 0.8);
+    }
+
+    .config-pagination {
+      padding: 8px 12px;
+      background: var(--panel);
+      border-top: 1px solid var(--border);
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      font-size: 12px;
+    }
+
+    /* Graph Container (Right Panel) */
+    .config-graph-container {
+      flex: 1;
+      background: var(--panel-2);
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      display: flex;
+      flex-direction: column;
+      position: relative;
+    }
+
+    .graph-toolbar {
+      padding: 8px 12px;
+      background: var(--panel);
+      border-bottom: 1px solid var(--border);
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+
+    .toolbar-group {
+      display: flex;
+      gap: 4px;
+      align-items: center;
+    }
+
+    .node-legend {
+      display: flex;
+      gap: 12px;
+      align-items: center;
+    }
+
+    .legend-item {
+      display: flex;
+      align-items: center;
+      gap: 4px;
+      font-size: 11px;
+      color: var(--muted);
+    }
+
+    .legend-node {
+      width: 12px;
+      height: 12px;
+      border-radius: 50%;
+      border: 1px solid var(--border);
+    }
+
+    /* Dynamic legend node styles - colors assigned dynamically based on ontology classes */
+
+    .graph-canvas {
+      flex: 1;
+      position: relative;
+      background: var(--bg);
+      overflow: hidden;
+    }
+
+    .graph-placeholder {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      height: 100%;
+      color: var(--muted);
+    }
+
+    .placeholder-content {
+      text-align: center;
+    }
+
+    .placeholder-content h3 {
+      margin: 12px 0 8px;
+      color: var(--text);
+    }
+
+    .placeholder-content p {
+      margin: 0;
+      font-size: 14px;
+      max-width: 300px;
+    }
+
+    /* Node Details Panel */
+    .node-details-panel {
+      position: absolute;
+      top: 60px;
+      right: 12px;
+      width: 300px;
+      background: var(--panel);
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+      z-index: 1000;
+    }
+
+    .panel-header {
+      padding: 8px 12px;
+      background: var(--panel-2);
+      border-bottom: 1px solid var(--border);
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+
+    .panel-header h4 {
+      margin: 0;
+      font-size: 14px;
+      color: var(--text);
+    }
+
+    .panel-content {
+      padding: 12px;
+      max-height: 400px;
+      overflow-y: auto;
+    }
+
+    .node-property {
+      margin-bottom: 8px;
+      font-size: 12px;
+    }
+
+    .node-property-label {
+      color: var(--muted);
+      font-weight: 500;
+      margin-bottom: 2px;
+    }
+
+    .node-property-value {
+      color: var(--text);
+      background: var(--bg);
+      padding: 4px 6px;
+      border-radius: 3px;
+      border: 1px solid var(--border);
+    }
+
+    .das-metadata {
+      margin-top: 12px;
+      padding-top: 8px;
+      border-top: 1px solid var(--border);
+    }
+
+    .das-confidence {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      font-size: 11px;
+      color: var(--muted);
+    }
+
+    .confidence-bar {
+      flex: 1;
+      height: 4px;
+      background: var(--border);
+      border-radius: 2px;
+      overflow: hidden;
+    }
+
+    .confidence-fill {
+      height: 100%;
+      background: var(--accent);
+      transition: width 0.3s ease;
+    }
+
+    /* Workbench subtitle */
+    .workbench-subtitle {
+      font-size: 12px;
+      color: var(--muted);
+      margin-top: 2px;
+    }
+
+    /* Ontology selection controls */
+    .ontology-selection {
+      margin-top: 8px;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      font-size: 12px;
+    }
+
+    .ontology-selection label {
+      color: var(--muted);
+      font-weight: 500;
+    }
+
+    .ontology-select {
+      padding: 4px 8px;
+      background: var(--bg);
+      border: 1px solid var(--border);
+      border-radius: 4px;
+      color: var(--text);
+      font-size: 12px;
+      min-width: 200px;
+    }
+
+    .root-classes-info {
+      color: var(--muted);
+      font-size: 11px;
+      background: var(--panel);
+      padding: 2px 6px;
+      border-radius: 3px;
+      border: 1px solid var(--border);
+    }
+
+    /* Graph loading state */
+    .graph-loading {
+      position: absolute;
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -50%);
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 8px;
+      color: var(--muted);
+    }
+
+    /* Responsive adjustments */
+    @media (max-width: 1200px) {
+      .config-browser {
+        width: 300px;
+      }
+
+      .node-legend {
+        gap: 8px;
+      }
+
+      .legend-item span {
+        display: none;
+      }
+    }
+
     .individuals-tab-icon svg {
       width: 16px;
       height: 16px;
@@ -2346,6 +2828,19 @@
             <path d="M8 6h8M6 8v8M18 8v8M8 18h8" />
           </svg>
         </div>
+        <div class="icon" data-wb="conceptualizer" title="Conceptualizer" aria-label="Conceptualizer">
+          <svg viewBox="0 0 24 24" fill="none" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round">
+            <circle cx="12" cy="12" r="4" />
+            <circle cx="5" cy="5" r="2" />
+            <circle cx="19" cy="5" r="2" />
+            <circle cx="5" cy="19" r="2" />
+            <circle cx="19" cy="19" r="2" />
+            <line x1="6.5" y1="6.5" x2="8.5" y2="8.5" />
+            <line x1="15.5" y1="8.5" x2="17.5" y2="6.5" />
+            <line x1="6.5" y1="17.5" x2="8.5" y2="15.5" />
+            <line x1="15.5" y1="15.5" x2="17.5" y2="17.5" />
+          </svg>
+        </div>
         <div class="icon" data-wb="files" title="Files" aria-label="Files">
           <svg viewBox="0 0 24 24" fill="none" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round">
             <path d="M3 7h5l2 2h11v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V7z" />
@@ -3093,6 +3588,223 @@
           </div>
 
         </section>
+
+        <!-- ===== CONCEPTUALIZER WORKBENCH ===== -->
+        <section id="wb-conceptualizer" class="workbench">
+          <div class="conceptualizer-header">
+            <div class="header-left">
+              <h2 class="workbench-title">Conceptualizer</h2>
+              <span class="workbench-subtitle">System Architecture Visualization</span>
+              <div class="ontology-selection">
+                <label for="conceptualizerOntologySelect">Ontology:</label>
+                <select id="conceptualizerOntologySelect" class="ontology-select">
+                  <option value="">Select ontology...</option>
+                </select>
+                <span id="conceptualizerRootClasses" class="root-classes-info">No root classes</span>
+              </div>
+            </div>
+
+            <div class="header-menu">
+              <div class="menu-group">
+                <button class="menu-btn" id="configGenerateBtn">
+                  <svg class="menu-icon" viewBox="0 0 24 24" fill="none" stroke-width="1.6" stroke-linecap="round"
+                    stroke-linejoin="round">
+                    <path
+                      d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z" />
+                  </svg>
+                  Generate from DAS
+                </button>
+              </div>
+
+              <div class="menu-group">
+                <button class="menu-btn" id="configViewMenuBtn">
+                  <svg class="menu-icon" viewBox="0 0 24 24" fill="none" stroke-width="1.6" stroke-linecap="round"
+                    stroke-linejoin="round">
+                    <rect x="3" y="3" width="18" height="18" rx="2" ry="2" />
+                    <line x1="9" y1="9" x2="15" y2="9" />
+                    <line x1="9" y1="15" x2="15" y2="15" />
+                  </svg>
+                  View
+                </button>
+                <div class="menu-dropdown" id="configViewMenu">
+                  <button class="menu-item" data-view="individual">Individual Configuration</button>
+                  <button class="menu-item" data-view="comparison">Comparison View</button>
+                  <button class="menu-item" data-view="overview">Overview Mode</button>
+                </div>
+              </div>
+
+              <div class="menu-group">
+                <button class="menu-btn" id="configLayoutMenuBtn">
+                  <svg class="menu-icon" viewBox="0 0 24 24" fill="none" stroke-width="1.6" stroke-linecap="round"
+                    stroke-linejoin="round">
+                    <path d="m7 7 10 10-5 1z" />
+                    <path d="M13 13 3 3l1 5z" />
+                  </svg>
+                  Layout
+                </button>
+                <div class="menu-dropdown" id="configLayoutMenu">
+                  <button class="menu-item" data-layout="force">Force-Directed</button>
+                  <button class="menu-item" data-layout="hierarchical">Hierarchical</button>
+                  <button class="menu-item" data-layout="circular">Circular</button>
+                  <button class="menu-item" data-layout="grid">Grid</button>
+                </div>
+              </div>
+
+              <div class="menu-group">
+                <button class="menu-btn" id="configExportBtn">
+                  <svg class="menu-icon" viewBox="0 0 24 24" fill="none" stroke-width="1.6" stroke-linecap="round"
+                    stroke-linejoin="round">
+                    <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
+                    <polyline points="17,8 12,3 7,8" />
+                    <line x1="12" y1="3" x2="12" y2="15" />
+                  </svg>
+                  Export
+                </button>
+              </div>
+            </div>
+          </div>
+
+          <!-- Master-Detail Layout -->
+          <div class="conceptualizer-layout">
+            <!-- Left Panel: Configuration Browser -->
+            <div class="config-browser">
+              <div class="browser-header">
+                <div class="browser-title">Configurations</div>
+                <div class="browser-controls">
+                  <input type="text" id="configSearchInput" placeholder="Search configurations..." class="search-input">
+                  <button id="configFilterBtn" class="btn btn-sm" title="Filter configurations">
+                    <svg viewBox="0 0 24 24" fill="none" stroke-width="1.6" stroke-linecap="round"
+                      stroke-linejoin="round" style="width:14px; height:14px;">
+                      <polygon points="22,3 2,3 10,12.46 10,19 14,21 14,12.46" />
+                    </svg>
+                  </button>
+                </div>
+              </div>
+
+              <!-- Filters -->
+              <div class="browser-filters" id="configFilters" style="display: none;">
+                <div class="filter-group">
+                  <label>Source:</label>
+                  <select id="configSourceFilter">
+                    <option value="">All</option>
+                    <option value="DAS">DAS Generated</option>
+                    <option value="Manual">Manual</option>
+                  </select>
+                </div>
+                <div class="filter-group">
+                  <label>Date Range:</label>
+                  <select id="configDateFilter">
+                    <option value="">All Time</option>
+                    <option value="last-7-days">Last 7 Days</option>
+                    <option value="last-30-days">Last 30 Days</option>
+                  </select>
+                </div>
+                <div class="filter-group">
+                  <label>Min Confidence:</label>
+                  <input type="range" id="configConfidenceFilter" min="0" max="1" step="0.1" value="0">
+                  <span id="confidenceValue">0%</span>
+                </div>
+              </div>
+
+              <!-- Configuration List -->
+              <div class="config-list" id="configList">
+                <div class="config-list-loading">
+                  <div class="loading-spinner"></div>
+                  <p>Loading configurations...</p>
+                </div>
+              </div>
+
+              <!-- Pagination -->
+              <div class="config-pagination" id="configPagination" style="display: none;">
+                <button id="configPrevBtn" class="btn btn-sm">← Previous</button>
+                <span id="configPageInfo">Page 1 of 1</span>
+                <button id="configNextBtn" class="btn btn-sm">Next →</button>
+              </div>
+            </div>
+
+            <!-- Right Panel: Graph Canvas -->
+            <div class="config-graph-container">
+              <div class="graph-toolbar">
+                <div class="toolbar-group">
+                  <button id="graphZoomInBtn" class="btn btn-sm" title="Zoom In">
+                    <svg viewBox="0 0 24 24" fill="none" stroke-width="1.6" stroke-linecap="round"
+                      stroke-linejoin="round" style="width:14px; height:14px;">
+                      <circle cx="11" cy="11" r="6" />
+                      <path d="M21 21l-4-4" />
+                      <line x1="9" y1="11" x2="13" y2="11" />
+                      <line x1="11" y1="9" x2="11" y2="13" />
+                    </svg>
+                  </button>
+                  <button id="graphZoomOutBtn" class="btn btn-sm" title="Zoom Out">
+                    <svg viewBox="0 0 24 24" fill="none" stroke-width="1.6" stroke-linecap="round"
+                      stroke-linejoin="round" style="width:14px; height:14px;">
+                      <circle cx="11" cy="11" r="6" />
+                      <path d="M21 21l-4-4" />
+                      <line x1="9" y1="11" x2="13" y2="11" />
+                    </svg>
+                  </button>
+                  <button id="graphFitBtn" class="btn btn-sm" title="Fit to Screen">
+                    <svg viewBox="0 0 24 24" fill="none" stroke-width="1.6" stroke-linecap="round"
+                      stroke-linejoin="round" style="width:14px; height:14px;">
+                      <path
+                        d="M8 3H5a2 2 0 0 0-2 2v3m18 0V5a2 2 0 0 0-2-2h-3m0 18h3a2 2 0 0 0 2-2v-3M3 16v3a2 2 0 0 0 2 2h3" />
+                    </svg>
+                  </button>
+                </div>
+
+                <div class="toolbar-group">
+                  <div class="node-legend" id="configNodeLegend">
+                    <!-- Dynamic legend populated based on ontology classes -->
+                  </div>
+                </div>
+
+                <div class="toolbar-group">
+                  <button id="graphNodeFilterBtn" class="btn btn-sm" title="Filter Nodes">
+                    <svg viewBox="0 0 24 24" fill="none" stroke-width="1.6" stroke-linecap="round"
+                      stroke-linejoin="round" style="width:14px; height:14px;">
+                      <circle cx="12" cy="12" r="3" />
+                      <path d="M12 1v6m0 6v6" />
+                    </svg>
+                  </button>
+                </div>
+              </div>
+
+              <!-- Graph Canvas -->
+              <div id="configGraphCanvas" class="graph-canvas">
+                <div class="graph-placeholder">
+                  <div class="placeholder-content">
+                    <svg viewBox="0 0 24 24" fill="none" stroke-width="1.6" stroke-linecap="round"
+                      stroke-linejoin="round" style="width:48px; height:48px; color:#888;">
+                      <circle cx="12" cy="12" r="4" />
+                      <circle cx="5" cy="5" r="2" />
+                      <circle cx="19" cy="5" r="2" />
+                      <circle cx="5" cy="19" r="2" />
+                      <circle cx="19" cy="19" r="2" />
+                      <line x1="6.5" y1="6.5" x2="8.5" y2="8.5" />
+                      <line x1="15.5" y1="8.5" x2="17.5" y2="6.5" />
+                      <line x1="6.5" y1="17.5" x2="8.5" y2="15.5" />
+                      <line x1="15.5" y1="15.5" x2="17.5" y2="17.5" />
+                    </svg>
+                    <h3>Select a Configuration</h3>
+                    <p>Choose a configuration from the list to visualize its system architecture</p>
+                  </div>
+                </div>
+              </div>
+
+              <!-- Node Details Panel -->
+              <div id="nodeDetailsPanel" class="node-details-panel" style="display: none;">
+                <div class="panel-header">
+                  <h4 id="nodeDetailsTitle">Node Details</h4>
+                  <button id="closeNodeDetails" class="btn btn-sm">×</button>
+                </div>
+                <div id="nodeDetailsContent" class="panel-content">
+                  <!-- Dynamic content will be populated here -->
+                </div>
+              </div>
+            </div>
+          </div>
+        </section>
+
         <section id="wb-files" class="workbench">
           <h2>File Management</h2>
           <div class="muted">Upload requirements and knowledge docs (MinIO).</div>
@@ -6379,7 +7091,17 @@
       } catch (_) { }
       ontoState.cy = cytoscape({
         container,
-        layout: { name: 'grid', padding: 10, avoidOverlap: true },
+        layout: {
+          name: 'breadthfirst',
+          directed: true,           // Treat as directed graph for hierarchy
+          spacingFactor: 2.0,       // More spacing between nodes
+          avoidOverlap: true,       // Prevent node overlap
+          nodeDimensionsIncludeLabels: true, // Account for label size
+          animate: true,            // Smooth animation
+          animationDuration: 500,   // Animation duration
+          fit: true,                // Fit to container
+          padding: 50               // Padding around graph
+        },
         wheelSensitivity: 0.15,  // Much more gentle mouse wheel zoom (default: 1)
         minZoom: 0.1,
         maxZoom: 3,
@@ -10702,6 +11424,10 @@ ${insertParts.join('\\n')}
         // Initialize Event Manager workbench
         console.log('📊 Activating Event Manager workbench');
         initializeEventManager();
+      } else if (wb === 'conceptualizer') {
+        // Initialize Conceptualizer workbench
+        console.log('🎯 Activating Conceptualizer workbench');
+        initializeConceptualizer();
       }
 
       // Persist selected workbench and update URL
@@ -13836,7 +14562,6 @@ ${insertParts.join('\\n')}
     function getModelNamespace() {
       // Get model namespace from active ontology IRI (proper project-scoped URI)
       if (activeOntologyIri) {
-        console.log('🔧 getModelNamespace using activeOntologyIri:', activeOntologyIri);
         return activeOntologyIri;
       }
 
@@ -27998,18 +28723,22 @@ def hello_world():
     function getCurrentOntologyGraphIri() {
       // Try multiple ways to get the current ontology
 
-      // Method 1: From ontoState (most reliable)
+      // Method 1: From ontoState (most reliable) 
       if (window.ontoState && window.ontoState.currentGraph) {
         console.log('🔍 Found ontology from ontoState:', window.ontoState.currentGraph);
         return window.ontoState.currentGraph;
       }
 
-      // Method 2: From localStorage active ontology
+      // Method 2: REMOVED - Context-aware resolution can cause unwanted cross-contamination
+      // The Conceptualizer should use its own state directly, not through this function
+      // Main workbench should use its own activeOntologyIri without interference
+
+      // Method 3: From main workbench localStorage active ontology  
       const projectId = localStorage.getItem('active_project_id');
       if (projectId) {
         const activeIri = localStorage.getItem(`onto_active_iri__${projectId}`);
         if (activeIri) {
-          console.log('🔍 Found ontology from localStorage:', activeIri);
+          console.log('🔍 Found ontology from main workbench localStorage:', activeIri);
           return activeIri;
         }
       }
@@ -28493,51 +29222,84 @@ def hello_world():
         classData.abstract_class = true;
       }
 
-      const tableHtml = generateClassTableWithInheritance(className, classData, properties);
-      content.innerHTML = tableHtml;
+      // Fetch actual individuals from database and generate table with real data
+      await loadAndRenderClassTable(className, classData, properties, content);
+    }
+
+    /**
+     * Load and render class table with actual individuals from database
+     */
+    async function loadAndRenderClassTable(className, classData, properties, content) {
+      try {
+        console.log(`🔍 Loading individuals for class: ${className}`);
+
+        // Show loading state
+        content.innerHTML = `
+          <div style="padding: 40px; text-align: center; color: var(--muted);">
+            <div style="animation: spin 1s linear infinite; width:24px; height:24px; margin:0 auto 12px;">
+              <svg viewBox="0 0 24 24" fill="none" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" style="width:24px; height:24px; stroke:currentColor;">
+                <circle cx="12" cy="12" r="3" />
+                <path d="M12 1v6m0 6v6m-5.2-2.2l4.2-4.2m0 0l4.2-4.2M1 12h6m6 0h6m-2.2 5.2l-4.2-4.2m0 0l-4.2-4.2" />
+              </svg>
+            </div>
+            Loading ${className} individuals...
+          </div>
+        `;
+
+        // Get project ID and token
+        const projectId = localStorage.getItem('active_project_id');
+        const token = localStorage.getItem(tokenKey);
+
+        if (!projectId || !token) {
+          throw new Error('Missing project ID or authentication token');
+        }
+
+        // Get current ontology graph
+        const currentGraph = getCurrentOntologyGraphIri();
+        if (!currentGraph) {
+          throw new Error('No ontology selected - cannot load individuals');
+        }
+
+        // Fetch individuals from API with graph parameter
+        const response = await fetch(`/api/individuals/${projectId}/individuals/${className}?graph=${encodeURIComponent(currentGraph)}`, {
+          headers: { 'Authorization': `Bearer ${token}` }
+        });
+
+        if (!response.ok) {
+          throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+        }
+
+        const data = await response.json();
+        const individuals = data.individuals || [];
+
+        console.log(`✅ Loaded ${individuals.length} ${className} individuals`);
+
+        // Generate table with actual individuals
+        const tableHtml = generateClassTableWithIndividuals(className, classData, properties, individuals);
+        content.innerHTML = tableHtml;
+
+      } catch (error) {
+        console.error(`❌ Error loading ${className} individuals:`, error);
+
+        // Show error state
+        content.innerHTML = `
+          <div style="padding: 40px; text-align: center; color: var(--err);">
+            <h3>Error Loading Individuals</h3>
+            <p>Failed to load ${className} individuals: ${error.message}</p>
+            <button class="btn" onclick="showClassTable('${className}', window.currentOntologyData)">Retry</button>
+          </div>
+        `;
+      }
     }
 
     /**
      * Get properties for a specific class - DYNAMIC based on ontology
      */
-    function getClassProperties(className, ontologyData) {
-      const properties = [];
-
-      // Get the specific class data
-      const classData = ontologyData.classes?.find(c => c.name === className);
-
-      if (classData && classData.dataProperties) {
-        // Add data properties as table columns
-        classData.dataProperties.forEach(prop => {
-          properties.push({
-            name: prop.name,
-            label: prop.name, // Use the actual property label 
-            type: 'datatype',
-            range: prop.range,
-            comment: prop.comment,
-            constraints: {}
-          });
-        });
-
-        console.log(`🔍 Class ${className} properties for table:`, properties.map(p => p.name));
-      }
-
-      // Also add object properties that have this class as domain (for future use)
-      if (ontologyData.object_properties) {
-        ontologyData.object_properties.forEach(prop => {
-          if (prop.domain === className) {
-            properties.push({
-              name: prop.name,
-              label: prop.label || prop.name,
-              type: 'object',
-              range: prop.range,
-              constraints: prop.constraints || {}
-            });
-          }
-        });
-      }
-
-      return properties;
+    function getClassPropertiesDuplicateDisabled(className, ontologyData) {
+      // This duplicate function was overriding the inheritance-aware version
+      // Renamed to disable and force using the correct inheritance function
+      console.warn(`🚨 Disabled duplicate getClassProperties function`);
+      return []; // Return empty - forces using the inheritance version
     }
 
     /**
@@ -28938,6 +29700,1438 @@ def hello_world():
     }
 
     // End of Individual Tables System
+
+    // =====================================
+    // CONCEPTUALIZER WORKBENCH SYSTEM
+    // =====================================
+
+    /**
+     * Global state for the Conceptualizer Workbench
+     */
+    window.conceptualizerState = {
+      currentGraph: null,
+      selectedOntology: null,
+      selectedRootIndividual: null,
+      rootIndividuals: [], // Root individuals that can be conceptualized
+      currentPage: 1,
+      totalPages: 1,
+      rootClasses: [], // Classes with no incoming relationships
+      availableOntologies: [],
+      storedConfigurations: [], // Stored DAS configurations
+      selectedConfiguration: null, // Selected stored configuration
+      filters: {
+        source: '',
+        dateRange: '',
+        confidenceMin: 0
+      },
+      viewMode: 'individuals', // 'individuals' (root individuals) or 'configurations' (stored configs)
+      typeColorCache: {}, // Cache for consistent coloring - no special Requirements handling
+      colorPalette: [
+        "#4A90E2", "#50E3C2", "#F5A623", "#BD10E0", "#7ED321", "#9013FE",
+        "#FF6B6B", "#4ECDC4", "#45B7D1", "#96CEB4", "#FFEAA7", "#DDA0DD",
+        "#FFA07A", "#98D8E8", "#F7DC6F", "#BB8FCE", "#85C1E9", "#F8C471"
+      ]
+    };
+
+    /**
+     * Get consistent color for a node type
+     */
+    function getNodeColorForType(nodeType) {
+      // Check cache first for consistency
+      if (window.conceptualizerState.typeColorCache[nodeType]) {
+        return window.conceptualizerState.typeColorCache[nodeType];
+      }
+
+      // Generate consistent color based on type name (fully generic)
+      let hash = 0;
+      for (let i = 0; i < nodeType.length; i++) {
+        hash = nodeType.charCodeAt(i) + ((hash << 5) - hash);
+      }
+
+      const colorIndex = Math.abs(hash) % window.conceptualizerState.colorPalette.length;
+      const color = window.conceptualizerState.colorPalette[colorIndex];
+
+      // Cache for consistency
+      window.conceptualizerState.typeColorCache[nodeType] = color;
+
+      return color;
+    }
+
+    /**
+     * Update legend based on graph data
+     */
+    function updateGraphLegend(graphData) {
+      const legendContainer = document.getElementById('configNodeLegend');
+      if (!legendContainer || !graphData || !graphData.nodes) return;
+
+      // Get unique node types from graph
+      const nodeTypes = [...new Set(graphData.nodes.map(node => node.type))].sort();
+
+      if (nodeTypes.length === 0) {
+        legendContainer.innerHTML = '';
+        return;
+      }
+
+      // Generate legend HTML
+      const legendHtml = nodeTypes.map(nodeType => {
+        const color = getNodeColorForType(nodeType);
+        return `
+          <span class="legend-item">
+            <div class="legend-node" style="background: ${color};"></div>
+            <span>${nodeType}</span>
+          </span>
+        `;
+      }).join('');
+
+      legendContainer.innerHTML = legendHtml;
+    }
+
+    /**
+     * Initialize Conceptualizer Workbench when tab is activated
+     */
+    async function initializeConceptualizer() {
+      console.log('🔍 Initializing Conceptualizer Workbench');
+
+      try {
+        await loadAvailableOntologies();
+        setupConceptualizerEventListeners();
+        console.log('✅ Conceptualizer Workbench initialized');
+      } catch (error) {
+        console.error('❌ Error initializing Conceptualizer:', error);
+      }
+    }
+
+    /**
+     * Load available ontologies for the current project
+     */
+    async function loadAvailableOntologies() {
+      const projectId = localStorage.getItem('active_project_id');
+      if (!projectId) {
+        console.warn('No active project for ontologies');
+        return;
+      }
+
+      try {
+        const token = localStorage.getItem(tokenKey);
+        const response = await fetch(`/api/ontologies?project=${projectId}`, {
+          headers: { 'Authorization': `Bearer ${token}` }
+        });
+
+        if (!response.ok) {
+          throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+        }
+
+        const data = await response.json();
+        window.conceptualizerState.availableOntologies = data.ontologies || [];
+
+        // Populate ontology dropdown
+        populateOntologyDropdown();
+
+        console.log(`✅ Loaded ${window.conceptualizerState.availableOntologies.length} ontologies`);
+      } catch (error) {
+        console.error('❌ Error loading ontologies:', error);
+        showOntologyError('Failed to load ontologies');
+      }
+    }
+
+    /**
+     * Populate ontology dropdown
+     */
+    function populateOntologyDropdown() {
+      const select = document.getElementById('conceptualizerOntologySelect');
+      if (!select) return;
+
+      // Clear existing options except the first one
+      select.innerHTML = '<option value="">Select ontology...</option>';
+
+      // Add ontology options
+      window.conceptualizerState.availableOntologies.forEach(ontology => {
+        const option = document.createElement('option');
+        option.value = ontology.graphIri;
+        option.textContent = ontology.label || ontology.graphIri.split('/').pop();
+        select.appendChild(option);
+      });
+
+      // Restore last selected ontology from localStorage
+      const projectId = localStorage.getItem('active_project_id');
+      if (projectId) {
+        const savedOntology = localStorage.getItem(`conceptualizer_ontology_${projectId}`);
+        if (savedOntology) {
+          // Check if the saved ontology still exists in the options
+          const optionExists = Array.from(select.options).some(option => option.value === savedOntology);
+          if (optionExists) {
+            select.value = savedOntology;
+            // Trigger the change event to load the data
+            console.log('🔄 Restoring saved ontology selection:', savedOntology);
+            onOntologySelectionChange(savedOntology);
+          }
+        }
+      }
+    }
+
+    /**
+     * Handle ontology selection change
+     */
+    async function onOntologySelectionChange(ontologyGraph) {
+      console.log('🔍 Selected ontology:', ontologyGraph);
+
+      window.conceptualizerState.selectedOntology = ontologyGraph;
+
+      // Save selection to localStorage
+      const projectId = localStorage.getItem('active_project_id');
+      if (projectId && ontologyGraph) {
+        localStorage.setItem(`conceptualizer_ontology_${projectId}`, ontologyGraph);
+      }
+
+      // CRITICAL FIX: Update URL graph parameter to match Conceptualizer ontology selection
+      if (ontologyGraph) {
+        const url = new URL(window.location);
+        url.searchParams.set('graph', encodeURIComponent(ontologyGraph));
+        window.history.pushState({}, '', url);
+        console.log('🔗 Updated URL graph parameter for Conceptualizer:', ontologyGraph);
+      }
+
+      if (!ontologyGraph) {
+        // Clear everything if no ontology selected
+        clearConfigurationList();
+        clearGraph();
+        updateRootClassesInfo([]);
+        return;
+      }
+
+      try {
+        // Load root individuals for this ontology
+        await loadRootIndividuals();
+      } catch (error) {
+        console.error('❌ Error loading root individuals:', error);
+        showConfigurationError('Failed to load root individuals');
+      }
+    }
+
+    /**
+     * Load root individuals for conceptualization
+     */
+    async function loadRootIndividuals(page = 1) {
+      const projectId = localStorage.getItem('active_project_id');
+      const ontologyGraph = window.conceptualizerState.selectedOntology;
+
+      console.log('📋 DAS Context - Loading root individuals for namespace:', ontologyGraph);
+
+      if (!projectId || !ontologyGraph) {
+        console.warn('Missing project ID or ontology for root individuals');
+        clearConfigurationList();
+        return;
+      }
+
+      try {
+        const token = localStorage.getItem(tokenKey);
+
+        const queryParams = new URLSearchParams({
+          page: page.toString(),
+          page_size: '20'
+        });
+
+        // Extract ontology name from the graph IRI for the endpoint
+        const ontologyName = ontologyGraph.split('/').pop(); // Gets "bseo-a", "base", etc.
+
+        console.log('🔍 Loading root individuals for:', ontologyName, queryParams.toString());
+
+        const response = await fetch(`/api/configurations/${projectId}/ontologies/${ontologyName}/root-individuals?${queryParams}`, {
+          headers: { 'Authorization': `Bearer ${token}` }
+        });
+
+        if (!response.ok) {
+          throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+        }
+
+        const data = await response.json();
+
+        window.conceptualizerState.rootIndividuals = data.configurations || [];
+        window.conceptualizerState.currentPage = data.pagination?.page || 1;
+        window.conceptualizerState.totalPages = data.pagination?.total_pages || 1;
+        window.conceptualizerState.rootClasses = data.root_classes || [];
+
+        // Update root classes info in header
+        updateRootClassesInfo(window.conceptualizerState.rootClasses);
+
+        // Load stored configurations for this ontology
+        await loadStoredConfigurations();
+
+        // Render the nested display with both root individuals and configurations
+        renderConfigurationList();
+        updatePagination();
+
+        console.log(`✅ Loaded ${window.conceptualizerState.rootIndividuals.length} root individuals and ${window.conceptualizerState.storedConfigurations?.length || 0} stored configurations from classes: ${window.conceptualizerState.rootClasses.join(', ')}`);
+      } catch (error) {
+        console.error('❌ Error loading root individuals:', error);
+        showConfigurationError('Failed to load root individuals');
+      }
+    }
+
+    /**
+     * Update root classes information display
+     */
+    function updateRootClassesInfo(rootClasses) {
+      const infoElement = document.getElementById('conceptualizerRootClasses');
+      if (!infoElement) return;
+
+      if (rootClasses.length === 0) {
+        infoElement.textContent = 'No root classes';
+        infoElement.style.color = 'var(--err)';
+      } else if (rootClasses.length === 1) {
+        infoElement.textContent = `Root: ${rootClasses[0]}`;
+        infoElement.style.color = 'var(--muted)';
+      } else {
+        infoElement.textContent = `Roots: ${rootClasses.join(', ')}`;
+        infoElement.style.color = 'var(--accent)';
+      }
+    }
+
+    /**
+     * Clear configuration list
+     */
+    function clearConfigurationList() {
+      const listContainer = document.getElementById('configList');
+      if (!listContainer) return;
+
+      listContainer.innerHTML = `
+        <div class="config-list-empty">
+          <p>Select an ontology to view root individuals</p>
+        </div>
+      `;
+    }
+
+    /**
+     * Clear graph display
+     */
+    function clearGraph() {
+      const canvas = document.getElementById('configGraphCanvas');
+      if (!canvas) return;
+
+      canvas.innerHTML = `
+        <div class="graph-placeholder">
+          <div class="placeholder-content">
+            <svg viewBox="0 0 24 24" fill="none" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" style="width:48px; height:48px; color:#888;">
+              <circle cx="12" cy="12" r="4"/>
+              <circle cx="5" cy="5" r="2"/>
+              <circle cx="19" cy="5" r="2"/>
+              <circle cx="5" cy="19" r="2"/>
+              <circle cx="19" cy="19" r="2"/>
+              <line x1="6.5" y1="6.5" x2="8.5" y2="8.5"/>
+              <line x1="15.5" y1="8.5" x2="17.5" y2="6.5"/>
+              <line x1="6.5" y1="17.5" x2="8.5" y2="15.5"/>
+              <line x1="15.5" y1="15.5" x2="17.5" y2="17.5"/>
+            </svg>
+            <h3>Select a Root Individual</h3>
+            <p>Choose a root individual to conceptualize its system architecture</p>
+          </div>
+        </div>
+      `;
+    }
+
+    /**
+     * Show error in ontology loading
+     */
+    function showOntologyError(message) {
+      const select = document.getElementById('conceptualizerOntologySelect');
+      if (!select) return;
+
+      select.innerHTML = `<option value="">Error: ${message}</option>`;
+    }
+
+    /**
+     * Render nested display with root individuals and their DAS configurations grouped together
+     */
+    function renderConfigurationList() {
+      const listContainer = document.getElementById('configList');
+      if (!listContainer) return;
+
+      const rootIndividuals = window.conceptualizerState.rootIndividuals;
+      const storedConfigs = window.conceptualizerState.storedConfigurations || [];
+
+      if (rootIndividuals.length === 0) {
+        const rootClasses = window.conceptualizerState.rootClasses;
+        listContainer.innerHTML = `
+          <div class="config-list-empty">
+            <p>No root individuals found</p>
+            <p style="font-size: 11px; color: var(--muted);">
+              ${rootClasses.length > 0 ?
+            `Create individuals for: ${rootClasses.join(', ')}` :
+            'No root classes detected in ontology'
+          }
+            </p>
+          </div>
+        `;
+        return;
+      }
+
+      // Group stored configurations by source requirement
+      const configsBySource = {};
+      storedConfigs.forEach(config => {
+        const source = config.source_requirement || 'unknown';
+        if (!configsBySource[source]) {
+          configsBySource[source] = [];
+        }
+        configsBySource[source].push(config);
+      });
+
+      // Create nested HTML structure
+      const html = rootIndividuals.map(individual => {
+        const isRootSelected = individual.config_id === window.conceptualizerState.selectedRootIndividual;
+        const classInfo = `<span class="class-indicator">${individual.class_name}</span>`;
+        const createdAt = new Date(individual.created_at).toLocaleDateString();
+
+        // Find configurations for this root individual
+        // Match using instance_name since backend stores individual["instance_name"] as source_requirement
+        const sourceKey = individual.instance_name || individual.name;
+        const relatedConfigs = configsBySource[sourceKey] || [];
+
+        const configurationsHtml = relatedConfigs.map(config => {
+          const isConfigSelected = config.config_id === window.conceptualizerState.selectedConfiguration;
+          const dasConfidence = config.das_metadata ?
+            (config.das_metadata.confidence !== null && config.das_metadata.confidence !== undefined ?
+              `<span class="das-indicator">DAS ${Math.round(config.das_metadata.confidence * 100)}%</span>` :
+              `<span class="das-indicator das-unknown">DAS UNK</span>`) :
+            `<span class="manual-indicator">Manual</span>`;
+          const configCreatedAt = new Date(config.created_at).toLocaleDateString();
+
+          return `
+            <div class="nested-config-item ${isConfigSelected ? 'selected' : ''}" data-config-id="${config.config_id}" data-config-type="stored">
+              <div class="config-item-title">${config.name}</div>
+              <div class="config-item-meta">
+                <span>${dasConfidence}</span>
+                <span>${configCreatedAt}</span>
+              </div>
+            </div>
+          `;
+        }).join('');
+
+        // Extract requirement text for tooltip
+        const requirementText = individual.properties?.Text || individual.properties?.text || 'No requirement text available';
+        const tooltipText = `${individual.name}\\n\\nRequirement Text:\\n${requirementText}`;
+
+        return `
+          <div class="root-config-group">
+            <div class="root-config-item ${isRootSelected ? 'selected' : ''}" data-config-id="${individual.config_id}" data-config-type="individual" title="${tooltipText}">
+              <div class="config-item-title">
+                <span class="root-indicator">📋</span>
+                ${individual.name}
+              </div>
+              <div class="config-item-meta">
+                <span>${classInfo}</span>
+                <span>${createdAt}</span>
+              </div>
+            </div>
+            ${configurationsHtml ? `
+              <div class="nested-configs">
+                ${configurationsHtml}
+              </div>
+            ` : ''}
+          </div>
+        `;
+      }).join('');
+
+      listContainer.innerHTML = html;
+    }
+
+    /**
+     * Update pagination controls
+     */
+    function updatePagination() {
+      const paginationContainer = document.getElementById('configPagination');
+      const pageInfo = document.getElementById('configPageInfo');
+      const prevBtn = document.getElementById('configPrevBtn');
+      const nextBtn = document.getElementById('configNextBtn');
+
+      if (!paginationContainer) return;
+
+      const { currentPage, totalPages } = window.conceptualizerState;
+
+      if (totalPages <= 1) {
+        paginationContainer.style.display = 'none';
+        return;
+      }
+
+      paginationContainer.style.display = 'flex';
+
+      if (pageInfo) {
+        pageInfo.textContent = `Page ${currentPage} of ${totalPages}`;
+      }
+
+      if (prevBtn) {
+        prevBtn.disabled = currentPage <= 1;
+      }
+
+      if (nextBtn) {
+        nextBtn.disabled = currentPage >= totalPages;
+      }
+    }
+
+    /**
+     * Show error in configuration list
+     */
+    function showConfigurationError(message) {
+      const listContainer = document.getElementById('configList');
+      if (!listContainer) return;
+
+      listContainer.innerHTML = `
+        <div class="config-list-error">
+          <svg viewBox="0 0 24 24" fill="none" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" style="width:24px; height:24px; color:var(--err);">
+            <circle cx="12" cy="12" r="10"/>
+            <line x1="15" y1="9" x2="9" y2="15"/>
+            <line x1="9" y1="9" x2="15" y2="15"/>
+          </svg>
+          <p>${message}</p>
+        </div>
+      `;
+    }
+
+    /**
+     * Load and render conceptualization graph for a root individual
+     */
+    async function loadConceptualizationGraph(individualId) {
+      const projectId = localStorage.getItem('active_project_id');
+      const ontologyGraph = window.conceptualizerState.selectedOntology;
+
+      if (!projectId || !ontologyGraph || !individualId) return;
+
+      console.log('🔍 Loading conceptualization for individual:', individualId);
+
+      try {
+        const token = localStorage.getItem(tokenKey);
+
+        // Show loading state
+        showGraphLoading();
+
+        // Extract ontology name for the endpoint
+        const ontologyName = ontologyGraph.split('/').pop();
+
+        // Use the conceptualize endpoint for DAS generation
+        const response = await fetch(`/api/configurations/${projectId}/ontologies/${ontologyName}/individuals/${individualId}/conceptualize`, {
+          headers: { 'Authorization': `Bearer ${token}` }
+        });
+
+        if (!response.ok) {
+          throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+        }
+
+        const graphData = await response.json();
+
+        // Update legend based on actual node types in the graph
+        updateGraphLegend(graphData);
+
+        // Render the conceptualization graph
+        renderConfigurationGraph(graphData);
+
+        console.log(`✅ Loaded conceptualization: ${graphData.nodes?.length || 0} nodes, ${graphData.edges?.length || 0} edges`);
+      } catch (error) {
+        console.error('❌ Error loading conceptualization graph:', error);
+        showGraphError('Failed to load conceptualization graph');
+      }
+    }
+
+    /**
+     * Show loading state in graph canvas
+     */
+    function showGraphLoading() {
+      const canvas = document.getElementById('configGraphCanvas');
+      if (!canvas) return;
+
+      canvas.innerHTML = `
+        <div class="graph-loading">
+          <div class="loading-spinner"></div>
+          <p>Loading configuration graph...</p>
+        </div>
+      `;
+    }
+
+    /**
+     * Show error in graph canvas
+     */
+    function showGraphError(message) {
+      const canvas = document.getElementById('configGraphCanvas');
+      if (!canvas) return;
+
+      canvas.innerHTML = `
+        <div class="graph-placeholder">
+          <div class="placeholder-content">
+            <svg viewBox="0 0 24 24" fill="none" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" style="width:48px; height:48px; color:var(--err);">
+              <circle cx="12" cy="12" r="10"/>
+              <line x1="15" y1="9" x2="9" y2="15"/>
+              <line x1="9" y1="9" x2="15" y2="15"/>
+            </svg>
+            <h3>Graph Error</h3>
+            <p>${message}</p>
+          </div>
+        </div>
+      `;
+    }
+
+    /**
+     * Render configuration graph using Cytoscape.js
+     * For now, we'll create a simple graph representation
+     * In the future, this would use Cytoscape.js for full interactivity
+     */
+    function renderConfigurationGraph(graphData) {
+      const canvas = document.getElementById('configGraphCanvas');
+      if (!canvas) return;
+
+      // Clear any existing content
+      canvas.innerHTML = '';
+
+      // For now, create a simple SVG representation
+      // TODO: Replace with Cytoscape.js implementation
+      const svg = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
+      svg.setAttribute('width', '100%');
+      svg.setAttribute('height', '100%');
+      svg.style.background = 'var(--bg)';
+
+      const nodes = graphData.nodes || [];
+      const edges = graphData.edges || [];
+
+      // Breadthfirst layout - organize nodes based on relationships from root
+      const nodeSpacing = 180;      // Horizontal spacing between nodes
+      const levelSpacing = 140;     // Vertical spacing between levels
+      const offsetX = 100;          // Left margin
+      const offsetY = 80;           // Top margin
+
+      // Find root nodes (Requirements or nodes with no incoming edges)
+      const incomingEdges = new Set();
+      edges.forEach(edge => incomingEdges.add(edge.target));
+
+      const rootNodes = nodes.filter(node =>
+        node.type === 'Requirement' || !incomingEdges.has(node.id)
+      );
+
+      // Breadthfirst traversal to determine levels
+      const visited = new Set();
+      const levels = [];
+      const queue = rootNodes.map(node => ({ node, level: 0 }));
+
+      // Initialize levels array
+      for (let i = 0; i < 10; i++) levels[i] = [];
+
+      while (queue.length > 0) {
+        const { node, level } = queue.shift();
+
+        if (visited.has(node.id)) continue;
+        visited.add(node.id);
+
+        levels[level].push(node);
+
+        // Find connected nodes for next level
+        edges.forEach(edge => {
+          if (edge.source === node.id) {
+            const targetNode = nodes.find(n => n.id === edge.target);
+            if (targetNode && !visited.has(targetNode.id)) {
+              queue.push({ node: targetNode, level: level + 1 });
+            }
+          }
+        });
+      }
+
+      // Add any unconnected nodes to the last level
+      nodes.forEach(node => {
+        if (!visited.has(node.id)) {
+          levels[levels.length - 1].push(node);
+        }
+      });
+
+      // Calculate positions for breadthfirst layout
+      const nodePositions = {};
+
+      levels.forEach((levelNodes, level) => {
+        if (levelNodes.length === 0) return;
+
+        const levelWidth = (levelNodes.length - 1) * nodeSpacing;
+        const startX = offsetX + Math.max(0, (700 - levelWidth) / 2); // Center each level
+        const y = offsetY + level * levelSpacing;
+
+        levelNodes.forEach((node, i) => {
+          nodePositions[node.id] = {
+            x: startX + i * nodeSpacing,
+            y: y
+          };
+        });
+      });
+
+      // Draw edges first (so they appear behind nodes)
+      edges.forEach(edge => {
+        const sourcePos = nodePositions[edge.source];
+        const targetPos = nodePositions[edge.target];
+
+        if (sourcePos && targetPos) {
+          const line = document.createElementNS('http://www.w3.org/2000/svg', 'line');
+          line.setAttribute('x1', sourcePos.x);
+          line.setAttribute('y1', sourcePos.y);
+          line.setAttribute('x2', targetPos.x);
+          line.setAttribute('y2', targetPos.y);
+          line.setAttribute('stroke', '#4a90e2');
+          line.setAttribute('stroke-width', '2');
+          line.setAttribute('opacity', '0.7');
+          svg.appendChild(line);
+
+          // Add arrow marker for direction
+          const dx = targetPos.x - sourcePos.x;
+          const dy = targetPos.y - sourcePos.y;
+          const angle = Math.atan2(dy, dx);
+          const arrowLength = 8;
+          const arrowX = targetPos.x - Math.cos(angle) * 30;  // Increase arrow distance from node
+          const arrowY = targetPos.y - Math.sin(angle) * 30;
+
+          const arrow = document.createElementNS('http://www.w3.org/2000/svg', 'polygon');
+          const arrowPoints = [
+            [arrowX, arrowY],
+            [arrowX - arrowLength * Math.cos(angle - Math.PI / 6), arrowY - arrowLength * Math.sin(angle - Math.PI / 6)],
+            [arrowX - arrowLength * Math.cos(angle + Math.PI / 6), arrowY - arrowLength * Math.sin(angle + Math.PI / 6)]
+          ];
+          arrow.setAttribute('points', arrowPoints.map(p => p.join(',')).join(' '));
+          arrow.setAttribute('fill', '#4a90e2');
+          arrow.setAttribute('opacity', '0.8');
+          svg.appendChild(arrow);
+
+          // Add edge label
+          const text = document.createElementNS('http://www.w3.org/2000/svg', 'text');
+          text.setAttribute('x', (sourcePos.x + targetPos.x) / 2);
+          text.setAttribute('y', (sourcePos.y + targetPos.y) / 2 - 8);
+          text.setAttribute('fill', '#666');
+          text.setAttribute('font-size', '9');
+          text.setAttribute('text-anchor', 'middle');
+          text.setAttribute('font-family', 'Arial, sans-serif');
+          text.textContent = edge.type || 'relates';
+          svg.appendChild(text);
+        }
+      });
+
+      // Draw nodes with hierarchical positioning
+      nodes.forEach((node) => {
+        const pos = nodePositions[node.id];
+        if (!pos) return;
+
+        const x = pos.x;
+        const y = pos.y;
+
+        // Get dynamic color for node type
+        const color = getNodeColorForType(node.type);
+
+        // Create node circle
+        const circle = document.createElementNS('http://www.w3.org/2000/svg', 'circle');
+        circle.setAttribute('cx', x);
+        circle.setAttribute('cy', y);
+        circle.setAttribute('r', '25');  // Slightly larger nodes for better visibility
+        circle.setAttribute('fill', color);
+        circle.setAttribute('stroke', 'white');
+        circle.setAttribute('stroke-width', '2');
+        circle.style.cursor = 'pointer';
+
+        // Add click handler
+        circle.addEventListener('click', () => showNodeDetails(node));
+
+        svg.appendChild(circle);
+
+        // Add node type label above the node
+        const typeText = document.createElementNS('http://www.w3.org/2000/svg', 'text');
+        typeText.setAttribute('x', x);
+        typeText.setAttribute('y', y - 32);  // Above the node
+        typeText.setAttribute('fill', 'var(--muted)');
+        typeText.setAttribute('font-size', '9');
+        typeText.setAttribute('text-anchor', 'middle');
+        typeText.setAttribute('font-weight', '500');
+        typeText.textContent = node.type;
+        svg.appendChild(typeText);
+
+        // Add node label below the node
+        const text = document.createElementNS('http://www.w3.org/2000/svg', 'text');
+        text.setAttribute('x', x);
+        text.setAttribute('y', y + 45);  // Below the node
+        text.setAttribute('fill', 'var(--text)');
+        text.setAttribute('font-size', '11');
+        text.setAttribute('text-anchor', 'middle');
+        text.setAttribute('font-weight', 'bold');
+        text.textContent = node.label.length > 15 ? node.label.substring(0, 15) + '...' : node.label;
+        svg.appendChild(text);
+        svg.appendChild(typeText);
+      });
+
+      canvas.appendChild(svg);
+
+      // Store current graph data
+      window.conceptualizerState.currentGraph = graphData;
+    }
+
+    /**
+     * Show node details panel
+     */
+    function showNodeDetails(node) {
+      const panel = document.getElementById('nodeDetailsPanel');
+      const title = document.getElementById('nodeDetailsTitle');
+      const content = document.getElementById('nodeDetailsContent');
+
+      if (!panel || !title || !content) return;
+
+      title.textContent = `${node.type}: ${node.label}`;
+
+      let html = '';
+
+      // Basic properties
+      if (node.properties) {
+        Object.entries(node.properties).forEach(([key, value]) => {
+          html += `
+            <div class="node-property">
+              <div class="node-property-label">${key}:</div>
+              <div class="node-property-value">${value}</div>
+            </div>
+          `;
+        });
+      }
+
+      // DAS metadata
+      if (node.das_metadata) {
+        html += `
+          <div class="das-metadata">
+            <div class="node-property-label">DAS Analysis:</div>
+            <div class="das-confidence">
+              <span>Confidence:</span>
+              <div class="confidence-bar">
+                <div class="confidence-fill" style="width: ${node.das_metadata.confidence * 100}%"></div>
+              </div>
+              <span>${Math.round(node.das_metadata.confidence * 100)}%</span>
+            </div>
+            ${node.das_metadata.rationale ? `
+              <div class="node-property">
+                <div class="node-property-label">Rationale:</div>
+                <div class="node-property-value">${node.das_metadata.rationale}</div>
+              </div>
+            ` : ''}
+          </div>
+        `;
+      }
+
+      content.innerHTML = html;
+      panel.style.display = 'block';
+    }
+
+    /**
+     * Setup event listeners for Conceptualizer Workbench
+     */
+    function setupConceptualizerEventListeners() {
+      // Ontology selection change handler
+      document.getElementById('conceptualizerOntologySelect')?.addEventListener('change', (e) => {
+        onOntologySelectionChange(e.target.value);
+      });
+
+      // Configuration list click handlers (handles both individuals and nested stored configs)
+      document.getElementById('configList')?.addEventListener('click', (e) => {
+        // Handle root config items
+        const rootConfigItem = e.target.closest('.root-config-item');
+        if (rootConfigItem) {
+          const configId = rootConfigItem.dataset.configId;
+          const configType = rootConfigItem.dataset.configType || 'individual';
+
+          if (configType === 'individual') {
+            selectRootIndividual(configId);
+          }
+          return;
+        }
+
+        // Handle nested config items  
+        const nestedConfigItem = e.target.closest('.nested-config-item');
+        if (nestedConfigItem) {
+          const configId = nestedConfigItem.dataset.configId;
+          const configType = nestedConfigItem.dataset.configType;
+
+          if (configType === 'stored') {
+            selectStoredConfiguration(configId);
+          }
+          return;
+        }
+      });
+
+      // Filter toggle
+      document.getElementById('configFilterBtn')?.addEventListener('click', () => {
+        const filters = document.getElementById('configFilters');
+        if (filters) {
+          filters.style.display = filters.style.display === 'none' ? 'block' : 'none';
+        }
+      });
+
+      // Search input
+      document.getElementById('configSearchInput')?.addEventListener('input', debounce((e) => {
+        // TODO: Implement search functionality
+        console.log('Search:', e.target.value);
+      }, 300));
+
+      // Filter controls (updated for root individuals)
+      document.getElementById('configSourceFilter')?.addEventListener('change', (e) => {
+        window.conceptualizerState.filters.source = e.target.value;
+        loadRootIndividuals(1);
+      });
+
+      document.getElementById('configDateFilter')?.addEventListener('change', (e) => {
+        window.conceptualizerState.filters.dateRange = e.target.value;
+        loadRootIndividuals(1);
+      });
+
+      document.getElementById('configConfidenceFilter')?.addEventListener('input', (e) => {
+        window.conceptualizerState.filters.confidenceMin = parseFloat(e.target.value);
+        document.getElementById('confidenceValue').textContent = e.target.value !== null && e.target.value !== undefined ?
+          Math.round(e.target.value * 100) + '%' : 'UNK';
+        loadRootIndividuals(1);
+      });
+
+      // Pagination controls
+      document.getElementById('configPrevBtn')?.addEventListener('click', () => {
+        if (window.conceptualizerState.currentPage > 1) {
+          loadRootIndividuals(window.conceptualizerState.currentPage - 1);
+        }
+      });
+
+      document.getElementById('configNextBtn')?.addEventListener('click', () => {
+        if (window.conceptualizerState.currentPage < window.conceptualizerState.totalPages) {
+          loadRootIndividuals(window.conceptualizerState.currentPage + 1);
+        }
+      });
+
+      // Graph controls
+      document.getElementById('graphZoomInBtn')?.addEventListener('click', () => {
+        console.log('Zoom in');
+        // TODO: Implement zoom functionality
+      });
+
+      document.getElementById('graphZoomOutBtn')?.addEventListener('click', () => {
+        console.log('Zoom out');
+        // TODO: Implement zoom functionality
+      });
+
+      document.getElementById('graphFitBtn')?.addEventListener('click', () => {
+        console.log('Fit to screen');
+        // TODO: Implement fit functionality
+      });
+
+      // Close node details panel
+      document.getElementById('closeNodeDetails')?.addEventListener('click', () => {
+        const panel = document.getElementById('nodeDetailsPanel');
+        if (panel) panel.style.display = 'none';
+      });
+
+      // Generate from DAS button
+      document.getElementById('configGenerateBtn')?.addEventListener('click', () => {
+        generateConfigurationsFromDAS();
+      });
+
+      console.log('✅ Conceptualizer event listeners setup');
+    }
+
+    /**
+     * Select a root individual and generate/load its conceptualization graph
+     */
+    async function selectRootIndividual(individualId) {
+      // Update selected state for root config items
+      document.querySelectorAll('.root-config-item, .nested-config-item').forEach(item => {
+        item.classList.toggle('selected', item.dataset.configId === individualId);
+      });
+
+      window.conceptualizerState.selectedRootIndividual = individualId;
+      window.conceptualizerState.selectedConfiguration = null;
+
+      // Find the DAS configuration for this root individual if it exists
+      const storedConfigs = window.conceptualizerState.storedConfigurations || [];
+      const rootIndividual = window.conceptualizerState.rootIndividuals.find(ind => ind.config_id === individualId);
+
+      if (rootIndividual) {
+        const sourceKey = rootIndividual.instance_name || rootIndividual.name;
+        const relatedConfig = storedConfigs.find(config => config.source_requirement === sourceKey);
+
+        if (relatedConfig) {
+          // Show the DAS configuration instead of old mock conceptualization
+          console.log(`🔗 Root requirement ${sourceKey} has DAS config: ${relatedConfig.name}`);
+          await loadStoredConfigurationGraph(relatedConfig.config_id);
+          return;
+        }
+      }
+
+      // Fallback: Load old conceptualization if no DAS config exists
+      await loadConceptualizationGraph(individualId);
+    }
+
+    /**
+     * Select a stored DAS configuration and load its complete graph
+     */
+    async function selectStoredConfiguration(configId) {
+      // Update selected state
+      document.querySelectorAll('.config-item').forEach(item => {
+        item.classList.toggle('selected', item.dataset.configId === configId);
+      });
+
+      window.conceptualizerState.selectedConfiguration = configId;
+      window.conceptualizerState.selectedRootIndividual = null;
+
+      // Load and display the stored configuration graph
+      await loadStoredConfigurationGraph(configId);
+    }
+
+    /**
+     * Load and render stored configuration graph
+     */
+    async function loadStoredConfigurationGraph(configId) {
+      const projectId = localStorage.getItem('active_project_id');
+
+      if (!projectId || !configId) return;
+
+      console.log('🔍 Loading stored configuration graph:', configId);
+      console.log('🔍 DAS Context - Configuration namespace:', window.conceptualizerState.selectedOntology);
+
+      try {
+        const token = localStorage.getItem(tokenKey);
+
+        // Show loading state
+        showGraphLoading();
+
+        const response = await fetch(`/api/configurations/${projectId}/configurations/${configId}/graph`, {
+          headers: { 'Authorization': `Bearer ${token}` }
+        });
+
+        if (!response.ok) {
+          throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+        }
+
+        const graphData = await response.json();
+
+        // Update legend based on actual node types in the graph
+        updateGraphLegend(graphData);
+
+        // Render the stored configuration graph
+        renderConfigurationGraph(graphData);
+
+        console.log(`✅ Loaded stored configuration graph: ${graphData.nodes?.length || 0} nodes, ${graphData.edges?.length || 0} edges`);
+
+        // NOTE: Removed auto-layout to prevent cross-contamination with main Ontology workbench
+        // The Conceptualizer uses its own SVG breadthfirst layout algorithm
+        // Auto-applying main workbench layouts causes wrong ontology layout saves
+        console.log('🔧 Conceptualizer graph rendered with built-in breadthfirst layout (isolated from main workbench)');
+      } catch (error) {
+        console.error('❌ Error loading stored configuration graph:', error);
+        showGraphError('Failed to load stored configuration graph');
+      }
+    }
+
+    /**
+     * Generate configurations from DAS for all root individuals
+     */
+    async function generateConfigurationsFromDAS() {
+      const rootIndividuals = window.conceptualizerState.rootIndividuals;
+      const ontologyGraph = window.conceptualizerState.selectedOntology;
+
+      console.log('🚀 DAS Context - Generating concepts for ontology namespace:', ontologyGraph);
+
+      if (!rootIndividuals || rootIndividuals.length === 0) {
+        alert('No root individuals found to conceptualize. Please ensure you have individuals in the root class.');
+        return;
+      }
+
+      if (!ontologyGraph) {
+        alert('No ontology selected. Please select an ontology first.');
+        return;
+      }
+
+      console.log(`🚀 Starting DAS conceptualization for ${rootIndividuals.length} requirements...`);
+
+      // Show progress in UI
+      showDASProgress(0, rootIndividuals.length);
+
+      try {
+        const projectId = localStorage.getItem('active_project_id');
+        const token = localStorage.getItem(tokenKey);
+        const ontologyName = ontologyGraph.split('/').pop();
+
+        let successful = 0;
+        let failed = 0;
+
+        for (let i = 0; i < rootIndividuals.length; i++) {
+          const individual = rootIndividuals[i];
+
+          try {
+            console.log(`🔍 Conceptualizing ${i + 1}/${rootIndividuals.length}: ${individual.name}`);
+
+            // Update progress
+            showDASProgress(i + 1, rootIndividuals.length, `Processing ${individual.name}...`);
+
+            // Call DAS conceptualization API
+            const response = await fetch(`/api/configurations/${projectId}/ontologies/${ontologyName}/individuals/${individual.config_id}/conceptualize-and-store`, {
+              method: 'POST',
+              headers: {
+                'Authorization': `Bearer ${token}`,
+                'Content-Type': 'application/json'
+              },
+              body: JSON.stringify({
+                generateIndividuals: true,
+                storeInTables: true
+              })
+            });
+
+            if (response.ok) {
+              const result = await response.json();
+              console.log(`✅ Generated concepts for ${individual.name}: ${result.individualsCreated || 0} individuals`);
+              successful++;
+            } else {
+              const error = await response.json();
+              console.error(`❌ Failed to conceptualize ${individual.name}:`, error);
+              failed++;
+            }
+
+            // Small delay to avoid overwhelming the server
+            await new Promise(resolve => setTimeout(resolve, 200));
+
+          } catch (error) {
+            console.error(`❌ Exception for ${individual.name}:`, error);
+            failed++;
+          }
+        }
+
+        // Complete
+        console.log(`🎯 DAS conceptualization complete: ${successful} successful, ${failed} failed`);
+
+        // Hide progress and show results
+        hideDASProgress();
+
+        if (successful > 0) {
+          alert(`DAS conceptualization complete!\n✅ Successfully processed: ${successful}/${rootIndividuals.length}\n\nConfigurations and concepts have been created.`);
+
+          // Reload the nested view to show both root individuals and their DAS configurations
+          await loadStoredConfigurations(); // Refresh stored configs
+          renderConfigurationList(); // Re-render nested display
+
+          // Keep the nested view showing both root individuals and configurations
+          console.log('🔄 Refreshed nested view with new DAS configurations');
+        } else {
+          alert(`DAS conceptualization failed!\n❌ No requirements were successfully processed.\n\nCheck the console for error details.`);
+        }
+
+      } catch (error) {
+        console.error('❌ DAS generation failed:', error);
+        hideDASProgress();
+        alert(`DAS generation failed: ${error.message}`);
+      }
+    }
+
+    /**
+     * Show DAS generation progress
+     */
+    function showDASProgress(current, total, message = '') {
+      const canvas = document.getElementById('configGraphCanvas');
+      if (!canvas) return;
+
+      const percentage = Math.round((current / total) * 100);
+
+      canvas.innerHTML = `
+        <div style="display: flex; flex-direction: column; align-items: center; justify-content: center; height: 100%; color: var(--text);">
+          <div style="margin-bottom: 20px;">
+            <svg viewBox="0 0 24 24" fill="none" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" style="width:48px; height:48px; color:var(--accent); animation: spin 1s linear infinite;">
+              <path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"/>
+            </svg>
+          </div>
+          <h3 style="margin: 0 0 8px; color: var(--text);">Generating Concepts with DAS</h3>
+          <p style="margin: 0 0 20px; color: var(--muted); max-width: 300px; text-align: center;">${message || `Processing ${current}/${total} requirements...`}</p>
+          
+          <div style="width: 300px; background: var(--border); border-radius: 8px; overflow: hidden;">
+            <div style="width: ${percentage}%; height: 8px; background: var(--accent); transition: width 0.3s ease;"></div>
+          </div>
+          <p style="margin: 8px 0 0; color: var(--muted); font-size: 14px;">${percentage}% Complete</p>
+        </div>
+      `;
+    }
+
+    /**
+     * Hide DAS generation progress
+     */
+    function hideDASProgress() {
+      clearGraph(); // Reset to default graph placeholder
+    }
+
+    /**
+     * Load stored configurations for the current ontology
+     */
+    async function loadStoredConfigurations() {
+      const projectId = localStorage.getItem('active_project_id');
+      const ontologyGraph = window.conceptualizerState.selectedOntology;
+      const token = localStorage.getItem(tokenKey);
+
+      console.log('🔍 DAS Context - Loading configurations for namespace:', ontologyGraph);
+
+      if (!projectId || !ontologyGraph) {
+        console.warn('Missing project or ontology for loading stored configurations');
+        window.conceptualizerState.storedConfigurations = [];
+        return;
+      }
+
+      try {
+        const response = await fetch(`/api/configurations/${projectId}/configurations?ontology_graph=${encodeURIComponent(ontologyGraph)}`, {
+          headers: { 'Authorization': `Bearer ${token}` }
+        });
+
+        if (!response.ok) {
+          throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+        }
+
+        const data = await response.json();
+        const storedConfigs = data.configurations || [];
+
+        console.log(`✅ Loaded ${storedConfigs.length} stored configurations for ontology`);
+        window.conceptualizerState.storedConfigurations = storedConfigs;
+
+      } catch (error) {
+        console.error('❌ Error loading stored configurations:', error);
+        window.conceptualizerState.storedConfigurations = [];
+      }
+    }
+
+    /**
+     * Switch from root individuals mode to stored configurations mode
+     */
+    async function switchToConfigurationMode() {
+      console.log('🔄 Switching to stored configurations mode...');
+
+      const projectId = localStorage.getItem('active_project_id');
+      const ontologyGraph = window.conceptualizerState.selectedOntology;
+      const token = localStorage.getItem(tokenKey);
+
+      if (!projectId || !ontologyGraph) {
+        console.warn('Missing project or ontology for configuration mode');
+        return;
+      }
+
+      try {
+        // Load actual stored DAS configurations
+        const response = await fetch(`/api/configurations/${projectId}/configurations?ontology_graph=${encodeURIComponent(ontologyGraph)}`, {
+          headers: { 'Authorization': `Bearer ${token}` }
+        });
+
+        if (!response.ok) {
+          throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+        }
+
+        const data = await response.json();
+        const storedConfigs = data.configurations || [];
+
+        console.log(`✅ Loaded ${storedConfigs.length} stored DAS configurations`);
+
+        // Update state to configuration mode
+        window.conceptualizerState.viewMode = 'configurations';
+        window.conceptualizerState.storedConfigurations = storedConfigs;
+
+        // Update UI to show stored configurations
+        renderStoredConfigurations();
+
+        // Update header info
+        updateRootClassesInfo([`${storedConfigs.length} DAS Configurations`]);
+
+      } catch (error) {
+        console.error('❌ Error switching to configuration mode:', error);
+        alert(`Failed to load DAS configurations: ${error.message}`);
+      }
+    }
+
+    /**
+     * Render stored DAS configurations in the browser panel
+     */
+    function renderStoredConfigurations() {
+      const listContainer = document.getElementById('configList');
+      if (!listContainer) return;
+
+      const storedConfigs = window.conceptualizerState.storedConfigurations || [];
+
+      if (storedConfigs.length === 0) {
+        listContainer.innerHTML = `
+          <div class="config-list-empty">
+            <p>No DAS configurations found</p>
+            <p style="font-size: 11px; color: var(--muted);">Generate configurations using "Generate from DAS"</p>
+          </div>
+        `;
+        return;
+      }
+
+      const html = storedConfigs.map(config => {
+        const isSelected = config.config_id === window.conceptualizerState.selectedConfiguration;
+        const dasConfidence = config.das_metadata ?
+          (config.das_metadata.confidence !== null && config.das_metadata.confidence !== undefined ?
+            `<span class="das-indicator">DAS ${Math.round(config.das_metadata.confidence * 100)}%</span>` :
+            `<span class="das-indicator das-unknown">DAS UNK</span>`) :
+          `<span class="manual-indicator">Manual</span>`;
+
+        const createdAt = new Date(config.created_at).toLocaleDateString();
+
+        return `
+          <div class="config-item ${isSelected ? 'selected' : ''}" data-config-id="${config.config_id}" data-config-type="stored">
+            <div class="config-item-title">${config.name}</div>
+            <div class="config-item-meta">
+              <span>${dasConfidence}</span>
+              <span>${createdAt}</span>
+            </div>
+            <div class="config-item-source" style="font-size: 10px; color: var(--muted); margin-top: 2px;">
+              Source: ${config.source_requirement || 'Unknown'}
+            </div>
+          </div>
+        `;
+      }).join('');
+
+      listContainer.innerHTML = html;
+    }
+
+    /**
+     * Debounce utility function
+     */
+    function debounce(func, wait) {
+      let timeout;
+      return function executedFunction(...args) {
+        const later = () => {
+          clearTimeout(timeout);
+          func(...args);
+        };
+        clearTimeout(timeout);
+        timeout = setTimeout(later, wait);
+      };
+    }
+
+    /**
+     * Generate class table with actual individuals from database
+     */
+    function generateClassTableWithIndividuals(className, classData, properties, individuals) {
+      const icon = getClassIcon(className);
+
+      let html = `
+        <div class="class-table-container">
+          <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px;">
+            <h3 style="margin: 0; ${classData.isAbstract || classData.is_abstract ? 'font-style: italic; opacity: 0.8;' : ''}">${className} Individuals</h3>
+            <div style="display: flex; gap: 8px;">
+              <button class="btn" onclick="showAddIndividualDialog('${className}')" ${(classData.isAbstract || classData.is_abstract) ? 'disabled title="Cannot create individuals of abstract class"' : ''}>
+                ＋ Add ${className}
+              </button>
+              <button class="btn" onclick="exportClassTable('${className}')">
+                <svg viewBox="0 0 24 24" fill="none" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" style="width:14px; height:14px; vertical-align:middle; margin-right:4px; stroke:currentColor;">
+                  <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
+                  <polyline points="17,8 12,3 7,8" />
+                  <line x1="12" y1="3" x2="12" y2="15" />
+                </svg>
+                Export
+              </button>
+            </div>
+          </div>
+          <p style="color: var(--muted); margin: 0 0 16px 0; font-size: 14px;">${classData.comment || classData.definition || 'No description available'}</p>
+          
+          <div class="table-wrapper" style="border: 1px solid var(--border); border-radius: 8px; overflow: hidden; background: var(--panel);">
+            <table style="width: 100%; border-collapse: collapse;">
+              <thead>
+                <tr style="background: #000;">
+                  <th style="padding: 12px; text-align: left; color: #fff; font-weight: 600; min-width: 120px; border-top-left-radius: 8px;">Name</th>`;
+
+      // Add column for EACH property (direct AND inherited)
+      properties.forEach((prop, index) => {
+        const inheritedIcon = prop.inherited
+          ? '<span style="color: #999; font-size: 0.8em; margin-left: 4px;" title="Inherited from ' + prop.inheritedFrom + '">↑</span>'
+          : '';
+        const unitsText = prop.units ? ` (${prop.units})` : '';
+        const tooltip = prop.inherited
+          ? `title="Inherited from ${prop.inheritedFrom}"`
+          : '';
+
+        html += `<th ${tooltip} style="padding: 12px; text-align: left; color: #fff; font-weight: 600; min-width: 100px;">${prop.label}${unitsText}${inheritedIcon}</th>`;
+      });
+
+      html += `
+                  <th style="padding: 12px; text-align: left; color: #fff; font-weight: 600; min-width: 100px; border-top-right-radius: 8px;">Actions</th>
+                </tr>
+              </thead>
+              <tbody>`;
+
+      if (individuals.length === 0) {
+        // Empty state
+        html += `
+          <tr style="background: var(--panel);">
+            <td colspan="${properties.length + 2}" style="padding: 16px;">
+              <div style="border: 1px solid var(--border); border-radius: 6px; padding: 24px; text-align: center; color: var(--muted); background: var(--bg);">
+                No ${className.toLowerCase()} individuals yet. Click "Add ${className}" to create one.
+              </div>
+            </td>
+          </tr>
+        `;
+      } else {
+        // Render actual individuals
+        individuals.forEach((individual, index) => {
+          const rowClass = index % 2 === 0 ? 'var(--panel)' : 'var(--bg)';
+
+          html += `<tr style="background: ${rowClass};">`;
+
+          // Name column - show concept name if available, otherwise ODRAS ID
+          let displayName = individual.name || individual.instance_name || 'Unnamed';
+          let subtext = '';
+
+          // For DAS-generated concepts, show the meaningful name with ODRAS ID as subtext
+          if (individual.properties && individual.properties.dasGenerated) {
+            const conceptName = individual.properties.name;
+            if (conceptName && conceptName !== displayName) {
+              displayName = conceptName;
+              subtext = `<br><small style="color: var(--muted); font-size: 11px;">${individual.name}</small>`;
+            }
+          }
+
+          html += `<td style="padding: 12px; font-weight: 500; color: var(--text);">${displayName}${subtext}</td>`;
+
+          // Property columns - dynamically populate from individual.properties
+          properties.forEach(prop => {
+            let value = '';
+
+            if (individual.properties && individual.properties[prop.name]) {
+              value = individual.properties[prop.name];
+            }
+
+            // Truncate long values
+            if (typeof value === 'string' && value.length > 50) {
+              value = value.substring(0, 50) + '...';
+            }
+
+            html += `
+              <td style="padding: 12px; color: var(--text); max-width: 200px; word-wrap: break-word;" 
+                  title="${individual.properties && individual.properties[prop.name] ? individual.properties[prop.name] : ''}">
+                ${value || '<span style="color: var(--muted);">—</span>'}
+              </td>
+            `;
+          });
+
+          // Actions column
+          html += `
+            <td style="padding: 12px;">
+              <div style="display: flex; gap: 4px;">
+                <button class="btn btn-sm" onclick="editIndividual('${className}', '${individual.instance_id || individual.id}')">Edit</button>
+                <button class="btn btn-sm btn-danger" onclick="deleteIndividual('${className}', '${individual.instance_id || individual.id}')">Delete</button>
+              </div>
+            </td>
+          `;
+
+          html += `</tr>`;
+        });
+      }
+
+      html += `
+              </tbody>
+            </table>
+          </div>
+        </div>
+      `;
+
+      return html;
+    }
+
+    /**
+     * Get properties for a specific class - DYNAMIC based on ontology
+     */
+    function getClassPropertiesDuplicateDisabled(className, ontologyData) {
+      // This duplicate function was overriding the inheritance-aware version
+      // Renamed to disable and force using the correct inheritance function
+      console.warn(`🚨 Disabled duplicate getClassProperties function`);
+      return []; // Return empty - forces using the inheritance version
+    }
+
+    // End of Conceptualizer Workbench System
   </script>
 
 </body>

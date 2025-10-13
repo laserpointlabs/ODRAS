@@ -1,48 +1,48 @@
-# Simple Web Application Requirements
+# Unmanned Aircraft System Requirements
 
 ## Document Information
-- **Project**: Simple Task Management System
+- **Project**: Multi-Rotor Unmanned Aircraft System (UAS) Platform
 - **Version**: 1.0
 - **Date**: January 2025
 - **Purpose**: Basic requirements for testing ODRAS extraction
 
 ## System Overview
-This document defines requirements for a simple web-based task management application designed for small teams.
+This document defines requirements for a small unmanned aircraft system (UAS) designed for reconnaissance and surveillance operations.
 
 ## Functional Requirements
 
-### User Authentication
-**REQ-001**: The system SHALL provide secure user authentication using email and password.
+### Flight Control
+The UAS SHALL provide autonomous flight capability using Global Positioning System (GPS) waypoint navigation.
 
-**REQ-002**: The system MUST support password reset functionality via email verification.
+The system MUST support manual override control via ground control station at all times during flight.
 
-**REQ-003**: Users SHALL be able to log out from any page within the application.
+The UAS SHALL automatically return to home location when commanded or upon loss of communication signal.
 
-### Task Management
-**REQ-004**: The system SHALL allow users to create tasks with title, description, due date, and priority level.
+### Mission Operations
+The system SHALL allow operators to define flight missions with waypoints, altitude, speed, and sensor activation points.
 
-**REQ-005**: Tasks MUST be assignable to one or more team members.
+The UAS MUST be capable of maintaining stable hover at altitudes between 10 and 400 feet Above Ground Level (AGL).
 
-**REQ-006**: The system SHALL provide task status tracking with states: To Do, In Progress, Review, and Complete.
+The system SHALL provide real-time telemetry data including position, altitude, heading, battery status, and airspeed.
 
 ## Non-Functional Requirements
 
 ### Performance
-**REQ-007**: The system SHALL load any page within 3 seconds under normal network conditions.
+The UAS SHALL achieve a minimum flight endurance of 25 minutes with standard payload.
 
-**REQ-008**: The application MUST support at least 100 concurrent users without performance degradation.
+The system MUST maintain position hold accuracy within 2 meters horizontal under wind conditions up to 15 knots.
 
-### Security
-**REQ-009**: All user passwords SHALL be encrypted using industry-standard hashing algorithms.
+### Safety
+All flight-critical systems SHALL implement redundant sensors and dual-redundant flight control processors.
 
-**REQ-010**: The system MUST implement HTTPS for all data transmission.
+The UAS MUST include automatic geofencing to prevent flight outside authorized operational areas.
 
 ## Constraints
 
-- The system MUST be compatible with Chrome, Firefox, Safari, and Edge browsers
-- Mobile responsive design is REQUIRED for all user interfaces
-- Maximum file attachment size SHALL NOT exceed 10MB per file
+- The system MUST comply with Federal Aviation Administration (FAA) Part 107 regulations for small unmanned aircraft
+- Maximum takeoff weight SHALL NOT exceed 55 pounds
+- Visual line-of-sight operations are REQUIRED unless waiver is obtained
 
 ## Acceptance Criteria
 
-All requirements marked as SHALL or MUST are mandatory for system acceptance. The system will be considered complete when all mandatory requirements are implemented and verified through testing.
+All requirements marked as SHALL or MUST are mandatory for system acceptance. The system will be considered complete when all mandatory requirements are implemented and verified through flight testing.

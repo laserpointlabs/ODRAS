@@ -16,7 +16,8 @@ from datetime import datetime
 from typing import Any, Dict, List, Optional
 
 import psycopg2
-from fastapi import APIRouter, Depends, HTTPException, status
+import psycopg2.extras
+from fastapi import APIRouter, Depends, HTTPException, Query, status
 from pydantic import BaseModel, Field
 from SPARQLWrapper import SPARQLWrapper, JSON as SPARQL_JSON
 
@@ -28,7 +29,7 @@ from ..services.constraint_analyzer import ConstraintAnalyzer
 
 logger = logging.getLogger(__name__)
 
-router = APIRouter(prefix="/api/ontology", tags=["individuals"])
+router = APIRouter(prefix="/api/individuals", tags=["individuals"])
 
 def get_db_connection():
     """Get raw database connection for complex queries."""
@@ -256,20 +257,31 @@ async def initialize_individual_tables(
 async def get_class_individuals(
     project_id: str,
     class_name: str,
+    graph: Optional[str] = Query(None),
     current_user: dict = Depends(get_current_user)
 ):
     """
     Get all individuals for a specific ontology class
     """
     try:
-        # Get ontology graph for this project
-        graph_iri = await get_project_ontology_graph(project_id)
-        if not graph_iri:
-            raise HTTPException(404, "No ontology found for project")
+        logger.info(f"🔍 Getting individuals for {class_name}, project: {project_id}, graph: {graph}")
         
-        # Query individuals from Fuseki
-        individuals = await query_class_individuals(graph_iri, class_name)
+        # Use provided graph parameter or try to get project ontology  
+        if graph:
+            graph_iri = graph
+            logger.info(f"✅ Using provided graph: {graph_iri}")
+        else:
+            graph_iri = await get_project_ontology_graph(project_id)
+            if not graph_iri:
+                logger.error(f"❌ No ontology specified and no default found for project {project_id}")
+                raise HTTPException(404, "No ontology specified and no default ontology found for project")
+            logger.info(f"✅ Using default graph: {graph_iri}")
         
+        # Query individuals from database (more reliable than Fuseki for Individual Tables)
+        logger.info(f"🔍 Querying {class_name} individuals from database...")
+        individuals = await query_class_individuals_from_db(project_id, graph_iri, class_name)
+        
+        logger.info(f"✅ Found {len(individuals)} {class_name} individuals")
         return {"individuals": individuals}
         
     except Exception as e:
@@ -686,6 +698,67 @@ async def get_project_ontology_graph(project_id: str) -> Optional[str]:
     # This would query the project database to find the active ontology
     # For now, return None - this will be implemented when we have project-ontology mapping
     return None
+
+async def query_class_individuals_from_db(project_id: str, graph_iri: str, class_name: str) -> List[Dict[str, Any]]:
+    """
+    Query individuals from Individual Tables database
+    """
+    try:
+        with get_db_connection() as conn:
+            cursor = conn.cursor()
+            
+            # Query individuals from database
+            cursor.execute("""
+                SELECT 
+                    ii.instance_id,
+                    ii.instance_name,
+                    ii.instance_uri,
+                    ii.properties,
+                    ii.validation_status,
+                    ii.source_type,
+                    ii.created_at,
+                    ii.updated_at
+                FROM individual_instances ii
+                JOIN individual_tables_config itc ON ii.table_id = itc.table_id
+                WHERE itc.project_id = %s 
+                AND itc.graph_iri = %s
+                AND ii.class_name = %s
+                ORDER BY ii.instance_name
+            """, (project_id, graph_iri, class_name))
+            
+            rows = cursor.fetchall()
+            
+            individuals = []
+            for row in rows:
+                # Parse properties JSON if it's a string
+                properties = row[3]  # properties column
+                if isinstance(properties, str):
+                    try:
+                        properties = json.loads(properties)
+                    except:
+                        properties = {}
+                elif not isinstance(properties, dict):
+                    properties = {}
+                
+                individual = {
+                    "instance_id": row[0],  # instance_id
+                    "name": row[1],         # instance_name (ODRAS ID)
+                    "instance_name": row[1], # alias for compatibility
+                    "uri": row[2],          # instance_uri
+                    "properties": properties,
+                    "validation_status": row[4], # validation_status
+                    "source_type": row[5],  # source_type
+                    "created_at": row[6].isoformat() if row[6] else None,
+                    "updated_at": row[7].isoformat() if row[7] else None
+                }
+                individuals.append(individual)
+            
+            logger.info(f"✅ Found {len(individuals)} {class_name} individuals in database")
+            return individuals
+            
+    except Exception as e:
+        logger.error(f"❌ Error querying individuals from database: {e}")
+        return []
 
 async def query_class_individuals(graph_iri: str, class_name: str) -> List[Dict[str, Any]]:
     """

@@ -1490,3 +1490,162 @@ BEGIN
     RAISE NOTICE 'Requirements import traceability migration completed';
 END
 $$;
+
+-- =====================================
+-- CONCEPTUALIZER WORKBENCH SCHEMA
+-- =====================================
+
+-- Configurations table for storing system architecture configurations
+CREATE TABLE IF NOT EXISTS configurations (
+    config_id VARCHAR(36) PRIMARY KEY,
+    project_id UUID NOT NULL REFERENCES public.projects(project_id) ON DELETE CASCADE,
+    name VARCHAR(255) NOT NULL,
+    ontology_graph TEXT NOT NULL,
+    source_requirement VARCHAR(36),
+    structure JSONB NOT NULL,
+    das_metadata JSONB,
+    created_by UUID NOT NULL REFERENCES public.users(user_id) ON DELETE CASCADE,
+    created_at TIMESTAMPTZ DEFAULT NOW(),
+    modified_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+-- DAS generation jobs table for tracking batch operations
+CREATE TABLE IF NOT EXISTS das_generation_jobs (
+    job_id VARCHAR(36) PRIMARY KEY,
+    project_id UUID NOT NULL REFERENCES public.projects(project_id) ON DELETE CASCADE,
+    user_id UUID NOT NULL REFERENCES public.users(user_id) ON DELETE CASCADE,
+    status VARCHAR(20) NOT NULL DEFAULT 'started' CHECK (status IN ('started', 'processing', 'completed', 'failed', 'cancelled')),
+    progress DECIMAL(5,2) DEFAULT 0.00,
+    requirement_ids JSONB,
+    das_options JSONB,
+    filters JSONB,
+    results JSONB,
+    errors JSONB,
+    configurations_generated INT DEFAULT 0,
+    error_message TEXT,
+    created_at TIMESTAMPTZ DEFAULT NOW(),
+    updated_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+-- Configuration nodes table for caching graph data
+CREATE TABLE IF NOT EXISTS configuration_nodes (
+    node_id VARCHAR(100) PRIMARY KEY,
+    config_id VARCHAR(36) NOT NULL,
+    node_type VARCHAR(50) NOT NULL,
+    label VARCHAR(255) NOT NULL,
+    properties JSONB,
+    das_metadata JSONB,
+    style JSONB,
+    metadata JSONB,
+    
+    CONSTRAINT fk_config_nodes_config FOREIGN KEY (config_id) REFERENCES configurations(config_id) ON DELETE CASCADE
+);
+
+-- Configuration edges table for caching graph data
+CREATE TABLE IF NOT EXISTS configuration_edges (
+    edge_id VARCHAR(100) PRIMARY KEY,
+    config_id VARCHAR(36) NOT NULL,
+    source_id VARCHAR(100) NOT NULL,
+    target_id VARCHAR(100) NOT NULL,
+    edge_type VARCHAR(50) NOT NULL,
+    label VARCHAR(255) NOT NULL,
+    properties JSONB,
+    das_metadata JSONB,
+    
+    CONSTRAINT fk_config_edges_config FOREIGN KEY (config_id) REFERENCES configurations(config_id) ON DELETE CASCADE
+);
+
+-- Configuration clusters table for grouping
+CREATE TABLE IF NOT EXISTS configuration_clusters (
+    cluster_id VARCHAR(100) PRIMARY KEY,
+    config_id VARCHAR(36),
+    label VARCHAR(255) NOT NULL,
+    node_ids JSONB NOT NULL,
+    metadata JSONB,
+    
+    CONSTRAINT fk_config_clusters_config FOREIGN KEY (config_id) REFERENCES configurations(config_id) ON DELETE CASCADE
+);
+
+-- Configuration sync tracking between configurations and individual tables
+CREATE TABLE IF NOT EXISTS configuration_individual_sync (
+    sync_id VARCHAR(36) PRIMARY KEY,
+    config_id VARCHAR(36) NOT NULL,
+    table_id UUID NOT NULL,
+    instance_id UUID NOT NULL,
+    node_id VARCHAR(100) NOT NULL,
+    sync_status VARCHAR(20) NOT NULL DEFAULT 'synced' CHECK (sync_status IN ('synced', 'modified', 'deleted')),
+    last_sync_at TIMESTAMPTZ DEFAULT NOW(),
+    
+    CONSTRAINT fk_sync_config FOREIGN KEY (config_id) REFERENCES configurations(config_id) ON DELETE CASCADE,
+    CONSTRAINT fk_sync_table FOREIGN KEY (table_id) REFERENCES individual_tables_config(table_id) ON DELETE CASCADE,
+    CONSTRAINT unique_config_instance UNIQUE (config_id, instance_id)
+);
+
+-- =====================================
+-- CONCEPTUALIZER WORKBENCH INDEXES
+-- =====================================
+
+-- Configuration table indexes
+CREATE INDEX IF NOT EXISTS idx_configurations_project ON configurations(project_id);
+CREATE INDEX IF NOT EXISTS idx_configurations_source ON configurations(source_requirement);
+CREATE INDEX IF NOT EXISTS idx_configurations_created ON configurations(created_at);
+CREATE INDEX IF NOT EXISTS idx_configurations_das_confidence ON configurations ((das_metadata->>'confidence'));
+CREATE INDEX IF NOT EXISTS idx_configurations_created_month ON configurations (DATE_TRUNC('month', created_at));
+CREATE INDEX IF NOT EXISTS idx_configurations_metadata ON configurations USING GIN(das_metadata);
+
+-- DAS generation jobs indexes
+CREATE INDEX IF NOT EXISTS idx_das_jobs_project ON das_generation_jobs(project_id);
+CREATE INDEX IF NOT EXISTS idx_das_jobs_user ON das_generation_jobs(user_id);
+CREATE INDEX IF NOT EXISTS idx_das_jobs_status ON das_generation_jobs(status);
+CREATE INDEX IF NOT EXISTS idx_das_jobs_created ON das_generation_jobs(created_at);
+
+-- Configuration nodes indexes
+CREATE INDEX IF NOT EXISTS idx_config_nodes_config ON configuration_nodes(config_id);
+CREATE INDEX IF NOT EXISTS idx_config_nodes_type ON configuration_nodes(node_type);
+CREATE INDEX IF NOT EXISTS idx_config_nodes_metadata ON configuration_nodes USING GIN(metadata);
+
+-- Configuration edges indexes
+CREATE INDEX IF NOT EXISTS idx_config_edges_config ON configuration_edges(config_id);
+CREATE INDEX IF NOT EXISTS idx_config_edges_source ON configuration_edges(source_id);
+CREATE INDEX IF NOT EXISTS idx_config_edges_target ON configuration_edges(target_id);
+CREATE INDEX IF NOT EXISTS idx_config_edges_type ON configuration_edges(edge_type);
+
+-- Configuration clusters indexes
+CREATE INDEX IF NOT EXISTS idx_config_clusters_config ON configuration_clusters(config_id);
+CREATE INDEX IF NOT EXISTS idx_config_clusters_metadata ON configuration_clusters USING GIN(metadata);
+
+-- Configuration sync indexes
+CREATE INDEX IF NOT EXISTS idx_sync_config ON configuration_individual_sync(config_id);
+CREATE INDEX IF NOT EXISTS idx_sync_table ON configuration_individual_sync(table_id);
+CREATE INDEX IF NOT EXISTS idx_sync_instance ON configuration_individual_sync(instance_id);
+CREATE INDEX IF NOT EXISTS idx_sync_status ON configuration_individual_sync(sync_status);
+
+-- Create view for configuration statistics
+CREATE OR REPLACE VIEW configuration_statistics AS
+SELECT 
+    project_id,
+    COUNT(*) as total_configurations,
+    COUNT(CASE WHEN das_metadata IS NOT NULL THEN 1 END) as das_generated,
+    COUNT(CASE WHEN das_metadata IS NULL THEN 1 END) as manual_configurations,
+    AVG(CASE WHEN das_metadata IS NOT NULL THEN (das_metadata->>'confidence')::NUMERIC END) as avg_das_confidence,
+    MIN(created_at) as oldest_config,
+    MAX(created_at) as newest_config
+FROM configurations
+GROUP BY project_id;
+
+-- Table comments
+COMMENT ON TABLE configurations IS 'System architecture configurations generated by DAS or created manually';
+COMMENT ON TABLE das_generation_jobs IS 'Tracking for DAS batch generation jobs';
+COMMENT ON TABLE configuration_nodes IS 'Cached graph nodes for configuration visualizations';
+COMMENT ON TABLE configuration_edges IS 'Cached graph edges for configuration visualizations';
+COMMENT ON TABLE configuration_clusters IS 'Grouping information for configuration graph clusters';
+COMMENT ON TABLE configuration_individual_sync IS 'Sync tracking between configurations and individual tables';
+
+-- Column comments
+COMMENT ON COLUMN configurations.structure IS 'JSON structure of the complete configuration hierarchy';
+COMMENT ON COLUMN configurations.das_metadata IS 'DAS generation metadata including confidence and rationale';
+COMMENT ON COLUMN configurations.source_requirement IS 'Source requirement ID that generated this configuration';
+COMMENT ON COLUMN das_generation_jobs.status IS 'Job status: started, processing, completed, failed, cancelled';
+COMMENT ON COLUMN das_generation_jobs.progress IS 'Job completion percentage (0.00 to 100.00)';
+COMMENT ON COLUMN das_generation_jobs.configurations_generated IS 'Number of configurations successfully generated';
+COMMENT ON COLUMN configuration_individual_sync.sync_status IS 'Sync status: synced, modified, deleted';
