@@ -907,7 +907,12 @@ async def conceptualize_and_store_individual(
             cleanup_das_concepts_for_requirement(cursor, individual_id)
             
             # Real DAS call - analyze requirement and generate concepts
-            das_concepts = await generate_concepts_with_das(individual, ontology_structure, das_engine, project_id, current_user["user_id"])
+            das_result = await generate_concepts_with_das(individual, ontology_structure, das_engine, project_id, current_user["user_id"])
+            
+            # Extract concepts and relationships from DAS result
+            das_concepts = das_result.get("concepts", {})
+            das_relationships = das_result.get("relationships", {})
+            ontology_info = das_result.get("ontology_structure", ontology_structure)
             
             # Store concepts as individuals in database
             table_id = individual["table_id"]
@@ -961,9 +966,9 @@ async def conceptualize_and_store_individual(
             # Create a complete configuration from the concepts
             config_id = str(uuid.uuid4())
             
-            # Build configuration structure from DAS concepts
+            # Build configuration structure from DAS concepts using ontology relationships
             configuration_structure = build_configuration_from_concepts(
-                individual, das_concepts, concepts_created_map={}  # Track created individuals
+                individual, das_concepts, das_relationships, ontology_info, concepts_created_map={}
             )
             
             # Calculate actual confidence from DAS concepts - no fallbacks to expose issues
@@ -1107,10 +1112,12 @@ async def generate_mock_concepts_for_requirement(individual: Dict[str, Any], ont
 def build_configuration_from_concepts(
     individual: Dict[str, Any],
     das_concepts: Dict[str, List[Dict[str, Any]]],
+    das_relationships: Dict[str, List[Dict[str, Any]]],
+    ontology_structure: Dict[str, Any],
     concepts_created_map: Dict[str, Any]
 ) -> Dict[str, Any]:
     """
-    Build a complete configuration structure from DAS-generated concepts
+    Build a complete configuration structure from DAS-generated concepts using ontology-defined relationships
     """
     try:
         props = individual["properties"] if isinstance(individual["properties"], dict) else json.loads(individual["properties"])
@@ -1127,125 +1134,107 @@ def build_configuration_from_concepts(
             "relationships": []
         }
         
-        # Add constraints relationship
-        if "Constraint" in das_concepts:
-            constraint_targets = []
-            for i, constraint in enumerate(das_concepts["Constraint"]):
-                constraint_targets.append({
-                    "class": "Constraint",
-                    "instanceId": f"{individual['instance_name']}-const-{i+1:03d}",
+        # Get Requirement class's object properties from ontology
+        requirement_relationships = {}
+        if "classes" in ontology_structure:
+            for cls in ontology_structure["classes"]:
+                if cls["name"] == "Requirement":
+                    for obj_prop in cls.get("objectProperties", []):
+                        requirement_relationships[obj_prop["range"]] = {
+                            "property": obj_prop["name"],
+                            "minCount": obj_prop.get("minCount", 0),
+                            "maxCount": obj_prop.get("maxCount"),
+                            "comment": obj_prop.get("comment", "")
+                        }
+                    break
+        
+        # Track visited concepts to prevent infinite recursion
+        visited_concepts = set()
+        
+        # Helper function to build nested relationships recursively with cycle detection
+        def build_nested_relationships(class_name: str, concept: Dict[str, Any], concept_index: int, base_id: str, depth: int = 0) -> Dict[str, Any]:
+            """Recursively build relationships for a concept based on ontology structure"""
+            
+            # Prevent infinite recursion
+            concept_key = f"{class_name}-{concept_index}"
+            if concept_key in visited_concepts or depth > 10:  # Max depth of 10
+                # Return concept without nested relationships if already visited or too deep
+                return {
+                    "class": class_name,
+                    "instanceId": f"{base_id}-{class_name.lower()[:4]}-{concept_index+1:03d}",
                     "properties": {
-                        "name": constraint["name"],
-                        "dasRationale": constraint["rationale"]
+                        "name": concept["name"],
+                        "dasRationale": concept.get("rationale", "")
                     }
-                })
-            
-            if constraint_targets:
-                configuration["relationships"].append({
-                    "property": "has_constraint",
-                    "multiplicity": "0..*",
-                    "targets": constraint_targets
-                })
-        
-        # Add components relationship
-        if "Component" in das_concepts:
-            component_targets = []
-            for i, component in enumerate(das_concepts["Component"]):
-                component_data = {
-                    "class": "Component",
-                    "instanceId": f"{individual['instance_name']}-comp-{i+1:03d}",
-                    "properties": {
-                        "name": component["name"],
-                        "dasRationale": component["rationale"]
-                    },
-                    "relationships": []
                 }
-                
-                # Add interfaces for this component
-                if "Interface" in das_concepts and i < len(das_concepts["Interface"]):
-                    interface_targets = []
-                    for j, interface in enumerate(das_concepts["Interface"]):
-                        if j == i:  # Match interfaces to components
-                            interface_targets.append({
-                                "class": "Interface",
-                                "instanceId": f"{individual['instance_name']}-intf-{j+1:03d}",
-                                "properties": {
-                                    "name": interface["name"],
-                                    "dasRationale": interface["rationale"]
-                                }
-                            })
-                    
-                    if interface_targets:
-                        component_data["relationships"].append({
-                            "property": "presents",
-                            "multiplicity": "1..*",
-                            "targets": interface_targets
-                        })
-                
-                # Add processes for this component
-                if "Process" in das_concepts and i < len(das_concepts["Process"]):
-                    process_targets = []
-                    for j, process in enumerate(das_concepts["Process"]):
-                        if j == i:  # Match processes to components
-                            process_data = {
-                                "class": "Process",
-                                "instanceId": f"{individual['instance_name']}-proc-{j+1:03d}",
-                                "properties": {
-                                    "name": process["name"],
-                                    "dasRationale": process["rationale"]
-                                },
-                                "relationships": []
-                            }
-                            
-                            # Add functions for this process
-                            if "Function" in das_concepts and j < len(das_concepts["Function"]):
-                                function_targets = []
-                                for k, function in enumerate(das_concepts["Function"]):
-                                    if k == j:  # Match functions to processes
-                                        function_targets.append({
-                                            "class": "Function", 
-                                            "instanceId": f"{individual['instance_name']}-func-{k+1:03d}",
-                                            "properties": {
-                                                "name": function["name"],
-                                                "dasRationale": function["rationale"]
-                                            },
-                                            "relationships": [
-                                                {
-                                                    "property": "specifically_depends_upon",
-                                                    "multiplicity": "1..0",
-                                                    "targets": [
-                                                        {"componentRef": f"{individual['instance_name']}-comp-{i+1:03d}"}
-                                                    ]
-                                                }
-                                            ]
-                                        })
-                                
-                                if function_targets:
-                                    process_data["relationships"].append({
-                                        "property": "realizes",
-                                        "multiplicity": "1..0", 
-                                        "targets": function_targets
-                                    })
-                            
-                            process_targets.append(process_data)
-                    
-                    if process_targets:
-                        component_data["relationships"].append({
-                            "property": "performs",
-                            "multiplicity": "1..0",
-                            "targets": process_targets
-                        })
-                
-                component_targets.append(component_data)
             
-            if component_targets:
-                configuration["relationships"].append({
-                    "property": "specifies",
-                    "multiplicity": "1..*",
-                    "targets": component_targets
-                })
+            visited_concepts.add(concept_key)
+            
+            concept_node = {
+                "class": class_name,
+                "instanceId": f"{base_id}-{class_name.lower()[:4]}-{concept_index+1:03d}",
+                "properties": {
+                    "name": concept["name"],
+                    "dasRationale": concept.get("rationale", "")
+                },
+                "relationships": []
+            }
+            
+            # Find this class's object properties in ontology
+            class_obj_props = {}
+            if "classes" in ontology_structure:
+                for cls in ontology_structure["classes"]:
+                    if cls["name"] == class_name:
+                        for obj_prop in cls.get("objectProperties", []):
+                            class_obj_props[obj_prop["range"]] = {
+                                "property": obj_prop["name"],
+                                "minCount": obj_prop.get("minCount", 0),
+                                "maxCount": obj_prop.get("maxCount"),
+                                "comment": obj_prop.get("comment", "")
+                            }
+                        break
+            
+            # Build relationships to other concept classes
+            for target_class, rel_info in class_obj_props.items():
+                if target_class in das_concepts and das_concepts[target_class]:
+                    targets = []
+                    for j, target_concept in enumerate(das_concepts[target_class]):
+                        # Recursively build the target concept with its relationships
+                        nested_target = build_nested_relationships(target_class, target_concept, j, base_id, depth + 1)
+                        targets.append(nested_target)
+                    
+                    if targets:
+                        mult = f"({rel_info['minCount']}..{'*' if rel_info['maxCount'] is None else rel_info['maxCount']})"
+                        concept_node["relationships"].append({
+                            "property": rel_info["property"],
+                            "multiplicity": mult,
+                            "targets": targets
+                        })
+            
+            return concept_node
         
-        logger.info(f"✅ Built configuration structure with {len(configuration['relationships'])} relationship types")
+        # Dynamically add relationships based on ontology definition
+        for target_class, rel_info in requirement_relationships.items():
+            if target_class in das_concepts and das_concepts[target_class]:
+                # Reset visited set for each top-level relationship to allow concepts to appear in different chains
+                visited_concepts.clear()
+                targets = []
+                for i, concept in enumerate(das_concepts[target_class]):
+                    # Recursively build each concept with its nested relationships
+                    nested_concept = build_nested_relationships(target_class, concept, i, individual['instance_name'])
+                    targets.append(nested_concept)
+                
+                if targets:
+                    mult = f"({rel_info['minCount']}..{'*' if rel_info['maxCount'] is None else rel_info['maxCount']})"
+                    configuration["relationships"].append({
+                        "property": rel_info["property"],
+                        "multiplicity": mult,
+                        "targets": targets
+                    })
+        
+        
+        logger.info(f"✅ Built configuration structure with {len(configuration['relationships'])} relationship types from ontology")
+        logger.info(f"📊 Relationships added: {[r['property'] for r in configuration['relationships']]}")
         return configuration
         
     except Exception as e:
@@ -1477,20 +1466,33 @@ async def generate_concepts_with_das(
         if "classes" in ontology_structure:
             available_classes = [cls["name"] for cls in ontology_structure["classes"] if cls["name"] != "Requirement"]
         
-        # Get detailed ontology class information for DAS context
+        # Get detailed ontology class information including relationships
         ontology_classes_info = []
+        source_class_relationships = []  # Relationships FROM the source class (Requirement)
+        
         if "classes" in ontology_structure:
             for cls in ontology_structure["classes"]:
-                if cls["name"] != "Requirement":  # Exclude source class
-                    class_info = {
-                        "name": cls["name"],
-                        "description": cls.get("description", ""),
-                        "data_properties": cls.get("data_properties", []),
-                        "object_properties": cls.get("object_properties", [])
-                    }
+                class_info = {
+                    "name": cls["name"],
+                    "description": cls.get("comment", cls.get("description", "")),
+                    "data_properties": cls.get("dataProperties", cls.get("data_properties", [])),
+                    "object_properties": cls.get("objectProperties", cls.get("object_properties", []))
+                }
+                
+                # If this is the source class (Requirement), extract its outgoing relationships
+                if cls["name"] == "Requirement":
+                    for obj_prop in class_info["object_properties"]:
+                        source_class_relationships.append({
+                            "property": obj_prop["name"],
+                            "target_class": obj_prop["range"],
+                            "cardinality": f"({obj_prop.get('minCount', 0)}..{'*' if obj_prop.get('maxCount') is None else obj_prop.get('maxCount')})",
+                            "comment": obj_prop.get("comment", "")
+                        })
+                else:
+                    # Include non-source classes for concept generation
                     ontology_classes_info.append(class_info)
 
-        # Build generic, ontology-agnostic DAS prompt
+        # Build DAS prompt including ontology relationships
         das_prompt = f"""
 You are a systems engineering expert analyzing requirements to conceptualize implementations using a specific ontology structure.
 
@@ -1499,42 +1501,67 @@ REQUIREMENT TO ANALYZE:
 - ID: {req_id}  
 - Text: {req_text}
 
-ONTOLOGY STRUCTURE PROVIDED:
+ONTOLOGY CLASSES AVAILABLE:
 {json.dumps(ontology_classes_info, indent=2)}
 
+RELATIONSHIPS FROM REQUIREMENT CLASS:
+The Requirement class has these relationships to other classes:
+{json.dumps(source_class_relationships, indent=2)}
+
 TASK:
-Analyze this requirement and determine what concepts from the provided ontology classes would be needed to implement this requirement. Base your analysis on:
-1. The requirement text and its implementation needs
-2. The semantic meaning of each ontology class
-3. How these classes might work together to satisfy the requirement
+1. Analyze the requirement thoroughly and determine what concepts are needed from EACH ontology class
+2. Consider ALL aspects of the requirement: functionality, limitations, boundaries, interactions
+3. Think deeply about:
+   - What COMPONENTS are needed? (physical/logical parts)
+   - What PROCESSES must occur? (activities performed)
+   - What FUNCTIONS are realized? (capabilities delivered)
+   - What CONSTRAINTS apply? (limitations, bounds, restrictions - performance limits, operational constraints, design restrictions)
+   - What INTERFACES exist? (boundaries where components interact - data interfaces, control interfaces, physical connections)
+
+IMPORTANT - CONSIDER ALL CLASSES:
+- Don't skip classes too quickly - think about implicit requirements
+- CONSTRAINTS: Look for implied limits, bounds, accuracy requirements, tolerances, performance criteria
+- INTERFACES: Consider how components communicate and interact (data flows, control signals, physical connections)
+- Even if not explicitly stated, identify reasonable engineering concepts for completeness
 
 INSTRUCTIONS:
-- Analyze each ontology class to determine if it's relevant for implementing this requirement
-- Decide how many instances of each class are needed (could be 0, 1, 5, 10+ - you decide)
-- Generate meaningful names for each concept based on the requirement context
-- Only include classes that are genuinely needed - skip classes that don't contribute to the requirement
-- Provide confidence scores and rationale for each concept
+- Analyze each ontology class systematically
+- Generate 1-3 concepts per class where applicable
+- Provide confidence scores (0.7-1.0) and clear rationales
+- Consider the semantic relationships between classes
 
 RESPONSE FORMAT (JSON):
 Return a JSON object where each key is a class name from the ontology, and each value is an array of concept objects.
 
 Each concept object must have:
 - "name": descriptive name for the concept instance
-- "confidence": score from 0.0 to 1.0 indicating your confidence in this concept
-- "rationale": brief explanation of why this concept is needed for the requirement
+- "confidence": score from 0.7 to 1.0 indicating your confidence
+- "rationale": brief explanation of why this concept is needed
 
-Example response structure:
+EXAMPLE:
 {{
-  "ClassA": [
-    {{"name": "Specific Instance Name", "confidence": 0.9, "rationale": "Why this is needed"}},
-    {{"name": "Another Instance Name", "confidence": 0.8, "rationale": "Why this is also needed"}}
+  "Component": [
+    {{"name": "GPS Receiver", "confidence": 0.95, "rationale": "Hardware for receiving GPS signals"}},
+    {{"name": "Flight Controller", "confidence": 0.90, "rationale": "Manages flight operations"}}
   ],
-  "ClassB": [
-    {{"name": "Single Instance", "confidence": 0.7, "rationale": "Why this class helps implement the requirement"}}
+  "Process": [
+    {{"name": "Waypoint Navigation", "confidence": 0.90, "rationale": "Process of following GPS waypoints"}}
+  ],
+  "Function": [
+    {{"name": "Autonomous Flight Capability", "confidence": 0.92, "rationale": "Primary capability specified"}}
+  ],
+  "Constraint": [
+    {{"name": "GPS Accuracy Requirement", "confidence": 0.80, "rationale": "Waypoint navigation requires sufficient GPS accuracy"}}
+  ],
+  "Interface": [
+    {{"name": "GPS Data Interface", "confidence": 0.85, "rationale": "Interface between GPS module and flight controller"}}
   ]
 }}
 
-Analyze the requirement against the ontology and generate only what's needed. Return valid JSON only.
+NOTE: The system will automatically build relationships between concepts based on the ontology structure.
+You only need to identify the concepts themselves.
+
+Analyze the requirement comprehensively against ALL ontology classes. Return ONLY valid JSON - no markdown, no extra text.
 """
 
         logger.info(f"🔍 Calling DAS for requirement analysis: {req_name}")
@@ -1556,16 +1583,51 @@ Analyze the requirement against the ontology and generate only what's needed. Re
             elif chunk.get("type") == "error":
                 logger.error(f"❌ DAS analysis failed: {chunk.get('message', 'Unknown error')}")
                 # Fall back to mock if DAS fails
-                return await generate_mock_concepts_for_requirement(individual, ontology_structure)
+                mock_concepts = await generate_mock_concepts_for_requirement(individual, ontology_structure)
+                return {"concepts": mock_concepts, "relationships": {}, "ontology_structure": ontology_structure}
         
         # Parse DAS JSON response
         try:
             # Extract JSON from DAS response (may have additional text)
             import re
-            json_match = re.search(r'\{[\s\S]*\}', full_response)
+            json_match = re.search(r'```json\s*(\{[\s\S]*?\})\s*```', full_response)
+            if not json_match:
+                # Try without markdown code fences
+                json_match = re.search(r'\{[\s\S]*\}', full_response)
+            
             if json_match:
-                das_json = json_match.group()
-                concepts = json.loads(das_json)
+                das_json = json_match.group(1) if json_match.lastindex else json_match.group()
+                # Try to parse - if it fails due to incomplete JSON, try to fix it
+                try:
+                    das_response = json.loads(das_json)
+                except json.JSONDecodeError as e:
+                    logger.warning(f"⚠️ JSON parse error: {e}, attempting to fix incomplete JSON")
+                    # If JSON is incomplete, try to close it properly
+                    # Common issue: missing closing braces for relationships section
+                    if '"relationships"' in das_json and das_json.rstrip().endswith((',', '{')):
+                        # Close the relationships section properly
+                        fixed_json = das_json.rstrip().rstrip(',')
+                        # Count opening and closing braces to balance them
+                        open_braces = das_json.count('{')
+                        close_braces = das_json.count('}')
+                        missing_braces = open_braces - close_braces
+                        fixed_json += '}' * missing_braces
+                        logger.info(f"🔧 Fixed JSON by adding {missing_braces} closing braces")
+                        das_response = json.loads(fixed_json)
+                    else:
+                        raise
+                
+                # Handle both formats: direct class mapping OR wrapped in "concepts"
+                if "concepts" in das_response:
+                    # Wrapped format
+                    concepts = das_response["concepts"]
+                    relationships = das_response.get("relationships", {})
+                    if relationships:
+                        logger.info(f"🔗 DAS returned {len(relationships)} relationship mappings (will be built from ontology instead)")
+                else:
+                    # Direct format - class names as top-level keys
+                    concepts = das_response
+                    relationships = {}
                 
                 # Validate and filter concepts
                 filtered_concepts = {}
@@ -1579,21 +1641,24 @@ Analyze the requirement against the ontology and generate only what's needed. Re
                 class_breakdown = {class_name: len(class_concepts) for class_name, class_concepts in filtered_concepts.items()}
                 logger.info(f"🎯 DAS breakdown for {req_name}: {class_breakdown} (Total: {sum(class_breakdown.values())} concepts)")
                 logger.info(f"🔍 Raw DAS response had {total_raw_concepts} concepts across {len(concepts)} classes")
-                return filtered_concepts
+                
+                # Return both concepts and relationships
+                return {"concepts": filtered_concepts, "relationships": relationships, "ontology_structure": ontology_structure}
             else:
                 logger.warning(f"⚠️ DAS response didn't contain valid JSON, using fallback")
-                return await generate_mock_concepts_for_requirement(individual, ontology_structure)
+                return {"concepts": await generate_mock_concepts_for_requirement(individual, ontology_structure), "relationships": {}, "ontology_structure": ontology_structure}
                 
         except json.JSONDecodeError as e:
             logger.error(f"❌ Failed to parse DAS JSON response: {e}")
             logger.info(f"DAS Response: {full_response[:200]}...")
             # Fall back to mock if JSON parsing fails
-            return await generate_mock_concepts_for_requirement(individual, ontology_structure)
+            return {"concepts": await generate_mock_concepts_for_requirement(individual, ontology_structure), "relationships": {}, "ontology_structure": ontology_structure}
         
     except Exception as e:
         logger.error(f"❌ Error in DAS concept generation: {e}")
         # Fall back to mock on any error
-        return await generate_mock_concepts_for_requirement(individual, ontology_structure)
+        mock_concepts = await generate_mock_concepts_for_requirement(individual, ontology_structure)
+        return {"concepts": mock_concepts, "relationships": {}, "ontology_structure": ontology_structure}
 
 async def generate_mock_concepts_for_requirement(individual: Dict[str, Any], ontology_structure: Dict[str, Any]) -> Dict[str, List[Dict[str, Any]]]:
     """
