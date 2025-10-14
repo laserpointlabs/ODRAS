@@ -1649,3 +1649,26 @@ COMMENT ON COLUMN das_generation_jobs.status IS 'Job status: started, processing
 COMMENT ON COLUMN das_generation_jobs.progress IS 'Job completion percentage (0.00 to 100.00)';
 COMMENT ON COLUMN das_generation_jobs.configurations_generated IS 'Number of configurations successfully generated';
 COMMENT ON COLUMN configuration_individual_sync.sync_status IS 'Sync status: synced, modified, deleted';
+
+-- =====================================
+-- DAS ACTIONS - ASSUMPTIONS
+-- =====================================
+
+-- Assumptions captured during DAS conversations
+CREATE TABLE IF NOT EXISTS project_assumptions (
+    assumption_id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    project_id UUID NOT NULL REFERENCES projects(project_id) ON DELETE CASCADE,
+    content TEXT NOT NULL,
+    created_at TIMESTAMPTZ DEFAULT NOW(),
+    created_by UUID REFERENCES users(user_id),
+    conversation_context TEXT,  -- JSON: recent messages for context
+    status VARCHAR(50) DEFAULT 'active' CHECK (status IN ('active', 'validated', 'invalidated', 'archived')),
+    notes TEXT
+);
+
+CREATE INDEX idx_assumptions_project ON project_assumptions(project_id);
+CREATE INDEX idx_assumptions_created_at ON project_assumptions(created_at);
+
+COMMENT ON TABLE project_assumptions IS 'Assumptions captured during DAS conversations using /assumption command';
+COMMENT ON COLUMN project_assumptions.conversation_context IS 'JSON array of recent conversation messages for context';
+COMMENT ON COLUMN project_assumptions.status IS 'Status: active, validated (verified true), invalidated (verified false), archived';

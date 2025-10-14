@@ -609,6 +609,161 @@ async def get_connection_health(user: dict = Depends(get_user)):
         raise HTTPException(status_code=500, detail=str(e))
 
 
+# =====================================
+# DAS ACTIONS - ASSUMPTIONS API
+# =====================================
+
+# Dependency to get database service
+async def get_db_service() -> DatabaseService:
+    """Get database service dependency"""
+    from ..services.config import Settings
+    settings = Settings()
+    return DatabaseService(settings)
+
+
+class AssumptionRequest(BaseModel):
+    """Request model for saving an assumption"""
+    content: str
+    context: Optional[str] = None  # JSON string of conversation context
+
+
+@router.post("/project/{project_id}/assumption")
+async def save_assumption(
+    project_id: str,
+    request: AssumptionRequest,
+    user: dict = Depends(get_user),
+    db: DatabaseService = Depends(get_db_service)
+):
+    """
+    Save a confirmed assumption to the database
+    Used after DAS refines an assumption via /assumption command
+    """
+    try:
+        user_id = user.get("user_id")
+        if not user_id:
+            raise HTTPException(status_code=401, detail="User not authenticated")
+        
+        conn = db._conn()
+        try:
+            cursor = conn.cursor()
+            cursor.execute("""
+                INSERT INTO project_assumptions 
+                (project_id, content, created_by, conversation_context, status)
+                VALUES (%s, %s, %s, %s, 'active')
+                RETURNING assumption_id, created_at
+            """, (project_id, request.content, user_id, request.context))
+            
+            result = cursor.fetchone()
+            assumption_id = result[0]
+            created_at = result[1]
+            
+            conn.commit()
+            
+            logger.info(f"✅ Assumption saved: {assumption_id} for project {project_id}")
+            
+            return {
+                "success": True,
+                "assumption_id": str(assumption_id),
+                "created_at": created_at.isoformat()
+            }
+        finally:
+            db._return(conn)
+    
+    except Exception as e:
+        logger.error(f"Error saving assumption: {e}")
+        raise HTTPException(status_code=500, detail=f"Failed to save assumption: {str(e)}")
+
+
+@router.get("/project/{project_id}/assumptions")
+async def get_assumptions(
+    project_id: str,
+    db: DatabaseService = Depends(get_db_service)
+):
+    """
+    Get all assumptions for a project
+    Used by frontend to populate Assumptions node in treeview
+    """
+    try:
+        logger.info(f"📋 ASSUMPTIONS_API: Fetching assumptions for project {project_id}")
+        
+        conn = db._conn()
+        try:
+            cursor = conn.cursor()
+            cursor.execute("""
+                SELECT assumption_id, content, created_at, status, notes
+                FROM project_assumptions
+                WHERE project_id = %s
+                ORDER BY created_at DESC
+            """, (project_id,))
+            
+            rows = cursor.fetchall()
+            logger.info(f"📋 ASSUMPTIONS_API: Found {len(rows)} assumptions")
+            
+            assumptions = []
+            for row in rows:
+                assumptions.append({
+                    "id": str(row[0]),
+                    "content": row[1],
+                    "created_at": row[2].isoformat() if row[2] else None,
+                    "status": row[3],
+                    "notes": row[4]
+                })
+            
+            logger.info(f"📋 ASSUMPTIONS_API: Returning {len(assumptions)} assumptions")
+            return {"assumptions": assumptions}
+            
+        finally:
+            db._return(conn)
+    
+    except Exception as e:
+        logger.error(f"Error retrieving assumptions: {e}")
+        raise HTTPException(status_code=500, detail=f"Failed to retrieve assumptions: {str(e)}")
+
+
+@router.put("/project/{project_id}/assumption/{assumption_id}")
+async def update_assumption(
+    project_id: str,
+    assumption_id: str,
+    request: AssumptionRequest,
+    user: dict = Depends(get_user),
+    db: DatabaseService = Depends(get_db_service)
+):
+    """
+    Update an existing assumption
+    Allows users to edit assumption content or add notes
+    """
+    try:
+        user_id = user.get("user_id")
+        if not user_id:
+            raise HTTPException(status_code=401, detail="User not authenticated")
+        
+        conn = db._conn()
+        try:
+            cursor = conn.cursor()
+            cursor.execute("""
+                UPDATE project_assumptions
+                SET content = %s
+                WHERE assumption_id = %s AND project_id = %s
+                RETURNING assumption_id
+            """, (request.content, assumption_id, project_id))
+            
+            result = cursor.fetchone()
+            if not result:
+                raise HTTPException(status_code=404, detail="Assumption not found")
+            
+            conn.commit()
+            
+            return {"success": True, "assumption_id": str(result[0])}
+        finally:
+            db._return(conn)
+    
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Error updating assumption: {e}")
+        raise HTTPException(status_code=500, detail=f"Failed to update assumption: {str(e)}")
+
+
 # Initialize DAS2 engine
 async def initialize_das2_engine():
     """Initialize DAS2 engine with required services"""

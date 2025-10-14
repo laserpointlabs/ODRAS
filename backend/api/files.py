@@ -981,7 +981,6 @@ async def list_files(
     offset: int = Query(0, description="Result offset for pagination"),
     storage_service: FileStorageService = Depends(get_file_storage_service),
     db: DatabaseService = Depends(get_db_service),
-    user: Dict = Depends(get_user),  # Add user authentication
 ):
     """
     List files with optional filtering and visibility support.
@@ -997,19 +996,11 @@ async def list_files(
         List of files with metadata
     """
     try:
-        # Check if user is admin
-        is_admin = user.get("is_admin", False)
-        user_id = user.get("user_id")
-
-        # Use the new visibility-aware method with user context
-        files = await storage_service.list_files_with_visibility(
+        # Direct database query like assumptions API - no user filtering for tree view
+        files = await storage_service.list_files(
             project_id=project_id,
-            include_public=include_public,
             limit=limit,
-            offset=offset,
-            user_id=user_id,
-            is_admin=is_admin,
-            db=db,
+            offset=offset
         )
 
         # Convert to response format
