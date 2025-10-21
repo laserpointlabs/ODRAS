@@ -48,6 +48,7 @@ from backend.api.embedding_models import router as embedding_models_router
 from backend.api.knowledge import router as knowledge_router
 from backend.api.das import router as das_router
 from backend.api.das2 import router as das2_router
+from backend.api.cqmt import router as cqmt_router
 from backend.api.thread_manager import router as thread_manager_router
 from backend.api.project_threads import router as project_threads_router
 from backend.api.requirements import router as requirements_router
@@ -88,6 +89,7 @@ app.include_router(knowledge_router)
 app.include_router(requirements_router)  # <-- REQUIREMENTS WORKBENCH API
 app.include_router(individuals_router)    # <-- INDIVIDUAL TABLES API
 app.include_router(configurations_router)  # <-- CONCEPTUALIZER WORKBENCH API
+app.include_router(cqmt_router)           # <-- CQ/MT WORKBENCH API
 # ⚠️ DAS1 DEPRECATED - DO NOT ENABLE ⚠️
 # DAS1 (original DAS) has been replaced by DAS2 with cleaner architecture
 # DAS1 endpoints: /api/das/* (DEPRECATED - DO NOT USE)
@@ -870,6 +872,19 @@ async def session_intelligence_demo():
     except FileNotFoundError:
         return HTMLResponse(
             content="<h1>Session Intelligence Demo not found</h1><p>Please ensure frontend/session-intelligence-demo.html exists.</p>",
+            status_code=404,
+        )
+
+
+@app.get("/cqmt-workbench", response_class=HTMLResponse)
+async def cqmt_workbench():
+    """CQ/MT Workbench - Test-driven ontology development interface."""
+    try:
+        with open("frontend/cqmt-workbench.html", "r") as f:
+            return HTMLResponse(content=f.read())
+    except FileNotFoundError:
+        return HTMLResponse(
+            content="<h1>CQ/MT Workbench not found</h1><p>Please ensure frontend/cqmt-workbench.html exists.</p>",
             status_code=404,
         )
 

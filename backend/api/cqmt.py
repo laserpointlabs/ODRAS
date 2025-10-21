@@ -1,0 +1,622 @@
+"""
+CQ/MT Workbench API endpoints
+Provides REST API for Competency Question and Microtheory management.
+"""
+
+import logging
+import json
+import re
+from typing import Dict, List, Any, Optional
+from fastapi import APIRouter, Depends, HTTPException, Query
+from pydantic import BaseModel, Field
+
+from ..services.auth import get_user_or_anonymous
+from ..services.config import Settings
+from ..services.db import DatabaseService
+from ..services.cqmt_service import CQMTService
+
+logger = logging.getLogger(__name__)
+
+# =====================================
+# PYDANTIC MODELS
+# =====================================
+
+class MicrotheoryCreate(BaseModel):
+    label: str = Field(..., description="Human-readable label for the microtheory")
+    iri: Optional[str] = Field(None, description="Custom IRI (auto-generated if not provided)")
+    cloneFrom: Optional[str] = Field(None, description="Source microtheory IRI to clone from")
+    setDefault: bool = Field(False, description="Set as project default microtheory")
+
+class MicrotheoryResponse(BaseModel):
+    id: str
+    label: str
+    iri: str
+    parent_iri: Optional[str]
+    is_default: bool
+    triple_count: int
+    created_at: Optional[str]
+
+class CQCreate(BaseModel):
+    cq_name: str = Field(..., description="Human-readable name for the CQ")
+    problem_text: str = Field(..., description="Natural language problem statement")
+    params_json: Dict[str, Any] = Field(default_factory=dict, description="SPARQL template parameters")
+    sparql_text: str = Field(..., description="SPARQL SELECT query template")
+    mt_iri_default: Optional[str] = Field(None, description="Default microtheory IRI")
+    contract_json: Dict[str, Any] = Field(..., description="Pass/fail contract specification")
+    status: str = Field("draft", description="CQ status: draft, active, deprecated")
+
+class CQRun(BaseModel):
+    mt_iri: Optional[str] = Field(None, description="Microtheory IRI (uses CQ default if not provided)")
+    params: Dict[str, Any] = Field(default_factory=dict, description="Parameter values for SPARQL template")
+
+class CQResponse(BaseModel):
+    id: str
+    cq_name: str
+    problem_text: str
+    sparql_text: str
+    mt_iri_default: Optional[str]
+    contract_json: Dict[str, Any]
+    status: str
+    last_run_status: Optional[bool]
+    last_run_at: Optional[str]
+    created_at: Optional[str]
+
+class CQRunResponse(BaseModel):
+    passed: bool = Field(..., description="Whether CQ execution passed contract validation")
+    reason: str = Field(..., description="Pass/fail reason")
+    columns: List[str] = Field(..., description="SPARQL result columns")
+    row_count: int = Field(..., description="Number of result rows")
+    rows_preview: List[List[str]] = Field(..., description="First 10 rows for preview")
+    latency_ms: int = Field(..., description="Query execution time in milliseconds")
+    run_id: str = Field(..., description="Unique run identifier")
+
+class SuggestSPARQLRequest(BaseModel):
+    problem_text: str = Field(..., description="Natural language problem statement")
+
+class SuggestSPARQLResponse(BaseModel):
+    sparql_draft: str = Field(..., description="Generated SPARQL template")
+    confidence: float = Field(..., description="AI confidence score (0.0-1.0)")
+    notes: str = Field(..., description="Additional notes and guidance")
+
+class SuggestOntologyDeltasRequest(BaseModel):
+    sparql_text: str = Field(..., description="SPARQL query to analyze")
+    project_id: str = Field(..., description="Project UUID for ontology context")
+
+class SuggestOntologyDeltasResponse(BaseModel):
+    existing: List[str] = Field(..., description="IRIs that exist in the ontology")
+    missing: List[str] = Field(..., description="IRIs referenced but not found in ontology")
+
+# =====================================
+# ROUTER SETUP
+# =====================================
+
+router = APIRouter(prefix="/api/cqmt", tags=["cqmt"])
+
+def get_cqmt_service() -> CQMTService:
+    """Dependency to get CQMTService instance."""
+    settings = Settings()
+    db_service = DatabaseService(settings)
+    return CQMTService(db_service, settings.fuseki_url)
+
+# =====================================
+# MICROTHEORY ENDPOINTS
+# =====================================
+
+@router.post("/projects/{project_id}/microtheories")
+async def create_microtheory(
+    project_id: str,
+    request: MicrotheoryCreate,
+    user: dict = Depends(get_user_or_anonymous),
+    service: CQMTService = Depends(get_cqmt_service)
+):
+    """
+    Create a new microtheory (named graph) with optional cloning.
+    
+    Creates a named graph in Fuseki and tracks metadata in PostgreSQL.
+    If cloneFrom is provided, all triples are copied from the source graph.
+    """
+    try:
+        user_id = user.get("user_id")
+        
+        # Handle anonymous user - don't pass user_id if it's "anonymous"
+        created_by = user_id if user_id != "anonymous" else None
+        
+        result = service.create_microtheory(
+            project_id=project_id,
+            label=request.label,
+            iri=request.iri,
+            clone_from=request.cloneFrom,
+            set_default=request.setDefault,
+            created_by=created_by
+        )
+        
+        if result["success"]:
+            return {
+                "success": True,
+                "data": result["data"],
+                "message": "Microtheory created successfully"
+            }
+        else:
+            raise HTTPException(status_code=400, detail=result["error"])
+            
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Error in create_microtheory: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+@router.get("/projects/{project_id}/microtheories", response_model=List[MicrotheoryResponse])
+async def list_microtheories(
+    project_id: str,
+    user: dict = Depends(get_user_or_anonymous),
+    service: CQMTService = Depends(get_cqmt_service)
+):
+    """
+    List all microtheories for a project with triple counts.
+    
+    Returns metadata from PostgreSQL enriched with triple counts from Fuseki.
+    """
+    try:
+        result = service.list_microtheories(project_id)
+        
+        if result["success"]:
+            return result["data"]
+        else:
+            raise HTTPException(status_code=500, detail=result["error"])
+            
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Error in list_microtheories: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+@router.delete("/microtheories/{mt_id}")
+async def delete_microtheory(
+    mt_id: str,
+    user: dict = Depends(get_user_or_anonymous),
+    service: CQMTService = Depends(get_cqmt_service)
+):
+    """
+    Delete a microtheory and its named graph.
+    
+    Drops the named graph from Fuseki and deletes metadata from PostgreSQL.
+    """
+    try:
+        result = service.delete_microtheory(mt_id)
+        
+        if result["success"]:
+            return {"success": True, "message": "Microtheory deleted successfully"}
+        else:
+            raise HTTPException(status_code=400, detail=result["error"])
+            
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Error in delete_microtheory: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+@router.post("/microtheories/{mt_id}/set-default")
+async def set_default_microtheory(
+    mt_id: str,
+    project_id: str = Query(..., description="Project ID for validation"),
+    user: dict = Depends(get_user_or_anonymous),
+    service: CQMTService = Depends(get_cqmt_service)
+):
+    """
+    Set a microtheory as the project default.
+    
+    Only one microtheory per project can be the default.
+    """
+    try:
+        result = service.set_default_microtheory(mt_id, project_id)
+        
+        if result["success"]:
+            return {"success": True, "message": "Default microtheory set successfully"}
+        else:
+            raise HTTPException(status_code=400, detail=result["error"])
+            
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Error in set_default_microtheory: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+@router.delete("/microtheories/{mt_id}")
+async def delete_microtheory(
+    mt_id: str,
+    user: dict = Depends(get_user_or_anonymous),
+    service: CQMTService = Depends(get_cqmt_service)
+):
+    """
+    Delete a microtheory.
+    
+    Drops the named graph from Fuseki and deletes the SQL record.
+    """
+    try:
+        result = service.delete_microtheory(mt_id)
+        
+        if result["success"]:
+            return {
+                "success": True,
+                "message": "Microtheory deleted successfully"
+            }
+        else:
+            raise HTTPException(status_code=404, detail=result["error"])
+            
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Error in delete_microtheory: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+# =====================================
+# COMPETENCY QUESTION ENDPOINTS
+# =====================================
+
+@router.post("/projects/{project_id}/cqs")
+async def create_or_update_cq(
+    project_id: str,
+    request: CQCreate,
+    user: dict = Depends(get_user_or_anonymous),
+    service: CQMTService = Depends(get_cqmt_service)
+):
+    """
+    Create or update a competency question.
+    
+    Performs upsert based on cq_name within the project.
+    Validates SPARQL syntax and contract structure.
+    """
+    try:
+        user_id = user.get("user_id")
+        
+        # Handle anonymous user - don't pass user_id if it's "anonymous"
+        created_by = user_id if user_id != "anonymous" else None
+        
+        # Convert Pydantic model to dict
+        cq_data = request.dict()
+        
+        result = service.create_or_update_cq(
+            project_id=project_id,
+            cq_data=cq_data,
+            created_by=created_by
+        )
+        
+        if result["success"]:
+            return {
+                "success": True,
+                "data": result["data"],
+                "message": "Competency question saved successfully"
+            }
+        else:
+            raise HTTPException(status_code=400, detail=result["error"])
+            
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Error in create_or_update_cq: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+@router.get("/projects/{project_id}/cqs", response_model=List[CQResponse])
+async def list_cqs(
+    project_id: str,
+    status: Optional[str] = Query(None, description="Filter by status"),
+    mt_iri: Optional[str] = Query(None, description="Filter by default microtheory IRI"),
+    user: dict = Depends(get_user_or_anonymous),
+    service: CQMTService = Depends(get_cqmt_service)
+):
+    """
+    List competency questions for a project with optional filters.
+    
+    Returns CQs with their last run status and timestamp.
+    """
+    try:
+        result = service.get_cqs(
+            project_id=project_id,
+            status=status,
+            mt_iri=mt_iri
+        )
+        
+        if result["success"]:
+            return result["data"]
+        else:
+            raise HTTPException(status_code=500, detail=result["error"])
+            
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Error in list_cqs: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+@router.get("/cqs/{cq_id}")
+async def get_cq_details(
+    cq_id: str,
+    user: dict = Depends(get_user_or_anonymous),
+    service: CQMTService = Depends(get_cqmt_service)
+):
+    """
+    Get detailed CQ information including recent runs.
+    
+    Returns full CQ details with the last 5 execution runs.
+    """
+    try:
+        result = service.get_cq_details(cq_id)
+        
+        if result["success"]:
+            return {"success": True, "data": result["data"]}
+        else:
+            raise HTTPException(status_code=404, detail=result["error"])
+            
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Error in get_cq_details: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+@router.put("/cqs/{cq_id}")
+async def update_cq(
+    cq_id: str,
+    request: CQCreate,
+    user: dict = Depends(get_user_or_anonymous),
+    service: CQMTService = Depends(get_cqmt_service)
+):
+    """
+    Update an existing competency question.
+    
+    Updates the CQ with new data, validates SPARQL syntax and contract structure.
+    """
+    try:
+        user_id = user.get("user_id")
+        
+        # Handle anonymous user - don't pass user_id if it's "anonymous"
+        updated_by = user_id if user_id != "anonymous" else None
+        
+        # Convert Pydantic model to dict
+        cq_data = request.dict()
+        
+        result = service.update_cq(
+            cq_id=cq_id,
+            cq_data=cq_data,
+            updated_by=updated_by
+        )
+        
+        if result["success"]:
+            return {
+                "success": True,
+                "data": result["data"],
+                "message": "Competency question updated successfully"
+            }
+        else:
+            raise HTTPException(status_code=400, detail=result["error"])
+            
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Error in update_cq: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+@router.delete("/cqs/{cq_id}")
+async def delete_cq(
+    cq_id: str,
+    user: dict = Depends(get_user_or_anonymous),
+    service: CQMTService = Depends(get_cqmt_service)
+):
+    """
+    Delete a competency question.
+    
+    Deletes the CQ and all associated run records.
+    """
+    try:
+        result = service.delete_cq(cq_id)
+        
+        if result["success"]:
+            return {
+                "success": True,
+                "message": "Competency question deleted successfully"
+            }
+        else:
+            raise HTTPException(status_code=404, detail=result["error"])
+            
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Error in delete_cq: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+@router.post("/cqs/{cq_id}/run", response_model=CQRunResponse)
+async def run_cq(
+    cq_id: str,
+    request: CQRun,
+    user: dict = Depends(get_user_or_anonymous),
+    service: CQMTService = Depends(get_cqmt_service)
+):
+    """
+    Execute a competency question and validate against its contract.
+    
+    Binds parameters, executes SPARQL in specified microtheory, validates contract,
+    persists run record, and publishes completion event.
+    """
+    try:
+        user_id = user.get("user_id")
+        
+        # Handle anonymous user - don't pass user_id if it's "anonymous"
+        executed_by = user_id if user_id != "anonymous" else None
+        
+        result = service.run_cq(
+            cq_id=cq_id,
+            mt_iri=request.mt_iri,
+            params=request.params,
+            executed_by=executed_by
+        )
+        
+        if result["success"]:
+            return CQRunResponse(
+                passed=result["pass"],
+                reason=result["reason"],
+                columns=result["columns"],
+                row_count=result["row_count"],
+                rows_preview=result["rows_preview"],
+                latency_ms=result["latency_ms"],
+                run_id=result["run_id"]
+            )
+        else:
+            raise HTTPException(status_code=400, detail=result["error"])
+            
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Error in run_cq: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+@router.get("/cqs/{cq_id}/runs")
+async def get_cq_runs(
+    cq_id: str,
+    limit: int = Query(20, description="Maximum number of runs to return", ge=1, le=100),
+    offset: int = Query(0, description="Offset for pagination", ge=0),
+    user: dict = Depends(get_user_or_anonymous),
+    service: CQMTService = Depends(get_cqmt_service)
+):
+    """
+    Get paginated run history for a CQ.
+    
+    Returns execution history with pass/fail status and performance metrics.
+    """
+    try:
+        result = service.get_cq_runs(cq_id, limit, offset)
+        
+        if result["success"]:
+            return {"success": True, "data": result["data"]}
+        else:
+            raise HTTPException(status_code=500, detail=result["error"])
+            
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Error in get_cq_runs: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+# =====================================
+# DAS ASSIST ENDPOINTS (STUBS)
+# =====================================
+
+@router.post("/assist/suggest-sparql", response_model=SuggestSPARQLResponse)
+async def suggest_sparql(
+    request: SuggestSPARQLRequest,
+    user: dict = Depends(get_user_or_anonymous)
+):
+    """
+    Suggest SPARQL query from natural language problem text.
+    
+    V1: Returns basic template with TODO comments.
+    V2 (future): Use LLM to generate SPARQL from problem + ontology context.
+    """
+    try:
+        # V1 stub implementation
+        problem_text = request.problem_text
+        
+        template = f"""# Problem: {problem_text}
+# TODO: Replace variables and IRIs with project-specific values
+
+PREFIX ex: <http://example.org/>
+PREFIX rdfs: <http://www.w3.org/2000/01/rdf-schema#>
+
+SELECT ?subject ?label WHERE {{
+    # TODO: Add triple patterns here based on your problem
+    ?subject rdfs:label ?label .
+    # TODO: Add filters, constraints, and additional patterns as needed
+}}
+LIMIT 10"""
+        
+        return SuggestSPARQLResponse(
+            sparql_draft=template,
+            confidence=0.3,
+            notes="This is a basic template. Review and customize for your ontology and specific requirements."
+        )
+        
+    except Exception as e:
+        logger.error(f"Error in suggest_sparql: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+@router.post("/assist/suggest-ontology-deltas", response_model=SuggestOntologyDeltasResponse)
+async def suggest_ontology_deltas(
+    request: SuggestOntologyDeltasRequest,
+    user: dict = Depends(get_user_or_anonymous)
+):
+    """
+    Analyze SPARQL query and identify missing ontology terms.
+    
+    Parses SPARQL, extracts referenced IRIs, checks against project ontology,
+    returns lists of existing and missing terms.
+    """
+    try:
+        sparql_text = request.sparql_text
+        project_id = request.project_id
+        
+        # Extract IRIs from SPARQL query
+        referenced_iris = _extract_iris_from_sparql(sparql_text)
+        
+        if not referenced_iris:
+            return SuggestOntologyDeltasResponse(
+                existing=[],
+                missing=[]
+            )
+        
+        # For V1, return stub response
+        # V2 would query Fuseki to check existence
+        existing_iris = [
+            "http://www.w3.org/2000/01/rdf-schema#label",
+            "http://www.w3.org/1999/02/22-rdf-syntax-ns#type"
+        ]
+        
+        missing_iris = [iri for iri in referenced_iris if iri not in existing_iris]
+        existing_filtered = [iri for iri in referenced_iris if iri in existing_iris]
+        
+        return SuggestOntologyDeltasResponse(
+            existing=existing_filtered,
+            missing=missing_iris
+        )
+        
+    except Exception as e:
+        logger.error(f"Error in suggest_ontology_deltas: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+# =====================================
+# UTILITY FUNCTIONS
+# =====================================
+
+def _extract_iris_from_sparql(sparql_text: str) -> List[str]:
+    """
+    Extract IRI references from SPARQL query.
+    
+    Args:
+        sparql_text: SPARQL query string
+        
+    Returns:
+        List of unique IRIs found in the query
+    """
+    iris = set()
+    
+    # Pattern for full IRIs in angle brackets: <http://example.org/thing>
+    full_iri_pattern = r'<(https?://[^>\s]+)>'
+    full_iris = re.findall(full_iri_pattern, sparql_text)
+    iris.update(full_iris)
+    
+    # Pattern for QNames: prefix:localName
+    # This is simplified - full implementation would need prefix resolution
+    qname_pattern = r'\b(\w+):(\w+)\b'
+    qnames = re.findall(qname_pattern, sparql_text)
+    
+    # Convert common prefixes to IRIs (simplified)
+    prefix_map = {
+        "rdf": "http://www.w3.org/1999/02/22-rdf-syntax-ns#",
+        "rdfs": "http://www.w3.org/2000/01/rdf-schema#",
+        "owl": "http://www.w3.org/2002/07/owl#",
+        "xsd": "http://www.w3.org/2001/XMLSchema#",
+        "ex": "http://example.org/"
+    }
+    
+    for prefix, local_name in qnames:
+        if prefix in prefix_map:
+            full_iri = f"{prefix_map[prefix]}{local_name}"
+            iris.add(full_iri)
+    
+    return list(iris)

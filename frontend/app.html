@@ -151,6 +151,107 @@
       border-color: var(--accent);
     }
 
+    /* Modal styles */
+    .modal-overlay {
+      position: fixed;
+      top: 0;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      background: rgba(0, 0, 0, 0.7);
+      display: none;
+      align-items: center;
+      justify-content: center;
+      z-index: 1000;
+    }
+
+    .modal-overlay.active {
+      display: flex;
+    }
+
+    .modal {
+      background: var(--panel);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      width: 90%;
+      max-width: 600px;
+      max-height: 90vh;
+      overflow-y: auto;
+      box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04);
+    }
+
+    .modal-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 20px 24px;
+      border-bottom: 1px solid var(--border);
+    }
+
+    .modal-title {
+      margin: 0;
+      font-size: 18px;
+      font-weight: 600;
+      color: var(--text);
+    }
+
+    .modal-close {
+      background: none;
+      border: none;
+      font-size: 24px;
+      color: var(--muted);
+      cursor: pointer;
+      padding: 0;
+      width: 32px;
+      height: 32px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      border-radius: 6px;
+    }
+
+    .modal-close:hover {
+      background: var(--panel-2);
+      color: var(--text);
+    }
+
+    .modal-content {
+      padding: 24px;
+    }
+
+    .modal-content label {
+      display: block;
+      margin-bottom: 8px;
+      font-weight: 500;
+      color: var(--text);
+    }
+
+    .modal-content input,
+    .modal-content textarea,
+    .modal-content select {
+      width: 100%;
+      padding: 8px 12px;
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      background: var(--bg);
+      color: var(--text);
+      font-size: 14px;
+      margin-bottom: 16px;
+    }
+
+    .modal-content textarea {
+      min-height: 100px;
+      resize: vertical;
+    }
+
+    .modal-footer {
+      display: flex;
+      justify-content: flex-end;
+      gap: 12px;
+      padding: 20px 24px;
+      border-top: 1px solid var(--border);
+    }
+
     #previewFullscreenBtn:hover,
     #previewPopoutBtn:hover {
       background: var(--accent);
@@ -655,6 +756,291 @@
 
     #wb-requirements.workbench.active::-webkit-scrollbar-corner {
       background: var(--panel);
+    }
+
+    /* CQ/MT Workbench Styling */
+    #wb-cqmt.workbench.active {
+      overflow-y: scroll;
+      padding: 16px;
+      padding-bottom: 32px;
+      scrollbar-width: thin;
+      scrollbar-color: var(--border) var(--panel);
+      background: var(--bg);
+      color: var(--text);
+    }
+
+    #wb-cqmt.workbench.active::-webkit-scrollbar {
+      width: 12px;
+      background: var(--panel);
+    }
+
+    #wb-cqmt.workbench.active::-webkit-scrollbar-track {
+      background: var(--panel);
+      border-radius: 6px;
+      margin: 4px 0;
+    }
+
+    #wb-cqmt.workbench.active::-webkit-scrollbar-thumb {
+      background: var(--border);
+      border-radius: 6px;
+      border: 2px solid var(--panel);
+    }
+
+    #wb-cqmt.workbench.active::-webkit-scrollbar-thumb:hover {
+      background: var(--muted);
+    }
+
+    #wb-cqmt.workbench.active::-webkit-scrollbar-corner {
+      background: var(--panel);
+    }
+
+    .cqmt-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 20px;
+      padding-bottom: 16px;
+      border-bottom: 1px solid var(--border);
+    }
+
+    .cqmt-tabs {
+      display: flex;
+      gap: 8px;
+      margin-bottom: 20px;
+    }
+
+    .cqmt-tabs .tab {
+      padding: 8px 16px;
+      background: var(--panel-2);
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      color: var(--text);
+      cursor: pointer;
+      transition: all 0.2s ease;
+    }
+
+    .cqmt-tabs .tab:hover {
+      background: var(--panel);
+      border-color: var(--accent);
+    }
+
+    .cqmt-tabs .tab.active {
+      background: var(--accent);
+      color: white;
+      border-color: var(--accent);
+    }
+
+    .tab-content {
+      display: none;
+    }
+
+    .tab-content.active {
+      display: block;
+    }
+
+    .item-list {
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+    }
+
+    .list-item {
+      background: var(--panel);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 16px;
+      cursor: pointer;
+      transition: all 0.2s ease;
+    }
+
+    .list-item:hover {
+      border-color: var(--accent);
+      background: var(--panel-2);
+    }
+
+    .list-item.selected {
+      border-color: var(--accent);
+      background: var(--panel-2);
+    }
+
+    .item-title {
+      font-weight: 600;
+      color: var(--text);
+      margin-bottom: 8px;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .item-subtitle {
+      color: var(--muted);
+      font-size: 14px;
+      line-height: 1.4;
+    }
+
+    .status-badge {
+      padding: 2px 8px;
+      border-radius: 12px;
+      font-size: 11px;
+      font-weight: 600;
+      text-transform: uppercase;
+    }
+
+    .status-draft {
+      background: var(--muted);
+      color: var(--text);
+    }
+
+    .status-active {
+      background: #10b981;
+      color: white;
+    }
+
+    .status-deprecated {
+      background: #ef4444;
+      color: white;
+    }
+
+    .run-status-pass {
+      background: #10b981;
+      color: white;
+    }
+
+    .run-status-fail {
+      background: #ef4444;
+      color: white;
+    }
+
+    .modal-overlay {
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      background: rgba(0, 0, 0, 0.5);
+      display: none;
+      justify-content: center;
+      align-items: center;
+      z-index: 1000;
+    }
+
+    .modal-overlay.visible {
+      display: flex;
+    }
+
+    .modal {
+      background: var(--panel);
+      border-radius: 8px;
+      padding: 30px;
+      max-width: 800px;
+      width: 90%;
+      max-height: 90vh;
+      overflow-y: auto;
+      box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04);
+    }
+
+    .modal-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 20px;
+      padding-bottom: 16px;
+      border-bottom: 1px solid var(--border);
+    }
+
+    .modal-title {
+      margin: 0;
+      color: var(--text);
+    }
+
+    .modal-close {
+      background: none;
+      border: none;
+      font-size: 24px;
+      color: var(--muted);
+      cursor: pointer;
+      padding: 0;
+      width: 30px;
+      height: 30px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    .modal-close:hover {
+      color: var(--text);
+    }
+
+    .modal-content {
+      margin-bottom: 20px;
+    }
+
+    .modal-content label {
+      display: block;
+      margin-bottom: 8px;
+      font-weight: 500;
+      color: var(--text);
+    }
+
+    .modal-content input,
+    .modal-content textarea,
+    .modal-content select {
+      width: 100%;
+      padding: 8px 12px;
+      background: var(--bg);
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      color: var(--text);
+      font-size: 14px;
+      margin-bottom: 16px;
+    }
+
+    .modal-content textarea {
+      min-height: 100px;
+      resize: vertical;
+    }
+
+    .modal-footer {
+      display: flex;
+      justify-content: flex-end;
+      gap: 12px;
+      padding-top: 16px;
+      border-top: 1px solid var(--border);
+    }
+
+    .btn-sm {
+      padding: 4px 8px;
+      font-size: 11px;
+      margin: 2px;
+    }
+
+    .loading {
+      text-align: center;
+      color: var(--muted);
+      padding: 40px;
+    }
+
+    .info-message {
+      background: var(--panel-2);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 20px;
+      color: var(--text);
+    }
+
+    .info-message h4 {
+      margin-top: 0;
+      color: var(--accent);
+    }
+
+    .info-message ol {
+      margin: 16px 0;
+      padding-left: 20px;
+    }
+
+    .info-message li {
+      margin-bottom: 8px;
+      line-height: 1.5;
     }
 
     /* Default files layout */
@@ -2973,6 +3359,13 @@
             <path d="M4 7l1 1 2-2M4 12l1 1 2-2M4 17l1 1 2-2" />
           </svg>
         </div>
+        <div class="icon" data-wb="cqmt" title="CQ/MT Workbench" aria-label="CQ/MT Test-Driven Ontology">
+          <svg viewBox="0 0 24 24" fill="none" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M9 12l2 2 4-4" />
+            <circle cx="12" cy="12" r="9" />
+            <path d="M8 14s1.5 2 4 2 4-2 4-2" />
+          </svg>
+        </div>
         <div class="icon" data-wb="graph" title="GraphDB" aria-label="GraphDB">
           <svg viewBox="0 0 24 24" fill="none" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round">
             <ellipse cx="12" cy="5" rx="8" ry="3" />
@@ -4402,6 +4795,225 @@
             </div>
             <div id="requirementDetailsContent">
               <!-- Content will be populated by JavaScript -->
+            </div>
+          </div>
+        </section>
+        <section id="wb-cqmt" class="workbench">
+          <div class="header">
+            <h2>CQ/MT Workbench</h2>
+            <div class="muted">Test-driven ontology development with Competency Questions and Microtheories</div>
+          </div>
+
+          <!-- Ontology Selector for projects with multiple ontologies -->
+          <div
+            style="padding: 16px; background: var(--panel-2, #0b1220); border-bottom: 1px solid var(--border, #1f2937);">
+            <label style="display: block; margin-bottom: 8px; color: var(--muted, #9ca3af); font-size: 13px;">
+              Active Ontology Context:
+            </label>
+            <select id="ontology-selector" style="width: 300px; margin-bottom: 0;">
+              <option value="">Loading ontologies...</option>
+            </select>
+            <span class="muted" style="margin-left: 12px; font-size: 12px;" id="ontology-import-info"></span>
+          </div>
+
+          <div class="tabs">
+            <button class="tab active" onclick="showTab('cqs')">Competency Questions</button>
+            <button class="tab" onclick="showTab('microtheories')">Microtheories</button>
+            <button class="tab" onclick="showTab('coverage')">Coverage</button>
+          </div>
+
+          <!-- Competency Questions Tab -->
+          <div id="cqs-tab" class="tab-content active">
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
+              <h3>Competency Questions</h3>
+              <button class="btn btn-success" onclick="createNewCQ()">+ New CQ</button>
+            </div>
+
+            <div class="item-list" id="cq-list">
+              <div class="loading">Loading competency questions</div>
+            </div>
+
+            <!-- CQ Run Panel (shown inline when CQ is selected) -->
+            <div id="run-panel" class="panel" style="display: none; margin-top: 20px;">
+              <h3>Run CQ: <span id="run-cq-name"></span></h3>
+
+              <label>Microtheory:</label>
+              <select id="run-mt">
+                <option value="">Use CQ default</option>
+              </select>
+
+              <label>Parameters (JSON):</label>
+              <textarea id="run-params" placeholder='{"var1": "value1", "var2": "value2"}'></textarea>
+
+              <div style="margin: 20px 0;">
+                <button class="btn btn-success" onclick="runCQ()">
+                  <svg style="width:14px; height:14px; margin-right:4px;" viewBox="0 0 24 24" fill="none"
+                    stroke="currentColor" stroke-width="2">
+                    <polygon points="5,3 19,12 5,21" />
+                  </svg>
+                  Run CQ
+                </button>
+              </div>
+
+              <div id="run-results" style="margin-top: 20px;"></div>
+              <div id="run-history" style="margin-top: 20px;"></div>
+            </div>
+          </div>
+
+          <!-- CQ Editor Modal -->
+          <div id="cq-editor-modal" class="modal-overlay"
+            style="position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0, 0, 0, 0.5); display: none; justify-content: center; align-items: center; z-index: 1000;">
+            <div class="modal"
+              style="background: var(--panel, #111827); border-radius: 8px; padding: 30px; max-width: 800px; width: 90%; max-height: 90vh; overflow-y: auto; box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04);">
+              <div class="modal-header"
+                style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; padding-bottom: 15px; border-bottom: 1px solid var(--border, #1f2937);">
+                <h3 class="modal-title" id="cq-editor-title"
+                  style="font-size: 1.5em; font-weight: 600; color: var(--text, #e5e7eb); margin: 0;">Create New CQ</h3>
+                <button class="modal-close" onclick="closeCQModal()"
+                  style="background: none; border: none; font-size: 24px; color: var(--text-muted, #9ca3af); cursor: pointer; padding: 0; width: 30px; height: 30px; display: flex; align-items: center; justify-content: center; border-radius: 4px; transition: background-color 0.2s;">&times;</button>
+              </div>
+
+              <div class="modal-content">
+                <label style="display: block; margin-bottom: 8px; color: var(--text, #e5e7eb); font-weight: 500;">CQ
+                  Name:</label>
+                <input type="text" id="cq-name" placeholder="e.g., List all aircraft types"
+                  style="width: 100%; padding: 8px 12px; border: 1px solid var(--border, #1f2937); border-radius: 4px; font-size: 13px; margin: 4px 0 12px 0; transition: border-color 0.2s; background: var(--panel-2, #0b1220); color: var(--text, #e5e7eb);">
+
+                <label
+                  style="display: block; margin-bottom: 8px; color: var(--text, #e5e7eb); font-weight: 500;">Problem
+                  Statement:</label>
+                <textarea id="problem-text"
+                  placeholder="Describe what this competency question should answer in natural language..."
+                  style="width: 100%; padding: 8px 12px; border: 1px solid var(--border, #1f2937); border-radius: 4px; font-size: 13px; margin: 4px 0 12px 0; transition: border-color 0.2s; background: var(--panel-2, #0b1220); color: var(--text, #e5e7eb); min-height: 100px; resize: vertical;"></textarea>
+
+                <label style="display: block; margin-bottom: 8px; color: var(--text, #e5e7eb); font-weight: 500;">SPARQL
+                  Query:</label>
+                <textarea id="sparql-text" placeholder="SELECT ?aircraft ?type WHERE { ... }"
+                  style="width: 100%; padding: 8px 12px; border: 1px solid var(--border, #1f2937); border-radius: 4px; font-size: 13px; margin: 4px 0 12px 0; transition: border-color 0.2s; background: var(--panel-2, #0b1220); color: var(--text, #e5e7eb); min-height: 200px; resize: vertical; font-family: 'Courier New', monospace;"></textarea>
+
+                <div style="display: flex; gap: 10px; margin-bottom: 15px;">
+                  <button class="btn btn-secondary" onclick="suggestSPARQL()"
+                    style="padding: 8px 16px; background: var(--panel, #111827); color: var(--text, #e5e7eb); border: 1px solid var(--border, #1f2937); border-radius: 4px; cursor: pointer; font-size: 13px; font-weight: 500; transition: all 0.2s; margin: 4px;">
+                    <svg style="width:14px; height:14px; margin-right:4px;" viewBox="0 0 24 24" fill="none"
+                      stroke="currentColor" stroke-width="2">
+                      <circle cx="12" cy="12" r="3" />
+                      <path
+                        d="M12 1v6M12 17v6M4.22 4.22l4.24 4.24M15.54 15.54l4.24 4.24M1 12h6M17 12h6M4.22 19.78l4.24-4.24M15.54 8.46l4.24-4.24" />
+                    </svg>
+                    Suggest SPARQL
+                  </button>
+                  <button class="btn btn-secondary" onclick="checkOntologyDeltas()"
+                    style="padding: 8px 16px; background: var(--panel, #111827); color: var(--text, #e5e7eb); border: 1px solid var(--border, #1f2937); border-radius: 4px; cursor: pointer; font-size: 13px; font-weight: 500; transition: all 0.2s; margin: 4px;">
+                    <svg style="width:14px; height:14px; margin-right:4px;" viewBox="0 0 24 24" fill="none"
+                      stroke="currentColor" stroke-width="2">
+                      <circle cx="11" cy="11" r="8" />
+                      <path d="M21 21l-4.35-4.35" />
+                    </svg>
+                    Check Ontology
+                  </button>
+                </div>
+
+                <label
+                  style="display: block; margin-bottom: 8px; color: var(--text, #e5e7eb); font-weight: 500;">Default
+                  Microtheory:</label>
+                <select id="mt-default"
+                  style="width: 100%; padding: 8px 12px; border: 1px solid var(--border, #1f2937); border-radius: 4px; font-size: 13px; margin: 4px 0 12px 0; transition: border-color 0.2s; background: var(--panel-2, #0b1220); color: var(--text, #e5e7eb);">
+                  <option value="">Use project default</option>
+                </select>
+
+                <label
+                  style="display: block; margin-bottom: 8px; color: var(--text, #e5e7eb); font-weight: 500;">Contract
+                  (JSON):</label>
+                <textarea id="contract-json" placeholder='{"require_columns": ["aircraft", "type"], "min_rows": 1}'
+                  style="width: 100%; padding: 8px 12px; border: 1px solid var(--border, #1f2937); border-radius: 4px; font-size: 13px; margin: 4px 0 12px 0; transition: border-color 0.2s; background: var(--panel-2, #0b1220); color: var(--text, #e5e7eb); min-height: 80px; resize: vertical; font-family: 'Courier New', monospace;"></textarea>
+
+                <label
+                  style="display: block; margin-bottom: 8px; color: var(--text, #e5e7eb); font-weight: 500;">Status:</label>
+                <select id="cq-status"
+                  style="width: 100%; padding: 8px 12px; border: 1px solid var(--border, #1f2937); border-radius: 4px; font-size: 13px; margin: 4px 0 12px 0; transition: border-color 0.2s; background: var(--panel-2, #0b1220); color: var(--text, #e5e7eb);">
+                  <option value="draft">Draft</option>
+                  <option value="active">Active</option>
+                  <option value="deprecated">Deprecated</option>
+                </select>
+              </div>
+
+              <div class="modal-footer"
+                style="display: flex; justify-content: flex-end; gap: 10px; margin-top: 20px; padding-top: 15px; border-top: 1px solid var(--border, #1f2937);">
+                <button class="btn btn-secondary" onclick="closeCQModal()"
+                  style="padding: 8px 16px; background: var(--panel, #111827); color: var(--text, #e5e7eb); border: 1px solid var(--border, #1f2937); border-radius: 4px; cursor: pointer; font-size: 13px; font-weight: 500; transition: all 0.2s; margin: 4px;">Cancel</button>
+                <button class="btn btn-primary" onclick="saveCQ()"
+                  style="padding: 8px 16px; background: var(--accent, #60a5fa); color: var(--bg, #0f172a); border: 1px solid var(--border, #1f2937); border-radius: 4px; cursor: pointer; font-size: 13px; font-weight: 500; transition: all 0.2s; margin: 4px;">Save
+                  CQ</button>
+              </div>
+            </div>
+          </div>
+
+          <!-- Microtheories Tab -->
+          <div id="microtheories-tab" class="tab-content">
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
+              <h3>Microtheories</h3>
+              <button class="btn btn-success" onclick="createNewMT()">+ New Microtheory</button>
+            </div>
+
+            <div class="item-list" id="mt-list">
+              <div class="loading">Loading microtheories</div>
+            </div>
+
+            <!-- MT Creation Modal -->
+            <div id="mt-modal"
+              style="display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.5); z-index: 1000;">
+              <div
+                style="position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); background: white; padding: 30px; border-radius: 8px; width: 500px;">
+                <h3>Create New Microtheory</h3>
+
+                <label>Label:</label>
+                <input type="text" id="mt-label" placeholder="e.g., Baseline, Test Data, V1.0">
+
+                <label>Clone From (optional):</label>
+                <select id="mt-clone-from">
+                  <option value="">Create empty</option>
+                </select>
+
+                <div style="margin: 15px 0;">
+                  <label>
+                    <input type="checkbox" id="mt-set-default"> Set as project default
+                  </label>
+                </div>
+
+                <div style="margin-top: 20px;">
+                  <button class="btn btn-success" onclick="saveMT()">Create Microtheory</button>
+                  <button class="btn btn-secondary" onclick="cancelMT()">Cancel</button>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Coverage Tab -->
+          <div id="coverage-tab" class="tab-content">
+            <h3>CQ Coverage Summary</h3>
+            <p style="margin-bottom: 20px;">Overview of CQ pass/fail status across microtheories</p>
+
+            <div id="coverage-stats" class="stats-grid">
+              <div class="stat-card">
+                <span id="total-cqs" class="stat-number">-</span>
+                <div class="stat-label">Total CQs</div>
+              </div>
+              <div class="stat-card">
+                <span id="active-cqs" class="stat-number">-</span>
+                <div class="stat-label">Active CQs</div>
+              </div>
+              <div class="stat-card">
+                <span id="passing-cqs" class="stat-number">-</span>
+                <div class="stat-label">Recently Passing</div>
+              </div>
+              <div class="stat-card">
+                <span id="failing-cqs" class="stat-number">-</span>
+                <div class="stat-label">Recently Failing</div>
+              </div>
+            </div>
+
+            <div id="coverage-details">
+              <div class="loading">Loading coverage data</div>
             </div>
           </div>
         </section>
@@ -11466,6 +12078,11 @@ ${insertParts.join('\\n')}
             }
           }
 
+          // Update CQ/MT workbench if it's active
+          if (document.querySelector('#wb-cqmt.workbench.active')) {
+            initializeCQMTWorkbench();
+          }
+
           // Reinitialize DAS dock for new project if dock is open
           console.log('🔄 Project dropdown changed to:', pid);
 
@@ -11498,8 +12115,15 @@ ${insertParts.join('\\n')}
 
       qsa('.icon').forEach(i => i.classList.remove('active')); el.classList.add('active');
       const wb = el.getAttribute('data-wb');
+      console.log('🔄 Switching to workbench:', wb);
       qsa('.workbench').forEach(w => w.classList.remove('active'));
-      qs('#wb-' + wb).classList.add('active');
+      const targetWorkbench = qs('#wb-' + wb);
+      if (targetWorkbench) {
+        targetWorkbench.classList.add('active');
+        console.log('✅ Workbench activated:', wb);
+      } else {
+        console.error('❌ Workbench not found:', '#wb-' + wb);
+      }
 
       // Load data when switching to specific workbenches
       if (wb === 'settings') {
@@ -11536,6 +12160,12 @@ ${insertParts.join('\\n')}
         // Initialize Conceptualizer workbench
         console.log('🎯 Activating Conceptualizer workbench');
         initializeConceptualizer();
+      } else if (wb === 'cqmt') {
+        // Initialize CQ/MT workbench
+        console.log('🧪 Activating CQ/MT workbench');
+        initializeCQMTWorkbench();
+        // Add event listeners for CQ/MT buttons
+        setupCQMTEventListeners();
       }
 
       // Persist selected workbench and update URL
@@ -31500,6 +32130,1613 @@ def hello_world():
           }
         });
       }
+    });
+
+    // ========================================
+    // CQ/MT Workbench Functions
+    // ========================================
+
+    // CQ/MT Workbench JavaScript Functions
+    let cqmtProjectId = null;
+    let currentOntologyIri = null;
+    let selectedCQId = null;
+    let currentCQs = [];
+    let currentMTs = [];
+    let projectOntologies = [];
+
+    // Initialize CQ/MT workbench when it becomes active
+    function initializeCQMTWorkbench() {
+      console.log('🧪 CQ/MT Workbench: Starting initialization...');
+      console.log('🧪 CQ/MT Workbench - currentProjectId function exists:', typeof currentProjectId);
+
+      let projectId;
+      try {
+        projectId = currentProjectId(); // This is the global function
+        console.log('🧪 CQ/MT Workbench initialization - projectId:', projectId);
+      } catch (error) {
+        console.error('🧪 Error calling currentProjectId():', error);
+        // Fallback to localStorage
+        projectId = localStorage.getItem('active_project_id');
+        console.log('🧪 Fallback to localStorage projectId:', projectId);
+      }
+
+      console.log('🧪 CQ/MT Workbench - activeProject:', window.activeProject);
+      console.log('🧪 CQ/MT Workbench - localStorage active_project_id:', localStorage.getItem('active_project_id'));
+
+      if (projectId) {
+        console.log('🧪 CQ/MT Workbench initialized with project:', projectId);
+        cqmtProjectId = projectId; // Set the local variable
+
+        // Load data immediately
+        console.log('🧪 Loading CQ/MT data for project:', projectId);
+        console.log('🧪 About to call loadCQs()');
+        loadCQs();
+        console.log('🧪 About to call loadMicrotheories()');
+        loadMicrotheories();
+        console.log('🧪 About to call loadCoverage()');
+        loadCoverage();
+
+        init();
+
+        // Also refresh in case project changed
+        refreshCQMTWorkbench();
+      } else {
+        console.log('🧪 CQ/MT Workbench: No project selected, showing empty state');
+        // Show empty state when no project is selected
+        document.getElementById('cq-list').innerHTML = '<div class="loading">Select a project to view CQs</div>';
+        document.getElementById('mt-list').innerHTML = '<div class="loading">Select a project to view Microtheories</div>';
+        document.getElementById('coverage-details').innerHTML = '<div class="loading">Select a project to view coverage</div>';
+        hidePanels();
+      }
+    }
+
+    // Setup event listeners for CQ/MT workbench
+    function setupCQMTEventListeners() {
+      // Tab buttons
+      const cqTab = document.querySelector('.tab[onclick="showTab(\'cqs\')"]');
+      const mtTab = document.querySelector('.tab[onclick="showTab(\'microtheories\')"]');
+      const coverageTab = document.querySelector('.tab[onclick="showTab(\'coverage\')"]');
+
+      if (cqTab) cqTab.onclick = () => showTab('cqs');
+      if (mtTab) mtTab.onclick = () => showTab('microtheories');
+      if (coverageTab) coverageTab.onclick = () => showTab('coverage');
+
+      // Action buttons
+      const newCQBtn = document.querySelector('.btn-success[onclick="createNewCQ()"]');
+      const newMTBtn = document.querySelector('.btn-success[onclick="createNewMT()"]');
+
+      if (newCQBtn) newCQBtn.onclick = createNewCQ;
+      if (newMTBtn) newMTBtn.onclick = createNewMT;
+    }
+
+    // Refresh CQ/MT workbench when project changes
+    function refreshCQMTWorkbench() {
+      console.log('🧪 Refreshing CQ/MT workbench for new project');
+      const projectId = currentProjectId(); // Get current project from global function
+      if (projectId && projectId !== cqmtProjectId) {
+        console.log('🧪 Project changed from', cqmtProjectId, 'to', projectId);
+        cqmtProjectId = projectId;
+
+        // Clear current data
+        currentCQs = [];
+        currentMTs = [];
+
+        // Reload data for new project
+        loadCQs();
+        loadMicrotheories();
+        loadCoverage();
+      }
+    }
+
+
+    // Display coverage statistics
+    function displayCoverage(cqs, mts) {
+      const container = document.getElementById('cqmt-coverage-stats');
+      if (!container) return;
+
+      const totalCQs = cqs.length;
+      const passingCQs = cqs.filter(cq => cq.last_run_status === true).length;
+      const failingCQs = cqs.filter(cq => cq.last_run_status === false).length;
+      const totalMTs = mts.length;
+
+      const coverageHtml = `
+        <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 16px; margin-top: 20px;">
+          <div class="card">
+            <h4 style="margin: 0 0 8px 0; color: var(--text);">Competency Questions</h4>
+            <div style="font-size: 24px; font-weight: bold; color: var(--accent);">${totalCQs}</div>
+            <div style="font-size: 12px; color: var(--muted);">Total CQs</div>
+          </div>
+
+          <div class="card">
+            <h4 style="margin: 0 0 8px 0; color: var(--text);">Passing</h4>
+            <div style="font-size: 24px; font-weight: bold; color: var(--success);">${passingCQs}</div>
+            <div style="font-size: 12px; color: var(--muted);">CQs passing</div>
+          </div>
+
+          <div class="card">
+            <h4 style="margin: 0 0 8px 0; color: var(--text);">Failing</h4>
+            <div style="font-size: 24px; font-weight: bold; color: var(--error);">${failingCQs}</div>
+            <div style="font-size: 12px; color: var(--muted);">CQs failing</div>
+          </div>
+
+          <div class="card">
+            <h4 style="margin: 0 0 8px 0; color: var(--text);">Microtheories</h4>
+            <div style="font-size: 24px; font-weight: bold; color: var(--accent);">${totalMTs}</div>
+            <div style="font-size: 12px; color: var(--muted);">Total MTs</div>
+          </div>
+        </div>
+
+        ${totalCQs > 0 ? `
+          <div class="card" style="margin-top: 20px;">
+            <h4 style="margin: 0 0 12px 0; color: var(--text);">Coverage Status</h4>
+            <div style="display: flex; align-items: center; gap: 12px;">
+              <div style="flex: 1; background: var(--panel-2); height: 8px; border-radius: 4px; overflow: hidden;">
+                <div style="height: 100%; width: ${totalCQs > 0 ? (passingCQs / totalCQs * 100) : 0}%; background: var(--success); transition: width 0.3s ease;"></div>
+              </div>
+              <div style="font-size: 14px; color: var(--muted); min-width: 60px;">
+                ${passingCQs}/${totalCQs} (${totalCQs > 0 ? Math.round(passingCQs / totalCQs * 100) : 0}%)
+              </div>
+            </div>
+          </div>
+        ` : ''}
+      `;
+
+      container.innerHTML = coverageHtml;
+    }
+
+    // Tab switching for CQ/MT workbench
+    function showCQMTTab(tabName) {
+      // Hide all tab contents
+      document.getElementById('cqmtCQsContent').style.display = 'none';
+      document.getElementById('cqmtMTsContent').style.display = 'none';
+      document.getElementById('cqmtCoverageContent').style.display = 'none';
+
+      // Remove active styling from all tab buttons
+      document.getElementById('cqmtTabCQs').style.background = '';
+      document.getElementById('cqmtTabCQs').style.color = '';
+      document.getElementById('cqmtTabMTs').style.background = '';
+      document.getElementById('cqmtTabMTs').style.color = '';
+      document.getElementById('cqmtTabCoverage').style.background = '';
+      document.getElementById('cqmtTabCoverage').style.color = '';
+
+      // Show selected tab content and style button
+      if (tabName === 'cqs') {
+        document.getElementById('cqmtCQsContent').style.display = 'block';
+        document.getElementById('cqmtTabCQs').style.background = 'var(--accent)';
+        document.getElementById('cqmtTabCQs').style.color = 'white';
+        loadCQs();
+      } else if (tabName === 'microtheories') {
+        document.getElementById('cqmtMTsContent').style.display = 'block';
+        document.getElementById('cqmtTabMTs').style.background = 'var(--accent)';
+        document.getElementById('cqmtTabMTs').style.color = 'white';
+        loadMicrotheories();
+      } else if (tabName === 'coverage') {
+        document.getElementById('cqmtCoverageContent').style.display = 'block';
+        document.getElementById('cqmtTabCoverage').style.background = 'var(--accent)';
+        document.getElementById('cqmtTabCoverage').style.color = 'white';
+        loadCoverage();
+      }
+    }
+
+    // Load ontologies for the current project
+    async function loadOntologies() {
+      const projectId = currentProjectId();
+      if (!projectId) {
+        console.log('🧪 loadOntologies: No project ID available');
+        return;
+      }
+
+      try {
+        console.log('🧪 Loading ontologies for project:', projectId);
+        const response = await authenticatedFetch(`/api/ontology/?project=${projectId}`);
+        if (response.success && response.ontologies) {
+          const selector = document.getElementById('cqmt-ontology-selector');
+          if (selector) {
+            selector.innerHTML = '<option value="">Select ontology...</option>';
+
+            response.ontologies.forEach(onto => {
+              const option = document.createElement('option');
+              option.value = onto.iri;
+              option.textContent = onto.label || onto.iri;
+              selector.appendChild(option);
+            });
+
+            // Auto-select if only one ontology
+            if (response.ontologies.length === 1) {
+              selector.value = response.ontologies[0].iri;
+            }
+          }
+        } else {
+          console.log('🧪 No ontologies found for project:', projectId);
+        }
+      } catch (error) {
+        console.error('🧪 Error loading ontologies:', error);
+      }
+    }
+
+    // Load microtheories
+    async function loadMicrotheories() {
+      const projectId = currentProjectId();
+      if (!projectId) {
+        console.log('🧪 loadMicrotheories: No project ID available');
+        return;
+      }
+
+      try {
+        console.log('🧪 Loading microtheories for project:', projectId);
+        const response = await authenticatedFetch(`/api/cqmt/projects/${projectId}/microtheories`);
+        if (response.success) {
+          currentMTs = response.data || [];
+          displayMicrotheories();
+          populateMTSelectors();
+        } else {
+          console.log('🧪 Failed to load microtheories:', response.message);
+          showError('Failed to load microtheories: ' + (response.message || 'Unknown error'));
+        }
+      } catch (error) {
+        console.error('🧪 Error loading microtheories:', error);
+        showError('Failed to load microtheories: ' + error.message);
+      }
+    }
+
+    // Display microtheories
+    function displayMicrotheories() {
+      const container = document.getElementById('cqmt-mt-list');
+
+      if (currentMTs.length === 0) {
+        container.innerHTML = '<div class="muted">No microtheories found. Create your first microtheory to get started!</div>';
+        return;
+      }
+
+      container.innerHTML = '';
+
+      currentMTs.forEach(mt => {
+        const div = document.createElement('div');
+        div.className = 'card';
+        div.style.cursor = 'pointer';
+        div.style.marginBottom = '12px';
+
+        const defaultBadge = mt.is_default ?
+          `<span style="padding: 2px 8px; border-radius: 12px; font-size: 12px; font-weight: 500; background: var(--success-10); color: var(--success);">DEFAULT</span>` : '';
+
+        div.innerHTML = `
+          <div style="display: flex; justify-content: space-between; align-items: flex-start;">
+            <div style="flex: 1;">
+              <h4 style="margin: 0 0 8px 0; color: var(--text);">
+                ${mt.label}
+                ${defaultBadge}
+              </h4>
+              <p style="margin: 0 0 8px 0; color: var(--muted); font-size: 14px;">
+                ${mt.triple_count} triples • ${mt.iri}
+              </p>
+              ${mt.parent_iri ? `<div style="font-size: 12px; color: var(--muted);">Cloned from ${mt.parent_iri}</div>` : ''}
+            </div>
+            <div style="display: flex; gap: 5px; margin-left: 10px;">
+              ${!mt.is_default ? `<button class="btn btn-sm" onclick="setDefaultMT('${mt.id}')">Set Default</button>` : ''}
+              <button class="btn btn-sm" onclick="cloneMT('${mt.iri}', '${mt.label}')">Clone</button>
+              <button class="btn btn-sm" onclick="deleteMT('${mt.id}', '${mt.label}')" style="background: var(--danger, #dc2626); color: white;">Delete</button>
+            </div>
+          </div>
+        `;
+        container.appendChild(div);
+      });
+    }
+
+    // Load competency questions
+    async function loadCQs() {
+      console.log('🧪 loadCQs() called with cqmtProjectId:', cqmtProjectId);
+      if (!cqmtProjectId) {
+        console.log('🧪 loadCQs() - no project ID, returning');
+        return;
+      }
+
+      try {
+        console.log('🧪 Loading CQs for project:', cqmtProjectId);
+        const response = await authenticatedFetch(`/api/cqmt/projects/${cqmtProjectId}/cqs`);
+        console.log('🧪 CQs API response:', response);
+
+        // Parse the response if it's a Response object
+        let data;
+        if (response && typeof response.json === 'function') {
+          data = await response.json();
+          console.log('🧪 CQs parsed data:', data);
+        } else {
+          data = response;
+        }
+
+        // Handle both array response and object response
+        if (Array.isArray(data)) {
+          currentCQs = data;
+        } else if (data && data.data && Array.isArray(data.data)) {
+          currentCQs = data.data;
+        } else if (data && data.success && Array.isArray(data.data)) {
+          currentCQs = data.data;
+        } else {
+          currentCQs = [];
+        }
+
+        console.log('🧪 Processed CQs:', currentCQs);
+        displayCQs();
+      } catch (error) {
+        console.error('Error loading CQs:', error);
+        document.getElementById('cq-list').innerHTML = '<div class="error-message">Error loading CQs: ' + error.message + '</div>';
+      }
+    }
+
+    function displayCQs() {
+      const container = document.getElementById('cq-list');
+
+      if (currentCQs.length === 0) {
+        container.innerHTML = '<div class="info-message">No competency questions found. Create your first CQ to get started!</div>';
+        return;
+      }
+
+      container.innerHTML = '';
+
+      currentCQs.forEach(cq => {
+        const div = document.createElement('div');
+        div.className = 'list-item';
+        div.onclick = () => selectCQ(cq.id);
+
+        const runStatusBadge = cq.last_run_status !== null ?
+          `<span class="status-badge ${cq.last_run_status ? 'run-status-pass' : 'run-status-fail'}">
+                    ${cq.last_run_status ? 'PASS' : 'FAIL'}
+                </span>` : '';
+
+        div.innerHTML = `
+                <div style="display: flex; justify-content: space-between; align-items: flex-start;">
+                    <div style="flex: 1;">
+                        <div class="item-title">
+                            ${cq.cq_name}
+                            <span class="status-badge status-${cq.status}">${cq.status.toUpperCase()}</span>
+                            ${runStatusBadge}
+                        </div>
+                        <div class="item-subtitle">
+                            ${cq.problem_text.substring(0, 100)}${cq.problem_text.length > 100 ? '...' : ''}
+                            ${cq.last_run_at ? `• Last run: ${new Date(cq.last_run_at).toLocaleString()}` : ''}
+                        </div>
+                    </div>
+                    <div style="display: flex; gap: 5px; margin-left: 10px;">
+                        <button class="btn btn-sm" onclick="event.stopPropagation(); editCQ('${cq.id}')" style="padding: 4px 8px; font-size: 11px;">
+                            Edit
+                        </button>
+                        <button class="btn btn-sm" onclick="event.stopPropagation(); selectCQ('${cq.id}')" style="padding: 4px 8px; font-size: 11px;">
+                            Run
+                        </button>
+                        <button class="btn btn-sm" onclick="event.stopPropagation(); deleteCQ('${cq.id}', '${cq.cq_name}')" style="padding: 4px 8px; font-size: 11px; background: var(--danger, #dc2626); color: white;">
+                            Delete
+                        </button>
+                    </div>
+                </div>
+            `;
+        container.appendChild(div);
+      });
+    }
+
+    function selectCQ(cqId) {
+      selectedCQId = cqId;
+
+      // Update selection styling
+      document.querySelectorAll('#cq-list .list-item').forEach(item => {
+        item.classList.remove('selected');
+      });
+      event.target.closest('.list-item').classList.add('selected');
+
+      // Show run panel
+      showRunPanel(cqId);
+    }
+
+    function createNewCQ() {
+      selectedCQId = null;
+      document.getElementById('cq-editor-title').textContent = 'Create New CQ';
+
+      // Clear form
+      document.getElementById('cq-name').value = '';
+      document.getElementById('problem-text').value = '';
+      document.getElementById('sparql-text').value = '';
+      document.getElementById('mt-default').value = '';
+      document.getElementById('contract-json').value = '{"require_columns": [], "min_rows": 1}';
+      document.getElementById('cq-status').value = 'draft';
+
+      // Show modal
+      document.getElementById('cq-editor-modal').style.display = 'flex';
+    }
+
+    async function editCQ(cqId) {
+      try {
+        const response = await authenticatedFetch(`/api/cqmt/cqs/${cqId}`);
+        if (response.success) {
+          const cq = response.data;
+          selectedCQId = cqId;
+          document.getElementById('cq-editor-title').textContent = 'Edit CQ';
+
+          // Populate form
+          document.getElementById('cq-name').value = cq.cq_name || '';
+          document.getElementById('problem-text').value = cq.problem_text || '';
+          document.getElementById('sparql-text').value = cq.sparql_text || '';
+          document.getElementById('mt-default').value = cq.mt_iri_default || '';
+          document.getElementById('contract-json').value = JSON.stringify(cq.contract_json, null, 2);
+          document.getElementById('cq-status').value = cq.status || 'draft';
+
+          // Show modal
+          document.getElementById('cq-editor-modal').style.display = 'flex';
+        } else {
+          showError('Failed to load CQ: ' + response.message);
+        }
+      } catch (error) {
+        console.error('Error loading CQ:', error);
+        showError('Failed to load CQ: ' + error.message);
+      }
+    }
+
+    async function deleteCQ(cqId, cqName) {
+      if (!confirm(`Are you sure you want to delete the competency question "${cqName}"?\n\nThis will also delete all run history for this CQ.`)) {
+        return;
+      }
+
+      try {
+        const response = await authenticatedFetch(`/api/cqmt/cqs/${cqId}`, {
+          method: 'DELETE'
+        });
+
+        if (response.success) {
+          showSuccess('Competency question deleted successfully');
+          await loadCQs();
+          // Hide run panel if this CQ was selected
+          if (selectedCQId === cqId) {
+            document.getElementById('run-panel').style.display = 'none';
+            selectedCQId = null;
+          }
+        } else {
+          showError('Failed to delete CQ: ' + response.message);
+        }
+      } catch (error) {
+        console.error('Error deleting CQ:', error);
+        showError('Failed to delete CQ: ' + error.message);
+      }
+    }
+
+    async function saveCQ() {
+      const cqName = document.getElementById('cq-name').value.trim();
+      const problemText = document.getElementById('problem-text').value.trim();
+      const sparqlText = document.getElementById('sparql-text').value.trim();
+      const contractText = document.getElementById('contract-json').value.trim();
+
+      if (!cqName || !problemText || !sparqlText || !contractText) {
+        showError('Please fill in all required fields');
+        return;
+      }
+
+      let contractJson;
+      try {
+        contractJson = JSON.parse(contractText);
+      } catch (e) {
+        showError('Invalid JSON in contract field');
+        return;
+      }
+
+      const data = {
+        cq_name: cqName,
+        problem_text: problemText,
+        sparql_text: sparqlText,
+        mt_iri_default: document.getElementById('mt-default').value || null,
+        contract_json: contractJson,
+        status: document.getElementById('cq-status').value
+      };
+
+      try {
+        let response;
+        if (selectedCQId) {
+          // Update existing CQ
+          response = await authenticatedFetch(`/api/cqmt/cqs/${selectedCQId}`, {
+            method: 'PUT',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(data)
+          });
+        } else {
+          // Create new CQ
+          response = await authenticatedFetch(`/api/cqmt/projects/${cqmtProjectId}/cqs`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(data)
+          });
+        }
+
+        if (response.success) {
+          showSuccess(selectedCQId ? 'Competency question updated successfully' : 'Competency question created successfully');
+          await loadCQs();
+          closeCQModal();
+        } else {
+          showError('Failed to save CQ: ' + response.message);
+        }
+      } catch (error) {
+        console.error('Error saving CQ:', error);
+        showError('Failed to save CQ: ' + error.message);
+      }
+    }
+
+    function cancelCQEdit() {
+      hidePanels();
+    }
+
+    function closeCQModal() {
+      document.getElementById('cq-editor-modal').style.display = 'none';
+    }
+
+    // Load microtheories
+    async function loadMicrotheories() {
+      console.log('🧪 loadMicrotheories() called with cqmtProjectId:', cqmtProjectId);
+      if (!cqmtProjectId) {
+        console.log('🧪 loadMicrotheories() - no project ID, returning');
+        return;
+      }
+
+      try {
+        console.log('🧪 Loading microtheories for project:', cqmtProjectId);
+        const response = await authenticatedFetch(`/api/cqmt/projects/${cqmtProjectId}/microtheories`);
+        console.log('🧪 Microtheories API response:', response);
+
+        // Parse the response if it's a Response object
+        let data;
+        if (response && typeof response.json === 'function') {
+          data = await response.json();
+          console.log('🧪 Microtheories parsed data:', data);
+        } else {
+          data = response;
+        }
+
+        // Handle both array response and object response
+        if (Array.isArray(data)) {
+          currentMTs = data;
+        } else if (data && data.data && Array.isArray(data.data)) {
+          currentMTs = data.data;
+        } else if (data && data.success && Array.isArray(data.data)) {
+          currentMTs = data.data;
+        } else {
+          currentMTs = [];
+        }
+
+        console.log('🧪 Processed microtheories:', currentMTs);
+        displayMicrotheories();
+        populateMTSelectors();
+      } catch (error) {
+        console.error('Error loading microtheories:', error);
+        document.getElementById('mt-list').innerHTML = '<div class="error-message">Error loading microtheories: ' + error.message + '</div>';
+      }
+    }
+
+    function displayMicrotheories() {
+      const container = document.getElementById('mt-list');
+
+      if (currentMTs.length === 0) {
+        container.innerHTML = '<div class="info-message">No microtheories found. Create your first microtheory to get started!</div>';
+        return;
+      }
+
+      container.innerHTML = '';
+
+      currentMTs.forEach(mt => {
+        const div = document.createElement('div');
+        div.className = 'list-item';
+        div.innerHTML = `
+                <div class="item-title">
+                    ${mt.label}
+                    ${mt.is_default ? '<span class="status-badge run-status-pass">DEFAULT</span>' : ''}
+                </div>
+                <div class="item-subtitle">
+                    ${mt.triple_count} triples • ${mt.iri}
+                    ${mt.parent_iri ? '• Cloned from ' + mt.parent_iri : ''}
+                </div>
+                <div style="margin-top: 10px;">
+                    ${!mt.is_default ? `<button class="btn btn-secondary" onclick="setDefaultMT('${mt.id}')">Set Default</button>` : ''}
+                    <button class="btn btn-warning" onclick="cloneMT('${mt.iri}', '${mt.label}')">Clone</button>
+                    <button class="btn btn-danger" onclick="deleteMT('${mt.id}', '${mt.label}')">Delete</button>
+                </div>
+            `;
+        container.appendChild(div);
+      });
+    }
+
+    function populateMTSelectors() {
+      const selectors = ['mt-default', 'run-mt', 'mt-clone-from'];
+
+      selectors.forEach(selectorId => {
+        const select = document.getElementById(selectorId);
+        if (select) {
+          // Preserve first option
+          const firstOption = select.options[0];
+          select.innerHTML = '';
+          if (firstOption) select.appendChild(firstOption);
+
+          currentMTs.forEach(mt => {
+            const option = document.createElement('option');
+            option.value = mt.iri;
+            option.textContent = `${mt.label} (${mt.triple_count} triples)`;
+            select.appendChild(option);
+          });
+        }
+      });
+    }
+
+    function createNewMT() {
+      document.getElementById('mt-modal').style.display = 'block';
+      document.getElementById('mt-label').value = '';
+      document.getElementById('mt-clone-from').value = '';
+      document.getElementById('mt-set-default').checked = false;
+    }
+
+    function cancelMT() {
+      document.getElementById('mt-modal').style.display = 'none';
+    }
+
+    async function saveMT() {
+      const label = document.getElementById('mt-label').value.trim();
+      if (!label) {
+        showError('Please enter a microtheory label');
+        return;
+      }
+
+      const data = {
+        label: label,
+        cloneFrom: document.getElementById('mt-clone-from').value || null,
+        setDefault: document.getElementById('mt-set-default').checked
+      };
+
+      try {
+        const response = await authenticatedFetch(`/api/cqmt/projects/${cqmtProjectId}/microtheories`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(data)
+        });
+
+        if (response.success) {
+          showSuccess('Microtheory created successfully');
+          cancelMT();
+          await loadMicrotheories();
+        } else {
+          showError('Failed to create microtheory: ' + response.message);
+        }
+      } catch (error) {
+        console.error('Error creating microtheory:', error);
+        showError('Failed to create microtheory: ' + error.message);
+      }
+    }
+
+    function cloneMT(sourceIRI, sourceLabel) {
+      document.getElementById('mt-modal').style.display = 'block';
+      document.getElementById('mt-label').value = sourceLabel + ' Copy';
+      document.getElementById('mt-clone-from').value = sourceIRI;
+      document.getElementById('mt-set-default').checked = false;
+    }
+
+    async function setDefaultMT(mtId) {
+      try {
+        const response = await authenticatedFetch(`/api/cqmt/microtheories/${mtId}/set-default?project_id=${cqmtProjectId}`, {
+          method: 'POST'
+        });
+
+        if (response.success) {
+          showSuccess('Default microtheory updated');
+          await loadMicrotheories();
+        } else {
+          showError('Failed to set default microtheory');
+        }
+      } catch (error) {
+        console.error('Error setting default microtheory:', error);
+        showError('Failed to set default microtheory: ' + error.message);
+      }
+    }
+
+    async function deleteMT(mtId, mtLabel) {
+      if (!confirm(`Are you sure you want to delete the microtheory "${mtLabel}"? This will permanently remove all its triples.`)) {
+        return;
+      }
+
+      try {
+        const response = await authenticatedFetch(`/api/cqmt/microtheories/${mtId}`, {
+          method: 'DELETE'
+        });
+
+        if (response.success) {
+          showSuccess('Microtheory deleted successfully');
+          await loadMicrotheories();
+        } else {
+          showError('Failed to delete microtheory');
+        }
+      } catch (error) {
+        console.error('Error deleting microtheory:', error);
+        showError('Failed to delete microtheory: ' + error.message);
+      }
+    }
+
+    // Tab switching
+    function showTab(tabName) {
+      // Hide all tab contents
+      document.querySelectorAll('.tab-content').forEach(content => {
+        content.classList.remove('active');
+      });
+
+      // Remove active from all tabs
+      document.querySelectorAll('.tab').forEach(tab => {
+        tab.classList.remove('active');
+      });
+
+      // Show selected tab content
+      document.getElementById(tabName + '-tab').classList.add('active');
+
+      // Activate selected tab
+      event.target.classList.add('active');
+
+      // Load content if needed
+      if (tabName === 'cqs' && currentCQs.length === 0) {
+        loadCQs();
+      } else if (tabName === 'microtheories' && currentMTs.length === 0) {
+        loadMicrotheories();
+      } else if (tabName === 'coverage') {
+        loadCoverage();
+      }
+    }
+
+    // Load coverage statistics
+    async function loadCoverage() {
+      if (!cqmtProjectId || currentCQs.length === 0) {
+        document.getElementById('coverage-details').innerHTML = '<div class="info-message">No CQs available for coverage analysis</div>';
+        return;
+      }
+
+      // Calculate basic statistics
+      const totalCQs = currentCQs.length;
+      const activeCQs = currentCQs.filter(cq => cq.status === 'active').length;
+      const passingCQs = currentCQs.filter(cq => cq.last_run_status === true).length;
+      const failingCQs = currentCQs.filter(cq => cq.last_run_status === false).length;
+
+      document.getElementById('total-cqs').textContent = totalCQs;
+      document.getElementById('active-cqs').textContent = activeCQs;
+      document.getElementById('passing-cqs').textContent = passingCQs;
+      document.getElementById('failing-cqs').textContent = failingCQs;
+
+      // Display detailed coverage
+      const container = document.getElementById('coverage-details');
+
+      if (currentMTs.length === 0) {
+        container.innerHTML = '<div class="info-message">No microtheories available for coverage analysis</div>';
+        return;
+      }
+
+      let html = '<h4>Coverage by Microtheory</h4>';
+
+      currentMTs.forEach(mt => {
+        const relevantCQs = currentCQs.filter(cq =>
+          cq.mt_iri_default === mt.iri ||
+          (mt.is_default && !cq.mt_iri_default)
+        );
+
+        const mtPassing = relevantCQs.filter(cq => cq.last_run_status === true).length;
+        const mtFailing = relevantCQs.filter(cq => cq.last_run_status === false).length;
+        const coverage = relevantCQs.length > 0 ? Math.round((mtPassing / relevantCQs.length) * 100) : 0;
+
+        html += `
+                <div class="card" style="margin: 10px 0;">
+                    <h4>${mt.label} ${mt.is_default ? '(Default)' : ''}</h4>
+                    <div style="margin: 10px 0;">
+                        <strong>Coverage: ${coverage}%</strong> 
+                        (${mtPassing} passing, ${mtFailing} failing, ${relevantCQs.length} total)
+                    </div>
+                    <div style="background: #ecf0f1; height: 10px; border-radius: 5px; overflow: hidden;">
+                        <div style="width: ${coverage}%; height: 100%; background: ${coverage > 80 ? '#27ae60' : coverage > 50 ? '#f39c12' : '#e74c3c'};"></div>
+                    </div>
+                </div>
+            `;
+      });
+
+      container.innerHTML = html;
+    }
+
+    function hidePanels() {
+      document.querySelectorAll('.panel').forEach(panel => {
+        panel.classList.remove('visible');
+      });
+      // Hide run panel
+      const runPanel = document.getElementById('run-panel');
+      if (runPanel) {
+        runPanel.style.display = 'none';
+      }
+    }
+
+    // Initialize function
+    async function init() {
+      console.log('🧪 Initializing CQ/MT Workbench...');
+
+      if (!cqmtProjectId) {
+        console.log('🧪 No project context available');
+        showError('No project context available. Please access this workbench from within a project.');
+        clearAllData();
+        return;
+      }
+
+      console.log('🧪 Using project context:', cqmtProjectId);
+
+      // Load data immediately without waiting for ontology selection
+      console.log('🧪 Loading initial data...');
+      await Promise.all([
+        loadMicrotheories(),
+        loadCQs(),
+        loadCoverage()
+      ]);
+
+      await loadOntologies();
+
+      // Set up ontology selector change handler
+      const ontologySelector = document.getElementById('ontology-selector');
+      if (ontologySelector) {
+        ontologySelector.addEventListener('change', async function (e) {
+          currentOntologyIri = e.target.value;
+          console.log('Ontology context changed to:', currentOntologyIri);
+          if (currentOntologyIri) {
+            await Promise.all([
+              loadMicrotheories(),
+              loadCQs(),
+              loadCoverage()
+            ]);
+          } else {
+            clearCQMTData();
+          }
+        });
+      }
+    }
+
+    async function showRunPanel(cqId) {
+      try {
+        const response = await authenticatedFetch(`/api/cqmt/cqs/${cqId}`);
+        if (response.success) {
+          const cq = response.data;
+
+          document.getElementById('run-cq-name').textContent = cq.cq_name;
+          document.getElementById('run-params').value = JSON.stringify(cq.params_json || {}, null, 2);
+
+          // Set default MT if available
+          if (cq.mt_iri_default) {
+            document.getElementById('run-mt').value = cq.mt_iri_default;
+          }
+
+          // Display recent runs
+          displayRunHistory(cq.recent_runs || []);
+
+          document.getElementById('run-panel').style.display = 'block';
+        }
+      } catch (error) {
+        console.error('Error loading CQ details:', error);
+        showError('Failed to load CQ details: ' + error.message);
+      }
+    }
+
+    async function runCQ() {
+      if (!selectedCQId) return;
+
+      const mtIri = document.getElementById('run-mt').value || null;
+      let params;
+
+      try {
+        const paramsText = document.getElementById('run-params').value.trim();
+        params = paramsText ? JSON.parse(paramsText) : {};
+      } catch (e) {
+        showError('Invalid JSON in parameters field');
+        return;
+      }
+
+      const data = {
+        mt_iri: mtIri,
+        params: params
+      };
+
+      try {
+        // Show loading
+        document.getElementById('run-results').innerHTML = '<div class="loading">Running CQ</div>';
+
+        const response = await authenticatedFetch(`/api/cqmt/cqs/${selectedCQId}/run`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(data)
+        });
+
+        displayRunResults(response);
+
+        // Refresh run history
+        setTimeout(() => showRunPanel(selectedCQId), 1000);
+
+      } catch (error) {
+        console.error('Error running CQ:', error);
+        document.getElementById('run-results').innerHTML = '<div class="error-message">Failed to run CQ: ' + error.message + '</div>';
+      }
+    }
+
+    function displayRunResults(result) {
+      const container = document.getElementById('run-results');
+
+      const passFailBadge = result.passed
+        ? '<span class="status-badge run-status-pass">PASS</span>'
+        : '<span class="status-badge run-status-fail">FAIL</span>';
+
+      let html = `
+            <div class="results-container">
+                <div class="results-header">
+                    Run Results ${passFailBadge} • ${result.row_count} rows • ${result.latency_ms}ms
+                </div>
+                <div class="results-content">
+        `;
+
+      if (!result.passed) {
+        html += `<div class="error-message"><strong>Reason:</strong> ${result.reason}</div>`;
+      }
+
+      if (result.columns && result.columns.length > 0 && result.rows_preview && result.rows_preview.length > 0) {
+        html += '<table class="results-table"><thead><tr>';
+        result.columns.forEach(col => {
+          html += `<th>${col}</th>`;
+        });
+        html += '</tr></thead><tbody>';
+
+        result.rows_preview.forEach(row => {
+          html += '<tr>';
+          row.forEach(cell => {
+            html += `<td>${cell || ''}</td>`;
+          });
+          html += '</tr>';
+        });
+        html += '</tbody></table>';
+
+        if (result.row_count > result.rows_preview.length) {
+          html += `<div style="margin-top: 10px; font-style: italic; color: #7f8c8d;">Showing first ${result.rows_preview.length} of ${result.row_count} rows</div>`;
+        }
+      }
+
+      html += '</div></div>';
+
+      container.innerHTML = html;
+    }
+
+    function displayRunHistory(runs) {
+      const container = document.getElementById('run-history');
+
+      if (runs.length === 0) {
+        container.innerHTML = '<div style="color: #7f8c8d; font-style: italic;">No previous runs</div>';
+        return;
+      }
+
+      container.innerHTML = '';
+
+      runs.forEach(run => {
+        const div = document.createElement('div');
+        div.style.cssText = 'padding: 10px; border: 1px solid #ecf0f1; border-radius: 5px; margin: 5px 0; font-size: 0.9em;';
+
+        const passFailBadge = run.pass
+          ? '<span class="status-badge run-status-pass">PASS</span>'
+          : '<span class="status-badge run-status-fail">FAIL</span>';
+
+        div.innerHTML = `
+                <div>
+                    ${passFailBadge}
+                    ${run.row_count} rows • ${run.latency_ms}ms • ${new Date(run.created_at).toLocaleString()}
+                </div>
+                ${!run.pass ? `<div style="color: #e74c3c; margin-top: 5px;">${run.reason}</div>` : ''}
+            `;
+
+        container.appendChild(div);
+      });
+    }
+
+    async function suggestSPARQL() {
+      const problemText = document.getElementById('problem-text').value.trim();
+      if (!problemText) {
+        showError('Please enter a problem statement first');
+        return;
+      }
+
+      try {
+        const response = await authenticatedFetch('/api/cqmt/assist/suggest-sparql', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ problem_text: problemText })
+        });
+
+        document.getElementById('sparql-text').value = response.sparql_draft;
+        showSuccess('SPARQL suggestion generated. Please review and customize for your ontology.');
+      } catch (error) {
+        console.error('Error suggesting SPARQL:', error);
+        showError('Failed to suggest SPARQL: ' + error.message);
+      }
+    }
+
+    async function checkOntologyDeltas() {
+      const sparqlText = document.getElementById('sparql-text').value.trim();
+      if (!sparqlText) {
+        showError('Please enter SPARQL query first');
+        return;
+      }
+
+      try {
+        const response = await authenticatedFetch('/api/cqmt/assist/suggest-ontology-deltas', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            sparql_text: sparqlText,
+            project_id: cqmtProjectId
+          })
+        });
+
+        let message = 'Ontology analysis complete:\n';
+        message += `• ${response.existing.length} terms exist in ontology\n`;
+        message += `• ${response.missing.length} terms are missing`;
+
+        if (response.missing.length > 0) {
+          message += '\n\nMissing terms:\n' + response.missing.join('\n');
+        }
+
+        alert(message);
+      } catch (error) {
+        console.error('Error checking ontology deltas:', error);
+        showError('Failed to check ontology: ' + error.message);
+      }
+    }
+
+    function clearAllData() {
+      currentCQs = [];
+      currentMTs = [];
+      document.getElementById('cq-list').innerHTML = '<div class="loading">Select a project to view CQs</div>';
+      document.getElementById('mt-list').innerHTML = '<div class="loading">Select a project to view Microtheories</div>';
+      document.getElementById('coverage-details').innerHTML = '<div class="loading">Select a project to view coverage</div>';
+      hidePanels();
+    }
+
+    function clearCQMTData() {
+      currentCQs = [];
+      currentMTs = [];
+      document.getElementById('cq-list').innerHTML = '<div class="muted" style="padding: 20px;">Select an ontology to view CQs</div>';
+      document.getElementById('mt-list').innerHTML = '<div class="muted" style="padding: 20px;">Select an ontology to view Microtheories</div>';
+      hidePanels();
+    }
+
+    async function loadOntologies() {
+      if (!cqmtProjectId) return;
+
+      try {
+        console.log('🧪 Loading ontologies for project:', cqmtProjectId);
+        // Get project ontologies from ODRAS API
+        const response = await authenticatedFetch(`/api/ontology/?project=${cqmtProjectId}`);
+        console.log('🧪 Ontology API response:', response);
+
+        if (response && response.data) {
+          projectOntologies = [response.data];
+        } else {
+          projectOntologies = [];
+        }
+
+        // Also load ontologies registry for this project
+        try {
+          const registryResponse = await authenticatedFetch(`/api/projects/${cqmtProjectId}/ontologies`);
+          if (registryResponse.success && registryResponse.data) {
+            projectOntologies = registryResponse.data;
+          }
+        } catch (e) {
+          console.log('Ontologies registry not available, using default');
+        }
+
+        console.log('🧪 Processed ontologies:', projectOntologies);
+        populateOntologySelector();
+
+      } catch (error) {
+        console.error('Error loading ontologies:', error);
+        projectOntologies = [];
+        populateOntologySelector();
+      }
+    }
+
+    function populateOntologySelector() {
+      const selector = document.getElementById('ontology-selector');
+      const infoSpan = document.getElementById('ontology-import-info');
+
+      if (!selector) return;
+
+      selector.innerHTML = '';
+
+      if (projectOntologies.length === 0) {
+        const option = document.createElement('option');
+        option.value = '';
+        option.textContent = 'No ontologies found - create one in Ontology Workbench';
+        selector.appendChild(option);
+        if (infoSpan) infoSpan.textContent = '';
+
+        // Still load CQs and MTs even without ontologies
+        console.log('🧪 No ontologies found, loading CQs/MTs anyway');
+        loadMicrotheories();
+        loadCQs();
+        loadCoverage();
+        return;
+      }
+
+      if (projectOntologies.length === 1) {
+        // Single ontology - auto-select it
+        const ontology = projectOntologies[0];
+        const option = document.createElement('option');
+        option.value = ontology.graph_iri || ontology.iri || 'default';
+        option.textContent = ontology.label || ontology.metadata?.name || 'Main Ontology';
+        option.selected = true;
+        selector.appendChild(option);
+
+        currentOntologyIri = ontology.graph_iri || ontology.iri || 'default';
+        if (infoSpan) infoSpan.textContent = 'Auto-selected (single ontology)';
+
+        // Auto-load data
+        setTimeout(() => {
+          Promise.all([
+            loadMicrotheories(),
+            loadCQs(),
+            loadCoverage()
+          ]);
+        }, 100);
+
+      } else {
+        // Multiple ontologies - let user choose
+        const defaultOption = document.createElement('option');
+        defaultOption.value = '';
+        defaultOption.textContent = 'Select ontology to test...';
+        selector.appendChild(defaultOption);
+
+        projectOntologies.forEach(ontology => {
+          const option = document.createElement('option');
+          option.value = ontology.graph_iri || ontology.iri;
+          option.textContent = ontology.label || 'Unnamed Ontology';
+          selector.appendChild(option);
+        });
+
+        if (infoSpan) infoSpan.textContent = `${projectOntologies.length} ontologies available`;
+      }
+    }
+
+    // Save CQ
+    async function saveCQ() {
+      const cqName = document.getElementById('cqmt-cq-name').value.trim();
+      const problemText = document.getElementById('cqmt-problem-text').value.trim();
+      const sparqlText = document.getElementById('cqmt-sparql-text').value.trim();
+      const mtDefault = document.getElementById('cqmt-mt-default').value;
+      const contractJson = document.getElementById('cqmt-contract-json').value.trim();
+      const status = document.getElementById('cqmt-cq-status').value;
+
+      if (!cqName || !problemText || !sparqlText || !contractJson) {
+        showError('Please fill in all required fields');
+        return;
+      }
+
+      let contract;
+      try {
+        contract = JSON.parse(contractJson);
+      } catch (e) {
+        showError('Invalid JSON in contract field');
+        return;
+      }
+
+      const data = {
+        cq_name: cqName,
+        problem_text: problemText,
+        sparql_text: sparqlText,
+        mt_iri_default: mtDefault || null,
+        contract_json: contract,
+        status: status
+      };
+
+      try {
+        let response;
+        if (selectedCQId) {
+          // Update existing CQ
+          response = await authenticatedFetch(`/api/cqmt/cqs/${selectedCQId}`, {
+            method: 'PUT',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(data)
+          });
+        } else {
+          // Create new CQ
+          const projectId = currentProjectId();
+          response = await authenticatedFetch(`/api/cqmt/projects/${projectId}/cqs`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(data)
+          });
+        }
+
+        if (response.success) {
+          showSuccess(selectedCQId ? 'Competency question updated successfully' : 'Competency question created successfully');
+          // Reload CQs to show the new/updated one
+          loadCQs();
+          closeCQModal();
+        } else {
+          showError('Failed to save CQ: ' + (response.message || 'Unknown error'));
+        }
+      } catch (error) {
+        console.error('Error saving CQ:', error);
+        showError('Failed to save CQ: ' + error.message);
+      }
+    }
+
+    // Microtheory functions
+    function createNewMT() {
+      document.getElementById('cqmt-mt-editor-title').textContent = 'Create New Microtheory';
+
+      // Clear form
+      document.getElementById('cqmt-mt-label').value = '';
+      document.getElementById('cqmt-mt-iri').value = '';
+      document.getElementById('cqmt-mt-clone-from').value = '';
+      document.getElementById('cqmt-mt-set-default').checked = false;
+
+      // Show modal
+      document.getElementById('cqmt-mt-editor-modal').style.display = 'flex';
+    }
+
+    // Edit CQ
+    async function editCQ(cqId) {
+      try {
+        const response = await authenticatedFetch(`/api/cqmt/cqs/${cqId}`);
+        if (response.success) {
+          const cq = response.data;
+          selectedCQId = cqId;
+
+          document.getElementById('cqmt-cq-editor-title').textContent = 'Edit CQ';
+
+          // Populate form
+          document.getElementById('cqmt-cq-name').value = cq.cq_name || '';
+          document.getElementById('cqmt-problem-text').value = cq.problem_text || '';
+          document.getElementById('cqmt-sparql-text').value = cq.sparql_text || '';
+          document.getElementById('cqmt-mt-default').value = cq.mt_iri_default || '';
+          document.getElementById('cqmt-contract-json').value = JSON.stringify(cq.contract_json, null, 2);
+          document.getElementById('cqmt-cq-status').value = cq.status || 'draft';
+
+          // Show modal
+          document.getElementById('cqmt-cq-editor-modal').style.display = 'flex';
+        } else {
+          showError('Failed to load CQ: ' + response.message);
+        }
+      } catch (error) {
+        console.error('Error loading CQ:', error);
+        showError('Failed to load CQ: ' + error.message);
+      }
+    }
+
+    // Delete CQ
+    async function deleteCQ(cqId, cqName) {
+      if (!confirm(`Are you sure you want to delete the competency question "${cqName}"?\n\nThis will also delete all run history for this CQ.`)) {
+        return;
+      }
+
+      try {
+        const response = await authenticatedFetch(`/api/cqmt/cqs/${cqId}`, {
+          method: 'DELETE'
+        });
+
+        if (response.success) {
+          showSuccess('Competency question deleted successfully');
+          await loadCQs();
+          // Hide run panel if this CQ was selected
+          if (selectedCQId === cqId) {
+            document.getElementById('cqmt-run-panel').style.display = 'none';
+            selectedCQId = null;
+          }
+        } else {
+          showError('Failed to delete CQ: ' + response.message);
+        }
+      } catch (error) {
+        console.error('Error deleting CQ:', error);
+        showError('Failed to delete CQ: ' + error.message);
+      }
+    }
+
+    // Select CQ for running
+    function selectCQ(cqId) {
+      selectedCQId = cqId;
+
+      // Update selection styling
+      document.querySelectorAll('#cqmt-cq-list .list-item').forEach(item => {
+        item.classList.remove('selected');
+      });
+      event.target.closest('.list-item').classList.add('selected');
+
+      // Show run panel
+      showRunPanel(cqId);
+    }
+
+    // Show run panel
+    async function showRunPanel(cqId) {
+      try {
+        const response = await authenticatedFetch(`/api/cqmt/cqs/${cqId}`);
+        if (response.success) {
+          const cq = response.data;
+
+          document.getElementById('cqmt-run-cq-name').textContent = cq.cq_name;
+          document.getElementById('cqmt-run-params').value = JSON.stringify(cq.params_json || {}, null, 2);
+
+          // Set default MT if available
+          if (cq.mt_iri_default) {
+            document.getElementById('cqmt-run-mt').value = cq.mt_iri_default;
+          }
+
+          // Display recent runs
+          displayRunHistory(cq.recent_runs || []);
+
+          document.getElementById('cqmt-run-panel').style.display = 'block';
+        }
+      } catch (error) {
+        console.error('Error loading CQ details:', error);
+        showError('Failed to load CQ details: ' + error.message);
+      }
+    }
+
+    // Run CQ
+    async function runCQ() {
+      if (!selectedCQId) return;
+
+      const mtIri = document.getElementById('cqmt-run-mt').value || null;
+      const paramsText = document.getElementById('cqmt-run-params').value.trim();
+
+      let params = {};
+      if (paramsText) {
+        try {
+          params = JSON.parse(paramsText);
+        } catch (e) {
+          showError('Invalid JSON in parameters field');
+          return;
+        }
+      }
+
+      try {
+        const response = await authenticatedFetch(`/api/cqmt/cqs/${selectedCQId}/run`, {
+          method: 'POST',
+          body: JSON.stringify({
+            mt_iri: mtIri,
+            params: params
+          })
+        });
+
+        if (response.success) {
+          const result = response.data;
+
+          // Display results
+          const resultsDiv = document.getElementById('cqmt-run-results');
+          resultsDiv.innerHTML = `
+            <div class="panel">
+              <h4>Results: <span class="status-badge ${result.passed ? 'run-status-pass' : 'run-status-fail'}">${result.passed ? 'PASS' : 'FAIL'}</span></h4>
+              <p><strong>Reason:</strong> ${result.reason}</p>
+              <p><strong>Rows:</strong> ${result.row_count} | <strong>Latency:</strong> ${result.latency_ms}ms</p>
+              ${result.rows_preview && result.rows_preview.length > 0 ? `
+                <h5>Preview (first ${Math.min(10, result.rows_preview.length)} rows):</h5>
+                <table class="table">
+                  <thead>
+                    <tr>${result.columns.map(col => `<th>${col}</th>`).join('')}</tr>
+                  </thead>
+                  <tbody>
+                    ${result.rows_preview.map(row => `<tr>${row.map(cell => `<td>${cell}</td>`).join('')}</tr>`).join('')}
+                  </tbody>
+                </table>
+              ` : ''}
+            </div>
+          `;
+
+          // Refresh CQ list to update run status
+          await loadCQs();
+        } else {
+          showError('Failed to run CQ: ' + response.message);
+        }
+      } catch (error) {
+        console.error('Error running CQ:', error);
+        showError('Failed to run CQ: ' + error.message);
+      }
+    }
+
+    // Display run history
+    function displayRunHistory(runs) {
+      const historyDiv = document.getElementById('cqmt-run-history');
+
+      if (!runs || runs.length === 0) {
+        historyDiv.innerHTML = '<div class="muted">No recent runs</div>';
+        return;
+      }
+
+      historyDiv.innerHTML = `
+        <h5>Recent Runs:</h5>
+        <div class="item-list">
+          ${runs.map(run => `
+            <div class="list-item">
+              <div class="item-title">
+                <span class="status-badge ${run.passed ? 'run-status-pass' : 'run-status-fail'}">${run.passed ? 'PASS' : 'FAIL'}</span>
+                ${new Date(run.created_at).toLocaleString()}
+              </div>
+              <div class="item-subtitle">
+                ${run.reason} • ${run.row_count} rows • ${run.latency_ms}ms
+              </div>
+            </div>
+          `).join('')}
+        </div>
+      `;
+    }
+
+    // Microtheory functions
+    function createNewMT() {
+      alert('Microtheory creation functionality will be implemented in the next phase. For now, please use the demo data.');
+      return;
+    }
+
+    async function saveMT() {
+      const label = document.getElementById('cqmt-mt-label').value.trim();
+      const iri = document.getElementById('cqmt-mt-iri').value.trim();
+      const cloneFrom = document.getElementById('cqmt-mt-clone-from').value;
+      const setDefault = document.getElementById('cqmt-mt-set-default').checked;
+
+      if (!label) {
+        showError('Please enter a label for the microtheory');
+        return;
+      }
+
+      const data = {
+        label: label,
+        iri: iri || null,
+        cloneFrom: cloneFrom || null,
+        setDefault: setDefault
+      };
+
+      try {
+        const projectId = currentProjectId();
+        const response = await authenticatedFetch(`/api/cqmt/projects/${projectId}/microtheories`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(data)
+        });
+
+        if (response.success) {
+          showSuccess('Microtheory created successfully');
+          await loadMicrotheories();
+          closeMTModal();
+        } else {
+          showError('Failed to create microtheory: ' + response.message);
+        }
+      } catch (error) {
+        console.error('Error creating microtheory:', error);
+        showError('Failed to create microtheory: ' + error.message);
+      }
+    }
+
+    async function cloneMT(mtIri, mtLabel) {
+      alert(`Microtheory cloning functionality will be implemented in the next phase. Clone from: ${mtLabel}`);
+      return;
+    }
+
+    async function deleteMT(mtId, mtLabel) {
+      if (!confirm(`Are you sure you want to delete the microtheory "${mtLabel}"? This will permanently remove all its triples.`)) {
+        return;
+      }
+
+      try {
+        const response = await authenticatedFetch(`/api/cqmt/microtheories/${mtId}`, {
+          method: 'DELETE'
+        });
+
+        if (response.success) {
+          showSuccess('Microtheory deleted successfully');
+          await loadMicrotheories();
+        } else {
+          showError('Failed to delete microtheory');
+        }
+      } catch (error) {
+        console.error('Error deleting microtheory:', error);
+        showError('Failed to delete microtheory: ' + error.message);
+      }
+    }
+
+    async function setDefaultMT(mtId) {
+      try {
+        const response = await authenticatedFetch(`/api/cqmt/microtheories/${mtId}/set-default`, {
+          method: 'POST'
+        });
+
+        if (response.success) {
+          showSuccess('Default microtheory updated');
+          await loadMicrotheories();
+        } else {
+          showError('Failed to set default microtheory');
+        }
+      } catch (error) {
+        console.error('Error setting default microtheory:', error);
+        showError('Failed to set default microtheory: ' + error.message);
+      }
+    }
+
+    function cloneMT(sourceIri, sourceLabel) {
+      document.getElementById('cqmt-mt-editor-title').textContent = 'Clone Microtheory';
+
+      // Clear form
+      document.getElementById('cqmt-mt-label').value = `${sourceLabel} (Copy)`;
+      document.getElementById('cqmt-mt-iri').value = '';
+      document.getElementById('cqmt-mt-clone-from').value = sourceIri;
+      document.getElementById('cqmt-mt-set-default').checked = false;
+
+      // Show modal
+      document.getElementById('cqmt-mt-editor-modal').classList.add('visible');
+    }
+
+    // Populate MT selectors
+    function populateMTSelectors() {
+      const selectors = ['cqmt-mt-default', 'cqmt-run-mt', 'cqmt-mt-clone-from'];
+
+      selectors.forEach(selectorId => {
+        const select = document.getElementById(selectorId);
+        if (select) {
+          // Preserve first option
+          const firstOption = select.options[0];
+          select.innerHTML = '';
+          if (firstOption) select.appendChild(firstOption);
+
+          currentMTs.forEach(mt => {
+            const option = document.createElement('option');
+            option.value = mt.iri;
+            option.textContent = `${mt.label} (${mt.triple_count} triples)`;
+            select.appendChild(option);
+          });
+        }
+      });
+    }
+
+    // Load coverage data
+    async function loadCoverage() {
+      // This would aggregate run results and show coverage statistics
+      // For now, just show the workflow guidance
+    }
+
+    // Utility functions
+    function showError(message) {
+      // Create temporary error message
+      const errorDiv = document.createElement('div');
+      errorDiv.className = 'error-message';
+      errorDiv.textContent = message;
+      errorDiv.style.cssText = 'position: fixed; top: 20px; right: 20px; background: #ef4444; color: white; padding: 12px 16px; border-radius: 6px; z-index: 1001; max-width: 400px;';
+      document.body.appendChild(errorDiv);
+      setTimeout(() => errorDiv.remove(), 5000);
+    }
+
+    function showSuccess(message) {
+      // Create temporary success message
+      const successDiv = document.createElement('div');
+      successDiv.className = 'success-message';
+      successDiv.textContent = message;
+      successDiv.style.cssText = 'position: fixed; top: 20px; right: 20px; background: #10b981; color: white; padding: 12px 16px; border-radius: 6px; z-index: 1001; max-width: 400px;';
+      document.body.appendChild(successDiv);
+      setTimeout(() => successDiv.remove(), 3000);
+    }
+
+    // Modal event listeners
+    document.addEventListener('DOMContentLoaded', function () {
+      // Close modals when clicking outside
+      document.addEventListener('click', function (event) {
+        const cqModal = document.getElementById('cqmt-cq-editor-modal');
+        const mtModal = document.getElementById('cqmt-mt-editor-modal');
+
+        if (event.target === cqModal) {
+          closeCQModal();
+        }
+        if (event.target === mtModal) {
+          closeMTModal();
+        }
+      });
+
+      // Close modals with Escape key
+      document.addEventListener('keydown', function (event) {
+        if (event.key === 'Escape') {
+          const cqModal = document.getElementById('cqmt-cq-editor-modal');
+          const mtModal = document.getElementById('cqmt-mt-editor-modal');
+
+          if (cqModal && cqModal.classList.contains('visible')) {
+            closeCQModal();
+          }
+          if (mtModal && mtModal.classList.contains('visible')) {
+            closeMTModal();
+          }
+        }
+      });
     });
 
   </script>
