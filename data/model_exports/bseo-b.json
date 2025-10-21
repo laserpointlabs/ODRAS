@@ -1,0 +1,327 @@
+{
+  "metadata": {
+    "exportedBy": "jdehart",
+    "exportedDate": "2025-10-13",
+    "exportedTimestamp": "2025-10-13T11:25:21.513Z",
+    "ontologyIri": "https://xma-adt.usnc.mil/odras/core/1ec70631-7032-4959-ac23-3a206899177c/ontologies/bseo-b",
+    "exportVersion": "1.0"
+  },
+  "model": {
+    "name": "BSEO.B",
+    "type": "Model",
+    "comment": "",
+    "definition": "",
+    "version": "",
+    "namespace": "https://xma-adt.usnc.mil/odras/core/1ec70631-7032-4959-ac23-3a206899177c/ontologies/bseo-b",
+    "imports": ""
+  },
+  "nodes": [
+    {
+      "data": {
+        "id": "Class1",
+        "label": "Object",
+        "type": "class",
+        "attrs": {
+          "creator": "jdehart",
+          "created_date": "2025-10-11",
+          "created_timestamp": "2025-10-11T23:51:24.499Z",
+          "last_modified_by": "jdehart",
+          "last_modified_date": "2025-10-13",
+          "last_modified_timestamp": "2025-10-13T11:25:17.408Z"
+        }
+      },
+      "position": {
+        "x": 318.6846232645245,
+        "y": 69.06534406238119
+      }
+    },
+    {
+      "data": {
+        "id": "DP1760226697415",
+        "label": "ID",
+        "type": "dataProperty",
+        "attrs": {
+          "range": "xsd:string",
+          "creator": "jdehart",
+          "created_date": "2025-10-11",
+          "created_timestamp": "2025-10-11T23:51:37.415Z",
+          "last_modified_by": "jdehart",
+          "last_modified_date": "2025-10-13",
+          "last_modified_timestamp": "2025-10-13T11:25:17.409Z",
+          "functional": false
+        }
+      },
+      "position": {
+        "x": 740,
+        "y": 40
+      }
+    },
+    {
+      "data": {
+        "id": "DP1760226713116",
+        "label": "Nomenclature",
+        "type": "dataProperty",
+        "attrs": {
+          "range": "xsd:string",
+          "creator": "jdehart",
+          "created_date": "2025-10-11",
+          "created_timestamp": "2025-10-11T23:51:53.116Z",
+          "last_modified_by": "jdehart",
+          "last_modified_date": "2025-10-13",
+          "last_modified_timestamp": "2025-10-13T11:25:17.409Z",
+          "functional": false
+        }
+      },
+      "position": {
+        "x": 740,
+        "y": 120
+      }
+    },
+    {
+      "data": {
+        "id": "Class2",
+        "label": "PhysicalPropertis",
+        "type": "class",
+        "attrs": {
+          "creator": "jdehart",
+          "created_date": "2025-10-11",
+          "created_timestamp": "2025-10-11T23:52:41.428Z",
+          "last_modified_by": "jdehart",
+          "last_modified_date": "2025-10-13",
+          "last_modified_timestamp": "2025-10-13T11:25:17.409Z"
+        }
+      },
+      "position": {
+        "x": 320,
+        "y": 280
+      }
+    },
+    {
+      "data": {
+        "id": "DP1760226778080",
+        "label": "Mass",
+        "type": "dataProperty",
+        "attrs": {
+          "range": "xsd:float",
+          "creator": "jdehart",
+          "created_date": "2025-10-11",
+          "created_timestamp": "2025-10-11T23:52:58.080Z",
+          "last_modified_by": "jdehart",
+          "last_modified_date": "2025-10-13",
+          "last_modified_timestamp": "2025-10-13T11:25:17.410Z",
+          "functional": false
+        }
+      },
+      "position": {
+        "x": 740,
+        "y": 220
+      }
+    },
+    {
+      "data": {
+        "id": "DP1760226800367",
+        "label": "Length",
+        "type": "dataProperty",
+        "attrs": {
+          "range": "xsd:float",
+          "creator": "jdehart",
+          "created_date": "2025-10-11",
+          "created_timestamp": "2025-10-11T23:53:20.367Z",
+          "last_modified_by": "jdehart",
+          "last_modified_date": "2025-10-13",
+          "last_modified_timestamp": "2025-10-13T11:25:17.410Z",
+          "functional": false
+        }
+      },
+      "position": {
+        "x": 740,
+        "y": 280
+      }
+    },
+    {
+      "data": {
+        "id": "DP1760226803845",
+        "label": "Width",
+        "type": "dataProperty",
+        "attrs": {
+          "range": "xsd:float",
+          "creator": "jdehart",
+          "created_date": "2025-10-11",
+          "created_timestamp": "2025-10-11T23:53:23.845Z",
+          "last_modified_by": "jdehart",
+          "last_modified_date": "2025-10-13",
+          "last_modified_timestamp": "2025-10-13T11:25:17.410Z",
+          "functional": false
+        }
+      },
+      "position": {
+        "x": 740,
+        "y": 340
+      }
+    },
+    {
+      "data": {
+        "id": "DP1760226820689",
+        "label": "Height",
+        "type": "dataProperty",
+        "attrs": {
+          "range": "xsd:float",
+          "creator": "jdehart",
+          "created_date": "2025-10-11",
+          "created_timestamp": "2025-10-11T23:53:40.689Z",
+          "last_modified_by": "jdehart",
+          "last_modified_date": "2025-10-13",
+          "last_modified_timestamp": "2025-10-13T11:25:17.411Z",
+          "functional": false
+        }
+      },
+      "position": {
+        "x": 740,
+        "y": 400
+      }
+    },
+    {
+      "data": {
+        "id": "DP1760226850480",
+        "label": "Volume",
+        "type": "dataProperty",
+        "attrs": {
+          "range": "xsd:float",
+          "creator": "jdehart",
+          "created_date": "2025-10-11",
+          "created_timestamp": "2025-10-11T23:54:10.480Z",
+          "last_modified_by": "jdehart",
+          "last_modified_date": "2025-10-13",
+          "last_modified_timestamp": "2025-10-13T11:25:17.411Z",
+          "functional": false
+        }
+      },
+      "position": {
+        "x": 740,
+        "y": 460
+      }
+    }
+  ],
+  "edges": [
+    {
+      "data": {
+        "id": "edp1760226697417",
+        "source": "Class1",
+        "target": "DP1760226697415",
+        "predicate": "Data Property 415",
+        "type": "objectProperty",
+        "attrs": {
+          "creator": "jdehart",
+          "created_date": "2025-10-11",
+          "created_timestamp": "2025-10-11T23:51:37.417Z",
+          "last_modified_by": "jdehart",
+          "last_modified_date": "2025-10-11",
+          "last_modified_timestamp": "2025-10-11T23:51:37.417Z"
+        }
+      }
+    },
+    {
+      "data": {
+        "id": "edp1760226713118",
+        "source": "Class1",
+        "target": "DP1760226713116",
+        "predicate": "Data Property 116",
+        "type": "objectProperty",
+        "attrs": {
+          "creator": "jdehart",
+          "created_date": "2025-10-11",
+          "created_timestamp": "2025-10-11T23:51:53.117Z",
+          "last_modified_by": "jdehart",
+          "last_modified_date": "2025-10-11",
+          "last_modified_timestamp": "2025-10-11T23:51:53.117Z"
+        }
+      }
+    },
+    {
+      "data": {
+        "id": "edp1760226778082",
+        "source": "Class2",
+        "target": "DP1760226778080",
+        "predicate": "Data Property 80",
+        "type": "objectProperty",
+        "attrs": {
+          "creator": "jdehart",
+          "created_date": "2025-10-11",
+          "created_timestamp": "2025-10-11T23:52:58.082Z",
+          "last_modified_by": "jdehart",
+          "last_modified_date": "2025-10-11",
+          "last_modified_timestamp": "2025-10-11T23:52:58.082Z"
+        }
+      }
+    },
+    {
+      "data": {
+        "id": "edp1760226800368",
+        "source": "Class2",
+        "target": "DP1760226800367",
+        "predicate": "Data Property 367",
+        "type": "objectProperty",
+        "attrs": {
+          "creator": "jdehart",
+          "created_date": "2025-10-11",
+          "created_timestamp": "2025-10-11T23:53:20.368Z",
+          "last_modified_by": "jdehart",
+          "last_modified_date": "2025-10-11",
+          "last_modified_timestamp": "2025-10-11T23:53:20.368Z"
+        }
+      }
+    },
+    {
+      "data": {
+        "id": "edp1760226803846",
+        "source": "Class2",
+        "target": "DP1760226803845",
+        "predicate": "Data Property 845",
+        "type": "objectProperty",
+        "attrs": {
+          "creator": "jdehart",
+          "created_date": "2025-10-11",
+          "created_timestamp": "2025-10-11T23:53:23.846Z",
+          "last_modified_by": "jdehart",
+          "last_modified_date": "2025-10-11",
+          "last_modified_timestamp": "2025-10-11T23:53:23.846Z"
+        }
+      }
+    },
+    {
+      "data": {
+        "id": "edp1760226820691",
+        "source": "Class2",
+        "target": "DP1760226820689",
+        "predicate": "Data Property 689",
+        "type": "objectProperty",
+        "attrs": {
+          "creator": "jdehart",
+          "created_date": "2025-10-11",
+          "created_timestamp": "2025-10-11T23:53:40.691Z",
+          "last_modified_by": "jdehart",
+          "last_modified_date": "2025-10-11",
+          "last_modified_timestamp": "2025-10-11T23:53:40.691Z"
+        }
+      }
+    },
+    {
+      "data": {
+        "id": "edp1760226850481",
+        "source": "Class2",
+        "target": "DP1760226850480",
+        "predicate": "Data Property 480",
+        "type": "objectProperty",
+        "attrs": {
+          "creator": "jdehart",
+          "created_date": "2025-10-11",
+          "created_timestamp": "2025-10-11T23:54:10.481Z",
+          "last_modified_by": "jdehart",
+          "last_modified_date": "2025-10-11",
+          "last_modified_timestamp": "2025-10-11T23:54:10.481Z"
+        }
+      }
+    }
+  ],
+  "namedViews": []
+}

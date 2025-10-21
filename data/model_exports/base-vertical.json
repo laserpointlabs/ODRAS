@@ -1,0 +1,200 @@
+{
+  "metadata": {
+    "exportedBy": "jdehart",
+    "exportedDate": "2025-10-13",
+    "exportedTimestamp": "2025-10-13T11:25:06.441Z",
+    "ontologyIri": "https://xma-adt.usnc.mil/odras/core/1ec70631-7032-4959-ac23-3a206899177c/ontologies/base-vertical",
+    "exportVersion": "1.0"
+  },
+  "model": {
+    "name": "BASE.VERTICAL",
+    "type": "Model",
+    "comment": "",
+    "definition": "",
+    "version": "",
+    "namespace": "https://xma-adt.usnc.mil/odras/core/1ec70631-7032-4959-ac23-3a206899177c/ontologies/base-vertical",
+    "imports": ""
+  },
+  "nodes": [
+    {
+      "data": {
+        "id": "Class1",
+        "label": "A",
+        "type": "class",
+        "attrs": {
+          "creator": "jdehart",
+          "created_date": "2025-10-11",
+          "created_timestamp": "2025-10-11T16:12:30.562Z",
+          "last_modified_by": "jdehart",
+          "last_modified_date": "2025-10-13",
+          "last_modified_timestamp": "2025-10-13T11:25:01.983Z"
+        }
+      },
+      "position": {
+        "x": 240,
+        "y": 0
+      }
+    },
+    {
+      "data": {
+        "id": "Class2",
+        "label": "AB",
+        "type": "class",
+        "attrs": {
+          "subclass_of": [
+            "https://xma-adt.usnc.mil/odras/core/1ec70631-7032-4959-ac23-3a206899177c/ontologies/base-vertical#A"
+          ],
+          "creator": "jdehart",
+          "created_date": "2025-10-11",
+          "created_timestamp": "2025-10-11T16:12:32.541Z",
+          "last_modified_by": "jdehart",
+          "last_modified_date": "2025-10-13",
+          "last_modified_timestamp": "2025-10-13T11:25:01.984Z",
+          "is_abstract": false
+        }
+      },
+      "position": {
+        "x": 240,
+        "y": 120
+      }
+    },
+    {
+      "data": {
+        "id": "Class3",
+        "label": "ABC",
+        "type": "class",
+        "attrs": {
+          "subclass_of": [
+            "https://xma-adt.usnc.mil/odras/core/1ec70631-7032-4959-ac23-3a206899177c/ontologies/base-vertical#AB"
+          ],
+          "creator": "jdehart",
+          "created_date": "2025-10-11",
+          "created_timestamp": "2025-10-11T16:12:33.942Z",
+          "last_modified_by": "jdehart",
+          "last_modified_date": "2025-10-13",
+          "last_modified_timestamp": "2025-10-13T11:25:01.984Z",
+          "is_abstract": false
+        }
+      },
+      "position": {
+        "x": 240,
+        "y": 260
+      }
+    },
+    {
+      "data": {
+        "id": "DP1760199173838",
+        "label": "B",
+        "type": "dataProperty",
+        "attrs": {
+          "range": "xsd:string",
+          "creator": "jdehart",
+          "created_date": "2025-10-11",
+          "created_timestamp": "2025-10-11T16:12:53.838Z",
+          "last_modified_by": "jdehart",
+          "last_modified_date": "2025-10-13",
+          "last_modified_timestamp": "2025-10-13T11:25:01.984Z",
+          "functional": false
+        }
+      },
+      "position": {
+        "x": 540,
+        "y": 120
+      }
+    },
+    {
+      "data": {
+        "id": "DP1760199179591",
+        "label": "C",
+        "type": "dataProperty",
+        "attrs": {
+          "range": "xsd:string",
+          "creator": "jdehart",
+          "created_date": "2025-10-11",
+          "created_timestamp": "2025-10-11T16:12:59.591Z",
+          "last_modified_by": "jdehart",
+          "last_modified_date": "2025-10-13",
+          "last_modified_timestamp": "2025-10-13T11:25:01.985Z",
+          "functional": false
+        }
+      },
+      "position": {
+        "x": 540,
+        "y": 260
+      }
+    },
+    {
+      "data": {
+        "id": "DP1760297040875",
+        "label": "A",
+        "type": "dataProperty",
+        "attrs": {
+          "creator": "jdehart",
+          "created_date": "2025-10-12",
+          "created_timestamp": "2025-10-12T19:24:00.875Z",
+          "last_modified_by": "jdehart",
+          "last_modified_date": "2025-10-13",
+          "last_modified_timestamp": "2025-10-13T11:25:01.985Z"
+        }
+      },
+      "position": {
+        "x": 540,
+        "y": 0
+      }
+    }
+  ],
+  "edges": [
+    {
+      "data": {
+        "id": "edp1760199173840",
+        "source": "Class2",
+        "target": "DP1760199173838",
+        "predicate": "Data Property 838",
+        "type": "objectProperty",
+        "attrs": {
+          "creator": "jdehart",
+          "created_date": "2025-10-11",
+          "created_timestamp": "2025-10-11T16:12:53.840Z",
+          "last_modified_by": "jdehart",
+          "last_modified_date": "2025-10-11",
+          "last_modified_timestamp": "2025-10-11T16:12:53.840Z"
+        }
+      }
+    },
+    {
+      "data": {
+        "id": "edp1760199179593",
+        "source": "Class3",
+        "target": "DP1760199179591",
+        "predicate": "Data Property 591",
+        "type": "objectProperty",
+        "attrs": {
+          "creator": "jdehart",
+          "created_date": "2025-10-11",
+          "created_timestamp": "2025-10-11T16:12:59.593Z",
+          "last_modified_by": "jdehart",
+          "last_modified_date": "2025-10-11",
+          "last_modified_timestamp": "2025-10-11T16:12:59.593Z"
+        }
+      }
+    },
+    {
+      "data": {
+        "id": "edp1760297040877",
+        "source": "Class1",
+        "target": "DP1760297040875",
+        "predicate": "Data Property 875",
+        "type": "objectProperty",
+        "attrs": {
+          "creator": "jdehart",
+          "created_date": "2025-10-12",
+          "created_timestamp": "2025-10-12T19:24:00.877Z",
+          "last_modified_by": "jdehart",
+          "last_modified_date": "2025-10-12",
+          "last_modified_timestamp": "2025-10-12T19:24:00.877Z"
+        }
+      }
+    }
+  ],
+  "namedViews": []
+}

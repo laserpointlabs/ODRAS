@@ -1,0 +1,83 @@
+{
+  "metadata": {
+    "exportedBy": "jdehart",
+    "exportedDate": "2025-10-13",
+    "exportedTimestamp": "2025-10-13T11:25:13.124Z",
+    "ontologyIri": "https://xma-adt.usnc.mil/odras/core/1ec70631-7032-4959-ac23-3a206899177c/ontologies/base-cross",
+    "exportVersion": "1.0"
+  },
+  "model": {
+    "name": "BASE.CROSS",
+    "type": "Model",
+    "comment": "",
+    "definition": "",
+    "version": "",
+    "namespace": "https://xma-adt.usnc.mil/odras/core/1ec70631-7032-4959-ac23-3a206899177c/ontologies/base-cross",
+    "imports": ""
+  },
+  "nodes": [
+    {
+      "data": {
+        "id": "Class2",
+        "label": "AorVehicle",
+        "type": "class",
+        "attrs": {
+          "creator": "jdehart",
+          "created_date": "2025-10-12",
+          "created_timestamp": "2025-10-12T19:26:40.718Z",
+          "last_modified_by": "jdehart",
+          "last_modified_date": "2025-10-13",
+          "last_modified_timestamp": "2025-10-13T07:49:58.290Z",
+          "subclass_of": [
+            "https://xma-adt.usnc.mil/odras/core/1ec70631-7032-4959-ac23-3a206899177c/ontologies/bseo-b#Object",
+            "https://xma-adt.usnc.mil/odras/core/1ec70631-7032-4959-ac23-3a206899177c/ontologies/bseo-b#PhysicalPropertis"
+          ],
+          "is_abstract": false
+        }
+      },
+      "position": {
+        "x": 240,
+        "y": 60
+      }
+    },
+    {
+      "data": {
+        "id": "DP1760297207258",
+        "label": "WingSpan",
+        "type": "dataProperty",
+        "attrs": {
+          "creator": "jdehart",
+          "created_date": "2025-10-12",
+          "created_timestamp": "2025-10-12T19:26:47.258Z",
+          "last_modified_by": "jdehart",
+          "last_modified_date": "2025-10-13",
+          "last_modified_timestamp": "2025-10-13T07:49:58.291Z"
+        }
+      },
+      "position": {
+        "x": 500,
+        "y": 60
+      }
+    }
+  ],
+  "edges": [
+    {
+      "data": {
+        "id": "edp1760297207263",
+        "source": "Class2",
+        "target": "DP1760297207258",
+        "predicate": "Data Property 258",
+        "type": "objectProperty",
+        "attrs": {
+          "creator": "jdehart",
+          "created_date": "2025-10-12",
+          "created_timestamp": "2025-10-12T19:26:47.263Z",
+          "last_modified_by": "jdehart",
+          "last_modified_date": "2025-10-12",
+          "last_modified_timestamp": "2025-10-12T19:26:47.263Z"
+        }
+      }
+    }
+  ],
+  "namedViews": []
+}

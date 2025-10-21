@@ -1,0 +1,233 @@
+{
+  "metadata": {
+    "exportedBy": "jdehart",
+    "exportedDate": "2025-10-13",
+    "exportedTimestamp": "2025-10-13T11:24:58.808Z",
+    "ontologyIri": "https://xma-adt.usnc.mil/odras/core/1ec70631-7032-4959-ac23-3a206899177c/ontologies/base",
+    "exportVersion": "1.0"
+  },
+  "model": {
+    "name": "BASE",
+    "type": "Model",
+    "comment": "",
+    "definition": "",
+    "version": "",
+    "namespace": "https://xma-adt.usnc.mil/odras/core/1ec70631-7032-4959-ac23-3a206899177c/ontologies/base",
+    "imports": ""
+  },
+  "nodes": [
+    {
+      "data": {
+        "id": "Class1",
+        "label": "Object",
+        "type": "class",
+        "attrs": {
+          "creator": "jdehart",
+          "created_date": "2025-10-11",
+          "created_timestamp": "2025-10-11T16:08:25.658Z",
+          "last_modified_by": "jdehart",
+          "last_modified_date": "2025-10-13",
+          "last_modified_timestamp": "2025-10-13T11:24:55.550Z"
+        }
+      },
+      "position": {
+        "x": 240,
+        "y": 60
+      }
+    },
+    {
+      "data": {
+        "id": "Class2",
+        "label": "PhysicalObject",
+        "type": "class",
+        "attrs": {
+          "creator": "jdehart",
+          "created_date": "2025-10-11",
+          "created_timestamp": "2025-10-11T16:09:19.003Z",
+          "last_modified_by": "jdehart",
+          "last_modified_date": "2025-10-13",
+          "last_modified_timestamp": "2025-10-13T11:24:55.551Z"
+        }
+      },
+      "position": {
+        "x": 240,
+        "y": 240
+      }
+    },
+    {
+      "data": {
+        "id": "Class3",
+        "label": "Inheritance_Object",
+        "type": "class",
+        "attrs": {
+          "subclass_of": [
+            "https://xma-adt.usnc.mil/odras/core/1ec70631-7032-4959-ac23-3a206899177c/ontologies/base#Object",
+            "https://xma-adt.usnc.mil/odras/core/1ec70631-7032-4959-ac23-3a206899177c/ontologies/base#PhysicalObject"
+          ],
+          "creator": "jdehart",
+          "created_date": "2025-10-11",
+          "created_timestamp": "2025-10-11T16:09:48.149Z",
+          "last_modified_by": "jdehart",
+          "last_modified_date": "2025-10-13",
+          "last_modified_timestamp": "2025-10-13T11:24:55.552Z",
+          "is_abstract": false
+        }
+      },
+      "position": {
+        "x": 240,
+        "y": 380
+      }
+    },
+    {
+      "data": {
+        "id": "DP1760201880658",
+        "label": "ID",
+        "type": "dataProperty",
+        "attrs": {
+          "range": "xsd:string",
+          "creator": "jdehart",
+          "created_date": "2025-10-11",
+          "created_timestamp": "2025-10-11T16:58:00.658Z",
+          "last_modified_by": "jdehart",
+          "last_modified_date": "2025-10-13",
+          "last_modified_timestamp": "2025-10-13T11:24:55.552Z",
+          "functional": false
+        }
+      },
+      "position": {
+        "x": 540,
+        "y": 60
+      }
+    },
+    {
+      "data": {
+        "id": "DP1760201892183",
+        "label": "Mass",
+        "type": "dataProperty",
+        "attrs": {
+          "range": "xsd:float",
+          "creator": "jdehart",
+          "created_date": "2025-10-11",
+          "created_timestamp": "2025-10-11T16:58:12.183Z",
+          "last_modified_by": "jdehart",
+          "last_modified_date": "2025-10-13",
+          "last_modified_timestamp": "2025-10-13T11:24:55.552Z",
+          "functional": false
+        }
+      },
+      "position": {
+        "x": 540,
+        "y": 240
+      }
+    },
+    {
+      "data": {
+        "id": "DP1760201908241",
+        "label": "My_Prop",
+        "type": "dataProperty",
+        "attrs": {
+          "creator": "jdehart",
+          "created_date": "2025-10-11",
+          "created_timestamp": "2025-10-11T16:58:28.241Z",
+          "last_modified_by": "jdehart",
+          "last_modified_date": "2025-10-13",
+          "last_modified_timestamp": "2025-10-13T11:24:55.553Z"
+        }
+      },
+      "position": {
+        "x": 540,
+        "y": 380
+      }
+    },
+    {
+      "data": {
+        "id": "DP1760202749116",
+        "label": "Nomenclature",
+        "type": "dataProperty",
+        "attrs": {
+          "creator": "jdehart",
+          "created_date": "2025-10-11",
+          "created_timestamp": "2025-10-11T17:12:29.116Z",
+          "last_modified_by": "jdehart",
+          "last_modified_date": "2025-10-13",
+          "last_modified_timestamp": "2025-10-13T11:24:55.553Z"
+        }
+      },
+      "position": {
+        "x": 540,
+        "y": 140
+      }
+    }
+  ],
+  "edges": [
+    {
+      "data": {
+        "id": "edp1760201880660",
+        "source": "Class1",
+        "target": "DP1760201880658",
+        "predicate": "Data Property 658",
+        "type": "objectProperty",
+        "attrs": {
+          "creator": "jdehart",
+          "created_date": "2025-10-11",
+          "created_timestamp": "2025-10-11T16:58:00.660Z",
+          "last_modified_by": "jdehart",
+          "last_modified_date": "2025-10-11",
+          "last_modified_timestamp": "2025-10-11T16:58:00.660Z"
+        }
+      }
+    },
+    {
+      "data": {
+        "id": "edp1760201892186",
+        "source": "Class2",
+        "target": "DP1760201892183",
+        "predicate": "Data Property 183",
+        "type": "objectProperty",
+        "attrs": {
+          "creator": "jdehart",
+          "created_date": "2025-10-11",
+          "created_timestamp": "2025-10-11T16:58:12.186Z",
+          "last_modified_by": "jdehart",
+          "last_modified_date": "2025-10-11",
+          "last_modified_timestamp": "2025-10-11T16:58:12.186Z"
+        }
+      }
+    },
+    {
+      "data": {
+        "id": "edp1760201908243",
+        "source": "Class3",
+        "target": "DP1760201908241",
+        "predicate": "Data Property 241",
+        "type": "objectProperty",
+        "attrs": {
+          "creator": "jdehart",
+          "created_date": "2025-10-11",
+          "created_timestamp": "2025-10-11T16:58:28.243Z",
+          "last_modified_by": "jdehart",
+          "last_modified_date": "2025-10-11",
+          "last_modified_timestamp": "2025-10-11T16:58:28.243Z"
+        }
+      }
+    },
+    {
+      "data": {
+        "id": "edp1760202749118",
+        "source": "Class1",
+        "target": "DP1760202749116",
+        "predicate": "Data Property 116",
+        "type": "objectProperty",
+        "attrs": {
+          "creator": "jdehart",
+          "created_date": "2025-10-11",
+          "created_timestamp": "2025-10-11T17:12:29.118Z",
+          "last_modified_by": "jdehart",
+          "last_modified_date": "2025-10-11",
+          "last_modified_timestamp": "2025-10-11T17:12:29.118Z"
+        }
+      }
+    }
+  ],
+  "namedViews": []
+}

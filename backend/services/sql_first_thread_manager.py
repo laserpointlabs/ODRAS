@@ -376,7 +376,7 @@ class SqlFirstThreadManager:
                 recent_events = get_recent_events(conn, project_thread_id, limit=20)
 
                 # Get conversation history
-                conversation = get_conversation_history(conn, project_thread_id, limit=20)
+                conversation = get_conversation_history(conn, project_thread_id, limit=50)
 
                 # ✅ FORMAT conversations for DAS dock compatibility
                 formatted_conversations = self._format_conversation_for_ui(conversation)

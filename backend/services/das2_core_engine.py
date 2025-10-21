@@ -382,16 +382,23 @@ class DAS2CoreEngine:
                             }
 
                     # Process object properties with ALL attributes including disjoint properties
+                    # CRITICAL: Key by prop_uri + domain + range to handle multiple domain/range combos for same property
                     if "objProp" in binding:
                         prop_uri = binding["objProp"]["value"]
-                        if prop_uri not in obj_properties:
-                            obj_properties[prop_uri] = {
+                        domain = binding.get("domain", {}).get("value", "").split("#")[-1].split("/")[-1] if "domain" in binding else ""
+                        range_val = binding.get("range", {}).get("value", "").split("#")[-1].split("/")[-1] if "range" in binding else ""
+                        
+                        # Create unique key for each domain/range combination
+                        unique_key = f"{prop_uri}_{domain}_{range_val}"
+                        
+                        if unique_key not in obj_properties:
+                            obj_properties[unique_key] = {
                                 "name": binding.get("objPropName", {}).get("value", prop_uri.split("#")[-1].split("/")[-1]),
                                 "comment": binding.get("objPropComment", {}).get("value", ""),
                                 "definition": binding.get("objPropDefinition", {}).get("value", ""),
                                 "example": binding.get("objPropExample", {}).get("value", ""),
-                                "domain": binding.get("domain", {}).get("value", "").split("#")[-1].split("/")[-1] if "domain" in binding else "",
-                                "range": binding.get("range", {}).get("value", "").split("#")[-1].split("/")[-1] if "range" in binding else "",
+                                "domain": domain,
+                                "range": range_val,
                                 "creator": binding.get("objPropCreator", {}).get("value", ""),
                                 "created_date": binding.get("objPropCreatedDate", {}).get("value", ""),
                                 "modified_by": binding.get("objPropModifiedBy", {}).get("value", ""),
@@ -958,10 +965,11 @@ class DAS2CoreEngine:
         Simple streaming implementation that stores both user and assistant messages
         """
         try:
+            import json
             print(f"🚀 DAS2_STREAM_DEBUG: Starting streaming process_message for project {project_id}")
             logger.info(f"🚀 DAS2_STREAM_DEBUG: Starting streaming process_message for project {project_id}")
 
-            # 1. Get project thread context (same as regular process_message)
+            # 1. Get project context first (needed for confirm detection)
             if self.sql_first_threads:
                 project_context = await self.project_manager.get_project_context(project_id)
                 if "error" in project_context:
@@ -972,7 +980,138 @@ class DAS2CoreEngine:
                 conversation_history = project_context["conversation_history"]
                 recent_events = project_context["recent_events"]
                 project_metadata = project_context.get("project_metadata", {})
-            else:
+                project_thread_id = project_thread.get('project_thread_id')
+
+            # DETECT ASSUMPTION CONFIRMATION
+            if message.strip().lower() == 'confirm':
+                logger.info(f"🎯 DAS2_CONFIRM_DEBUG: Detected confirm message")
+                
+                # Check if the last DAS response was a pending assumption
+                if conversation_history:
+                    logger.debug(f"Checking {len(conversation_history)} conversations for pending assumption")
+                    
+                    # Check both the current conversation format (SQL-first pairs)
+                    pending_assumption_content = None
+                    
+                    # Look through the last few conversations for an assumption command
+                    for conv in conversation_history[-3:]:  # Check last 3 conversations
+                        # Check if this conversation has user_message with /assumption
+                        user_msg = conv.get("user_message", "")
+                        das_response = conv.get("das_response", "")
+                        
+                        if user_msg.strip().startswith("/assumption") and "Refined Assumption:" in das_response:
+                            # Extract refined content from DAS response text
+                            try:
+                                # Parse: "✅ **Refined Assumption:**\n\n{content}\n\nType `confirm`..."
+                                start_marker = "**Refined Assumption:**"
+                                end_marker = "\n\nType"
+                                
+                                start_idx = das_response.find(start_marker)
+                                if start_idx != -1:
+                                    start_idx += len(start_marker)
+                                    end_idx = das_response.find(end_marker, start_idx)
+                                    if end_idx != -1:
+                                        refined_content = das_response[start_idx:end_idx].strip()
+                                        pending_assumption_content = refined_content
+                                        logger.debug(f"Extracted pending assumption for confirmation")
+                                        break
+                            except Exception as e:
+                                logger.debug(f"Failed to extract assumption: {e}")
+                                continue
+                    
+                    if pending_assumption_content:
+                        refined_content = pending_assumption_content
+                        if refined_content:
+                            # Store user confirm message first
+                            if self.sql_first_threads and project_thread_id:
+                                await self.project_manager.store_conversation_message(
+                                    project_thread_id=project_thread_id,
+                                    role="user",
+                                    content=message,
+                                    metadata={"das_engine": "DAS2", "timestamp": datetime.now().isoformat()}
+                                )
+                            
+                            # Save assumption to PostgreSQL via API
+                            import httpx
+                            async with httpx.AsyncClient() as client:
+                                try:
+                                    # Get auth token for API call
+                                    auth_response = await client.post(
+                                        "http://localhost:8000/api/auth/login",
+                                        json={"username": "das_service", "password": "das_service_2024!"},
+                                        timeout=10.0
+                                    )
+                                    auth_data = auth_response.json()
+                                    auth_token = auth_data.get("token")
+                                    
+                                    # Save assumption via API
+                                    save_response = await client.post(
+                                        f"http://localhost:8000/api/das2/project/{project_id}/assumption",
+                                        headers={"Authorization": f"Bearer {auth_token}"},
+                                        json={
+                                            "content": refined_content,
+                                            "context": json.dumps(conversation_history[-5:])  # Last 5 conversations as context
+                                        },
+                                        timeout=15.0
+                                    )
+                                    
+                                    if save_response.status_code == 200:
+                                        save_data = save_response.json()
+                                        assumption_id = save_data.get("assumption_id")
+                                        
+                                        response_message = f"✅ **Assumption Confirmed:**\n\nThe assumption that {refined_content.lower()} has been successfully saved to the project.\n\n**Assumption ID:** {assumption_id}\n\nView it in the Assumptions section of the project tree.\n\n**Note:** Refresh the page to see the updated Assumptions node."
+                                        
+                                        # Store success response
+                                        if self.sql_first_threads and project_thread_id:
+                                            await self.project_manager.store_conversation_message(
+                                                project_thread_id=project_thread_id,
+                                                role="assistant",
+                                                content=response_message,
+                                                metadata={"das_engine": "DAS2", "command": "confirm_assumption", "assumption_id": assumption_id, "timestamp": datetime.now().isoformat()}
+                                            )
+                                        
+                                        yield {"type": "content", "content": response_message}
+                                        yield {"type": "done", "metadata": {"assumption_saved": True, "assumption_id": assumption_id, "refresh_tree": True}}
+                                        return
+                                    else:
+                                        error_msg = f"Failed to save assumption: HTTP {save_response.status_code}"
+                                        yield {"type": "error", "message": error_msg}
+                                        return
+                                        
+                                except Exception as api_error:
+                                    error_msg = f"Error saving assumption: {str(api_error)}"
+                                    logger.error(f"Assumption save error: {api_error}")
+                                    yield {"type": "error", "message": error_msg}
+                                    return
+                        else:
+                            yield {"type": "error", "message": "No pending assumption found to confirm."}
+                            return
+                    else:
+                        yield {"type": "error", "message": "No pending assumption found. Use /assumption [hint] first."}
+                        return
+                else:
+                    yield {"type": "error", "message": "No conversation history available to confirm assumption."}
+                    return
+
+            # DETECT SLASH COMMANDS (DAS Actions)
+            if message.strip().startswith('/'):
+                logger.info(f"🎯 DAS2_COMMAND_DEBUG: Detected slash command: {message}")
+                
+                # Store user command message first  
+                if self.sql_first_threads and project_thread_id:
+                    await self.project_manager.store_conversation_message(
+                        project_thread_id=project_thread_id,
+                        role="user",
+                        content=message,
+                        metadata={"das_engine": "DAS2", "command_type": "slash_command", "timestamp": datetime.now().isoformat()}
+                    )
+                
+                async for chunk in self._handle_command(message, project_id, user_id, project_thread_id):
+                    yield chunk
+                return
+
+            # Handle non-SQL-first threads case (legacy support)
+            if not self.sql_first_threads:
                 if project_thread_id:
                     project_thread = await self.project_manager.get_project_thread(project_thread_id)
                 else:
@@ -985,16 +1124,14 @@ class DAS2CoreEngine:
                 conversation_history = getattr(project_thread, 'conversation_history', [])
                 recent_events = getattr(project_thread, 'project_events', [])
 
-            # 2. Store user message immediately
-            if self.sql_first_threads:
-                project_thread_id = project_thread.get('project_thread_id')
-                if project_thread_id:
-                    await self.project_manager.store_conversation_message(
-                        project_thread_id=project_thread_id,
-                        role="user",
-                        content=message,
-                        metadata={"das_engine": "DAS2", "timestamp": datetime.now().isoformat()}
-                    )
+            # 2. Store user message for regular conversations (not commands/confirmations)
+            if self.sql_first_threads and project_thread_id:
+                await self.project_manager.store_conversation_message(
+                    project_thread_id=project_thread_id,
+                    role="user", 
+                    content=message,
+                    metadata={"das_engine": "DAS2", "timestamp": datetime.now().isoformat()}
+                )
 
             # 3. Get RAG context using current user's credentials for proper access
             import httpx
@@ -1412,3 +1549,317 @@ Answer naturally and consistently using the context above. Be helpful and conver
         except Exception as e:
             logger.error(f"LLM streaming call failed: {e}")
             yield f"Error: {str(e)}"
+    
+    # ========================================
+    # DAS ACTIONS - SLASH COMMAND HANDLERS
+    # ========================================
+    
+    async def _handle_command(
+        self,
+        message: str,
+        project_id: str,
+        user_id: str,
+        project_thread_id: Optional[str] = None
+    ):
+        """Handle slash commands (DAS Actions)"""
+        parts = message.strip().split(maxsplit=1)
+        command = parts[0].lower()
+        arg = parts[1] if len(parts) > 1 else ""
+        
+        logger.info(f"🎯 Handling command: {command} with arg: {arg}")
+        
+        try:
+            if command == '/assumption':
+                async for chunk in self._handle_assumption_command(arg, project_id, user_id, project_thread_id):
+                    yield chunk
+            elif command == '/white_paper':
+                async for chunk in self._handle_whitepaper_command(project_id, user_id, project_thread_id):
+                    yield chunk
+            elif command == '/diagram':
+                async for chunk in self._handle_diagram_command(arg, project_id, user_id, project_thread_id):
+                    yield chunk
+            elif command == '/help':
+                async for chunk in self._handle_help_command(project_id, user_id, project_thread_id):
+                    yield chunk
+            elif command == '/summary':
+                async for chunk in self._handle_summary_command(project_id, user_id, project_thread_id):
+                    yield chunk
+            else:
+                yield {"type": "error", "message": f"Unknown command: {command}. Type /help for available commands."}
+        except Exception as e:
+            logger.error(f"Error handling command {command}: {e}")
+            yield {"type": "error", "message": f"Error executing command: {str(e)}"}
+    
+    async def _handle_assumption_command(
+        self,
+        hint: str,
+        project_id: str,
+        user_id: str,
+        project_thread_id: Optional[str] = None
+    ):
+        """Handle /assumption command - Option B flow with refinement"""
+        if not hint:
+            yield {"type": "error", "message": "Please provide an assumption hint.\n\nUsage: /assumption [your assumption text]"}
+            return
+        
+        yield {"type": "content", "content": "🔍 Analyzing your assumption hint with conversation context..."}
+        
+        try:
+            # Get conversation history
+            project_context = await self.project_manager.get_project_context(project_id)
+            if "error" in project_context:
+                yield {"type": "error", "message": "Could not access conversation history."}
+                return
+            
+            conversation_history = project_context.get("conversation_history", [])
+            
+            # Generate refined assumption
+            from backend.services.artifact_generator import ArtifactGenerator
+            generator = ArtifactGenerator(self.settings)
+            refined = await generator.refine_assumption(hint, conversation_history)
+            
+            full_response = f"\n\n✅ **Refined Assumption:**\n\n{refined}\n\nType `confirm` to save this assumption, or continue the conversation."
+            
+            # Store the response in conversation history
+            if self.sql_first_threads and project_thread_id:
+                await self.project_manager.store_conversation_message(
+                    project_thread_id=project_thread_id,
+                    role="assistant",
+                    content=full_response,
+                    metadata={"das_engine": "DAS2", "command": "assumption", "refined_content": refined, "timestamp": datetime.now().isoformat()}
+                )
+            
+            yield {"type": "content", "content": full_response}
+            yield {"type": "done", "metadata": {
+                "pending_assumption": True,
+                "content": refined,
+                "project_id": project_id
+            }}
+            
+        except Exception as e:
+            logger.error(f"Error in assumption command: {e}")
+            yield {"type": "error", "message": f"Error refining assumption: {str(e)}"}
+    
+    async def _handle_whitepaper_command(
+        self,
+        project_id: str,
+        user_id: str,
+        project_thread_id: Optional[str] = None
+    ):
+        """Handle /white_paper command"""
+        yield {"type": "content", "content": "📝 Generating white paper from conversation history...\n\nThis may take 30-60 seconds..."}
+        
+        try:
+            # Get full conversation history
+            project_context = await self.project_manager.get_project_context(project_id)
+            if "error" in project_context:
+                yield {"type": "error", "message": "Could not access conversation history."}
+                return
+            
+            conversation = project_context.get("conversation_history", [])
+            project_metadata = project_context.get("project_metadata", {})
+            
+            if not conversation or len(conversation) < 2:
+                yield {"type": "content", "content": "\n\n⚠️ Not enough conversation history to generate a white paper. Have a longer discussion first."}
+                yield {"type": "done", "metadata": {}}
+                return
+            
+            # Generate white paper
+            from backend.services.artifact_generator import ArtifactGenerator
+            generator = ArtifactGenerator(self.settings)
+            markdown_content = await generator.generate_white_paper(conversation, project_metadata)
+            
+            # Store in MinIO + PostgreSQL
+            from datetime import datetime
+            filename = f"whitepaper_{datetime.now().strftime('%Y%m%d_%H%M%S')}.md"
+            file_id = await self._store_artifact(
+                content=markdown_content.encode('utf-8'),
+                filename=filename,
+                project_id=project_id,
+                user_id=user_id,
+                artifact_type='whitepaper'
+            )
+            
+            full_response = f"\n\n✅ **White paper created:** {filename}\n\nView it in the Artifacts section of the project tree."
+            
+            # Store the response in conversation history
+            if self.sql_first_threads and project_thread_id:
+                await self.project_manager.store_conversation_message(
+                    project_thread_id=project_thread_id,
+                    role="assistant",
+                    content=full_response,
+                    metadata={"das_engine": "DAS2", "command": "white_paper", "artifact_id": file_id, "filename": filename, "timestamp": datetime.now().isoformat()}
+                )
+            
+            yield {"type": "content", "content": full_response}
+            yield {"type": "done", "metadata": {"artifact_id": file_id, "filename": filename, "type": "whitepaper", "refresh_tree": True}}
+            
+        except Exception as e:
+            logger.error(f"Error in whitepaper command: {e}")
+            yield {"type": "error", "message": f"Error generating white paper: {str(e)}"}
+    
+    async def _handle_diagram_command(
+        self,
+        description: str,
+        project_id: str,
+        user_id: str,
+        project_thread_id: Optional[str] = None
+    ):
+        """Handle /diagram command"""
+        if not description:
+            yield {"type": "error", "message": "Please provide a diagram description.\n\nUsage: /diagram [description]"}
+            return
+        
+        yield {"type": "content", "content": f"🎨 Generating Mermaid diagram: {description}...\n\nThis may take 20-30 seconds..."}
+        
+        try:
+            # Get conversation context
+            project_context = await self.project_manager.get_project_context(project_id)
+            if "error" in project_context:
+                yield {"type": "error", "message": "Could not access conversation history."}
+                return
+            
+            conversation = project_context.get("conversation_history", [])
+            
+            # Generate Mermaid diagram
+            from backend.services.artifact_generator import ArtifactGenerator
+            generator = ArtifactGenerator(self.settings)
+            mermaid_content = await generator.generate_mermaid_diagram(description, conversation)
+            
+            # Store as .mmd file
+            from datetime import datetime
+            filename = f"diagram_{datetime.now().strftime('%Y%m%d_%H%M%S')}.mmd"
+            file_id = await self._store_artifact(
+                content=mermaid_content.encode('utf-8'),
+                filename=filename,
+                project_id=project_id,
+                user_id=user_id,
+                artifact_type='diagram'
+            )
+            
+            full_response = f"\n\n✅ **Diagram created:** {filename}\n\nView it in the Artifacts section of the project tree."
+            
+            # Store the response in conversation history
+            if self.sql_first_threads and project_thread_id:
+                await self.project_manager.store_conversation_message(
+                    project_thread_id=project_thread_id,
+                    role="assistant",
+                    content=full_response,
+                    metadata={"das_engine": "DAS2", "command": "diagram", "artifact_id": file_id, "filename": filename, "timestamp": datetime.now().isoformat()}
+                )
+            
+            yield {"type": "content", "content": full_response}
+            yield {"type": "done", "metadata": {"artifact_id": file_id, "filename": filename, "type": "diagram", "refresh_tree": True}}
+            
+        except Exception as e:
+            logger.error(f"Error in diagram command: {e}")
+            yield {"type": "error", "message": f"Error generating diagram: {str(e)}"}
+    
+    async def _handle_help_command(self, project_id: str, user_id: str, project_thread_id: Optional[str] = None):
+        """Handle /help command"""
+        help_text = """**Available DAS Actions:**
+
+• `/assumption [hint]` - Capture and refine an assumption from the discussion
+  Example: `/assumption OAuth2 providers will be reliable`
+
+• `/white_paper` - Generate a professional white paper from the conversation
+  Example: `/white_paper`
+
+• `/diagram [description]` - Create a Mermaid diagram based on the discussion
+  Example: `/diagram authentication flow`
+
+• `/summary` - Get a quick summary of recent messages
+  Example: `/summary`
+
+• `/help` - Show this help message
+
+**Tips:**
+- Use DAS Actions after having a substantial conversation
+- White papers work best with 10+ message exchanges
+- Diagrams use the last 10 messages for context
+- Type `/help` anytime to see this message again"""
+        
+        # Store the response in conversation history
+        if self.sql_first_threads and project_thread_id:
+            await self.project_manager.store_conversation_message(
+                project_thread_id=project_thread_id,
+                role="assistant",
+                content=help_text,
+                metadata={"das_engine": "DAS2", "command": "help", "timestamp": datetime.now().isoformat()}
+            )
+        
+        yield {"type": "content", "content": help_text}
+        yield {"type": "done", "metadata": {}}
+    
+    async def _handle_summary_command(
+        self,
+        project_id: str,
+        user_id: str,
+        project_thread_id: Optional[str] = None
+    ):
+        """Handle /summary command - Quick summary of recent messages"""
+        yield {"type": "content", "content": "📊 Summarizing recent discussion..."}
+        
+        try:
+            # Get last 10 messages
+            project_context = await self.project_manager.get_project_context(project_id)
+            if "error" in project_context:
+                yield {"type": "error", "message": "Could not access conversation history."}
+                return
+            
+            conversation = project_context.get("conversation_history", [])
+            
+            if not conversation or len(conversation) < 2:
+                yield {"type": "content", "content": "\n\n⚠️ Not enough conversation history to summarize."}
+                yield {"type": "done", "metadata": {}}
+                return
+            
+            # Generate quick summary
+            from backend.services.artifact_generator import ArtifactGenerator
+            generator = ArtifactGenerator(self.settings)
+            summary = await generator.generate_summary(conversation, max_messages=10)
+            
+            full_response = f"\n\n**Summary:** {summary}"
+            
+            # Store the response in conversation history
+            if self.sql_first_threads and project_thread_id:
+                await self.project_manager.store_conversation_message(
+                    project_thread_id=project_thread_id,
+                    role="assistant",
+                    content=full_response,
+                    metadata={"das_engine": "DAS2", "command": "summary", "timestamp": datetime.now().isoformat()}
+                )
+            
+            yield {"type": "content", "content": full_response}
+            yield {"type": "done", "metadata": {"summary": summary}}
+            
+        except Exception as e:
+            logger.error(f"Error in summary command: {e}")
+            yield {"type": "error", "message": f"Error generating summary: {str(e)}"}
+    
+    async def _store_artifact(
+        self,
+        content: bytes,
+        filename: str,
+        project_id: str,
+        user_id: str,
+        artifact_type: str
+    ) -> str:
+        """Store artifact in MinIO and PostgreSQL"""
+        from backend.services.file_storage import FileStorageService
+        
+        storage = FileStorageService(self.settings)
+        result = await storage.store_file(
+            content=content,
+            filename=filename,
+            content_type='text/markdown' if filename.endswith('.md') else 'text/plain',
+            project_id=project_id,
+            tags={'artifact_type': artifact_type, 'generated_by': 'das'},
+            created_by=user_id
+        )
+        
+        if result.get('success'):
+            logger.info(f"✅ Artifact stored: {filename} (ID: {result['file_id']})")
+            return result['file_id']
+        else:
+            raise Exception(f"Failed to store artifact: {result.get('error', 'Unknown error')}")

@@ -1,0 +1,197 @@
+{
+  "metadata": {
+    "exportedBy": "jdehart",
+    "exportedDate": "2025-10-13",
+    "exportedTimestamp": "2025-10-13T11:25:26.901Z",
+    "ontologyIri": "https://xma-adt.usnc.mil/odras/core/1ec70631-7032-4959-ac23-3a206899177c/ontologies/bseo-applied",
+    "exportVersion": "1.0"
+  },
+  "model": {
+    "name": "BSEO.APPLIED",
+    "type": "Model",
+    "comment": "",
+    "definition": "",
+    "version": "",
+    "namespace": "https://xma-adt.usnc.mil/odras/core/1ec70631-7032-4959-ac23-3a206899177c/ontologies/bseo-applied",
+    "imports": ""
+  },
+  "nodes": [
+    {
+      "data": {
+        "id": "Class1",
+        "label": "AirVehicle",
+        "type": "class",
+        "attrs": {
+          "subclass_of": [
+            "https://xma-adt.usnc.mil/odras/core/1ec70631-7032-4959-ac23-3a206899177c/ontologies/bseo-b#Object",
+            "https://xma-adt.usnc.mil/odras/core/1ec70631-7032-4959-ac23-3a206899177c/ontologies/bseo-b#PhysicalPropertis"
+          ],
+          "creator": "jdehart",
+          "created_date": "2025-10-11",
+          "created_timestamp": "2025-10-11T23:54:55.653Z",
+          "last_modified_by": "jdehart",
+          "last_modified_date": "2025-10-13",
+          "last_modified_timestamp": "2025-10-13T11:25:24.028Z",
+          "is_abstract": false
+        }
+      },
+      "position": {
+        "x": 214.89032737689618,
+        "y": 104.35889865505875
+      }
+    },
+    {
+      "data": {
+        "id": "DP1760226902622",
+        "label": "Range",
+        "type": "dataProperty",
+        "attrs": {
+          "range": "xsd:float",
+          "creator": "jdehart",
+          "created_date": "2025-10-11",
+          "created_timestamp": "2025-10-11T23:55:02.622Z",
+          "last_modified_by": "jdehart",
+          "last_modified_date": "2025-10-13",
+          "last_modified_timestamp": "2025-10-13T11:25:24.030Z",
+          "functional": false
+        }
+      },
+      "position": {
+        "x": 580,
+        "y": 60
+      }
+    },
+    {
+      "data": {
+        "id": "DP1760226914459",
+        "label": "WingSpan",
+        "type": "dataProperty",
+        "attrs": {
+          "range": "xsd:float",
+          "creator": "jdehart",
+          "created_date": "2025-10-11",
+          "created_timestamp": "2025-10-11T23:55:14.459Z",
+          "last_modified_by": "jdehart",
+          "last_modified_date": "2025-10-13",
+          "last_modified_timestamp": "2025-10-13T11:25:24.030Z",
+          "functional": false
+        }
+      },
+      "position": {
+        "x": 580,
+        "y": 140
+      }
+    },
+    {
+      "data": {
+        "id": "DP1760226950700",
+        "label": "Speed",
+        "type": "dataProperty",
+        "attrs": {
+          "range": "xsd:float",
+          "creator": "jdehart",
+          "created_date": "2025-10-11",
+          "created_timestamp": "2025-10-11T23:55:50.700Z",
+          "last_modified_by": "jdehart",
+          "last_modified_date": "2025-10-13",
+          "last_modified_timestamp": "2025-10-13T11:25:24.031Z",
+          "functional": false
+        }
+      },
+      "position": {
+        "x": 580,
+        "y": 220
+      }
+    },
+    {
+      "data": {
+        "id": "DP1760227119884",
+        "label": "SFC",
+        "type": "dataProperty",
+        "attrs": {
+          "creator": "jdehart",
+          "created_date": "2025-10-11",
+          "created_timestamp": "2025-10-11T23:58:39.884Z",
+          "last_modified_by": "jdehart",
+          "last_modified_date": "2025-10-13",
+          "last_modified_timestamp": "2025-10-13T11:25:24.031Z"
+        }
+      },
+      "position": {
+        "x": 580,
+        "y": 300
+      }
+    }
+  ],
+  "edges": [
+    {
+      "data": {
+        "id": "edp1760226902624",
+        "source": "Class1",
+        "target": "DP1760226902622",
+        "predicate": "Data Property 622",
+        "type": "objectProperty",
+        "attrs": {
+          "creator": "jdehart",
+          "created_date": "2025-10-11",
+          "created_timestamp": "2025-10-11T23:55:02.624Z",
+          "last_modified_by": "jdehart",
+          "last_modified_date": "2025-10-11",
+          "last_modified_timestamp": "2025-10-11T23:55:02.624Z"
+        }
+      }
+    },
+    {
+      "data": {
+        "id": "edp1760226914460",
+        "source": "Class1",
+        "target": "DP1760226914459",
+        "predicate": "Data Property 459",
+        "type": "objectProperty",
+        "attrs": {
+          "creator": "jdehart",
+          "created_date": "2025-10-11",
+          "created_timestamp": "2025-10-11T23:55:14.460Z",
+          "last_modified_by": "jdehart",
+          "last_modified_date": "2025-10-11",
+          "last_modified_timestamp": "2025-10-11T23:55:14.460Z"
+        }
+      }
+    },
+    {
+      "data": {
+        "id": "edp1760226950701",
+        "source": "Class1",
+        "target": "DP1760226950700",
+        "predicate": "Data Property 700",
+        "type": "objectProperty",
+        "attrs": {
+          "creator": "jdehart",
+          "created_date": "2025-10-11",
+          "created_timestamp": "2025-10-11T23:55:50.701Z",
+          "last_modified_by": "jdehart",
+          "last_modified_date": "2025-10-11",
+          "last_modified_timestamp": "2025-10-11T23:55:50.701Z"
+        }
+      }
+    },
+    {
+      "data": {
+        "id": "edp1760227119885",
+        "source": "Class1",
+        "target": "DP1760227119884",
+        "predicate": "Data Property 884",
+        "type": "objectProperty",
+        "attrs": {
+          "creator": "jdehart",
+          "created_date": "2025-10-11",
+          "created_timestamp": "2025-10-11T23:58:39.885Z",
+          "last_modified_by": "jdehart",
+          "last_modified_date": "2025-10-11",
+          "last_modified_timestamp": "2025-10-11T23:58:39.885Z"
+        }
+      }
+    }
+  ],
+  "namedViews": []
+}

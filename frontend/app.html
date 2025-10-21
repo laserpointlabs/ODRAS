@@ -13,6 +13,9 @@
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/highlight.js@11.9.0/styles/github.min.css">
   <script src="https://cdn.jsdelivr.net/npm/highlight.js@11.9.0/highlight.min.js"></script>
 
+  <!-- Mermaid for diagram rendering -->
+  <script src="https://cdn.jsdelivr.net/npm/mermaid@10.6.1/dist/mermaid.min.js"></script>
+
   <style>
     :root {
       --bg: #0f172a;
@@ -44,6 +47,10 @@
       --das-w: 420px;
       --das-h: 40vh;
       --das-toolbar-h: 40px;
+
+      /* Artifact Viewer Modal */
+      --modal-max-width: 80vw;
+      --modal-max-height: 80vh;
     }
 
     * {
@@ -2038,6 +2045,107 @@
     #propParentClasses {
       max-height: 120px;
       overflow-y: auto;
+    }
+
+    /* DAS Artifact Viewer Modal */
+    .modal-overlay {
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      background: rgba(0, 0, 0, 0.7);
+      z-index: 10000;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    .artifact-modal {
+      background: var(--panel);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      width: var(--modal-max-width);
+      height: var(--modal-max-height);
+      max-width: 1200px;
+      max-height: 800px;
+      display: flex;
+      flex-direction: column;
+      box-shadow: 0 8px 32px rgba(0, 0, 0, 0.5);
+    }
+
+    .modal-header {
+      padding: 16px;
+      border-bottom: 1px solid var(--border);
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      background: var(--panel-2);
+      border-radius: 8px 8px 0 0;
+    }
+
+    .modal-header h3 {
+      margin: 0;
+      color: var(--text);
+      font-size: 18px;
+    }
+
+    .modal-body {
+      flex: 1;
+      overflow: hidden;
+      display: flex;
+      flex-direction: column;
+    }
+
+    .artifact-content {
+      flex: 1;
+      overflow-y: auto;
+      padding: 20px;
+      color: var(--text);
+      line-height: 1.6;
+    }
+
+    /* Markdown styling in modal */
+    .artifact-content h1,
+    .artifact-content h2,
+    .artifact-content h3 {
+      color: var(--accent);
+      margin-top: 24px;
+      margin-bottom: 12px;
+    }
+
+    .artifact-content p {
+      margin-bottom: 12px;
+    }
+
+    .artifact-content ul,
+    .artifact-content ol {
+      margin-left: 20px;
+      margin-bottom: 12px;
+    }
+
+    .artifact-content code {
+      background: var(--panel-2);
+      padding: 2px 6px;
+      border-radius: 3px;
+      font-family: 'Courier New', monospace;
+    }
+
+    .artifact-content pre {
+      background: var(--panel-2);
+      padding: 16px;
+      border-radius: 6px;
+      overflow-x: auto;
+      margin-bottom: 16px;
+    }
+
+    /* Mermaid diagram styling */
+    .mermaid-container {
+      text-align: center;
+      background: white;
+      border-radius: 6px;
+      padding: 20px;
+      margin: 16px 0;
     }
 
     #propParentClasses optgroup {
@@ -12074,8 +12182,93 @@ ${insertParts.join('\\n')}
 
       const eventsNode = makeItem('events', 'Events', 'folder', []);
 
-      // Keep artifacts node for backward compatibility
-      const outNode = makeItem('artifacts', 'Artifacts', 'folder', outItems);
+      // Fetch DAS Actions - Assumptions
+      let assumptionsNode = null;
+      try {
+        const pid = project && (project.id || project.project_id);
+        if (pid) {
+          const token = localStorage.getItem('authToken');
+
+          const assumptionsRes = await fetch(`/api/das2/project/${pid}/assumptions`, {
+            headers: {
+              'Authorization': `Bearer ${token}`,
+              'Content-Type': 'application/json'
+            }
+          });
+          if (assumptionsRes.ok) {
+            const assumptionsData = await assumptionsRes.json();
+            const assumptionItems = (assumptionsData.assumptions || []).map(a => {
+              const truncated = a.content.length > 60 ? a.content.substring(0, 57) + '...' : a.content;
+              return makeItem(a.id, truncated, 'assumption', [], {
+                fullContent: a.content,
+                status: a.status,
+                createdAt: a.created_at
+              });
+            });
+            assumptionsNode = makeItem('assumptions', 'Assumptions', 'folder', assumptionItems);
+          } else {
+            assumptionsNode = makeItem('assumptions', 'Assumptions', 'folder', []);
+          }
+        } else {
+          assumptionsNode = makeItem('assumptions', 'Assumptions', 'folder', []);
+        }
+      } catch (e) {
+        console.error('Could not load assumptions:', e);
+        assumptionsNode = makeItem('assumptions', 'Assumptions', 'folder', []);
+      }
+
+      // Ensure we always have an assumptions node
+      if (!assumptionsNode) {
+        assumptionsNode = makeItem('assumptions', 'Assumptions', 'folder', []);
+      }
+
+      // Fetch DAS Actions - Artifacts (white papers, diagrams)
+      let dasArtifactItems = [];
+      try {
+        const pid = project && (project.id || project.project_id);
+        if (pid) {
+          // Get files tagged as DAS artifacts
+          const token = localStorage.getItem('authToken');
+
+          const filesRes = await fetch(`/api/files?project_id=${pid}`, {
+            headers: { 'Authorization': `Bearer ${token}` }
+          });
+          if (filesRes.ok) {
+            const filesData = await filesRes.json();
+            // Filter for DAS-generated artifacts
+            const dasFiles = (filesData.files || []).filter(f =>
+              f.tags && f.tags.generated_by === 'das'
+            );
+            dasArtifactItems = dasFiles.map(f => {
+              const artifactItem = makeItem(f.file_id, f.filename, 'artifact', [], {
+                fileId: f.file_id,
+                artifactType: f.tags.artifact_type,
+                createdAt: f.created_at
+              });
+
+              // Add click handler for viewing artifact
+              const nodeRow = artifactItem.querySelector('.node-row');
+              if (nodeRow) {
+                nodeRow.onclick = (e) => {
+                  e.preventDefault();
+                  e.stopPropagation();
+                  showArtifactModal(f.file_id, f.filename, f.tags.artifact_type);
+                };
+                nodeRow.style.cursor = 'pointer';
+                nodeRow.title = `Click to view ${f.tags.artifact_type}`;
+              }
+
+              return artifactItem;
+            });
+          }
+        }
+      } catch (e) {
+        console.error('Could not load DAS artifacts:', e);
+      }
+
+      // Combine with existing artifacts for backward compatibility
+      const allArtifactItems = [...dasArtifactItems, ...outItems];
+      const outNode = makeItem('artifacts', 'Artifacts', 'folder', allArtifactItems);
 
       // Create horizontal separator
       const separator = document.createElement('li');
@@ -12086,8 +12279,8 @@ ${insertParts.join('\\n')}
       // If no project, show minimal empty tree
       root.innerHTML = '';
       if (project && (project.id || project.project_id)) {
-        // Show new ODRAS tree structure with nested Analysis and separator before artifacts
-        [projectInfo, ontologyNode, knowledgeNode, analysisNode, eventsNode, separator, outNode].filter(Boolean).forEach(n => root.appendChild(n));
+        // Show new ODRAS tree structure with nested Analysis, Assumptions, and separator before artifacts
+        [projectInfo, ontologyNode, knowledgeNode, analysisNode, eventsNode, assumptionsNode, separator, outNode].filter(Boolean).forEach(n => root.appendChild(n));
       }
 
       // Auto-restore previously selected ontology for this project, if available
@@ -19069,8 +19262,23 @@ ${insertParts.join('\\n')}
 
             console.log(`✅ Loaded ${loadedCount} messages into DAS transcript for project ${projectId}`);
 
-            // Scroll to bottom to show latest messages
-            transcript.scrollTop = transcript.scrollHeight;
+            // Scroll to bottom to show latest messages (with delay to ensure DOM updates)
+            setTimeout(() => {
+              // Try multiple possible scroll containers
+              const containers = [
+                transcript.parentElement, // das-transcript-container
+                document.getElementById('dasBody'), // das-body
+                transcript // dasTranscript itself
+              ];
+
+              for (const container of containers) {
+                if (container && container.scrollHeight > container.clientHeight) {
+                  container.scrollTop = container.scrollHeight;
+                  console.log(`📜 Scrolled ${container.id || container.className} to bottom (scrollHeight: ${container.scrollHeight})`);
+                  break;
+                }
+              }
+            }, 100);
 
           } else {
             console.log(`No conversation history found for project ${projectId} (${response.status})`);
@@ -19460,6 +19668,31 @@ ${insertParts.join('\\n')}
                           ` : ''}
                         `;
                         updateDASStatus('Ready');
+
+                        // Check if we need to refresh the tree (assumption saved)
+                        if (metadata.assumption_saved || metadata.refresh_tree) {
+                          console.log('🌳 TREE_REFRESH: Assumption saved, refreshing project tree...');
+                          // Refresh the tree to show new assumption
+                          setTimeout(async () => {
+                            try {
+                              // Get current project from activeProject global or localStorage
+                              const currentProject = window.activeProject || {
+                                id: localStorage.getItem('active_project_id'),
+                                name: localStorage.getItem('active_project_name') || 'Project'
+                              };
+                              console.log('🌳 TREE_REFRESH: Rendering tree for project:', currentProject.id);
+                              if (currentProject.id && typeof renderTree === 'function') {
+                                await renderTree(currentProject);
+                                console.log('🌳 TREE_REFRESH: Tree successfully refreshed!');
+                              } else {
+                                console.warn('🌳 TREE_REFRESH: Could not refresh tree - missing project or renderTree function');
+                              }
+                            } catch (error) {
+                              console.error('🌳 TREE_REFRESH: Error refreshing tree:', error);
+                            }
+                          }, 1000); // 1 second delay to ensure backend is ready
+                        }
+
                         break;
                       } else if (data.type === 'error') {
                         // Handle streaming error
@@ -19507,6 +19740,12 @@ ${insertParts.join('\\n')}
 
       // Add message to transcript
       function addMessageToTranscript(type, message, metadata = {}) {
+        const transcript = document.getElementById('dasTranscript');
+        if (!transcript) {
+          console.error('DAS transcript element not found');
+          return;
+        }
+
         const div = document.createElement('div');
         div.className = 'card';
 
@@ -19642,8 +19881,9 @@ ${insertParts.join('\\n')}
         }
 
         // Scroll to bottom to show new message
-        const transcriptContainer = transcript.parentElement;
-        transcriptContainer.scrollTop = transcriptContainer.scrollHeight;
+        setTimeout(() => {
+          transcript.scrollTop = transcript.scrollHeight;
+        }, 10);
       }
 
       // Helper function to escape HTML
@@ -31132,7 +31372,150 @@ def hello_world():
     }
 
     // End of Conceptualizer Workbench System
+
+    // ========================================
+    // DAS Artifact Viewer Modal
+    // ========================================
+
+    // Initialize Mermaid
+    document.addEventListener('DOMContentLoaded', function () {
+      if (typeof mermaid !== 'undefined') {
+        mermaid.initialize({
+          theme: 'default',
+          startOnLoad: false,
+          securityLevel: 'loose'
+        });
+      }
+    });
+
+    // Show artifact in modal
+    async function showArtifactModal(fileId, filename, artifactType) {
+      console.log(`Opening artifact viewer: ${filename}`);
+
+      const modal = document.getElementById('artifactViewerModal');
+      const title = document.getElementById('artifactModalTitle');
+      const content = document.getElementById('artifactModalContent');
+
+      if (!modal || !title || !content) {
+        console.error('Modal elements not found');
+        return;
+      }
+
+      // Set title
+      title.textContent = filename;
+
+      // Show loading
+      content.innerHTML = '<div style="text-align: center; padding: 40px; color: var(--muted);">Loading artifact...</div>';
+      modal.style.display = 'flex';
+
+      try {
+        // Fetch file content
+        const response = await fetch(`/api/files/${fileId}/download`);
+        if (!response.ok) {
+          throw new Error(`Failed to fetch artifact: ${response.status}`);
+        }
+
+        const fileContent = await response.text();
+
+        // Render based on file type
+        if (filename.endsWith('.md')) {
+          // Render markdown
+          const html = marked.parse(fileContent);
+          content.innerHTML = html;
+        } else if (filename.endsWith('.mmd')) {
+          // Render mermaid diagram - strip markdown code fences first
+          let mermaidContent = fileContent.trim();
+
+          // Remove markdown code fences if present
+          if (mermaidContent.startsWith('```mermaid')) {
+            mermaidContent = mermaidContent.replace(/^```mermaid\s*\n/, '').replace(/\n```\s*$/, '');
+          } else if (mermaidContent.startsWith('```')) {
+            mermaidContent = mermaidContent.replace(/^```[^\n]*\n/, '').replace(/\n```\s*$/, '');
+          }
+
+          // Fix common LLM issue: add quotes to all text in square brackets
+          // This prevents Mermaid errors with special characters like parentheses
+          mermaidContent = mermaidContent.replace(/\[([^\]"]+)\]/g, function (match, text) {
+            // Only add quotes if not already quoted
+            if (!text.startsWith('"') || !text.endsWith('"')) {
+              return `["${text}"]`;
+            }
+            return match;
+          });
+
+
+          const diagramId = `mermaid-${Date.now()}`;
+
+          if (typeof mermaid !== 'undefined') {
+            try {
+              const { svg } = await mermaid.render(diagramId + '-rendered', mermaidContent);
+              content.innerHTML = `<div class="mermaid-container">${svg}</div>`;
+            } catch (e) {
+              console.error('Mermaid rendering error:', e);
+              content.innerHTML = `<div class="mermaid-container"><h4>Mermaid Diagram</h4><pre style="text-align: left; background: var(--panel-2); padding: 12px; border-radius: 4px;">${mermaidContent}</pre></div>`;
+            }
+          } else {
+            content.innerHTML = `<div class="mermaid-container"><pre style="text-align: left;">${mermaidContent}</pre></div>`;
+          }
+        } else {
+          // Plain text fallback
+          content.innerHTML = `<pre>${fileContent}</pre>`;
+        }
+
+      } catch (error) {
+        console.error('Error loading artifact:', error);
+        content.innerHTML = `<div style="text-align: center; padding: 40px; color: var(--err);">Error loading artifact: ${error.message}</div>`;
+      }
+    }
+
+    // Close modal
+    function closeArtifactModal() {
+      const modal = document.getElementById('artifactViewerModal');
+      if (modal) {
+        modal.style.display = 'none';
+      }
+    }
+
+    // Modal event listeners
+    document.addEventListener('DOMContentLoaded', function () {
+      const modal = document.getElementById('artifactViewerModal');
+      const closeBtn = document.getElementById('artifactModalClose');
+
+      if (closeBtn) {
+        closeBtn.onclick = closeArtifactModal;
+      }
+
+      if (modal) {
+        // Close on overlay click
+        modal.onclick = function (e) {
+          if (e.target === modal) {
+            closeArtifactModal();
+          }
+        };
+
+        // Close on Escape key
+        document.addEventListener('keydown', function (e) {
+          if (e.key === 'Escape' && modal.style.display !== 'none') {
+            closeArtifactModal();
+          }
+        });
+      }
+    });
+
   </script>
+
+  <!-- DAS Artifact Viewer Modal -->
+  <div id="artifactViewerModal" class="modal-overlay" style="display: none;">
+    <div class="modal-content artifact-modal">
+      <div class="modal-header">
+        <h3 id="artifactModalTitle">Artifact Viewer</h3>
+        <button id="artifactModalClose" class="btn">&times;</button>
+      </div>
+      <div class="modal-body">
+        <div id="artifactModalContent" class="artifact-content"></div>
+      </div>
+    </div>
+  </div>
 
 </body>
 

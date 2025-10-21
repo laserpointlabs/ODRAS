@@ -898,15 +898,29 @@ async def conceptualize_and_store_individual(
             if not individual:
                 raise HTTPException(404, "Individual not found")
             
-            # Parse properties and ontology structure
+            # Parse properties
             props = individual["properties"] if isinstance(individual["properties"], dict) else json.loads(individual["properties"])
-            ontology_structure = individual["ontology_structure"] if isinstance(individual["ontology_structure"], dict) else json.loads(individual["ontology_structure"])
+            
+            # DYNAMIC ONTOLOGY FETCH: Build graph IRI from selected ontology_name
+            # This ensures we use the CURRENTLY SELECTED ontology, not stale database structure
+            graph_iri = f"https://xma-adt.usnc.mil/odras/core/{project_id}/ontologies/{ontology_name}"
+            
+            logger.info(f"🔍 Fetching ontology structure from Fuseki: {graph_iri}")
+            
+            # Fetch current comprehensive ontology structure from Fuseki
+            ontology_structure = await das_engine._fetch_ontology_details(graph_iri)
+            
+            if not ontology_structure or not ontology_structure.get("classes"):
+                logger.error(f"❌ Could not fetch ontology structure for {ontology_name}")
+                raise HTTPException(400, f"Could not fetch ontology structure for {ontology_name}. Ensure the ontology exists in Fuseki.")
+            
+            logger.info(f"✅ Fetched ontology with {len(ontology_structure.get('classes', []))} classes, {len(ontology_structure.get('object_properties', []))} object properties")
             
             # CLEANUP: Remove existing DAS-generated concepts for this requirement (1:1 relationship)
             logger.info(f"🧹 Cleaning up existing DAS concepts for requirement {individual_id}")
             cleanup_das_concepts_for_requirement(cursor, individual_id)
             
-            # Real DAS call - analyze requirement and generate concepts
+            # Real DAS call - analyze requirement and generate concepts with COMPREHENSIVE ontology structure
             das_result = await generate_concepts_with_das(individual, ontology_structure, das_engine, project_id, current_user["user_id"])
             
             # Extract concepts and relationships from DAS result
@@ -1134,19 +1148,25 @@ def build_configuration_from_concepts(
             "relationships": []
         }
         
-        # Get Requirement class's object properties from ontology
+        # Get Requirement class's object properties from ontology (COMPREHENSIVE FORMAT)
         requirement_relationships = {}
-        if "classes" in ontology_structure:
-            for cls in ontology_structure["classes"]:
-                if cls["name"] == "Requirement":
-                    for obj_prop in cls.get("objectProperties", []):
-                        requirement_relationships[obj_prop["range"]] = {
-                            "property": obj_prop["name"],
-                            "minCount": obj_prop.get("minCount", 0),
-                            "maxCount": obj_prop.get("maxCount"),
-                            "comment": obj_prop.get("comment", "")
-                        }
-                    break
+        all_classes = ontology_structure.get("classes", [])
+        all_object_properties = ontology_structure.get("object_properties", [])
+        
+        # Find object properties where domain is "Requirement" (case-insensitive match)
+        for obj_prop in all_object_properties:
+            domain = obj_prop.get("domain", "").lower()
+            if domain == "requirement" and obj_prop.get("range"):
+                # Capitalize the range for consistency with class names in das_concepts
+                range_name = obj_prop["range"].capitalize() if obj_prop["range"] else ""
+                requirement_relationships[range_name] = {
+                    "property": obj_prop["name"],
+                    "minCount": obj_prop.get("minCardinality", 0),
+                    "maxCount": obj_prop.get("maxCardinality"),
+                    "comment": obj_prop.get("comment", "") or obj_prop.get("definition", "")
+                }
+        
+        logger.info(f"✅ Found {len(requirement_relationships)} requirement relationships from ontology")
         
         # Track visited concepts to prevent infinite recursion
         visited_concepts = set()
@@ -1180,19 +1200,19 @@ def build_configuration_from_concepts(
                 "relationships": []
             }
             
-            # Find this class's object properties in ontology
+            # Find this class's object properties in ontology (COMPREHENSIVE FORMAT - case-insensitive)
             class_obj_props = {}
-            if "classes" in ontology_structure:
-                for cls in ontology_structure["classes"]:
-                    if cls["name"] == class_name:
-                        for obj_prop in cls.get("objectProperties", []):
-                            class_obj_props[obj_prop["range"]] = {
-                                "property": obj_prop["name"],
-                                "minCount": obj_prop.get("minCount", 0),
-                                "maxCount": obj_prop.get("maxCount"),
-                                "comment": obj_prop.get("comment", "")
-                            }
-                        break
+            for obj_prop in all_object_properties:
+                domain = obj_prop.get("domain", "").lower()
+                if domain == class_name.lower() and obj_prop.get("range"):
+                    # Capitalize the range for consistency
+                    range_name = obj_prop["range"].capitalize() if obj_prop["range"] else ""
+                    class_obj_props[range_name] = {
+                        "property": obj_prop["name"],
+                        "minCount": obj_prop.get("minCardinality", 0),
+                        "maxCount": obj_prop.get("maxCardinality"),
+                        "comment": obj_prop.get("comment", "") or obj_prop.get("definition", "")
+                    }
             
             # Build relationships to other concept classes
             for target_class, rel_info in class_obj_props.items():
@@ -1234,7 +1254,7 @@ def build_configuration_from_concepts(
         
         
         logger.info(f"✅ Built configuration structure with {len(configuration['relationships'])} relationship types from ontology")
-        logger.info(f"📊 Relationships added: {[r['property'] for r in configuration['relationships']]}")
+        
         return configuration
         
     except Exception as e:
@@ -1461,38 +1481,85 @@ async def generate_concepts_with_das(
         req_text = props.get("Text", "")
         req_id = props.get("ID", "")
         
-        # Get available ontology classes (excluding Requirement)
-        available_classes = []
-        if "classes" in ontology_structure:
-            available_classes = [cls["name"] for cls in ontology_structure["classes"] if cls["name"] != "Requirement"]
+        # COMPREHENSIVE FORMAT PROCESSING
+        # Extract available classes, object properties, and data properties from comprehensive format
+        all_classes = ontology_structure.get("classes", [])
+        all_object_properties = ontology_structure.get("object_properties", [])
+        all_data_properties = ontology_structure.get("data_properties", [])
         
-        # Get detailed ontology class information including relationships
+        # Get available ontology classes (excluding Requirement)
+        available_classes = [cls["name"] for cls in all_classes if cls["name"] != "Requirement"]
+        
+        # Get detailed ontology class information with matched properties
         ontology_classes_info = []
         source_class_relationships = []  # Relationships FROM the source class (Requirement)
         
-        if "classes" in ontology_structure:
-            for cls in ontology_structure["classes"]:
-                class_info = {
-                    "name": cls["name"],
-                    "description": cls.get("comment", cls.get("description", "")),
-                    "data_properties": cls.get("dataProperties", cls.get("data_properties", [])),
-                    "object_properties": cls.get("objectProperties", cls.get("object_properties", []))
-                }
-                
-                # If this is the source class (Requirement), extract its outgoing relationships
-                if cls["name"] == "Requirement":
-                    for obj_prop in class_info["object_properties"]:
-                        source_class_relationships.append({
-                            "property": obj_prop["name"],
-                            "target_class": obj_prop["range"],
-                            "cardinality": f"({obj_prop.get('minCount', 0)}..{'*' if obj_prop.get('maxCount') is None else obj_prop.get('maxCount')})",
-                            "comment": obj_prop.get("comment", "")
-                        })
-                else:
-                    # Include non-source classes for concept generation
-                    ontology_classes_info.append(class_info)
+        for cls in all_classes:
+            class_name = cls["name"]
+            
+            # Find object properties for this class (where domain = class_name)
+            class_obj_props = []
+            for prop in all_object_properties:
+                if prop.get("domain") == class_name:
+                    class_obj_props.append({
+                        "name": prop["name"],
+                        "range": prop.get("range", ""),
+                        "comment": prop.get("comment", "") or prop.get("definition", ""),
+                        "minCount": prop.get("minCardinality", 0),
+                        "maxCount": prop.get("maxCardinality"),
+                        "inverse_of": prop.get("inverse_of", ""),
+                        "subproperty_of": prop.get("subproperty_of", "")
+                    })
+            
+            # Find data properties for this class (where domain = class_name)
+            class_data_props = []
+            for prop in all_data_properties:
+                if prop.get("domain") == class_name:
+                    class_data_props.append({
+                        "name": prop["name"],
+                        "range": prop.get("range", ""),
+                        "comment": prop.get("comment", "") or prop.get("definition", "")
+                    })
+            
+            # Build comprehensive class info
+            class_info = {
+                "name": class_name,
+                "description": cls.get("comment", "") or cls.get("definition", ""),
+                "data_properties": class_data_props,
+                "object_properties": class_obj_props,
+                "subclass_of": cls.get("subclass_of", ""),
+                "equivalent_class": cls.get("equivalent_class", ""),
+                "priority": cls.get("priority", ""),
+                "status": cls.get("status", "")
+            }
+            
+            # If this is the source class (Requirement), extract its outgoing relationships
+            if class_name == "Requirement":
+                for obj_prop in class_obj_props:
+                    cardinality_str = f"({obj_prop.get('minCount', 0)}..{'*' if obj_prop.get('maxCount') is None else obj_prop.get('maxCount')})"
+                    source_class_relationships.append({
+                        "property": obj_prop["name"],
+                        "target_class": obj_prop.get("range", ""),
+                        "cardinality": cardinality_str,
+                        "comment": obj_prop.get("comment", "")
+                    })
+            else:
+                # Include non-source classes for concept generation
+                ontology_classes_info.append(class_info)
 
-        # Build DAS prompt including ontology relationships
+        # Generate dynamic example using actual ontology classes
+        dynamic_example = {}
+        for i, cls_info in enumerate(ontology_classes_info[:3]):  # First 3 classes as examples
+            class_name = cls_info["name"]
+            dynamic_example[class_name] = [
+                {
+                    "name": f"Example {class_name} Instance",
+                    "confidence": 0.85,
+                    "rationale": f"Sample {class_name} concept derived from requirement analysis"
+                }
+            ]
+        
+        # Build DAS prompt including ontology relationships and cardinality constraints
         das_prompt = f"""
 You are a systems engineering expert analyzing requirements to conceptualize implementations using a specific ontology structure.
 
@@ -1508,6 +1575,19 @@ RELATIONSHIPS FROM REQUIREMENT CLASS:
 The Requirement class has these relationships to other classes:
 {json.dumps(source_class_relationships, indent=2)}
 
+CARDINALITY CONSTRAINTS (IMPORTANT):
+- Pay attention to minCount and maxCount in object_properties
+- minCount > 0 means the relationship is REQUIRED (mandatory)
+- maxCount = 1 means at most ONE target (functional relationship)
+- maxCount = None or missing means unlimited (*) targets allowed
+- Respect these constraints in your conceptualization
+- Example: If "has_component" has minCount=1, you MUST generate at least 1 Component
+
+ONTOLOGY HIERARCHY:
+- Classes may have "subclass_of" indicating inheritance
+- Classes may have "equivalent_class" indicating semantic equivalence
+- Use this to understand relationships between concepts
+
 TASK:
 1. Analyze the requirement thoroughly and determine what concepts are needed from EACH ontology class
 2. Consider ALL aspects of the requirement: functionality, limitations, boundaries, interactions
@@ -1517,11 +1597,16 @@ TASK:
    - What FUNCTIONS are realized? (capabilities delivered)
    - What CONSTRAINTS apply? (limitations, bounds, restrictions - performance limits, operational constraints, design restrictions)
    - What INTERFACES exist? (boundaries where components interact - data interfaces, control interfaces, physical connections)
+   - What PARAMETERS define or measure the above? (values, metrics, settings that characterize or constrain the system)
 
-IMPORTANT - CONSIDER ALL CLASSES:
+IMPORTANT - CONSIDER ALL CLASSES INCLUDING PARAMETERS:
 - Don't skip classes too quickly - think about implicit requirements
 - CONSTRAINTS: Look for implied limits, bounds, accuracy requirements, tolerances, performance criteria
 - INTERFACES: Consider how components communicate and interact (data flows, control signals, physical connections)
+- PARAMETERS: Identify quantifiable values that define or constrain concepts:
+  * For CONSTRAINTS: What numeric values/thresholds appear? (e.g., "5 km²", "2 hours", "accuracy ±10m")
+  * For COMPONENTS: What configuration parameters or specifications matter? (e.g., "sensor resolution", "battery capacity")
+  * For PROCESSES: What tunable settings affect the process? (e.g., "scan rate", "altitude", "overlap percentage")
 - Even if not explicitly stated, identify reasonable engineering concepts for completeness
 
 INSTRUCTIONS:
@@ -1529,6 +1614,7 @@ INSTRUCTIONS:
 - Generate 1-3 concepts per class where applicable
 - Provide confidence scores (0.7-1.0) and clear rationales
 - Consider the semantic relationships between classes
+- Respect cardinality constraints from the ontology
 
 RESPONSE FORMAT (JSON):
 Return a JSON object where each key is a class name from the ontology, and each value is an array of concept objects.
@@ -1538,28 +1624,18 @@ Each concept object must have:
 - "confidence": score from 0.7 to 1.0 indicating your confidence
 - "rationale": brief explanation of why this concept is needed
 
-EXAMPLE:
-{{
-  "Component": [
-    {{"name": "GPS Receiver", "confidence": 0.95, "rationale": "Hardware for receiving GPS signals"}},
-    {{"name": "Flight Controller", "confidence": 0.90, "rationale": "Manages flight operations"}}
-  ],
-  "Process": [
-    {{"name": "Waypoint Navigation", "confidence": 0.90, "rationale": "Process of following GPS waypoints"}}
-  ],
-  "Function": [
-    {{"name": "Autonomous Flight Capability", "confidence": 0.92, "rationale": "Primary capability specified"}}
-  ],
-  "Constraint": [
-    {{"name": "GPS Accuracy Requirement", "confidence": 0.80, "rationale": "Waypoint navigation requires sufficient GPS accuracy"}}
-  ],
-  "Interface": [
-    {{"name": "GPS Data Interface", "confidence": 0.85, "rationale": "Interface between GPS module and flight controller"}}
-  ]
-}}
+EXAMPLE FORMAT (using classes from THIS ontology):
+{json.dumps(dynamic_example, indent=2)}
 
 NOTE: The system will automatically build relationships between concepts based on the ontology structure.
 You only need to identify the concepts themselves.
+
+IMPORTANT GUIDANCE:
+- Analyze EVERY class in the ontology systematically
+- Generate 1-3 concepts per class where applicable based on the requirement
+- If a relationship has minCount > 0, you MUST generate concepts for that target class
+- If numeric values, thresholds, or measurable quantities appear in the requirement, create Parameter concepts
+- Consider both explicit and implicit needs from the requirement
 
 Analyze the requirement comprehensively against ALL ontology classes. Return ONLY valid JSON - no markdown, no extra text.
 """
