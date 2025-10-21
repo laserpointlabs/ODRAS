@@ -33205,8 +33205,17 @@ def hello_world():
         const response = await authenticatedFetch(`/api/ontology/?project=${cqmtProjectId}`);
         console.log('🧪 Ontology API response:', response);
 
-        if (response && response.data) {
-          projectOntologies = [response.data];
+        // Parse the response if it's a Response object
+        let data;
+        if (response && typeof response.json === 'function') {
+          data = await response.json();
+          console.log('🧪 Ontology parsed data:', data);
+        } else {
+          data = response;
+        }
+
+        if (data && data.data) {
+          projectOntologies = [data.data];
         } else {
           projectOntologies = [];
         }
