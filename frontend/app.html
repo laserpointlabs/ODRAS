@@ -4861,39 +4861,36 @@
           </div>
 
           <!-- CQ Editor Modal -->
-          <div id="cq-editor-modal" class="modal-overlay"
-            style="position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0, 0, 0, 0.5); display: none; justify-content: center; align-items: center; z-index: 1000;">
-            <div class="modal"
-              style="background: var(--panel, #111827); border-radius: 8px; padding: 30px; max-width: 800px; width: 90%; max-height: 90vh; overflow-y: auto; box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04);">
-              <div class="modal-header"
-                style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; padding-bottom: 15px; border-bottom: 1px solid var(--border, #1f2937);">
-                <h3 class="modal-title" id="cq-editor-title"
-                  style="font-size: 1.5em; font-weight: 600; color: var(--text, #e5e7eb); margin: 0;">Create New CQ</h3>
-                <button class="modal-close" onclick="closeCQModal()"
-                  style="background: none; border: none; font-size: 24px; color: var(--text-muted, #9ca3af); cursor: pointer; padding: 0; width: 30px; height: 30px; display: flex; align-items: center; justify-content: center; border-radius: 4px; transition: background-color 0.2s;">&times;</button>
+          <div id="cq-editor-modal" class="modal-overlay">
+            <div class="modal">
+              <div class="modal-header">
+                <h3 class="modal-title" id="cq-editor-title">Create New CQ</h3>
+                <button class="modal-close" onclick="closeCQModal()">&times;</button>
               </div>
 
               <div class="modal-content">
-                <label style="display: block; margin-bottom: 8px; color: var(--text, #e5e7eb); font-weight: 500;">CQ
-                  Name:</label>
-                <input type="text" id="cq-name" placeholder="e.g., List all aircraft types"
-                  style="width: 100%; padding: 8px 12px; border: 1px solid var(--border, #1f2937); border-radius: 4px; font-size: 13px; margin: 4px 0 12px 0; transition: border-color 0.2s; background: var(--panel-2, #0b1220); color: var(--text, #e5e7eb);">
+                <div style="margin-bottom: 16px;">
+                  <label>CQ Name:</label>
+                  <input type="text" id="cq-name" placeholder="e.g., List all aircraft types"
+                    style="width: 100%; padding: 8px; border: 1px solid var(--border); border-radius: 4px; background: var(--panel); color: var(--text);" />
+                </div>
 
-                <label
-                  style="display: block; margin-bottom: 8px; color: var(--text, #e5e7eb); font-weight: 500;">Problem
-                  Statement:</label>
-                <textarea id="problem-text"
-                  placeholder="Describe what this competency question should answer in natural language..."
-                  style="width: 100%; padding: 8px 12px; border: 1px solid var(--border, #1f2937); border-radius: 4px; font-size: 13px; margin: 4px 0 12px 0; transition: border-color 0.2s; background: var(--panel-2, #0b1220); color: var(--text, #e5e7eb); min-height: 100px; resize: vertical;"></textarea>
+                <div style="margin-bottom: 16px;">
+                  <label>Problem Statement:</label>
+                  <textarea id="problem-text"
+                    placeholder="Describe what this competency question should answer in natural language..."
+                    style="width: 100%; padding: 8px; border: 1px solid var(--border); border-radius: 4px; background: var(--panel); color: var(--text); height: 100px; resize: vertical;"></textarea>
+                </div>
 
-                <label style="display: block; margin-bottom: 8px; color: var(--text, #e5e7eb); font-weight: 500;">SPARQL
-                  Query:</label>
-                <textarea id="sparql-text" placeholder="SELECT ?aircraft ?type WHERE { ... }"
-                  style="width: 100%; padding: 8px 12px; border: 1px solid var(--border, #1f2937); border-radius: 4px; font-size: 13px; margin: 4px 0 12px 0; transition: border-color 0.2s; background: var(--panel-2, #0b1220); color: var(--text, #e5e7eb); min-height: 200px; resize: vertical; font-family: 'Courier New', monospace;"></textarea>
+                <div style="margin-bottom: 16px;">
+                  <label>SPARQL Query:</label>
+                  <textarea id="sparql-text" placeholder="SELECT ?aircraft ?type WHERE { ... }"
+                    style="width: 100%; padding: 8px; border: 1px solid var(--border); border-radius: 4px; background: var(--panel); color: var(--text); height: 200px; resize: vertical; font-family: 'Courier New', monospace;"></textarea>
+                </div>
 
-                <div style="display: flex; gap: 10px; margin-bottom: 15px;">
-                  <button class="btn btn-secondary" onclick="suggestSPARQL()"
-                    style="padding: 8px 16px; background: var(--panel, #111827); color: var(--text, #e5e7eb); border: 1px solid var(--border, #1f2937); border-radius: 4px; cursor: pointer; font-size: 13px; font-weight: 500; transition: all 0.2s; margin: 4px;">
+                <div style="display: flex; gap: 10px; margin-bottom: 16px;">
+                  <button class="btn" onclick="suggestSPARQL()"
+                    style="background: var(--panel-2); color: var(--text); border-color: var(--border);">
                     <svg style="width:14px; height:14px; margin-right:4px;" viewBox="0 0 24 24" fill="none"
                       stroke="currentColor" stroke-width="2">
                       <circle cx="12" cy="12" r="3" />
@@ -4902,8 +4899,8 @@
                     </svg>
                     Suggest SPARQL
                   </button>
-                  <button class="btn btn-secondary" onclick="checkOntologyDeltas()"
-                    style="padding: 8px 16px; background: var(--panel, #111827); color: var(--text, #e5e7eb); border: 1px solid var(--border, #1f2937); border-radius: 4px; cursor: pointer; font-size: 13px; font-weight: 500; transition: all 0.2s; margin: 4px;">
+                  <button class="btn" onclick="checkOntologyDeltas()"
+                    style="background: var(--panel-2); color: var(--text); border-color: var(--border);">
                     <svg style="width:14px; height:14px; margin-right:4px;" viewBox="0 0 24 24" fill="none"
                       stroke="currentColor" stroke-width="2">
                       <circle cx="11" cy="11" r="8" />
@@ -4913,1105 +4910,1096 @@
                   </button>
                 </div>
 
-                <label
-                  style="display: block; margin-bottom: 8px; color: var(--text, #e5e7eb); font-weight: 500;">Default
-                  Microtheory:</label>
-                <select id="mt-default"
-                  style="width: 100%; padding: 8px 12px; border: 1px solid var(--border, #1f2937); border-radius: 4px; font-size: 13px; margin: 4px 0 12px 0; transition: border-color 0.2s; background: var(--panel-2, #0b1220); color: var(--text, #e5e7eb);">
-                  <option value="">Use project default</option>
-                </select>
+                <div style="margin-bottom: 16px;">
+                  <label>Default Microtheory:</label>
+                  <select id="mt-default"
+                    style="width: 100%; padding: 8px; border: 1px solid var(--border); border-radius: 4px; background: var(--panel); color: var(--text);">
+                    <option value="">Use project default</option>
+                  </select>
+                </div>
 
-                <label
-                  style="display: block; margin-bottom: 8px; color: var(--text, #e5e7eb); font-weight: 500;">Contract
-                  (JSON):</label>
-                <textarea id="contract-json" placeholder='{"require_columns": ["aircraft", "type"], "min_rows": 1}'
-                  style="width: 100%; padding: 8px 12px; border: 1px solid var(--border, #1f2937); border-radius: 4px; font-size: 13px; margin: 4px 0 12px 0; transition: border-color 0.2s; background: var(--panel-2, #0b1220); color: var(--text, #e5e7eb); min-height: 80px; resize: vertical; font-family: 'Courier New', monospace;"></textarea>
+                <div style="margin-bottom: 16px;">
+                  <label>Contract (JSON):</label>
+                  <textarea id="contract-json" placeholder='{"require_columns": ["aircraft", "type"], "min_rows": 1}'
+                    style="width: 100%; padding: 8px; border: 1px solid var(--border); border-radius: 4px; background: var(--panel); color: var(--text); height: 80px; resize: vertical; font-family: 'Courier New', monospace;"></textarea>
+                </div>
 
-                <label
-                  style="display: block; margin-bottom: 8px; color: var(--text, #e5e7eb); font-weight: 500;">Status:</label>
-                <select id="cq-status"
-                  style="width: 100%; padding: 8px 12px; border: 1px solid var(--border, #1f2937); border-radius: 4px; font-size: 13px; margin: 4px 0 12px 0; transition: border-color 0.2s; background: var(--panel-2, #0b1220); color: var(--text, #e5e7eb);">
-                  <option value="draft">Draft</option>
-                  <option value="active">Active</option>
-                  <option value="deprecated">Deprecated</option>
-                </select>
+                <div style="margin-bottom: 16px;">
+                  <label>Status:</label>
+                  <select id="cq-status"
+                    style="width: 100%; padding: 8px; border: 1px solid var(--border); border-radius: 4px; background: var(--panel); color: var(--text);">
+                    <option value="draft">Draft</option>
+                    <option value="active">Active</option>
+                    <option value="deprecated">Deprecated</option>
+                  </select>
+                </div>
               </div>
 
-              <div class="modal-footer"
-                style="display: flex; justify-content: flex-end; gap: 10px; margin-top: 20px; padding-top: 15px; border-top: 1px solid var(--border, #1f2937);">
-                <button class="btn btn-secondary" onclick="closeCQModal()"
-                  style="padding: 8px 16px; background: var(--panel, #111827); color: var(--text, #e5e7eb); border: 1px solid var(--border, #1f2937); border-radius: 4px; cursor: pointer; font-size: 13px; font-weight: 500; transition: all 0.2s; margin: 4px;">Cancel</button>
-                <button class="btn btn-primary" onclick="saveCQ()"
-                  style="padding: 8px 16px; background: var(--accent, #60a5fa); color: var(--bg, #0f172a); border: 1px solid var(--border, #1f2937); border-radius: 4px; cursor: pointer; font-size: 13px; font-weight: 500; transition: all 0.2s; margin: 4px;">Save
-                  CQ</button>
+              <div class="modal-footer">
+                <button class="btn" onclick="closeCQModal()"
+                  style="background: var(--panel-2); color: var(--text); border-color: var(--border);">Cancel</button>
+                <button class="btn" onclick="saveCQ()"
+                  style="background: var(--accent); color: white; border-color: var(--accent);">Save CQ</button>
+              </div>
+            </div>
+          </div>
+    </div>
+
+    <!-- Microtheories Tab -->
+    <div id="microtheories-tab" class="tab-content">
+      <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
+        <h3>Microtheories</h3>
+        <button class="btn btn-success" onclick="createNewMT()">+ New Microtheory</button>
+      </div>
+
+      <div class="item-list" id="mt-list">
+        <div class="loading">Loading microtheories</div>
+      </div>
+
+      <!-- MT Creation Modal -->
+      <div id="mt-modal"
+        style="display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.5); z-index: 1000;">
+        <div
+          style="position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); background: white; padding: 30px; border-radius: 8px; width: 500px;">
+          <h3>Create New Microtheory</h3>
+
+          <label>Label:</label>
+          <input type="text" id="mt-label" placeholder="e.g., Baseline, Test Data, V1.0">
+
+          <label>Clone From (optional):</label>
+          <select id="mt-clone-from">
+            <option value="">Create empty</option>
+          </select>
+
+          <div style="margin: 15px 0;">
+            <label>
+              <input type="checkbox" id="mt-set-default"> Set as project default
+            </label>
+          </div>
+
+          <div style="margin-top: 20px;">
+            <button class="btn btn-success" onclick="saveMT()">Create Microtheory</button>
+            <button class="btn btn-secondary" onclick="cancelMT()">Cancel</button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Coverage Tab -->
+    <div id="coverage-tab" class="tab-content">
+      <h3>CQ Coverage Summary</h3>
+      <p style="margin-bottom: 20px;">Overview of CQ pass/fail status across microtheories</p>
+
+      <div id="coverage-stats" class="stats-grid">
+        <div class="stat-card">
+          <span id="total-cqs" class="stat-number">-</span>
+          <div class="stat-label">Total CQs</div>
+        </div>
+        <div class="stat-card">
+          <span id="active-cqs" class="stat-number">-</span>
+          <div class="stat-label">Active CQs</div>
+        </div>
+        <div class="stat-card">
+          <span id="passing-cqs" class="stat-number">-</span>
+          <div class="stat-label">Recently Passing</div>
+        </div>
+        <div class="stat-card">
+          <span id="failing-cqs" class="stat-number">-</span>
+          <div class="stat-label">Recently Failing</div>
+        </div>
+      </div>
+
+      <div id="coverage-details">
+        <div class="loading">Loading coverage data</div>
+      </div>
+    </div>
+    </section>
+    <section id="wb-graph" class="workbench">
+      <h2>Graph Explorer</h2>
+      <div class="muted">Quick look into RDF store (SPARQL).
+        <button class="btn" id="btnRefreshSummary" style="margin-left:8px;">Refresh Summary</button>
+      </div>
+      <div id="graphSummary" class="card" style="margin-top:10px;"></div>
+      <div class="card" style="margin-top:10px;">
+        <div class="muted">Run SPARQL (SELECT):</div>
+        <textarea id="sparqlInput" rows="6"
+          style="width:100%; background:#0b1220; color:#e5e7eb; border:1px solid var(--border); border-radius:6px; padding:8px;">SELECT ?s ?p ?o WHERE { ?s ?p ?o } LIMIT 25</textarea>
+        <div style="margin-top:6px; display:flex; gap:8px; align-items:center;">
+          <button class="btn" id="btnRunSparql">Run</button>
+          <span id="sparqlStatus" class="muted"></span>
+        </div>
+        <pre id="sparqlResult" style="margin-top:8px; white-space:pre-wrap;"></pre>
+      </div>
+    </section>
+    <section id="wb-rag" class="workbench">
+      <h2>RAG</h2>
+      <div class="muted">Develop/test BPMN workflows with LLM help.</div>
+    </section>
+    <section id="wb-process" class="workbench">
+      <h2>Process</h2>
+      <div class="muted">Manage extraction BPMN processes.</div>
+    </section>
+    <section id="wb-thread" class="workbench">
+      <h2>Thread Manager</h2>
+      <div class="muted">Debug and manage DAS project threads, conversation history, and prompt context.</div>
+
+      <div
+        style="margin-top: 20px; display: grid; gap: 16px; max-height: calc(100vh - 120px); overflow-y: auto; padding-right: 8px;">
+        <!-- Thread Overview -->
+        <div class="card">
+          <h3>Current Project Thread</h3>
+          <div id="thread-overview" style="margin-top: 12px;">
+            <div class="muted">Select a project to view thread details</div>
+          </div>
+        </div>
+
+        <!-- Conversation History -->
+        <div class="card">
+          <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px;">
+            <h3>Conversation History</h3>
+            <button id="refresh-thread-btn" class="btn" style="padding: 4px 8px; font-size: 12px;">
+              Refresh
+            </button>
+          </div>
+          <div id="conversation-list" style="max-height: 400px; overflow-y: auto;">
+            <div class="muted">No conversation history loaded</div>
+          </div>
+        </div>
+
+        <!-- Prompt Inspector -->
+        <div class="card">
+          <h3>Prompt Inspector</h3>
+          <div style="margin-top: 12px;">
+            <label style="display: block; margin-bottom: 4px; font-weight: 500;">
+              Select conversation entry to inspect:
+            </label>
+            <select id="prompt-entry-select"
+              style="width: 100%; padding: 8px; background: var(--panel-2); border: 1px solid var(--border); border-radius: 4px;">
+              <option value="">Select conversation entry...</option>
+            </select>
+          </div>
+
+          <div id="prompt-details" style="margin-top: 16px; display: none;">
+            <div style="margin-bottom: 12px;">
+              <label style="display: block; margin-bottom: 4px; font-weight: 500;">
+                Full Prompt Sent to LLM:
+              </label>
+              <textarea id="prompt-content" readonly style="width: 100%; height: 300px; font-family: monospace; font-size: 12px;
+                           background: var(--panel-2); border: 1px solid var(--border); border-radius: 4px;
+                           padding: 12px; resize: vertical; color: var(--text) !important;"></textarea>
+            </div>
+
+            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-bottom: 12px;">
+              <div>
+                <label style="display: block; margin-bottom: 4px; font-weight: 500;">
+                  User Message:
+                </label>
+                <textarea id="user-message-edit" style="width: 100%; height: 80px; background: var(--panel-2); border: 1px solid var(--border);
+                             border-radius: 4px; padding: 8px; resize: vertical; color: var(--text);"></textarea>
+              </div>
+              <div>
+                <label style="display: block; margin-bottom: 4px; font-weight: 500;">
+                  DAS Response:
+                </label>
+                <textarea id="das-response-edit" style="width: 100%; height: 80px; background: var(--panel-2); border: 1px solid var(--border);
+                             border-radius: 4px; padding: 8px; resize: vertical; color: var(--text);"></textarea>
+              </div>
+            </div>
+
+            <div style="display: flex; gap: 12px; margin-bottom: 12px;">
+              <button id="update-entry-btn" class="btn" style="background: var(--accent); color: white;">
+                Update Entry
+              </button>
+              <button id="delete-entry-btn" class="btn" style="background: var(--err); color: white;">
+                Delete Entry
+              </button>
+              <button id="test-prompt-btn" class="btn">
+                Test Custom Prompt
+              </button>
+            </div>
+
+            <!-- Context Inspector -->
+            <div style="margin-top: 16px;">
+              <label style="display: block; margin-bottom: 4px; font-weight: 500;">
+                RAG & Project Context:
+              </label>
+              <textarea id="context-details" readonly style="width: 100%; height: 150px; font-family: monospace; font-size: 12px;
+                           background: var(--panel-2); border: 1px solid var(--border); border-radius: 4px;
+                           padding: 12px; resize: vertical; color: var(--text) !important;"></textarea>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+    <section id="wb-playground" class="workbench">
+      <h2>LLM Playground</h2>
+      <div class="muted">Ask questions, generate white papers, save to project.</div>
+    </section>
+    <section id="wb-settings" class="workbench">
+      <h2>Settings</h2>
+      <div class="muted">Application preferences and configuration options.</div>
+      <div id="settingsContent">
+        <div class="card">
+          <h3>General Settings</h3>
+          <div class="row">
+            <label>Theme</label>
+            <select id="themeSelect">
+              <option value="dark">Dark</option>
+              <option value="light">Light</option>
+            </select>
+          </div>
+          <div class="row">
+            <label>Language</label>
+            <select id="languageSelect">
+              <option value="en">English</option>
+            </select>
+          </div>
+        </div>
+        <div class="card">
+          <h3>Display Settings</h3>
+          <div class="row">
+            <label>Tree Width</label>
+            <input type="range" id="treeWidthSlider" min="200" max="400" value="300">
+            <span id="treeWidthValue">300px</span>
+          </div>
+        </div>
+      </div>
+    </section>
+    <section id="wb-analysis" class="workbench">
+      <h2>Analysis Lab</h2>
+      <div class="muted">Interactive Jupyter Lab for data analysis, modeling, and simulation. Test → Validate →
+        Release proven assets to Artifacts.</div>
+
+      <!-- Enhanced Jupyter Lab Integration with Dedicated Toolbar -->
+      <div id="jupyterLabContainer" class="analysis-container">
+        <!-- Jupyter Lab Toolbar -->
+        <div class="jupyter-toolbar">
+          <!-- Core Jupyter Functions -->
+          <div class="icon" title="New Notebook" onclick="createNewNotebook()">
+            <svg viewBox="0 0 24 24" fill="none" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" />
+              <polyline points="14,2 14,8 20,8" />
+              <line x1="16" y1="13" x2="8" y2="13" />
+              <line x1="16" y1="17" x2="8" y2="17" />
+            </svg>
+          </div>
+          <div class="icon" title="Open File" onclick="openFile()">
+            <svg viewBox="0 0 24 24" fill="none" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" />
+              <polyline points="14,2 14,8 20,8" />
+            </svg>
+          </div>
+          <div class="icon" title="Save" onclick="saveNotebook()">
+            <svg viewBox="0 0 24 24" fill="none" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z" />
+              <polyline points="17,21 17,13 7,13 7,21" />
+              <polyline points="7,3 7,8 15,8" />
+            </svg>
+          </div>
+          <div class="icon" title="Run Cell" onclick="runCell()">
+            <svg viewBox="0 0 24 24" fill="none" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round">
+              <polygon points="5,3 19,12 5,21" />
+            </svg>
+          </div>
+          <div class="icon" title="Stop" onclick="stopExecution()">
+            <svg viewBox="0 0 24 24" fill="none" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round">
+              <rect x="6" y="6" width="12" height="12" rx="2" />
+            </svg>
+          </div>
+          <div class="icon" title="Restart Kernel" onclick="restartKernel()">
+            <svg viewBox="0 0 24 24" fill="none" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M3 12a9 9 0 0 1 9-9 9.75 9.75 0 0 1 6.74 2.74L21 8" />
+              <path d="M21 3v5h-5" />
+              <path d="M21 12a9 9 0 0 1-9 9 9.75 9.75 0 0 1-6.74-2.74L3 16" />
+              <path d="M3 21v-5h5" />
+            </svg>
+          </div>
+
+          <!-- Separator -->
+          <div style="height: 1px; background: var(--border); margin: 8px 4px;"></div>
+
+          <!-- ODRAS Integration -->
+          <div class="icon" title="Load ODRAS Data" onclick="loadOdrasData()">
+            <svg viewBox="0 0 24 24" fill="none" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round">
+              <path
+                d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z" />
+              <polyline points="3.27,6.96 12,12.01 20.73,6.96" />
+              <line x1="12" y1="22.08" x2="12" y2="12" />
+            </svg>
+          </div>
+          <div class="icon" title="Save to Artifacts" onclick="saveToArtifacts()">
+            <svg viewBox="0 0 24 24" fill="none" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" />
+              <polyline points="14,2 14,8 20,8" />
+              <line x1="16" y1="13" x2="8" y2="13" />
+              <line x1="16" y1="17" x2="8" y2="17" />
+              <circle cx="12" cy="12" r="2" />
+            </svg>
+          </div>
+          <div class="icon" title="Export Report" onclick="exportReport()">
+            <svg viewBox="0 0 24 24" fill="none" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" />
+              <polyline points="14,2 14,8 20,8" />
+              <line x1="16" y1="13" x2="8" y2="13" />
+              <line x1="16" y1="17" x2="8" y2="17" />
+              <path d="M12 18h.01" />
+            </svg>
+          </div>
+          <div class="icon" title="Link to Project" onclick="linkToProject()">
+            <svg viewBox="0 0 24 24" fill="none" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71" />
+              <path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71" />
+            </svg>
+          </div>
+
+          <!-- Separator -->
+          <div style="height: 1px; background: var(--border); margin: 8px 4px;"></div>
+
+          <!-- Analysis Tools -->
+          <div class="icon" title="Quick Plot" onclick="quickPlot()">
+            <svg viewBox="0 0 24 24" fill="none" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M3 3v18h18" />
+              <path d="M18.7 8l-5.1 5.2-2.8-2.7L7 14.3" />
+            </svg>
+          </div>
+          <div class="icon" title="ML Templates" onclick="openMLTemplates()">
+            <svg viewBox="0 0 24 24" fill="none" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z" />
+            </svg>
+          </div>
+          <div class="icon" title="Simulation" onclick="openSimulation()">
+            <svg viewBox="0 0 24 24" fill="none" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round">
+              <circle cx="12" cy="12" r="10" />
+              <polygon points="10,8 16,12 10,16 10,8" />
+            </svg>
+          </div>
+
+          <!-- Separator -->
+          <div style="height: 1px; background: var(--border); margin: 8px 4px;"></div>
+
+          <!-- Collaboration -->
+          <div class="icon" title="Share" onclick="shareNotebook()">
+            <svg viewBox="0 0 24 24" fill="none" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round">
+              <circle cx="18" cy="5" r="3" />
+              <circle cx="6" cy="12" r="3" />
+              <circle cx="18" cy="19" r="3" />
+              <line x1="8.59" y1="13.51" x2="15.42" y2="17.49" />
+              <line x1="15.41" y1="6.51" x2="8.59" y2="10.49" />
+            </svg>
+          </div>
+          <div class="icon" title="Templates" onclick="openTemplates()">
+            <svg viewBox="0 0 24 24" fill="none" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" />
+              <polyline points="14,2 14,8 20,8" />
+              <line x1="16" y1="13" x2="8" y2="13" />
+              <line x1="16" y1="17" x2="8" y2="17" />
+              <polyline points="10,9 9,9 8,9" />
+            </svg>
+          </div>
+          <div class="icon" title="Help" onclick="showJupyterHelp()">
+            <svg viewBox="0 0 24 24" fill="none" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round">
+              <circle cx="12" cy="12" r="10" />
+              <path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3" />
+              <line x1="12" y1="17" x2="12.01" y2="17" />
+            </svg>
+          </div>
+        </div>
+
+        <!-- Jupyter Lab Canvas -->
+        <div class="jupyter-canvas">
+          <!-- Jupyter Lab Content Area -->
+          <div id="jupyterLabContent" class="jupyter-placeholder">
+            <div class="jupyter-placeholder-content">
+              <div class="jupyter-icon">
+                <svg viewBox="0 0 24 24" fill="none" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+                  <rect x="3" y="3" width="18" height="18" rx="2" ry="2" />
+                  <path d="M9 9h6v6H9z" />
+                  <path d="M9 1v6" />
+                  <path d="M15 1v6" />
+                  <path d="M9 17v6" />
+                  <path d="M15 17v6" />
+                  <path d="M1 9h6" />
+                  <path d="M17 9h6" />
+                  <path d="M1 15h6" />
+                  <path d="M17 15h6" />
+                </svg>
+              </div>
+              <h3>Jupyter Lab</h3>
+              <p>Interactive analysis environment for data science, modeling, and simulation</p>
+              <div class="jupyter-actions">
+                <button class="btn" onclick="startJupyterLab()">Launch Jupyter Lab</button>
+                <button class="btn" onclick="showJupyterInfo()">Learn More</button>
               </div>
             </div>
           </div>
 
-          <!-- Microtheories Tab -->
-          <div id="microtheories-tab" class="tab-content">
-            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
-              <h3>Microtheories</h3>
-              <button class="btn btn-success" onclick="createNewMT()">+ New Microtheory</button>
+          <!-- Jupyter Lab iframe (hidden by default) -->
+          <iframe id="jupyterLabFrame" src="about:blank" style="width: 100%; height: 100%; border: none; display: none;"
+            title="Jupyter Lab">
+          </iframe>
+        </div>
+      </div>
+    </section>
+    <section id="wb-project" class="workbench">
+      <h2>Project Information</h2>
+      <div class="muted">Current project details and metadata.</div>
+
+      <!-- Project Details Card -->
+      <div style="margin-top: 20px;">
+        <div id="projectInfoCard"
+          style="background: var(--panel); border: 1px solid var(--border); border-radius: 8px; padding: 20px;">
+          <div style="text-align: center; color: var(--muted);">No project selected</div>
+        </div>
+      </div>
+    </section>
+
+    <section id="wb-admin" class="workbench">
+      <h2>Admin</h2>
+      <div class="muted">Namespace management and system administration.</div>
+
+      <!-- Installation Configuration Section -->
+      <div style="margin-top: 20px;">
+        <h3 style="margin: 0 0 16px 0; color: var(--text);">Installation Configuration</h3>
+        <div id="installationConfig"
+          style="background: var(--panel); border: 1px solid var(--border); border-radius: 8px; padding: 16px; margin-bottom: 20px;">
+          <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 16px;">
+            <div>
+              <label><strong>Organization:</strong></label>
+              <div id="configOrganization" class="muted">Loading...</div>
+            </div>
+            <div>
+              <label><strong>Base URI:</strong></label>
+              <div id="configBaseUri" class="muted">Loading...</div>
+            </div>
+            <div>
+              <label><strong>Type:</strong></label>
+              <div id="configType" class="muted">Loading...</div>
+            </div>
+            <div>
+              <label><strong>Program Office:</strong></label>
+              <div id="configProgramOffice" class="muted">Loading...</div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- RAG Implementation Configuration Section -->
+      <div class="section">
+        <div class="section-header" onclick="toggleSection(this)"
+          style="cursor: pointer; padding: 12px 16px; background: var(--panel); border: 1px solid var(--border); border-radius: 8px; margin-bottom: 16px; display: flex; justify-content: space-between; align-items: center;">
+          <div>
+            <h3 style="margin: 0; color: var(--text); font-size: 16px;">RAG Implementation</h3>
+            <div style="font-size: 12px; color: var(--muted); margin-top: 2px;">Configure how DAS processes
+              knowledge queries</div>
+          </div>
+          <span class="section-toggle" style="font-size: 14px;">▶</span>
+        </div>
+        <div class="section-content" style="display: none;">
+          <div id="ragConfig"
+            style="background: var(--panel); border: 1px solid var(--border); border-radius: 8px; padding: 20px;">
+
+            <!-- Current Status -->
+            <div style="margin-bottom: 24px;">
+              <h4 style="margin: 0 0 12px 0; color: var(--text); font-size: 14px; font-weight: 600;">Current
+                Configuration</h4>
+              <div style="display: flex; gap: 24px; flex-wrap: wrap;">
+                <div style="min-width: 200px;">
+                  <div style="font-size: 12px; color: var(--muted); margin-bottom: 4px;">Implementation</div>
+                  <div id="currentRagImplementation" class="muted" style="font-weight: 500;">Loading...</div>
+                </div>
+                <div id="currentBpmnModelDisplay" style="min-width: 200px; display: none;">
+                  <div style="font-size: 12px; color: var(--muted); margin-bottom: 4px;">BPMN Model</div>
+                  <div id="currentRagBpmnModel" class="muted" style="font-weight: 500;">-</div>
+                </div>
+                <div id="currentModelVersionDisplay" style="min-width: 120px; display: none;">
+                  <div style="font-size: 12px; color: var(--muted); margin-bottom: 4px;">Version</div>
+                  <div id="currentRagModelVersion" class="muted" style="font-weight: 500;">-</div>
+                </div>
+              </div>
             </div>
 
-            <div class="item-list" id="mt-list">
-              <div class="loading">Loading microtheories</div>
-            </div>
+            <!-- Configuration Form -->
+            <div style="border-top: 1px solid var(--border); padding-top: 20px;">
+              <h4 style="margin: 0 0 16px 0; color: var(--text); font-size: 14px; font-weight: 600;">Update
+                Configuration</h4>
 
-            <!-- MT Creation Modal -->
-            <div id="mt-modal"
-              style="display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.5); z-index: 1000;">
               <div
-                style="position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); background: white; padding: 30px; border-radius: 8px; width: 500px;">
-                <h3>Create New Microtheory</h3>
-
-                <label>Label:</label>
-                <input type="text" id="mt-label" placeholder="e.g., Baseline, Test Data, V1.0">
-
-                <label>Clone From (optional):</label>
-                <select id="mt-clone-from">
-                  <option value="">Create empty</option>
-                </select>
-
-                <div style="margin: 15px 0;">
-                  <label>
-                    <input type="checkbox" id="mt-set-default"> Set as project default
-                  </label>
+                style="display: grid; grid-template-columns: 1fr 1fr 1fr auto; gap: 16px; align-items: end; margin-bottom: 16px;">
+                <div>
+                  <label
+                    style="display: block; font-size: 12px; color: var(--text); margin-bottom: 6px; font-weight: 500;">Implementation
+                    Type</label>
+                  <select id="ragImplementationSelect" onchange="toggleBpmnOptions()"
+                    style="width: 100%; padding: 10px; border: 1px solid var(--border); border-radius: 6px; background: var(--bg); color: var(--text); font-size: 14px;">
+                    <option value="hardcoded">Hardcoded RAG</option>
+                    <option value="bpmn">BPMN RAG</option>
+                  </select>
                 </div>
 
-                <div style="margin-top: 20px;">
-                  <button class="btn btn-success" onclick="saveMT()">Create Microtheory</button>
-                  <button class="btn btn-secondary" onclick="cancelMT()">Cancel</button>
+                <div id="bpmnModelSelect" style="display: none;">
+                  <label
+                    style="display: block; font-size: 12px; color: var(--text); margin-bottom: 6px; font-weight: 500;">BPMN
+                    Model</label>
+                  <select id="ragBpmnModelSelect" onchange="updateModelVersions()"
+                    style="width: 100%; padding: 10px; border: 1px solid var(--border); border-radius: 6px; background: var(--bg); color: var(--text); font-size: 14px;">
+                    <option value="">Select Model...</option>
+                  </select>
                 </div>
-              </div>
-            </div>
-          </div>
 
-          <!-- Coverage Tab -->
-          <div id="coverage-tab" class="tab-content">
-            <h3>CQ Coverage Summary</h3>
-            <p style="margin-bottom: 20px;">Overview of CQ pass/fail status across microtheories</p>
+                <div id="modelVersionSelect" style="display: none;">
+                  <label
+                    style="display: block; font-size: 12px; color: var(--text); margin-bottom: 6px; font-weight: 500;">Version</label>
+                  <select id="ragModelVersionSelect"
+                    style="width: 100%; padding: 10px; border: 1px solid var(--border); border-radius: 6px; background: var(--bg); color: var(--text); font-size: 14px;">
+                    <option value="">Select Version...</option>
+                  </select>
+                </div>
 
-            <div id="coverage-stats" class="stats-grid">
-              <div class="stat-card">
-                <span id="total-cqs" class="stat-number">-</span>
-                <div class="stat-label">Total CQs</div>
-              </div>
-              <div class="stat-card">
-                <span id="active-cqs" class="stat-number">-</span>
-                <div class="stat-label">Active CQs</div>
-              </div>
-              <div class="stat-card">
-                <span id="passing-cqs" class="stat-number">-</span>
-                <div class="stat-label">Recently Passing</div>
-              </div>
-              <div class="stat-card">
-                <span id="failing-cqs" class="stat-number">-</span>
-                <div class="stat-label">Recently Failing</div>
-              </div>
-            </div>
-
-            <div id="coverage-details">
-              <div class="loading">Loading coverage data</div>
-            </div>
-          </div>
-        </section>
-        <section id="wb-graph" class="workbench">
-          <h2>Graph Explorer</h2>
-          <div class="muted">Quick look into RDF store (SPARQL).
-            <button class="btn" id="btnRefreshSummary" style="margin-left:8px;">Refresh Summary</button>
-          </div>
-          <div id="graphSummary" class="card" style="margin-top:10px;"></div>
-          <div class="card" style="margin-top:10px;">
-            <div class="muted">Run SPARQL (SELECT):</div>
-            <textarea id="sparqlInput" rows="6"
-              style="width:100%; background:#0b1220; color:#e5e7eb; border:1px solid var(--border); border-radius:6px; padding:8px;">SELECT ?s ?p ?o WHERE { ?s ?p ?o } LIMIT 25</textarea>
-            <div style="margin-top:6px; display:flex; gap:8px; align-items:center;">
-              <button class="btn" id="btnRunSparql">Run</button>
-              <span id="sparqlStatus" class="muted"></span>
-            </div>
-            <pre id="sparqlResult" style="margin-top:8px; white-space:pre-wrap;"></pre>
-          </div>
-        </section>
-        <section id="wb-rag" class="workbench">
-          <h2>RAG</h2>
-          <div class="muted">Develop/test BPMN workflows with LLM help.</div>
-        </section>
-        <section id="wb-process" class="workbench">
-          <h2>Process</h2>
-          <div class="muted">Manage extraction BPMN processes.</div>
-        </section>
-        <section id="wb-thread" class="workbench">
-          <h2>Thread Manager</h2>
-          <div class="muted">Debug and manage DAS project threads, conversation history, and prompt context.</div>
-
-          <div
-            style="margin-top: 20px; display: grid; gap: 16px; max-height: calc(100vh - 120px); overflow-y: auto; padding-right: 8px;">
-            <!-- Thread Overview -->
-            <div class="card">
-              <h3>Current Project Thread</h3>
-              <div id="thread-overview" style="margin-top: 12px;">
-                <div class="muted">Select a project to view thread details</div>
-              </div>
-            </div>
-
-            <!-- Conversation History -->
-            <div class="card">
-              <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px;">
-                <h3>Conversation History</h3>
-                <button id="refresh-thread-btn" class="btn" style="padding: 4px 8px; font-size: 12px;">
-                  Refresh
+                <button class="btn" onclick="updateRagImplementation()"
+                  style="height: 42px; padding: 0 20px; white-space: nowrap;">
+                  Update
                 </button>
               </div>
-              <div id="conversation-list" style="max-height: 400px; overflow-y: auto;">
-                <div class="muted">No conversation history loaded</div>
+
+              <!-- Model Description -->
+              <div id="modelDescription"
+                style="margin-top: 16px; padding: 12px; background: rgba(59, 130, 246, 0.08); border: 1px solid rgba(59, 130, 246, 0.2); border-radius: 6px; font-size: 13px; color: var(--text); display: none;">
+                <div id="modelDescriptionText"></div>
               </div>
             </div>
 
-            <!-- Prompt Inspector -->
-            <div class="card">
-              <h3>Prompt Inspector</h3>
-              <div style="margin-top: 12px;">
-                <label style="display: block; margin-bottom: 4px; font-weight: 500;">
-                  Select conversation entry to inspect:
-                </label>
-                <select id="prompt-entry-select"
-                  style="width: 100%; padding: 8px; background: var(--panel-2); border: 1px solid var(--border); border-radius: 4px;">
-                  <option value="">Select conversation entry...</option>
-                </select>
-              </div>
-
-              <div id="prompt-details" style="margin-top: 16px; display: none;">
-                <div style="margin-bottom: 12px;">
-                  <label style="display: block; margin-bottom: 4px; font-weight: 500;">
-                    Full Prompt Sent to LLM:
-                  </label>
-                  <textarea id="prompt-content" readonly style="width: 100%; height: 300px; font-family: monospace; font-size: 12px;
-                           background: var(--panel-2); border: 1px solid var(--border); border-radius: 4px;
-                           padding: 12px; resize: vertical; color: var(--text) !important;"></textarea>
-                </div>
-
-                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-bottom: 12px;">
-                  <div>
-                    <label style="display: block; margin-bottom: 4px; font-weight: 500;">
-                      User Message:
-                    </label>
-                    <textarea id="user-message-edit" style="width: 100%; height: 80px; background: var(--panel-2); border: 1px solid var(--border);
-                             border-radius: 4px; padding: 8px; resize: vertical; color: var(--text);"></textarea>
-                  </div>
-                  <div>
-                    <label style="display: block; margin-bottom: 4px; font-weight: 500;">
-                      DAS Response:
-                    </label>
-                    <textarea id="das-response-edit" style="width: 100%; height: 80px; background: var(--panel-2); border: 1px solid var(--border);
-                             border-radius: 4px; padding: 8px; resize: vertical; color: var(--text);"></textarea>
-                  </div>
-                </div>
-
-                <div style="display: flex; gap: 12px; margin-bottom: 12px;">
-                  <button id="update-entry-btn" class="btn" style="background: var(--accent); color: white;">
-                    Update Entry
-                  </button>
-                  <button id="delete-entry-btn" class="btn" style="background: var(--err); color: white;">
-                    Delete Entry
-                  </button>
-                  <button id="test-prompt-btn" class="btn">
-                    Test Custom Prompt
-                  </button>
-                </div>
-
-                <!-- Context Inspector -->
-                <div style="margin-top: 16px;">
-                  <label style="display: block; margin-bottom: 4px; font-weight: 500;">
-                    RAG & Project Context:
-                  </label>
-                  <textarea id="context-details" readonly style="width: 100%; height: 150px; font-family: monospace; font-size: 12px;
-                           background: var(--panel-2); border: 1px solid var(--border); border-radius: 4px;
-                           padding: 12px; resize: vertical; color: var(--text) !important;"></textarea>
-                </div>
+            <!-- Help Text -->
+            <div
+              style="margin-top: 20px; padding: 12px; background: var(--bg); border: 1px solid var(--border); border-radius: 6px;">
+              <div style="font-size: 12px; color: var(--muted); line-height: 1.5;">
+                <div style="margin-bottom: 8px;"><strong>Hardcoded RAG:</strong> Direct service calls for fast,
+                  simple responses</div>
+                <div><strong>BPMN RAG:</strong> Workflow-based processing with advanced features and configurable
+                  models</div>
               </div>
             </div>
           </div>
-        </section>
-        <section id="wb-playground" class="workbench">
-          <h2>LLM Playground</h2>
-          <div class="muted">Ask questions, generate white papers, save to project.</div>
-        </section>
-        <section id="wb-settings" class="workbench">
-          <h2>Settings</h2>
-          <div class="muted">Application preferences and configuration options.</div>
-          <div id="settingsContent">
-            <div class="card">
-              <h3>General Settings</h3>
-              <div class="row">
-                <label>Theme</label>
-                <select id="themeSelect">
-                  <option value="dark">Dark</option>
-                  <option value="light">Light</option>
-                </select>
-              </div>
-              <div class="row">
-                <label>Language</label>
-                <select id="languageSelect">
-                  <option value="en">English</option>
-                </select>
-              </div>
-            </div>
-            <div class="card">
-              <h3>Display Settings</h3>
-              <div class="row">
-                <label>Tree Width</label>
-                <input type="range" id="treeWidthSlider" min="200" max="400" value="300">
-                <span id="treeWidthValue">300px</span>
-              </div>
-            </div>
+        </div>
+      </div>
+
+      <!-- File Processing Configuration Section -->
+      <div class="section">
+        <div class="section-header" onclick="toggleSection(this)"
+          style="cursor: pointer; padding: 12px 16px; background: var(--panel); border: 1px solid var(--border); border-radius: 8px; margin-bottom: 16px; display: flex; justify-content: space-between; align-items: center;">
+          <div>
+            <h3 style="margin: 0; color: var(--text); font-size: 16px;">File Processing Implementation</h3>
+            <div style="font-size: 12px; color: var(--muted); margin-top: 2px;">Configure how uploaded files are
+              processed for knowledge</div>
           </div>
-        </section>
-        <section id="wb-analysis" class="workbench">
-          <h2>Analysis Lab</h2>
-          <div class="muted">Interactive Jupyter Lab for data analysis, modeling, and simulation. Test → Validate →
-            Release proven assets to Artifacts.</div>
+          <span class="section-toggle" style="font-size: 14px;">▶</span>
+        </div>
+        <div class="section-content" style="display: none;">
+          <div id="fileProcessingConfig"
+            style="background: var(--panel); border: 1px solid var(--border); border-radius: 8px; padding: 20px;">
 
-          <!-- Enhanced Jupyter Lab Integration with Dedicated Toolbar -->
-          <div id="jupyterLabContainer" class="analysis-container">
-            <!-- Jupyter Lab Toolbar -->
-            <div class="jupyter-toolbar">
-              <!-- Core Jupyter Functions -->
-              <div class="icon" title="New Notebook" onclick="createNewNotebook()">
-                <svg viewBox="0 0 24 24" fill="none" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round">
-                  <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" />
-                  <polyline points="14,2 14,8 20,8" />
-                  <line x1="16" y1="13" x2="8" y2="13" />
-                  <line x1="16" y1="17" x2="8" y2="17" />
-                </svg>
-              </div>
-              <div class="icon" title="Open File" onclick="openFile()">
-                <svg viewBox="0 0 24 24" fill="none" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round">
-                  <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" />
-                  <polyline points="14,2 14,8 20,8" />
-                </svg>
-              </div>
-              <div class="icon" title="Save" onclick="saveNotebook()">
-                <svg viewBox="0 0 24 24" fill="none" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round">
-                  <path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z" />
-                  <polyline points="17,21 17,13 7,13 7,21" />
-                  <polyline points="7,3 7,8 15,8" />
-                </svg>
-              </div>
-              <div class="icon" title="Run Cell" onclick="runCell()">
-                <svg viewBox="0 0 24 24" fill="none" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round">
-                  <polygon points="5,3 19,12 5,21" />
-                </svg>
-              </div>
-              <div class="icon" title="Stop" onclick="stopExecution()">
-                <svg viewBox="0 0 24 24" fill="none" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round">
-                  <rect x="6" y="6" width="12" height="12" rx="2" />
-                </svg>
-              </div>
-              <div class="icon" title="Restart Kernel" onclick="restartKernel()">
-                <svg viewBox="0 0 24 24" fill="none" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round">
-                  <path d="M3 12a9 9 0 0 1 9-9 9.75 9.75 0 0 1 6.74 2.74L21 8" />
-                  <path d="M21 3v5h-5" />
-                  <path d="M21 12a9 9 0 0 1-9 9 9.75 9.75 0 0 1-6.74-2.74L3 16" />
-                  <path d="M3 21v-5h5" />
-                </svg>
-              </div>
-
-              <!-- Separator -->
-              <div style="height: 1px; background: var(--border); margin: 8px 4px;"></div>
-
-              <!-- ODRAS Integration -->
-              <div class="icon" title="Load ODRAS Data" onclick="loadOdrasData()">
-                <svg viewBox="0 0 24 24" fill="none" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round">
-                  <path
-                    d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z" />
-                  <polyline points="3.27,6.96 12,12.01 20.73,6.96" />
-                  <line x1="12" y1="22.08" x2="12" y2="12" />
-                </svg>
-              </div>
-              <div class="icon" title="Save to Artifacts" onclick="saveToArtifacts()">
-                <svg viewBox="0 0 24 24" fill="none" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round">
-                  <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" />
-                  <polyline points="14,2 14,8 20,8" />
-                  <line x1="16" y1="13" x2="8" y2="13" />
-                  <line x1="16" y1="17" x2="8" y2="17" />
-                  <circle cx="12" cy="12" r="2" />
-                </svg>
-              </div>
-              <div class="icon" title="Export Report" onclick="exportReport()">
-                <svg viewBox="0 0 24 24" fill="none" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round">
-                  <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" />
-                  <polyline points="14,2 14,8 20,8" />
-                  <line x1="16" y1="13" x2="8" y2="13" />
-                  <line x1="16" y1="17" x2="8" y2="17" />
-                  <path d="M12 18h.01" />
-                </svg>
-              </div>
-              <div class="icon" title="Link to Project" onclick="linkToProject()">
-                <svg viewBox="0 0 24 24" fill="none" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round">
-                  <path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71" />
-                  <path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71" />
-                </svg>
-              </div>
-
-              <!-- Separator -->
-              <div style="height: 1px; background: var(--border); margin: 8px 4px;"></div>
-
-              <!-- Analysis Tools -->
-              <div class="icon" title="Quick Plot" onclick="quickPlot()">
-                <svg viewBox="0 0 24 24" fill="none" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round">
-                  <path d="M3 3v18h18" />
-                  <path d="M18.7 8l-5.1 5.2-2.8-2.7L7 14.3" />
-                </svg>
-              </div>
-              <div class="icon" title="ML Templates" onclick="openMLTemplates()">
-                <svg viewBox="0 0 24 24" fill="none" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round">
-                  <path
-                    d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z" />
-                </svg>
-              </div>
-              <div class="icon" title="Simulation" onclick="openSimulation()">
-                <svg viewBox="0 0 24 24" fill="none" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round">
-                  <circle cx="12" cy="12" r="10" />
-                  <polygon points="10,8 16,12 10,16 10,8" />
-                </svg>
-              </div>
-
-              <!-- Separator -->
-              <div style="height: 1px; background: var(--border); margin: 8px 4px;"></div>
-
-              <!-- Collaboration -->
-              <div class="icon" title="Share" onclick="shareNotebook()">
-                <svg viewBox="0 0 24 24" fill="none" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round">
-                  <circle cx="18" cy="5" r="3" />
-                  <circle cx="6" cy="12" r="3" />
-                  <circle cx="18" cy="19" r="3" />
-                  <line x1="8.59" y1="13.51" x2="15.42" y2="17.49" />
-                  <line x1="15.41" y1="6.51" x2="8.59" y2="10.49" />
-                </svg>
-              </div>
-              <div class="icon" title="Templates" onclick="openTemplates()">
-                <svg viewBox="0 0 24 24" fill="none" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round">
-                  <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" />
-                  <polyline points="14,2 14,8 20,8" />
-                  <line x1="16" y1="13" x2="8" y2="13" />
-                  <line x1="16" y1="17" x2="8" y2="17" />
-                  <polyline points="10,9 9,9 8,9" />
-                </svg>
-              </div>
-              <div class="icon" title="Help" onclick="showJupyterHelp()">
-                <svg viewBox="0 0 24 24" fill="none" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round">
-                  <circle cx="12" cy="12" r="10" />
-                  <path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3" />
-                  <line x1="12" y1="17" x2="12.01" y2="17" />
-                </svg>
-              </div>
-            </div>
-
-            <!-- Jupyter Lab Canvas -->
-            <div class="jupyter-canvas">
-              <!-- Jupyter Lab Content Area -->
-              <div id="jupyterLabContent" class="jupyter-placeholder">
-                <div class="jupyter-placeholder-content">
-                  <div class="jupyter-icon">
-                    <svg viewBox="0 0 24 24" fill="none" stroke-width="1.5" stroke-linecap="round"
-                      stroke-linejoin="round">
-                      <rect x="3" y="3" width="18" height="18" rx="2" ry="2" />
-                      <path d="M9 9h6v6H9z" />
-                      <path d="M9 1v6" />
-                      <path d="M15 1v6" />
-                      <path d="M9 17v6" />
-                      <path d="M15 17v6" />
-                      <path d="M1 9h6" />
-                      <path d="M17 9h6" />
-                      <path d="M1 15h6" />
-                      <path d="M17 15h6" />
-                    </svg>
+            <!-- Current Status -->
+            <div style="margin-bottom: 24px;">
+              <h4 style="margin: 0 0 12px 0; color: var(--text); font-size: 14px; font-weight: 600;">Current
+                Configuration</h4>
+              <div style="display: flex; gap: 24px; flex-wrap: wrap;">
+                <div style="min-width: 250px;">
+                  <div style="font-size: 12px; color: var(--muted); margin-bottom: 4px;">File Processing Method
                   </div>
-                  <h3>Jupyter Lab</h3>
-                  <p>Interactive analysis environment for data science, modeling, and simulation</p>
-                  <div class="jupyter-actions">
-                    <button class="btn" onclick="startJupyterLab()">Launch Jupyter Lab</button>
-                    <button class="btn" onclick="showJupyterInfo()">Learn More</button>
-                  </div>
-                </div>
-              </div>
-
-              <!-- Jupyter Lab iframe (hidden by default) -->
-              <iframe id="jupyterLabFrame" src="about:blank"
-                style="width: 100%; height: 100%; border: none; display: none;" title="Jupyter Lab">
-              </iframe>
-            </div>
-          </div>
-        </section>
-        <section id="wb-project" class="workbench">
-          <h2>Project Information</h2>
-          <div class="muted">Current project details and metadata.</div>
-
-          <!-- Project Details Card -->
-          <div style="margin-top: 20px;">
-            <div id="projectInfoCard"
-              style="background: var(--panel); border: 1px solid var(--border); border-radius: 8px; padding: 20px;">
-              <div style="text-align: center; color: var(--muted);">No project selected</div>
-            </div>
-          </div>
-        </section>
-
-        <section id="wb-admin" class="workbench">
-          <h2>Admin</h2>
-          <div class="muted">Namespace management and system administration.</div>
-
-          <!-- Installation Configuration Section -->
-          <div style="margin-top: 20px;">
-            <h3 style="margin: 0 0 16px 0; color: var(--text);">Installation Configuration</h3>
-            <div id="installationConfig"
-              style="background: var(--panel); border: 1px solid var(--border); border-radius: 8px; padding: 16px; margin-bottom: 20px;">
-              <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 16px;">
-                <div>
-                  <label><strong>Organization:</strong></label>
-                  <div id="configOrganization" class="muted">Loading...</div>
-                </div>
-                <div>
-                  <label><strong>Base URI:</strong></label>
-                  <div id="configBaseUri" class="muted">Loading...</div>
-                </div>
-                <div>
-                  <label><strong>Type:</strong></label>
-                  <div id="configType" class="muted">Loading...</div>
-                </div>
-                <div>
-                  <label><strong>Program Office:</strong></label>
-                  <div id="configProgramOffice" class="muted">Loading...</div>
-                </div>
-              </div>
-            </div>
-          </div>
-
-          <!-- RAG Implementation Configuration Section -->
-          <div class="section">
-            <div class="section-header" onclick="toggleSection(this)"
-              style="cursor: pointer; padding: 12px 16px; background: var(--panel); border: 1px solid var(--border); border-radius: 8px; margin-bottom: 16px; display: flex; justify-content: space-between; align-items: center;">
-              <div>
-                <h3 style="margin: 0; color: var(--text); font-size: 16px;">RAG Implementation</h3>
-                <div style="font-size: 12px; color: var(--muted); margin-top: 2px;">Configure how DAS processes
-                  knowledge queries</div>
-              </div>
-              <span class="section-toggle" style="font-size: 14px;">▶</span>
-            </div>
-            <div class="section-content" style="display: none;">
-              <div id="ragConfig"
-                style="background: var(--panel); border: 1px solid var(--border); border-radius: 8px; padding: 20px;">
-
-                <!-- Current Status -->
-                <div style="margin-bottom: 24px;">
-                  <h4 style="margin: 0 0 12px 0; color: var(--text); font-size: 14px; font-weight: 600;">Current
-                    Configuration</h4>
-                  <div style="display: flex; gap: 24px; flex-wrap: wrap;">
-                    <div style="min-width: 200px;">
-                      <div style="font-size: 12px; color: var(--muted); margin-bottom: 4px;">Implementation</div>
-                      <div id="currentRagImplementation" class="muted" style="font-weight: 500;">Loading...</div>
-                    </div>
-                    <div id="currentBpmnModelDisplay" style="min-width: 200px; display: none;">
-                      <div style="font-size: 12px; color: var(--muted); margin-bottom: 4px;">BPMN Model</div>
-                      <div id="currentRagBpmnModel" class="muted" style="font-weight: 500;">-</div>
-                    </div>
-                    <div id="currentModelVersionDisplay" style="min-width: 120px; display: none;">
-                      <div style="font-size: 12px; color: var(--muted); margin-bottom: 4px;">Version</div>
-                      <div id="currentRagModelVersion" class="muted" style="font-weight: 500;">-</div>
-                    </div>
-                  </div>
-                </div>
-
-                <!-- Configuration Form -->
-                <div style="border-top: 1px solid var(--border); padding-top: 20px;">
-                  <h4 style="margin: 0 0 16px 0; color: var(--text); font-size: 14px; font-weight: 600;">Update
-                    Configuration</h4>
-
-                  <div
-                    style="display: grid; grid-template-columns: 1fr 1fr 1fr auto; gap: 16px; align-items: end; margin-bottom: 16px;">
-                    <div>
-                      <label
-                        style="display: block; font-size: 12px; color: var(--text); margin-bottom: 6px; font-weight: 500;">Implementation
-                        Type</label>
-                      <select id="ragImplementationSelect" onchange="toggleBpmnOptions()"
-                        style="width: 100%; padding: 10px; border: 1px solid var(--border); border-radius: 6px; background: var(--bg); color: var(--text); font-size: 14px;">
-                        <option value="hardcoded">Hardcoded RAG</option>
-                        <option value="bpmn">BPMN RAG</option>
-                      </select>
-                    </div>
-
-                    <div id="bpmnModelSelect" style="display: none;">
-                      <label
-                        style="display: block; font-size: 12px; color: var(--text); margin-bottom: 6px; font-weight: 500;">BPMN
-                        Model</label>
-                      <select id="ragBpmnModelSelect" onchange="updateModelVersions()"
-                        style="width: 100%; padding: 10px; border: 1px solid var(--border); border-radius: 6px; background: var(--bg); color: var(--text); font-size: 14px;">
-                        <option value="">Select Model...</option>
-                      </select>
-                    </div>
-
-                    <div id="modelVersionSelect" style="display: none;">
-                      <label
-                        style="display: block; font-size: 12px; color: var(--text); margin-bottom: 6px; font-weight: 500;">Version</label>
-                      <select id="ragModelVersionSelect"
-                        style="width: 100%; padding: 10px; border: 1px solid var(--border); border-radius: 6px; background: var(--bg); color: var(--text); font-size: 14px;">
-                        <option value="">Select Version...</option>
-                      </select>
-                    </div>
-
-                    <button class="btn" onclick="updateRagImplementation()"
-                      style="height: 42px; padding: 0 20px; white-space: nowrap;">
-                      Update
-                    </button>
-                  </div>
-
-                  <!-- Model Description -->
-                  <div id="modelDescription"
-                    style="margin-top: 16px; padding: 12px; background: rgba(59, 130, 246, 0.08); border: 1px solid rgba(59, 130, 246, 0.2); border-radius: 6px; font-size: 13px; color: var(--text); display: none;">
-                    <div id="modelDescriptionText"></div>
-                  </div>
-                </div>
-
-                <!-- Help Text -->
-                <div
-                  style="margin-top: 20px; padding: 12px; background: var(--bg); border: 1px solid var(--border); border-radius: 6px;">
-                  <div style="font-size: 12px; color: var(--muted); line-height: 1.5;">
-                    <div style="margin-bottom: 8px;"><strong>Hardcoded RAG:</strong> Direct service calls for fast,
-                      simple responses</div>
-                    <div><strong>BPMN RAG:</strong> Workflow-based processing with advanced features and configurable
-                      models</div>
+                  <div id="currentFileProcessingImplementation" class="muted" style="font-weight: 500;">Loading...
                   </div>
                 </div>
               </div>
             </div>
-          </div>
 
-          <!-- File Processing Configuration Section -->
-          <div class="section">
-            <div class="section-header" onclick="toggleSection(this)"
-              style="cursor: pointer; padding: 12px 16px; background: var(--panel); border: 1px solid var(--border); border-radius: 8px; margin-bottom: 16px; display: flex; justify-content: space-between; align-items: center;">
-              <div>
-                <h3 style="margin: 0; color: var(--text); font-size: 16px;">File Processing Implementation</h3>
-                <div style="font-size: 12px; color: var(--muted); margin-top: 2px;">Configure how uploaded files are
-                  processed for knowledge</div>
-              </div>
-              <span class="section-toggle" style="font-size: 14px;">▶</span>
-            </div>
-            <div class="section-content" style="display: none;">
-              <div id="fileProcessingConfig"
-                style="background: var(--panel); border: 1px solid var(--border); border-radius: 8px; padding: 20px;">
+            <!-- Configuration Form -->
+            <div style="border-top: 1px solid var(--border); padding-top: 20px;">
+              <h4 style="margin: 0 0 16px 0; color: var(--text); font-size: 14px; font-weight: 600;">Update
+                Configuration</h4>
 
-                <!-- Current Status -->
-                <div style="margin-bottom: 24px;">
-                  <h4 style="margin: 0 0 12px 0; color: var(--text); font-size: 14px; font-weight: 600;">Current
-                    Configuration</h4>
-                  <div style="display: flex; gap: 24px; flex-wrap: wrap;">
-                    <div style="min-width: 250px;">
-                      <div style="font-size: 12px; color: var(--muted); margin-bottom: 4px;">File Processing Method
-                      </div>
-                      <div id="currentFileProcessingImplementation" class="muted" style="font-weight: 500;">Loading...
-                      </div>
-                    </div>
-                  </div>
-                </div>
-
-                <!-- Configuration Form -->
-                <div style="border-top: 1px solid var(--border); padding-top: 20px;">
-                  <h4 style="margin: 0 0 16px 0; color: var(--text); font-size: 14px; font-weight: 600;">Update
-                    Configuration</h4>
-
-                  <div
-                    style="display: grid; grid-template-columns: 1fr auto; gap: 16px; align-items: end; margin-bottom: 16px;">
-                    <div>
-                      <label
-                        style="display: block; font-size: 12px; color: var(--text); margin-bottom: 6px; font-weight: 500;">Implementation
-                        Type</label>
-                      <select id="fileProcessingImplementationSelect"
-                        style="width: 100%; padding: 10px; border: 1px solid var(--border); border-radius: 6px; background: var(--bg); color: var(--text); font-size: 14px;">
-                        <option value="hardcoded">Hardcoded Processing (SQL-first)</option>
-                        <option value="bpmn">BPMN Workflow Processing</option>
-                      </select>
-                    </div>
-
-                    <button class="btn" onclick="updateFileProcessingImplementation()"
-                      style="height: 42px; padding: 0 20px; white-space: nowrap;">
-                      Update
-                    </button>
-                  </div>
-                </div>
-
-                <!-- Help Text -->
-                <div
-                  style="margin-top: 20px; padding: 12px; background: var(--bg); border: 1px solid var(--border); border-radius: 6px;">
-                  <div style="font-size: 12px; color: var(--muted); line-height: 1.5;">
-                    <div style="margin-bottom: 8px;"><strong>Hardcoded Processing:</strong> Direct SQL-first approach
-                      with fast processing, complete knowledge asset lifecycle, and PostgreSQL as source of truth</div>
-                    <div><strong>BPMN Workflow Processing:</strong> Workflow-based processing with external task
-                      workers, configurable steps, and Camunda orchestration</div>
-                  </div>
-                </div>
-              </div>
-            </div>
-          </div>
-
-          <!-- Prefix Management Section -->
-          <div class="section collapsed">
-            <div class="section-header" onclick="toggleSection(this)"
-              style="cursor: pointer; padding: 10px; background: var(--panel); border: 1px solid var(--border); border-radius: 8px; margin-bottom: 10px; display: flex; justify-content: space-between; align-items: center;">
-              <span style="font-weight: bold; color: var(--text);">Prefix Management</span>
-              <span class="section-toggle" style="font-size: 14px;">▶</span>
-            </div>
-            <div class="section-content" style="display: none;">
-              <div style="display: flex; gap: 10px; margin-bottom: 20px;">
-                <button class="btn" onclick="loadPrefixes()">Refresh Prefixes</button>
-                <button class="btn" onclick="showCreatePrefixModal()">Create Prefix</button>
-              </div>
-
-              <!-- Prefix List -->
-              <div id="prefixList"
-                style="background: var(--panel); border: 1px solid var(--border); border-radius: 8px; padding: 16px;">
-                <div style="text-align: center; color: var(--muted);">Loading prefixes...</div>
-              </div>
-            </div>
-          </div>
-
-          <!-- Domain Management Section -->
-          <div class="section collapsed">
-            <div class="section-header" onclick="toggleSection(this)"
-              style="cursor: pointer; padding: 10px; background: var(--panel); border: 1px solid var(--border); border-radius: 8px; margin-bottom: 10px; display: flex; justify-content: space-between; align-items: center;">
-              <span style="font-weight: bold; color: var(--text);">Domain Management</span>
-              <span class="section-toggle" style="font-size: 14px;">▶</span>
-            </div>
-            <div class="section-content" style="display: none;">
-              <div style="display: flex; gap: 10px; margin-bottom: 20px;">
-                <button class="btn" onclick="loadDomains()">Refresh Domains</button>
-                <button class="btn" onclick="showCreateDomainModal()">Create Domain</button>
-              </div>
-
-              <!-- Domain List -->
-              <div id="domainList"
-                style="background: var(--panel); border: 1px solid var(--border); border-radius: 8px; padding: 16px;">
-                <div style="text-align: center; color: var(--muted);">Loading domains...</div>
-              </div>
-            </div>
-          </div>
-
-          <!-- Namespace Management Section -->
-          <div class="section collapsed">
-            <div class="section-header" onclick="toggleSection(this)"
-              style="cursor: pointer; padding: 10px; background: var(--panel); border: 1px solid var(--border); border-radius: 8px; margin-bottom: 10px; display: flex; justify-content: space-between; align-items: center;">
-              <span style="font-weight: bold; color: var(--text);">Namespace Management</span>
-              <span class="section-toggle" style="font-size: 14px;">▶</span>
-            </div>
-            <div class="section-content" style="display: none;">
-              <div style="display: flex; gap: 10px; margin-bottom: 20px;">
-                <button class="btn" onclick="loadNamespaces()">Refresh Namespaces</button>
-                <button class="btn" onclick="showCreateNamespaceModal()">Create Namespace</button>
-              </div>
-
-              <!-- Namespace List -->
-              <div id="namespaceList"
-                style="background: var(--panel); border: 1px solid var(--border); border-radius: 8px; padding: 16px;">
-                <div style="text-align: center; color: var(--muted);">Loading namespaces...</div>
-              </div>
-            </div>
-          </div>
-
-          <!-- User Management Section -->
-          <div class="section collapsed">
-            <div class="section-header" onclick="toggleSection(this)"
-              style="cursor: pointer; padding: 10px; background: var(--panel); border: 1px solid var(--border); border-radius: 8px; margin-bottom: 10px; display: flex; justify-content: space-between; align-items: center;">
-              <span style="font-weight: bold; color: var(--text);">User Management</span>
-              <span class="section-toggle" style="font-size: 14px;">▶</span>
-            </div>
-            <div class="section-content" style="display: none;">
-              <div style="display: flex; gap: 10px; margin-bottom: 20px; flex-wrap: wrap;">
-                <button class="btn" onclick="loadUsers()">Refresh Users</button>
-                <button class="btn" onclick="showCreateUserModal()">Create User</button>
-                <button class="btn" onclick="showChangePasswordModal()">Change My Password</button>
-                <label style="display: flex; align-items: center; gap: 8px; margin-left: auto;">
-                  <input type="checkbox" id="showInactiveUsers" onchange="loadUsers()" style="margin: 0;">
-                  <span style="color: var(--text); font-size: 14px;">Show inactive users</span>
-                </label>
-              </div>
-
-              <!-- User List -->
-              <div id="userList"
-                style="background: var(--panel); border: 1px solid var(--border); border-radius: 8px; padding: 16px;">
-                <div style="text-align: center; color: var(--muted);">Loading users...</div>
-              </div>
-            </div>
-          </div>
-
-          <!-- Document Management Section -->
-          <div class="section collapsed">
-            <div class="section-header" onclick="toggleSection(this)"
-              style="cursor: pointer; padding: 10px; background: var(--panel); border: 2px solid #f59e0b; border-radius: 8px; margin-bottom: 10px; display: flex; justify-content: space-between; align-items: center;">
-              <span style="font-weight: bold; color: var(--text);">📄 Document Management (NEW)</span>
-              <span class="section-toggle" style="font-size: 14px;">▶</span>
-            </div>
-            <div class="section-content" style="display: none;">
-              <div style="display: flex; gap: 10px; margin-bottom: 20px; flex-wrap: wrap; align-items: center;">
-                <button class="btn" onclick="loadAllDocuments()">Refresh All Resources</button>
-                <button class="btn" onclick="analyzeSystemHealth()" style="background: #3b82f6; color: #60a5fa;">System
-                  Health</button>
-                <button class="btn" onclick="cleanupOrphanedFiles()"
-                  style="background: #f59e0b; color: #fbbf24;">Cleanup Orphaned Files</button>
-                <button class="btn" onclick="cleanupDuplicates()" style="background: #7c3aed; color: #a78bfa;">Find
-                  Duplicates</button>
-                <button class="btn" onclick="comprehensiveCleanup()"
-                  style="background: #dc2626; color: #f87171;">Comprehensive Cleanup</button>
-
-                <div style="display: flex; align-items: center; gap: 8px; margin-left: 16px;">
-                  <label style="color: var(--text); font-size: 14px;">Filter by user:</label>
-                  <select id="adminDocUserFilter" onchange="loadAllDocuments()"
-                    style="background: #0b1220; color: #e5e7eb; border: 1px solid var(--border); border-radius: 6px; padding: 4px 8px; font-size: 12px;">
-                    <option value="">All Users</option>
-                  </select>
-                </div>
-
-                <div style="display: flex; align-items: center; gap: 8px;">
-                  <label style="color: var(--text); font-size: 14px;">Filter by type:</label>
-                  <select id="adminDocTypeFilter" onchange="loadAllDocuments()"
-                    style="background: #0b1220; color: #e5e7eb; border: 1px solid var(--border); border-radius: 6px; padding: 4px 8px; font-size: 12px;">
-                    <option value="">All Types</option>
-                    <option value="unknown">Unknown</option>
-                    <option value="requirements">Requirements</option>
-                    <option value="knowledge">Knowledge</option>
-                    <option value="reference">Reference</option>
-                    <option value="specification">Specification</option>
-                    <option value="document">Document</option>
-                    <option value="code">Code</option>
-                    <option value="data">Data</option>
-                  </select>
-                </div>
-
-                <div style="display: flex; align-items: center; gap: 8px;">
-                  <label style="color: var(--text); font-size: 14px;">Resource Type:</label>
-                  <select id="adminResourceTypeFilter" onchange="loadAllDocuments()"
-                    style="background: #0b1220; color: #e5e7eb; border: 1px solid var(--border); border-radius: 6px; padding: 4px 8px; font-size: 12px;">
-                    <option value="all">All Resources</option>
-                    <option value="files">Files Only</option>
-                    <option value="knowledge">Knowledge Assets Only</option>
-                    <option value="orphaned_files">Orphaned Files</option>
-                    <option value="orphaned_knowledge">Orphaned Knowledge</option>
-                    <option value="broken_links">Broken Links</option>
-                  </select>
-                </div>
-
-                <div style="display: flex; align-items: center; gap: 8px;">
-                  <label style="color: var(--text); font-size: 14px;">Status:</label>
-                  <select id="adminStatusFilter" onchange="loadAllDocuments()"
-                    style="background: #0b1220; color: #e5e7eb; border: 1px solid var(--border); border-radius: 6px; padding: 4px 8px; font-size: 12px;">
-                    <option value="">All Status</option>
-                    <option value="linked">Linked</option>
-                    <option value="orphaned">Orphaned</option>
-                    <option value="broken">Broken Links</option>
-                    <option value="duplicate">Potential Duplicates</option>
-                  </select>
-                </div>
-              </div>
-
-              <div style="display: flex; gap: 10px; margin-top: 12px; flex-wrap: wrap;">
-                <button class="btn" onclick="manageOrphanedAssets()" style="background: #f59e0b; color: #fbbf24;">Manage
-                  Orphaned Assets</button>
-                <button class="btn" onclick="archiveOldOrphanedAssets()"
-                  style="background: #7c3aed; color: #a78bfa;">Archive Old Orphaned</button>
-              </div>
-
-              <!-- Document List -->
-              <div id="adminDocumentList"
-                style="background: var(--panel); border: 1px solid var(--border); border-radius: 8px; padding: 16px; max-height: 600px; overflow-y: auto;">
-                <div style="text-align: center; color: var(--muted);">Click "Refresh All Documents" to load documents...
-                </div>
-              </div>
-
-              <!-- Cleanup Results -->
-              <div id="cleanupResults"
-                style="display: none; background: var(--panel-2); border: 1px solid var(--border); border-radius: 8px; padding: 16px; margin-top: 16px;">
-                <h4 style="margin: 0 0 12px 0; color: var(--text);">Cleanup Results</h4>
-                <div id="cleanupResultsContent"></div>
-              </div>
-            </div>
-          </div>
-
-        </section>
-
-        <!-- Event Manager Workbench (Admin Only) -->
-        <section id="wb-events" class="workbench">
-          <h2>Event Manager</h2>
-          <div class="muted">Real-time event monitoring and management for administrators.</div>
-
-          <!-- Manual Refresh Controls -->
-          <div
-            style="margin-top: 16px; padding: 12px; background: var(--panel); border: 1px solid var(--border); border-radius: 6px; display: flex; justify-content: space-between; align-items: center;">
-            <div style="font-size: 14px; color: var(--text);">
-              📊 Event Manager Controls
-            </div>
-            <div style="display: flex; gap: 8px;">
-              <button onclick="forceLoadEventManager()"
-                style="padding: 6px 12px; background: var(--ok); color: white; border: none; border-radius: 4px; font-size: 12px; cursor: pointer;">
-                🔄 Load Data
-              </button>
-              <button onclick="testEventManagerLoad()"
-                style="padding: 6px 12px; background: var(--primary); color: white; border: none; border-radius: 4px; font-size: 12px; cursor: pointer;">
-                🧪 Debug Test
-              </button>
-            </div>
-          </div>
-
-          <!-- Event System Health Status -->
-          <div style="margin-top: 20px;">
-            <h3 style="margin: 0 0 16px 0; color: var(--text);">System Health</h3>
-            <div id="eventSystemHealth"
-              style="background: var(--panel); border: 1px solid var(--border); border-radius: 8px; padding: 16px; margin-bottom: 20px;">
-              <div style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 16px;">
-                <div>
-                  <div style="font-size: 12px; color: var(--muted); margin-bottom: 4px;">System Status</div>
-                  <div id="eventSystemStatus" style="font-weight: 600; color: var(--ok);">Loading...</div>
-                </div>
-                <div>
-                  <div style="font-size: 12px; color: var(--muted); margin-bottom: 4px;">SQL-First Storage</div>
-                  <div id="eventSqlFirstStatus" style="font-weight: 600;">Loading...</div>
-                </div>
-                <div>
-                  <div style="font-size: 12px; color: var(--muted); margin-bottom: 4px;">Events (24h)</div>
-                  <div id="eventCount24h" style="font-weight: 600; cursor: pointer;" onclick="testEventManagerLoad()"
-                    title="Click to manually load data">Loading...</div>
-                </div>
-              </div>
-              <div style="margin-top: 12px; font-size: 11px; color: var(--muted);">
-                💡 If data not loading, click "Events (24h)" count to manually refresh
-              </div>
-            </div>
-          </div>
-
-          <!-- Event Statistics Dashboard -->
-          <div class="section">
-            <div class="section-header" onclick="toggleSection(this)"
-              style="cursor: pointer; padding: 12px 16px; background: var(--panel); border: 1px solid var(--border); border-radius: 8px; margin-bottom: 16px; display: flex; justify-content: space-between; align-items: center;">
-              <div>
-                <h3 style="margin: 0; color: var(--text); font-size: 16px;">Event Analytics</h3>
-                <div style="font-size: 12px; color: var(--muted); margin-top: 2px;">Statistics and trends for event
-                  activity</div>
-              </div>
-              <span class="section-toggle" style="font-size: 14px;">▼</span>
-            </div>
-            <div class="section-content">
-              <div id="eventAnalytics"
-                style="background: var(--panel); border: 1px solid var(--border); border-radius: 8px; padding: 20px;">
-
-                <!-- Statistics Cards -->
-                <div
-                  style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 16px; margin-bottom: 24px;">
-                  <div
-                    style="background: var(--bg); border: 1px solid var(--border); border-radius: 8px; padding: 16px; text-align: center;">
-                    <div style="font-size: 24px; font-weight: 600; color: var(--text);" id="totalEvents24h">0</div>
-                    <div style="font-size: 12px; color: var(--muted);">Events (24 hours)</div>
-                  </div>
-                  <div
-                    style="background: var(--bg); border: 1px solid var(--border); border-radius: 8px; padding: 16px; text-align: center;">
-                    <div style="font-size: 24px; font-weight: 600; color: var(--text);" id="totalEvents7d">0</div>
-                    <div style="font-size: 12px; color: var(--muted);">Events (7 days)</div>
-                  </div>
-                  <div
-                    style="background: var(--bg); border: 1px solid var(--border); border-radius: 8px; padding: 16px; text-align: center;">
-                    <div style="font-size: 24px; font-weight: 600; color: var(--text);" id="activeProjects24h">0</div>
-                    <div style="font-size: 12px; color: var(--muted);">Active Projects</div>
-                  </div>
-                </div>
-
-                <!-- Top Event Types -->
-                <div style="margin-bottom: 24px;">
-                  <h4 style="margin: 0 0 12px 0; color: var(--text); font-size: 14px;">Top Event Types (24h)</h4>
-                  <div id="topEventTypes" style="display: grid; gap: 8px;">
-                    <div style="color: var(--muted); padding: 8px;">Loading event statistics...</div>
-                  </div>
-                </div>
-
-                <!-- Most Active Project -->
-                <div>
-                  <h4 style="margin: 0 0 12px 0; color: var(--text); font-size: 14px;">Most Active Project</h4>
-                  <div id="mostActiveProject"
-                    style="padding: 12px; background: var(--bg); border: 1px solid var(--border); border-radius: 6px;">
-                    <div style="color: var(--muted);">Loading...</div>
-                  </div>
-                </div>
-              </div>
-            </div>
-          </div>
-
-          <!-- Live Event Monitor -->
-          <div class="section">
-            <div class="section-header" onclick="toggleSection(this)"
-              style="cursor: pointer; padding: 12px 16px; background: var(--panel); border: 1px solid var(--border); border-radius: 8px; margin-bottom: 16px; display: flex; justify-content: space-between; align-items: center;">
-              <div>
-                <h3 style="margin: 0; color: var(--text); font-size: 16px;">Live Event Monitor</h3>
-                <div style="font-size: 12px; color: var(--muted); margin-top: 2px;">Real-time event stream with
-                  filtering</div>
-              </div>
-              <span class="section-toggle" style="font-size: 14px;">▼</span>
-            </div>
-            <div class="section-content">
-              <div id="liveEventMonitor"
-                style="background: var(--panel); border: 1px solid var(--border); border-radius: 8px; padding: 20px;">
-
-                <!-- Monitor Controls -->
-                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px;">
-                  <div style="display: flex; gap: 12px; align-items: center;">
-                    <button id="toggleEventMonitor" onclick="toggleEventMonitor()"
-                      style="padding: 8px 16px; background: var(--ok); color: white; border: none; border-radius: 6px; font-size: 14px; cursor: pointer;">
-                      ▶ Start Monitor
-                    </button>
-                    <button id="clearEventFeed" onclick="clearEventFeed()"
-                      style="padding: 8px 16px; background: var(--warn); color: white; border: none; border-radius: 6px; font-size: 14px; cursor: pointer;">
-                      Clear Feed
-                    </button>
-                    <div style="display: flex; align-items: center; gap: 8px;">
-                      <input type="checkbox" id="autoScrollEvents" checked>
-                      <label for="autoScrollEvents" style="font-size: 14px; color: var(--text);">Auto-scroll</label>
-                    </div>
-                  </div>
-                  <div style="display: flex; gap: 12px; align-items: center;">
-                    <select id="eventTypeFilter" onchange="filterEventFeed()"
-                      style="padding: 6px 12px; border: 1px solid var(--border); border-radius: 6px; background: var(--bg); color: var(--text);">
-                      <option value="">All Events</option>
-                      <option value="project_created">Project Events</option>
-                      <option value="ontology_created">Ontology Events</option>
-                      <option value="file_uploaded">File Events</option>
-                      <option value="das_interaction">DAS Events</option>
-                    </select>
-                    <div style="font-size: 12px; color: var(--muted);">
-                      Events: <span id="eventFeedCount">0</span>
-                    </div>
-                  </div>
-                </div>
-
-                <!-- Event Feed -->
-                <div id="eventFeed"
-                  style="background: var(--bg); border: 1px solid var(--border); border-radius: 6px; height: 400px; overflow-y: auto; padding: 12px; font-family: 'Monaco', 'Consolas', monospace; font-size: 12px; line-height: 1.4;">
-                  <div style="color: var(--muted); text-align: center; padding: 20px;">
-                    Event monitor stopped. Click "Start Monitor" to begin live streaming.
-                  </div>
-                </div>
-              </div>
-            </div>
-          </div>
-
-          <!-- Event Configuration -->
-          <div class="section">
-            <div class="section-header" onclick="toggleSection(this)"
-              style="cursor: pointer; padding: 12px 16px; background: var(--panel); border: 1px solid var(--border); border-radius: 8px; margin-bottom: 16px; display: flex; justify-content: space-between; align-items: center;">
-              <div>
-                <h3 style="margin: 0; color: var(--text); font-size: 16px;">Event Configuration</h3>
-                <div style="font-size: 12px; color: var(--muted); margin-top: 2px;">Manage event types and system
-                  settings</div>
-              </div>
-              <span class="section-toggle" style="font-size: 14px;">▶</span>
-            </div>
-            <div class="section-content" style="display: none;">
-              <div id="eventConfiguration"
-                style="background: var(--panel); border: 1px solid var(--border); border-radius: 8px; padding: 20px;">
-
-                <!-- Event Types List -->
-                <div style="margin-bottom: 24px;">
-                  <h4 style="margin: 0 0 12px 0; color: var(--text); font-size: 14px;">Event Types</h4>
-                  <div id="eventTypesList" style="display: grid; gap: 8px;">
-                    <div style="color: var(--muted); padding: 8px;">Loading event types...</div>
-                  </div>
-                </div>
-
-                <!-- Maintenance Actions -->
-                <div style="border-top: 1px solid var(--border); padding-top: 16px;">
-                  <h4 style="margin: 0 0 12px 0; color: var(--text); font-size: 14px;">Maintenance</h4>
-                  <div style="display: flex; gap: 12px; align-items: center;">
-                    <button onclick="clearOldEvents()"
-                      style="padding: 8px 16px; background: var(--warn); color: white; border: none; border-radius: 6px; font-size: 14px; cursor: pointer;">
-                      Clear Old Events (30+ days)
-                    </button>
-                    <button onclick="refreshEventStats()"
-                      style="padding: 8px 16px; background: var(--primary); color: white; border: none; border-radius: 6px; font-size: 14px; cursor: pointer;">
-                      Refresh Statistics
-                    </button>
-                  </div>
-                </div>
-              </div>
-            </div>
-          </div>
-
-          <!-- Future Features Preview -->
-          <div class="section">
-            <div class="section-header" onclick="toggleSection(this)"
-              style="cursor: pointer; padding: 12px 16px; background: var(--panel); border: 1px solid var(--border); border-radius: 8px; margin-bottom: 16px; display: flex; justify-content: space-between; align-items: center;">
-              <div>
-                <h3 style="margin: 0; color: var(--text); font-size: 16px;">Future Features</h3>
-                <div style="font-size: 12px; color: var(--muted); margin-top: 2px;">Planned enhancements for the event
-                  system</div>
-              </div>
-              <span class="section-toggle" style="font-size: 14px;">▶</span>
-            </div>
-            <div class="section-content" style="display: none;">
               <div
-                style="background: var(--panel); border: 1px solid var(--border); border-radius: 8px; padding: 20px;">
-                <div style="display: grid; gap: 16px;">
-                  <div
-                    style="padding: 12px; background: var(--bg); border: 1px solid var(--border); border-radius: 6px;">
-                    <div style="font-weight: 600; color: var(--text); margin-bottom: 4px;">🔔 Smart Notifications</div>
-                    <div style="font-size: 12px; color: var(--muted);">Intelligent alerting based on event patterns and
-                      anomalies</div>
-                  </div>
-                  <div
-                    style="padding: 12px; background: var(--bg); border: 1px solid var(--border); border-radius: 6px;">
-                    <div style="font-weight: 600; color: var(--text); margin-bottom: 4px;">📊 Advanced Analytics</div>
-                    <div style="font-size: 12px; color: var(--muted);">Trend analysis, correlation detection, and
-                      predictive insights</div>
-                  </div>
-                  <div
-                    style="padding: 12px; background: var(--bg); border: 1px solid var(--border); border-radius: 6px;">
-                    <div style="font-weight: 600; color: var(--text); margin-bottom: 4px;">🔄 Event Automation</div>
-                    <div style="font-size: 12px; color: var(--muted);">Triggered workflows and automated responses to
-                      event patterns</div>
-                  </div>
-                  <div
-                    style="padding: 12px; background: var(--bg); border: 1px solid var(--border); border-radius: 6px;">
-                    <div style="font-weight: 600; color: var(--text); margin-bottom: 4px;">🔗 External Integrations
-                    </div>
-                    <div style="font-size: 12px; color: var(--muted);">Webhook support and third-party system
-                      integrations</div>
-                  </div>
-                  <div
-                    style="padding: 12px; background: var(--bg); border: 1px solid var(--border); border-radius: 6px;">
-                    <div style="font-weight: 600; color: var(--text); margin-bottom: 4px;">📈 Event Visualization</div>
-                    <div style="font-size: 12px; color: var(--muted);">Timeline views, relationship graphs, and
-                      interactive event exploration</div>
-                  </div>
-                  <div
-                    style="padding: 12px; background: var(--bg); border: 1px solid var(--border); border-radius: 6px;">
-                    <div style="font-weight: 600; color: var(--text); margin-bottom: 4px;">🛠️ Event Debugging</div>
-                    <div style="font-size: 12px; color: var(--muted);">Event replay, debugging tools, and system
-                      troubleshooting</div>
-                  </div>
+                style="display: grid; grid-template-columns: 1fr auto; gap: 16px; align-items: end; margin-bottom: 16px;">
+                <div>
+                  <label
+                    style="display: block; font-size: 12px; color: var(--text); margin-bottom: 6px; font-weight: 500;">Implementation
+                    Type</label>
+                  <select id="fileProcessingImplementationSelect"
+                    style="width: 100%; padding: 10px; border: 1px solid var(--border); border-radius: 6px; background: var(--bg); color: var(--text); font-size: 14px;">
+                    <option value="hardcoded">Hardcoded Processing (SQL-first)</option>
+                    <option value="bpmn">BPMN Workflow Processing</option>
+                  </select>
                 </div>
+
+                <button class="btn" onclick="updateFileProcessingImplementation()"
+                  style="height: 42px; padding: 0 20px; white-space: nowrap;">
+                  Update
+                </button>
+              </div>
+            </div>
+
+            <!-- Help Text -->
+            <div
+              style="margin-top: 20px; padding: 12px; background: var(--bg); border: 1px solid var(--border); border-radius: 6px;">
+              <div style="font-size: 12px; color: var(--muted); line-height: 1.5;">
+                <div style="margin-bottom: 8px;"><strong>Hardcoded Processing:</strong> Direct SQL-first approach
+                  with fast processing, complete knowledge asset lifecycle, and PostgreSQL as source of truth</div>
+                <div><strong>BPMN Workflow Processing:</strong> Workflow-based processing with external task
+                  workers, configurable steps, and Camunda orchestration</div>
               </div>
             </div>
           </div>
+        </div>
+      </div>
 
-        </section>
+      <!-- Prefix Management Section -->
+      <div class="section collapsed">
+        <div class="section-header" onclick="toggleSection(this)"
+          style="cursor: pointer; padding: 10px; background: var(--panel); border: 1px solid var(--border); border-radius: 8px; margin-bottom: 10px; display: flex; justify-content: space-between; align-items: center;">
+          <span style="font-weight: bold; color: var(--text);">Prefix Management</span>
+          <span class="section-toggle" style="font-size: 14px;">▶</span>
+        </div>
+        <div class="section-content" style="display: none;">
+          <div style="display: flex; gap: 10px; margin-bottom: 20px;">
+            <button class="btn" onclick="loadPrefixes()">Refresh Prefixes</button>
+            <button class="btn" onclick="showCreatePrefixModal()">Create Prefix</button>
+          </div>
 
-      </main>
-    </div>
+          <!-- Prefix List -->
+          <div id="prefixList"
+            style="background: var(--panel); border: 1px solid var(--border); border-radius: 8px; padding: 16px;">
+            <div style="text-align: center; color: var(--muted);">Loading prefixes...</div>
+          </div>
+        </div>
+      </div>
 
-    <div class="bottombar">
-      <span><span class="status-dot ok"></span>Camunda</span>
-      <span><span class="status-dot ok"></span>Fuseki</span>
-      <span><span class="status-dot ok"></span>Vector</span>
-      <span class="spacer"></span>
-      <span id="currentNamespace" class="muted" style="font-family: monospace; font-size: 12px;">No project
-        selected</span>
-      <span class="spacer"></span>
-      <span class="muted">UI Restart Prototype</span>
-    </div>
+      <!-- Domain Management Section -->
+      <div class="section collapsed">
+        <div class="section-header" onclick="toggleSection(this)"
+          style="cursor: pointer; padding: 10px; background: var(--panel); border: 1px solid var(--border); border-radius: 8px; margin-bottom: 10px; display: flex; justify-content: space-between; align-items: center;">
+          <span style="font-weight: bold; color: var(--text);">Domain Management</span>
+          <span class="section-toggle" style="font-size: 14px;">▶</span>
+        </div>
+        <div class="section-content" style="display: none;">
+          <div style="display: flex; gap: 10px; margin-bottom: 20px;">
+            <button class="btn" onclick="loadDomains()">Refresh Domains</button>
+            <button class="btn" onclick="showCreateDomainModal()">Create Domain</button>
+          </div>
+
+          <!-- Domain List -->
+          <div id="domainList"
+            style="background: var(--panel); border: 1px solid var(--border); border-radius: 8px; padding: 16px;">
+            <div style="text-align: center; color: var(--muted);">Loading domains...</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Namespace Management Section -->
+      <div class="section collapsed">
+        <div class="section-header" onclick="toggleSection(this)"
+          style="cursor: pointer; padding: 10px; background: var(--panel); border: 1px solid var(--border); border-radius: 8px; margin-bottom: 10px; display: flex; justify-content: space-between; align-items: center;">
+          <span style="font-weight: bold; color: var(--text);">Namespace Management</span>
+          <span class="section-toggle" style="font-size: 14px;">▶</span>
+        </div>
+        <div class="section-content" style="display: none;">
+          <div style="display: flex; gap: 10px; margin-bottom: 20px;">
+            <button class="btn" onclick="loadNamespaces()">Refresh Namespaces</button>
+            <button class="btn" onclick="showCreateNamespaceModal()">Create Namespace</button>
+          </div>
+
+          <!-- Namespace List -->
+          <div id="namespaceList"
+            style="background: var(--panel); border: 1px solid var(--border); border-radius: 8px; padding: 16px;">
+            <div style="text-align: center; color: var(--muted);">Loading namespaces...</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- User Management Section -->
+      <div class="section collapsed">
+        <div class="section-header" onclick="toggleSection(this)"
+          style="cursor: pointer; padding: 10px; background: var(--panel); border: 1px solid var(--border); border-radius: 8px; margin-bottom: 10px; display: flex; justify-content: space-between; align-items: center;">
+          <span style="font-weight: bold; color: var(--text);">User Management</span>
+          <span class="section-toggle" style="font-size: 14px;">▶</span>
+        </div>
+        <div class="section-content" style="display: none;">
+          <div style="display: flex; gap: 10px; margin-bottom: 20px; flex-wrap: wrap;">
+            <button class="btn" onclick="loadUsers()">Refresh Users</button>
+            <button class="btn" onclick="showCreateUserModal()">Create User</button>
+            <button class="btn" onclick="showChangePasswordModal()">Change My Password</button>
+            <label style="display: flex; align-items: center; gap: 8px; margin-left: auto;">
+              <input type="checkbox" id="showInactiveUsers" onchange="loadUsers()" style="margin: 0;">
+              <span style="color: var(--text); font-size: 14px;">Show inactive users</span>
+            </label>
+          </div>
+
+          <!-- User List -->
+          <div id="userList"
+            style="background: var(--panel); border: 1px solid var(--border); border-radius: 8px; padding: 16px;">
+            <div style="text-align: center; color: var(--muted);">Loading users...</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Document Management Section -->
+      <div class="section collapsed">
+        <div class="section-header" onclick="toggleSection(this)"
+          style="cursor: pointer; padding: 10px; background: var(--panel); border: 2px solid #f59e0b; border-radius: 8px; margin-bottom: 10px; display: flex; justify-content: space-between; align-items: center;">
+          <span style="font-weight: bold; color: var(--text);">📄 Document Management (NEW)</span>
+          <span class="section-toggle" style="font-size: 14px;">▶</span>
+        </div>
+        <div class="section-content" style="display: none;">
+          <div style="display: flex; gap: 10px; margin-bottom: 20px; flex-wrap: wrap; align-items: center;">
+            <button class="btn" onclick="loadAllDocuments()">Refresh All Resources</button>
+            <button class="btn" onclick="analyzeSystemHealth()" style="background: #3b82f6; color: #60a5fa;">System
+              Health</button>
+            <button class="btn" onclick="cleanupOrphanedFiles()" style="background: #f59e0b; color: #fbbf24;">Cleanup
+              Orphaned Files</button>
+            <button class="btn" onclick="cleanupDuplicates()" style="background: #7c3aed; color: #a78bfa;">Find
+              Duplicates</button>
+            <button class="btn" onclick="comprehensiveCleanup()"
+              style="background: #dc2626; color: #f87171;">Comprehensive Cleanup</button>
+
+            <div style="display: flex; align-items: center; gap: 8px; margin-left: 16px;">
+              <label style="color: var(--text); font-size: 14px;">Filter by user:</label>
+              <select id="adminDocUserFilter" onchange="loadAllDocuments()"
+                style="background: #0b1220; color: #e5e7eb; border: 1px solid var(--border); border-radius: 6px; padding: 4px 8px; font-size: 12px;">
+                <option value="">All Users</option>
+              </select>
+            </div>
+
+            <div style="display: flex; align-items: center; gap: 8px;">
+              <label style="color: var(--text); font-size: 14px;">Filter by type:</label>
+              <select id="adminDocTypeFilter" onchange="loadAllDocuments()"
+                style="background: #0b1220; color: #e5e7eb; border: 1px solid var(--border); border-radius: 6px; padding: 4px 8px; font-size: 12px;">
+                <option value="">All Types</option>
+                <option value="unknown">Unknown</option>
+                <option value="requirements">Requirements</option>
+                <option value="knowledge">Knowledge</option>
+                <option value="reference">Reference</option>
+                <option value="specification">Specification</option>
+                <option value="document">Document</option>
+                <option value="code">Code</option>
+                <option value="data">Data</option>
+              </select>
+            </div>
+
+            <div style="display: flex; align-items: center; gap: 8px;">
+              <label style="color: var(--text); font-size: 14px;">Resource Type:</label>
+              <select id="adminResourceTypeFilter" onchange="loadAllDocuments()"
+                style="background: #0b1220; color: #e5e7eb; border: 1px solid var(--border); border-radius: 6px; padding: 4px 8px; font-size: 12px;">
+                <option value="all">All Resources</option>
+                <option value="files">Files Only</option>
+                <option value="knowledge">Knowledge Assets Only</option>
+                <option value="orphaned_files">Orphaned Files</option>
+                <option value="orphaned_knowledge">Orphaned Knowledge</option>
+                <option value="broken_links">Broken Links</option>
+              </select>
+            </div>
+
+            <div style="display: flex; align-items: center; gap: 8px;">
+              <label style="color: var(--text); font-size: 14px;">Status:</label>
+              <select id="adminStatusFilter" onchange="loadAllDocuments()"
+                style="background: #0b1220; color: #e5e7eb; border: 1px solid var(--border); border-radius: 6px; padding: 4px 8px; font-size: 12px;">
+                <option value="">All Status</option>
+                <option value="linked">Linked</option>
+                <option value="orphaned">Orphaned</option>
+                <option value="broken">Broken Links</option>
+                <option value="duplicate">Potential Duplicates</option>
+              </select>
+            </div>
+          </div>
+
+          <div style="display: flex; gap: 10px; margin-top: 12px; flex-wrap: wrap;">
+            <button class="btn" onclick="manageOrphanedAssets()" style="background: #f59e0b; color: #fbbf24;">Manage
+              Orphaned Assets</button>
+            <button class="btn" onclick="archiveOldOrphanedAssets()"
+              style="background: #7c3aed; color: #a78bfa;">Archive Old Orphaned</button>
+          </div>
+
+          <!-- Document List -->
+          <div id="adminDocumentList"
+            style="background: var(--panel); border: 1px solid var(--border); border-radius: 8px; padding: 16px; max-height: 600px; overflow-y: auto;">
+            <div style="text-align: center; color: var(--muted);">Click "Refresh All Documents" to load documents...
+            </div>
+          </div>
+
+          <!-- Cleanup Results -->
+          <div id="cleanupResults"
+            style="display: none; background: var(--panel-2); border: 1px solid var(--border); border-radius: 8px; padding: 16px; margin-top: 16px;">
+            <h4 style="margin: 0 0 12px 0; color: var(--text);">Cleanup Results</h4>
+            <div id="cleanupResultsContent"></div>
+          </div>
+        </div>
+      </div>
+
+    </section>
+
+    <!-- Event Manager Workbench (Admin Only) -->
+    <section id="wb-events" class="workbench">
+      <h2>Event Manager</h2>
+      <div class="muted">Real-time event monitoring and management for administrators.</div>
+
+      <!-- Manual Refresh Controls -->
+      <div
+        style="margin-top: 16px; padding: 12px; background: var(--panel); border: 1px solid var(--border); border-radius: 6px; display: flex; justify-content: space-between; align-items: center;">
+        <div style="font-size: 14px; color: var(--text);">
+          📊 Event Manager Controls
+        </div>
+        <div style="display: flex; gap: 8px;">
+          <button onclick="forceLoadEventManager()"
+            style="padding: 6px 12px; background: var(--ok); color: white; border: none; border-radius: 4px; font-size: 12px; cursor: pointer;">
+            🔄 Load Data
+          </button>
+          <button onclick="testEventManagerLoad()"
+            style="padding: 6px 12px; background: var(--primary); color: white; border: none; border-radius: 4px; font-size: 12px; cursor: pointer;">
+            🧪 Debug Test
+          </button>
+        </div>
+      </div>
+
+      <!-- Event System Health Status -->
+      <div style="margin-top: 20px;">
+        <h3 style="margin: 0 0 16px 0; color: var(--text);">System Health</h3>
+        <div id="eventSystemHealth"
+          style="background: var(--panel); border: 1px solid var(--border); border-radius: 8px; padding: 16px; margin-bottom: 20px;">
+          <div style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 16px;">
+            <div>
+              <div style="font-size: 12px; color: var(--muted); margin-bottom: 4px;">System Status</div>
+              <div id="eventSystemStatus" style="font-weight: 600; color: var(--ok);">Loading...</div>
+            </div>
+            <div>
+              <div style="font-size: 12px; color: var(--muted); margin-bottom: 4px;">SQL-First Storage</div>
+              <div id="eventSqlFirstStatus" style="font-weight: 600;">Loading...</div>
+            </div>
+            <div>
+              <div style="font-size: 12px; color: var(--muted); margin-bottom: 4px;">Events (24h)</div>
+              <div id="eventCount24h" style="font-weight: 600; cursor: pointer;" onclick="testEventManagerLoad()"
+                title="Click to manually load data">Loading...</div>
+            </div>
+          </div>
+          <div style="margin-top: 12px; font-size: 11px; color: var(--muted);">
+            💡 If data not loading, click "Events (24h)" count to manually refresh
+          </div>
+        </div>
+      </div>
+
+      <!-- Event Statistics Dashboard -->
+      <div class="section">
+        <div class="section-header" onclick="toggleSection(this)"
+          style="cursor: pointer; padding: 12px 16px; background: var(--panel); border: 1px solid var(--border); border-radius: 8px; margin-bottom: 16px; display: flex; justify-content: space-between; align-items: center;">
+          <div>
+            <h3 style="margin: 0; color: var(--text); font-size: 16px;">Event Analytics</h3>
+            <div style="font-size: 12px; color: var(--muted); margin-top: 2px;">Statistics and trends for event
+              activity</div>
+          </div>
+          <span class="section-toggle" style="font-size: 14px;">▼</span>
+        </div>
+        <div class="section-content">
+          <div id="eventAnalytics"
+            style="background: var(--panel); border: 1px solid var(--border); border-radius: 8px; padding: 20px;">
+
+            <!-- Statistics Cards -->
+            <div
+              style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 16px; margin-bottom: 24px;">
+              <div
+                style="background: var(--bg); border: 1px solid var(--border); border-radius: 8px; padding: 16px; text-align: center;">
+                <div style="font-size: 24px; font-weight: 600; color: var(--text);" id="totalEvents24h">0</div>
+                <div style="font-size: 12px; color: var(--muted);">Events (24 hours)</div>
+              </div>
+              <div
+                style="background: var(--bg); border: 1px solid var(--border); border-radius: 8px; padding: 16px; text-align: center;">
+                <div style="font-size: 24px; font-weight: 600; color: var(--text);" id="totalEvents7d">0</div>
+                <div style="font-size: 12px; color: var(--muted);">Events (7 days)</div>
+              </div>
+              <div
+                style="background: var(--bg); border: 1px solid var(--border); border-radius: 8px; padding: 16px; text-align: center;">
+                <div style="font-size: 24px; font-weight: 600; color: var(--text);" id="activeProjects24h">0</div>
+                <div style="font-size: 12px; color: var(--muted);">Active Projects</div>
+              </div>
+            </div>
+
+            <!-- Top Event Types -->
+            <div style="margin-bottom: 24px;">
+              <h4 style="margin: 0 0 12px 0; color: var(--text); font-size: 14px;">Top Event Types (24h)</h4>
+              <div id="topEventTypes" style="display: grid; gap: 8px;">
+                <div style="color: var(--muted); padding: 8px;">Loading event statistics...</div>
+              </div>
+            </div>
+
+            <!-- Most Active Project -->
+            <div>
+              <h4 style="margin: 0 0 12px 0; color: var(--text); font-size: 14px;">Most Active Project</h4>
+              <div id="mostActiveProject"
+                style="padding: 12px; background: var(--bg); border: 1px solid var(--border); border-radius: 6px;">
+                <div style="color: var(--muted);">Loading...</div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Live Event Monitor -->
+      <div class="section">
+        <div class="section-header" onclick="toggleSection(this)"
+          style="cursor: pointer; padding: 12px 16px; background: var(--panel); border: 1px solid var(--border); border-radius: 8px; margin-bottom: 16px; display: flex; justify-content: space-between; align-items: center;">
+          <div>
+            <h3 style="margin: 0; color: var(--text); font-size: 16px;">Live Event Monitor</h3>
+            <div style="font-size: 12px; color: var(--muted); margin-top: 2px;">Real-time event stream with
+              filtering</div>
+          </div>
+          <span class="section-toggle" style="font-size: 14px;">▼</span>
+        </div>
+        <div class="section-content">
+          <div id="liveEventMonitor"
+            style="background: var(--panel); border: 1px solid var(--border); border-radius: 8px; padding: 20px;">
+
+            <!-- Monitor Controls -->
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px;">
+              <div style="display: flex; gap: 12px; align-items: center;">
+                <button id="toggleEventMonitor" onclick="toggleEventMonitor()"
+                  style="padding: 8px 16px; background: var(--ok); color: white; border: none; border-radius: 6px; font-size: 14px; cursor: pointer;">
+                  ▶ Start Monitor
+                </button>
+                <button id="clearEventFeed" onclick="clearEventFeed()"
+                  style="padding: 8px 16px; background: var(--warn); color: white; border: none; border-radius: 6px; font-size: 14px; cursor: pointer;">
+                  Clear Feed
+                </button>
+                <div style="display: flex; align-items: center; gap: 8px;">
+                  <input type="checkbox" id="autoScrollEvents" checked>
+                  <label for="autoScrollEvents" style="font-size: 14px; color: var(--text);">Auto-scroll</label>
+                </div>
+              </div>
+              <div style="display: flex; gap: 12px; align-items: center;">
+                <select id="eventTypeFilter" onchange="filterEventFeed()"
+                  style="padding: 6px 12px; border: 1px solid var(--border); border-radius: 6px; background: var(--bg); color: var(--text);">
+                  <option value="">All Events</option>
+                  <option value="project_created">Project Events</option>
+                  <option value="ontology_created">Ontology Events</option>
+                  <option value="file_uploaded">File Events</option>
+                  <option value="das_interaction">DAS Events</option>
+                </select>
+                <div style="font-size: 12px; color: var(--muted);">
+                  Events: <span id="eventFeedCount">0</span>
+                </div>
+              </div>
+            </div>
+
+            <!-- Event Feed -->
+            <div id="eventFeed"
+              style="background: var(--bg); border: 1px solid var(--border); border-radius: 6px; height: 400px; overflow-y: auto; padding: 12px; font-family: 'Monaco', 'Consolas', monospace; font-size: 12px; line-height: 1.4;">
+              <div style="color: var(--muted); text-align: center; padding: 20px;">
+                Event monitor stopped. Click "Start Monitor" to begin live streaming.
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Event Configuration -->
+      <div class="section">
+        <div class="section-header" onclick="toggleSection(this)"
+          style="cursor: pointer; padding: 12px 16px; background: var(--panel); border: 1px solid var(--border); border-radius: 8px; margin-bottom: 16px; display: flex; justify-content: space-between; align-items: center;">
+          <div>
+            <h3 style="margin: 0; color: var(--text); font-size: 16px;">Event Configuration</h3>
+            <div style="font-size: 12px; color: var(--muted); margin-top: 2px;">Manage event types and system
+              settings</div>
+          </div>
+          <span class="section-toggle" style="font-size: 14px;">▶</span>
+        </div>
+        <div class="section-content" style="display: none;">
+          <div id="eventConfiguration"
+            style="background: var(--panel); border: 1px solid var(--border); border-radius: 8px; padding: 20px;">
+
+            <!-- Event Types List -->
+            <div style="margin-bottom: 24px;">
+              <h4 style="margin: 0 0 12px 0; color: var(--text); font-size: 14px;">Event Types</h4>
+              <div id="eventTypesList" style="display: grid; gap: 8px;">
+                <div style="color: var(--muted); padding: 8px;">Loading event types...</div>
+              </div>
+            </div>
+
+            <!-- Maintenance Actions -->
+            <div style="border-top: 1px solid var(--border); padding-top: 16px;">
+              <h4 style="margin: 0 0 12px 0; color: var(--text); font-size: 14px;">Maintenance</h4>
+              <div style="display: flex; gap: 12px; align-items: center;">
+                <button onclick="clearOldEvents()"
+                  style="padding: 8px 16px; background: var(--warn); color: white; border: none; border-radius: 6px; font-size: 14px; cursor: pointer;">
+                  Clear Old Events (30+ days)
+                </button>
+                <button onclick="refreshEventStats()"
+                  style="padding: 8px 16px; background: var(--primary); color: white; border: none; border-radius: 6px; font-size: 14px; cursor: pointer;">
+                  Refresh Statistics
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Future Features Preview -->
+      <div class="section">
+        <div class="section-header" onclick="toggleSection(this)"
+          style="cursor: pointer; padding: 12px 16px; background: var(--panel); border: 1px solid var(--border); border-radius: 8px; margin-bottom: 16px; display: flex; justify-content: space-between; align-items: center;">
+          <div>
+            <h3 style="margin: 0; color: var(--text); font-size: 16px;">Future Features</h3>
+            <div style="font-size: 12px; color: var(--muted); margin-top: 2px;">Planned enhancements for the event
+              system</div>
+          </div>
+          <span class="section-toggle" style="font-size: 14px;">▶</span>
+        </div>
+        <div class="section-content" style="display: none;">
+          <div style="background: var(--panel); border: 1px solid var(--border); border-radius: 8px; padding: 20px;">
+            <div style="display: grid; gap: 16px;">
+              <div style="padding: 12px; background: var(--bg); border: 1px solid var(--border); border-radius: 6px;">
+                <div style="font-weight: 600; color: var(--text); margin-bottom: 4px;">🔔 Smart Notifications</div>
+                <div style="font-size: 12px; color: var(--muted);">Intelligent alerting based on event patterns and
+                  anomalies</div>
+              </div>
+              <div style="padding: 12px; background: var(--bg); border: 1px solid var(--border); border-radius: 6px;">
+                <div style="font-weight: 600; color: var(--text); margin-bottom: 4px;">📊 Advanced Analytics</div>
+                <div style="font-size: 12px; color: var(--muted);">Trend analysis, correlation detection, and
+                  predictive insights</div>
+              </div>
+              <div style="padding: 12px; background: var(--bg); border: 1px solid var(--border); border-radius: 6px;">
+                <div style="font-weight: 600; color: var(--text); margin-bottom: 4px;">🔄 Event Automation</div>
+                <div style="font-size: 12px; color: var(--muted);">Triggered workflows and automated responses to
+                  event patterns</div>
+              </div>
+              <div style="padding: 12px; background: var(--bg); border: 1px solid var(--border); border-radius: 6px;">
+                <div style="font-weight: 600; color: var(--text); margin-bottom: 4px;">🔗 External Integrations
+                </div>
+                <div style="font-size: 12px; color: var(--muted);">Webhook support and third-party system
+                  integrations</div>
+              </div>
+              <div style="padding: 12px; background: var(--bg); border: 1px solid var(--border); border-radius: 6px;">
+                <div style="font-weight: 600; color: var(--text); margin-bottom: 4px;">📈 Event Visualization</div>
+                <div style="font-size: 12px; color: var(--muted);">Timeline views, relationship graphs, and
+                  interactive event exploration</div>
+              </div>
+              <div style="padding: 12px; background: var(--bg); border: 1px solid var(--border); border-radius: 6px;">
+                <div style="font-weight: 600; color: var(--text); margin-bottom: 4px;">🛠️ Event Debugging</div>
+                <div style="font-size: 12px; color: var(--muted);">Event replay, debugging tools, and system
+                  troubleshooting</div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+    </section>
+
+    </main>
+  </div>
+
+  <div class="bottombar">
+    <span><span class="status-dot ok"></span>Camunda</span>
+    <span><span class="status-dot ok"></span>Fuseki</span>
+    <span><span class="status-dot ok"></span>Vector</span>
+    <span class="spacer"></span>
+    <span id="currentNamespace" class="muted" style="font-family: monospace; font-size: 12px;">No project
+      selected</span>
+    <span class="spacer"></span>
+    <span class="muted">UI Restart Prototype</span>
+  </div>
   </div>
 
   <!-- DAS docked panel scaffold -->
@@ -33205,17 +33193,8 @@ def hello_world():
         const response = await authenticatedFetch(`/api/ontology/?project=${cqmtProjectId}`);
         console.log('🧪 Ontology API response:', response);
 
-        // Parse the response if it's a Response object
-        let data;
-        if (response && typeof response.json === 'function') {
-          data = await response.json();
-          console.log('🧪 Ontology parsed data:', data);
-        } else {
-          data = response;
-        }
-
-        if (data && data.data) {
-          projectOntologies = [data.data];
+        if (response && response.data) {
+          projectOntologies = [response.data];
         } else {
           projectOntologies = [];
         }
