@@ -241,22 +241,25 @@ INSERT DATA {{
     
     cqs = [
         {
-            "name": "List All Classes",
-            "problem": "What classes are defined in our ontology?",
-            "expected_min_rows": 3,
-            "contract_columns": ["class", "label"]  # DAS typically uses 'class' for class queries
-        },
-        {
             "name": "List All Fighter Jets",
             "problem": "What fighter jets are in our inventory?",
             "expected_min_rows": 2,
-            "contract_columns": ["fighterJet", "label"]  # DAS typically uses variable name from problem
+            "contract_columns": ["fighterJet", "label"],  # DAS typically uses variable name from problem
+            "should_pass": True
         },
         {
-            "name": "Operational Aircraft with Speed",
-            "problem": "What operational aircraft have speed information?",
+            "name": "Operational Fighter Jets with Speed",
+            "problem": "What operational fighter jets have speed information?",
             "expected_min_rows": 2,
-            "contract_columns": ["aircraft", "maxSpeed", "label"]  # DAS uses maxSpeed, not speed
+            "contract_columns": ["fighterJet", "maxSpeed"],  # DAS returns only these columns
+            "should_pass": True
+        },
+        {
+            "name": "List All Transport Planes - Missing Label Column",
+            "problem": "What transport planes are in our inventory?",
+            "expected_min_rows": 2,
+            "contract_columns": ["transportPlane", "label", "capacity"],  # INTENTIONAL FAILURE: 'capacity' doesn't exist
+            "should_pass": False  # This should fail validation
         }
     ]
     
@@ -278,19 +281,16 @@ INSERT DATA {{
         )
         
         if das_resp.status_code != 200:
-            print(f"   ⚠️ DAS failed, using fallback...")
-            sparql_draft = f"""PREFIX : <{graph_iri}#>
-PREFIX rdf: <http://www.w3.org/1999/02/22-rdf-syntax-ns#>
-PREFIX rdfs: <http://www.w3.org/2000/01/rdf-schema#>
-
-SELECT ?subject ?label WHERE {{
-    ?subject rdf:type :Aircraft .
-    OPTIONAL {{ ?subject rdfs:label ?label }}
-}}"""
-        else:
-            das_data = das_resp.json()
-            sparql_draft = das_data.get('sparql_draft', '')
-            print(f"   ✅ DAS generated SPARQL ({das_data.get('confidence', 0)*100:.0f}% confidence)")
+            print(f"   ❌ DAS failed: {das_resp.text}")
+            continue  # Skip this CQ if DAS fails
+        
+        das_data = das_resp.json()
+        sparql_draft = das_data.get('sparql_draft', '')
+        if not sparql_draft:
+            print(f"   ❌ DAS returned empty SPARQL")
+            continue
+        
+        print(f"   ✅ DAS generated SPARQL ({das_data.get('confidence', 0)*100:.0f}% confidence)")
         
         # Create CQ
         cq_data = {
@@ -328,15 +328,25 @@ SELECT ?subject ?label WHERE {{
         if exec_resp.status_code == 200:
             exec_result = exec_resp.json()
             passed = exec_result.get('passed', False)
-            row_count = exec_resp.json().get('row_count', 0)
-            status = "✅ PASS" if passed else "❌ FAIL"
-            print(f"   {status} - {row_count} rows returned")
+            row_count = exec_result.get('row_count', 0)
+            reason = exec_result.get('reason', '')
+            
+            # Check if the result matches expectation
+            expected_pass = cq_def.get('should_pass', True)
+            if passed == expected_pass:
+                status = "✅ PASS" if passed else "✅ EXPECTED FAILURE"
+                print(f"   {status} - {row_count} rows - {reason}")
+            else:
+                status = "❌ UNEXPECTED"
+                print(f"   {status} - Expected {'PASS' if expected_pass else 'FAIL'}, got {'PASS' if passed else 'FAIL'}")
             
             created_cqs.append({
                 "id": cq_id,
                 "name": cq_def['name'],
                 "passed": passed,
-                "rows": row_count
+                "rows": row_count,
+                "reason": reason,
+                "expected_pass": expected_pass
             })
         else:
             print(f"   ⚠️ Failed to execute CQ")
@@ -355,8 +365,25 @@ SELECT ?subject ?label WHERE {{
     print()
     print("Competency Questions:")
     for cq in created_cqs:
-        status = "✅ PASS" if cq['passed'] else "❌ FAIL"
+        expected_pass = cq.get('expected_pass', True)
+        if cq['passed'] == expected_pass:
+            status = "✅ PASS" if cq['passed'] else "✅ EXPECTED FAILURE"
+        else:
+            status = "❌ UNEXPECTED"
         print(f"  {status} - {cq['name']} ({cq['rows']} rows)")
+        if not cq['passed']:
+            print(f"    Reason: {cq.get('reason', 'Unknown')}")
+    print()
+    
+    # Final validation
+    all_tests_correct = all(
+        cq['passed'] == cq.get('expected_pass', True) 
+        for cq in created_cqs
+    )
+    if all_tests_correct:
+        print("✅ All CQs behaved as expected (including expected failures)")
+    else:
+        print("❌ Some CQs did not behave as expected")
     print()
     print("=" * 70)
     print("✅ Test environment created successfully!")

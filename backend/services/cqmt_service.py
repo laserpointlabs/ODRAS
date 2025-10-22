@@ -863,10 +863,11 @@ class CQMTService:
                             c.mt_iri_default, c.contract_json, c.status,
                             c.created_at, c.updated_at,
                             r.pass as last_run_status,
+                            r.reason as last_run_reason,
                             r.created_at as last_run_at
                         FROM cqs c
                         LEFT JOIN LATERAL (
-                            SELECT pass, created_at 
+                            SELECT pass, reason, created_at 
                             FROM cq_runs 
                             WHERE cq_id = c.id 
                             ORDER BY created_at DESC 
@@ -894,7 +895,8 @@ class CQMTService:
                     "created_at": row[7].isoformat() if row[7] else None,
                     "updated_at": row[8].isoformat() if row[8] else None,
                     "last_run_status": row[9],
-                    "last_run_at": row[10].isoformat() if row[10] else None
+                    "last_run_reason": row[10],
+                    "last_run_at": row[11].isoformat() if row[11] else None
                 }
                 cqs.append(cq_data)
             

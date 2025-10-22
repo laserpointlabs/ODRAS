@@ -61,6 +61,7 @@ class CQResponse(BaseModel):
     contract_json: Dict[str, Any]
     status: str
     last_run_status: Optional[bool]
+    last_run_reason: Optional[str] = Field(None, description="Reason for last run pass/fail")
     last_run_at: Optional[str]
     created_at: Optional[str]
 

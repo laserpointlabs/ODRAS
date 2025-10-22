@@ -31920,7 +31920,7 @@ def hello_world():
         div.style.cssText = 'padding: 12px; margin-bottom: 8px; cursor: pointer;';
 
         const runStatusBadge = cq.last_run_status !== null ?
-          `<span style="display: inline-block; padding: 2px 6px; border-radius: 3px; font-size: 10px; font-weight: 600; margin-left: 6px; background: ${cq.last_run_status ? 'var(--ok)' : 'var(--err)'}; color: white;">
+          `<span style="display: inline-block; padding: 2px 6px; border-radius: 3px; font-size: 10px; font-weight: 600; margin-left: 6px; background: ${cq.last_run_status ? 'var(--ok)' : 'var(--err)'}; color: white;" title="${cq.last_run_reason || ''}">
             ${cq.last_run_status ? 'PASS' : 'FAIL'}
           </span>` : '';
 
@@ -31947,6 +31947,10 @@ def hello_world():
                 ${cq.problem_text.substring(0, 100)}${cq.problem_text.length > 100 ? '...' : ''}
                 ${cq.last_run_at ? `• Last run: ${new Date(cq.last_run_at).toLocaleString()}` : ''}
               </div>
+              ${cq.last_run_status === false && cq.last_run_reason ?
+            `<div style="color: var(--err); font-size: 12px; margin-top: 4px; font-style: italic;">
+                  ⚠️ ${cq.last_run_reason}
+                </div>` : ''}
             </div>
             <div style="display: flex; gap: 5px; margin-left: 10px;">
               <button class="btn btn-sm" onclick="event.stopPropagation(); editCQ('${cq.id}')" style="padding: 4px 8px; font-size: 11px;">
