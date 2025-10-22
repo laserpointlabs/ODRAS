@@ -167,8 +167,9 @@ INSERT DATA {{
     
     # Step 7: Create microtheory with individuals
     print("7. Creating microtheory with individuals...")
+    mt_label = "test-microtheory"
     mt_data = {
-        "label": "test-microtheory",
+        "label": mt_label,
         "description": "Test microtheory with aircraft data",
         "setDefault": True
     }
@@ -361,7 +362,10 @@ INSERT DATA {{
     print(f"Project ID: {project_id}")
     print(f"Ontology: {ONTOLOGY_NAME}")
     print(f"Graph IRI: {graph_iri}")
-    print(f"Microtheory: {mt_iri}")
+    print()
+    print("Microtheories:")
+    print(f"  ✅ {mt_label} ({mt_iri})")
+    print(f"     Individuals: 4 (F22, F35, C130, C17)")
     print()
     print("Competency Questions:")
     for cq in created_cqs:

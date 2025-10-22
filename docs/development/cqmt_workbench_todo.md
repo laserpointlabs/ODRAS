@@ -109,6 +109,8 @@
 - ✅ Test script creates complete UI-visible test environment
 - ✅ Failure detection working correctly - test script expects and validates failures
 - ✅ Failure reasons displayed in UI with detailed error messages
+- ✅ Microtheories validated: shows triple counts, creation timestamps, and DEFAULT badges
+- ✅ Test script includes MT summary with individuals count
 
 **Test Script**: `scripts/cqmt_ui_test.py` - Complete implementation
 
@@ -153,6 +155,38 @@
 - [ ] Run recovered test scripts to verify functionality
 - [ ] Fix any failing tests
 - [ ] Add end-to-end tests for CRUD workflows
+
+---
+
+## 📋 Phase 1.5: Coverage Analysis (CRITICAL MISSING PIECE)
+
+**Status**: 🔴 NOT IMPLEMENTED  
+**Problem**: Currently only shows last run per CQ, not per MT
+
+### Understanding Microtheories
+- **Purpose**: Each MT provides isolated test data context
+- **Use Case**: Test same CQ against different scenarios (baseline, edge cases, regression)
+- **Current Gap**: No systematic way to see CQ results across all MTs
+
+### Required Features
+- [ ] Coverage API: Matrix of CQ × MT results
+- [ ] Coverage Grid UI: Visual table showing all combinations
+- [ ] Batch Execution: Run all CQs against all MTs
+- [ ] Gap Analysis: Identify untested combinations
+
+**See**: [Coverage Analysis Plan](CQMT_COVERAGE_ANALYSIS_PLAN.md) for detailed implementation
+
+### Backend Implementation
+- [ ] Create `GET /api/cqmt/projects/{project_id}/coverage` endpoint
+- [ ] Query `cq_runs` table for last run per CQ+MT combination
+- [ ] Calculate coverage percentage
+- [ ] Return coverage matrix JSON
+
+### Frontend Implementation
+- [ ] Display coverage grid in Coverage tab
+- [ ] Show pass/fail/no-run for each CQ×MT cell
+- [ ] Add "Run All Tests" button
+- [ ] Add visual indicators (green/yellow/red cells)
 
 ---
 
