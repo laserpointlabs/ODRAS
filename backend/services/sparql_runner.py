@@ -172,7 +172,8 @@ class SPARQLRunner:
             SPARQL query wrapped with GRAPH clause
         """
         # Extract PREFIX declarations first
-        prefix_pattern = r'(PREFIX\s+\w+:\s*<[^>]+>\s*)'
+        # Note: \w* handles empty prefix (:) as well as named prefixes
+        prefix_pattern = r'(PREFIX\s+\w*:\s*<[^>]+>\s*)'
         prefixes = re.findall(prefix_pattern, sparql, re.IGNORECASE)
         prefix_section = ''.join(prefixes)
         
@@ -188,6 +189,9 @@ class SPARQLRunner:
             where_body = match.group(2)
             
             # Reconstruct with PREFIX declarations preserved + GRAPH wrapper
+            # Note: Class definitions are in the ontology graph, not the microtheory graph
+            # So we need to allow the query to access the default graph for prefixes
+            # but confine instance data to the microtheory graph
             confined_query = f"{prefix_section}\n{select_clause} WHERE {{ GRAPH <{graph_iri}> {{ {where_body} }} }}"
             logger.info(f"🔍 CONFINE_DEBUG: Confined query:\n{confined_query}")
             return confined_query

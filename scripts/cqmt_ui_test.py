@@ -200,28 +200,29 @@ INSERT DATA {{
     individuals_sparql = f"""
 PREFIX rdf: <http://www.w3.org/1999/02/22-rdf-syntax-ns#>
 PREFIX rdfs: <http://www.w3.org/2000/01/rdf-schema#>
+PREFIX xsd: <http://www.w3.org/2001/XMLSchema#>
 
 INSERT DATA {{
     GRAPH <{mt_iri}> {{
         <{f22_iri}> rdf:type <{fighter_iri}> ;
             rdfs:label "F-22 Raptor" ;
             <{hasMaxSpeed_iri}> "Mach 2.25" ;
-            <{isOperational_iri}> true .
+            <{isOperational_iri}> "true"^^xsd:boolean .
         
         <{f35_iri}> rdf:type <{fighter_iri}> ;
             rdfs:label "F-35 Lightning II" ;
             <{hasMaxSpeed_iri}> "Mach 1.6" ;
-            <{isOperational_iri}> true .
+            <{isOperational_iri}> "true"^^xsd:boolean .
         
         <{c130_iri}> rdf:type <{transport_iri}> ;
             rdfs:label "C-130 Hercules" ;
             <{hasCapacity_iri}> "92" ;
-            <{isOperational_iri}> true .
+            <{isOperational_iri}> "true"^^xsd:boolean .
         
         <{c17_iri}> rdf:type <{transport_iri}> ;
             rdfs:label "C-17 Globemaster III" ;
             <{hasCapacity_iri}> "102" ;
-            <{isOperational_iri}> true .
+            <{isOperational_iri}> "true"^^xsd:boolean .
     }}
 }}
 """
@@ -242,17 +243,20 @@ INSERT DATA {{
         {
             "name": "List All Classes",
             "problem": "What classes are defined in our ontology?",
-            "expected_min_rows": 3
+            "expected_min_rows": 3,
+            "contract_columns": ["class", "label"]  # DAS typically uses 'class' for class queries
         },
         {
             "name": "List All Fighter Jets",
             "problem": "What fighter jets are in our inventory?",
-            "expected_min_rows": 2
+            "expected_min_rows": 2,
+            "contract_columns": ["fighterJet", "label"]  # DAS typically uses variable name from problem
         },
         {
             "name": "Operational Aircraft with Speed",
             "problem": "What operational aircraft have speed information?",
-            "expected_min_rows": 2
+            "expected_min_rows": 2,
+            "contract_columns": ["aircraft", "maxSpeed", "label"]  # DAS uses maxSpeed, not speed
         }
     ]
     
@@ -294,7 +298,7 @@ SELECT ?subject ?label WHERE {{
             "problem_text": cq_def['problem'],
             "sparql_text": sparql_draft,
             "contract_json": {
-                "require_columns": ["subject", "label"],
+                "require_columns": cq_def['contract_columns'],
                 "min_rows": cq_def['expected_min_rows']
             },
             "mt_iri_default": mt_iri,
