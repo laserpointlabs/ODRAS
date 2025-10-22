@@ -1,9 +1,11 @@
 # CQ/MT Workbench Implementation TODO
 
 ## Status Overview
-**Current Phase**: Phase 1 (Core CRUD) → Phase 2 (Execution Engine)  
+**Current Phase**: SPARQL Query Builder ✅ ALL PHASES COMPLETE  
 **Last Updated**: 2024-10-22  
 **Branch**: feature/competency_question_3
+
+**Major Achievement**: SPARQL Query Builder with DAS Integration fully operational!
 
 ## ✅ Completed Items
 
@@ -20,6 +22,15 @@
 - [x] CQ run history endpoint
 - [x] AI assist endpoints (SPARQL suggestion, ontology deltas)
 
+### SPARQL Query Builder ✅ COMPLETED
+- [x] Prefix management endpoint (`/api/cqmt/projects/{project_id}/prefixes`)
+- [x] Test query endpoint (`/api/cqmt/test-query`)
+- [x] DAS integration for intelligent SPARQL generation
+- [x] Query Builder modal with full workflow
+- [x] Auto-loading prefixes based on ontology context
+- [x] Live query testing against microtheories
+- [x] Toast notifications for errors and successes
+
 ### Frontend UI (Phase 1)
 - [x] CQ list display with status badges
 - [x] MT list display with default badges
@@ -30,6 +41,16 @@
 - [x] Form validation and error handling
 - [x] Modal close after save
 - [x] List refresh after CRUD operations
+
+### Frontend UI (SPARQL Query Builder) ✅ COMPLETED
+- [x] Query Builder modal component
+- [x] "Suggest with DAS" button with SVG icon
+- [x] "Test Query" button with results display
+- [x] "Browse Ontology" integration
+- [x] Problem statement → SPARQL → CQ form workflow
+- [x] Auto-loading prefixes on modal open
+- [x] Toast notification system for feedback
+- [x] Consistent dark theme backgrounds
 
 ### Database
 - [x] CQs table with all required fields
@@ -284,113 +305,112 @@
 
 ---
 
-## 📋 SPARQL Query Builder Implementation (NEW)
+## 📋 SPARQL Query Builder Implementation ✅ ALL PHASES COMPLETE
 
-### Phase 1: Prefix Management (Quick Win)
+### Phase 1: Prefix Management ✅ COMPLETED
 **Goal**: Eliminate manual prefix typing by auto-injecting project-specific prefixes
 
-#### Backend
-- [ ] Create `GET /api/cqmt/projects/{project_id}/prefixes` endpoint
-  - [ ] Extract namespace from ontology graph IRI
-  - [ ] Return project-specific prefixes
-  - [ ] Include standard prefixes (rdf, rdfs, owl)
-  - [ ] Return default namespace for project
+#### Backend ✅
+- [x] Create `GET /api/cqmt/projects/{project_id}/prefixes` endpoint
+  - [x] Extract namespace from ontology graph IRI
+  - [x] Return project-specific prefixes
+  - [x] Include standard prefixes (rdf, rdfs, owl)
+  - [x] Return default namespace for project
 
-#### Frontend
-- [ ] Add "Insert Prefixes" button to CQ modal
-- [ ] Call prefixes API on CQ modal open
-- [ ] Auto-inject prefixes into SPARQL editor
-- [ ] Show prefix list in tooltip or helper text
-- [ ] Update "Suggest SPARQL" to use project prefixes instead of hardcoded
+#### Frontend ✅
+- [x] Remove "Insert Prefixes" button (replaced with auto-loading)
+- [x] Call prefixes API on CQ modal open (auto-load)
+- [x] Auto-inject prefixes into SPARQL editor when empty
+- [x] Update Query Builder to use project prefixes
 
-#### Testing
-- [ ] Test prefix generation for different projects
-- [ ] Verify prefix injection doesn't duplicate existing prefixes
-- [ ] Test with projects having multiple ontologies
+#### Testing ✅
+- [x] Test prefix generation for different projects
+- [x] Verify prefix injection doesn't duplicate existing prefixes
+- [x] Test with projects having multiple ontologies
 
 ---
 
-### Phase 2: Test Query Endpoint
+### Phase 2: Test Query Endpoint ✅ COMPLETED
 **Goal**: Enable SPARQL testing during CQ creation without saving
 
-#### Backend
-- [ ] Create `POST /api/cqmt/test-query` endpoint
-  - [ ] Accept SPARQL, mt_iri, project_id
-  - [ ] Reuse existing CQ execution logic
-  - [ ] Execute against Fuseki with microtheory context
-  - [ ] Return results without creating CQ run record
-  - [ ] Handle SPARQL syntax errors gracefully
-  - [ ] Set reasonable timeout (30 seconds)
+#### Backend ✅
+- [x] Create `POST /api/cqmt/test-query` endpoint
+  - [x] Accept SPARQL, mt_iri, project_id
+  - [x] Reuse existing CQ execution logic
+  - [x] Execute against Fuseki with microtheory context
+  - [x] Return results without creating CQ run record
+  - [x] Handle SPARQL syntax errors gracefully
+  - [x] Set reasonable timeout (30 seconds)
 
-#### Frontend
-- [ ] Add "Test Query" button to CQ modal
-- [ ] Create query results display panel
-- [ ] Show microtheory selector for testing
-- [ ] Display results (columns, rows, execution time)
-- [ ] Show error messages for failed queries
-- [ ] Add loading state during query execution
+#### Frontend ✅
+- [x] Add "Test Query" button to CQ modal
+- [x] Create query results display panel
+- [x] Show microtheory selector for testing
+- [x] Display results (columns, rows, execution time)
+- [x] Show error messages for failed queries
+- [x] Add loading state during query execution
 
-#### Testing
-- [ ] Test query execution with valid SPARQL
-- [ ] Test with invalid SPARQL (syntax errors)
-- [ ] Test timeout handling
-- [ ] Test against empty microtheory
-- [ ] Test against microtheory with data
+#### Testing ✅
+- [x] Test query execution with valid SPARQL
+- [x] Test with invalid SPARQL (syntax errors)
+- [x] Test timeout handling
+- [x] Test against empty microtheory
+- [x] Test against microtheory with data
 
 ---
 
-### Phase 3: Query Builder Modal
+### Phase 3: Query Builder Modal ✅ COMPLETED
 **Goal**: Interactive SPARQL query building experience
 
-#### Backend
-- [ ] Enhance prefix handling for multiple ontologies
-- [ ] Add query optimization suggestions (optional)
+#### Backend ✅
+- [x] Enhance prefix handling for multiple ontologies
+- [ ] Add query optimization suggestions (optional - future enhancement)
 
-#### Frontend
-- [ ] Create new SPARQL Query Builder modal component
-- [ ] Integrate prefix auto-injection
-- [ ] Integrate test query functionality
-- [ ] Add problem statement input
-- [ ] Add toolbar with actions
-- [ ] Display test results inline
-- [ ] Add "Use This Query" button to insert into CQ
-- [ ] Replace current "Suggest SPARQL" button with "Open Query Builder"
+#### Frontend ✅
+- [x] Create new SPARQL Query Builder modal component
+- [x] Integrate prefix auto-injection
+- [x] Integrate test query functionality
+- [x] Add problem statement input
+- [x] Add toolbar with actions
+- [x] Display test results inline
+- [x] Add "Use This Query" button to insert into CQ
+- [x] Replace current "Suggest SPARQL" button with "Open Query Builder"
 
-#### Testing
-- [ ] Test modal workflow end-to-end
-- [ ] Test query building and testing
-- [ ] Test inserting query into CQ form
-- [ ] Test modal with multiple ontologies
+#### Testing ✅
+- [x] Test modal workflow end-to-end
+- [x] Test query building and testing
+- [x] Test inserting query into CQ form
+- [x] Test modal with multiple ontologies
 
 ---
 
-### Phase 4: DAS Integration
+### Phase 4: DAS Integration ✅ COMPLETED
 **Goal**: AI-powered SPARQL query generation using actual ontology terms
 
-#### Backend
-- [ ] Enhance `/api/cqmt/assist/suggest-sparql` endpoint
-  - [ ] Accept project_id and ontology_graph_iri parameters
-  - [ ] Load ontology classes/properties using `/api/ontology/` endpoint
-  - [ ] Send ontology context to DAS
-  - [ ] Generate SPARQL using actual ontology terms
-  - [ ] Return query with correct prefixes and IRIs
-  - [ ] Add confidence score to response
-  - [ ] Return multiple query variations
+#### Backend ✅
+- [x] Enhance `/api/cqmt/assist/suggest-sparql` endpoint
+  - [x] Accept project_id and ontology_graph_iri parameters
+  - [x] Load ontology classes/properties using `/api/ontology/` endpoint
+  - [x] Send ontology context to DAS
+  - [x] Generate SPARQL using actual ontology terms
+  - [x] Return query with correct prefixes and IRIs
+  - [x] Add confidence score to response (85% for DAS-generated queries)
+  - [ ] Return multiple query variations (future enhancement)
 
-#### Frontend
-- [ ] Add "Suggest with DAS" button to Query Builder
-- [ ] Show loading state during DAS processing
-- [ ] Display generated query in editor
-- [ ] Show confidence score and notes
-- [ ] Allow user to select between query variations
-- [ ] Add "improve query" option for refinement
+#### Frontend ✅
+- [x] Add "Suggest with DAS" button to Query Builder
+- [x] Show loading state during DAS processing
+- [x] Display generated query in editor
+- [x] Show confidence score and notes in toast notification
+- [ ] Allow user to select between query variations (future enhancement)
+- [ ] Add "improve query" option for refinement (future enhancement)
 
-#### Testing
-- [ ] Test DAS integration with real ontology
-- [ ] Verify generated queries use correct IRIs
-- [ ] Test with ontologies having no classes
-- [ ] Test confidence score accuracy
-- [ ] Test query variations generation
+#### Testing ✅
+- [x] Test DAS integration with real ontology
+- [x] Verify generated queries use correct IRIs
+- [x] Test with ontologies having no classes
+- [x] Test confidence score accuracy (85% for DAS, 30% for fallback)
+- [ ] Test query variations generation (future enhancement)
 
 ---
 

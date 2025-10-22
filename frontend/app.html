@@ -32678,6 +32678,13 @@ ${JSON.stringify(cqData?.contract_json || { require_columns: [], min_rows: 0 }, 
             <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px;">
               <label style="font-weight: 600;">SPARQL Query</label>
               <div style="display: flex; gap: 8px;">
+                <button type="button" class="btn btn-sm" onclick="qbSuggestWithDAS()" style="font-size: 12px; padding: 4px 12px; display: flex; align-items: center; gap: 4px;">
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                    <circle cx="12" cy="12" r="3" />
+                    <path d="M12 1v6M12 17v6M4.2 4.2l4.2 4.2M15.6 15.6l4.2 4.2M1 12h6M17 12h6M4.2 19.8l4.2-4.2M15.6 8.4l4.2-4.2" />
+                  </svg>
+                  Suggest with DAS
+                </button>
                 <button type="button" class="btn btn-sm" onclick="qbTestQuery()" style="font-size: 12px; padding: 4px 12px; display: flex; align-items: center; gap: 4px;">
                   <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
                     <polygon points="5 3 19 12 5 21 5 3" />
@@ -32833,6 +32840,56 @@ ${JSON.stringify(cqData?.contract_json || { require_columns: [], min_rows: 0 }, 
       } catch (error) {
         console.error('Error testing query:', error);
         showCQMTError('Failed to test query: ' + error.message);
+      }
+    }
+
+    async function qbSuggestWithDAS() {
+      const problemText = document.getElementById('qb_problem').value.trim();
+      if (!problemText) {
+        showCQMTError('Please enter a problem statement first');
+        return;
+      }
+
+      const projectId = window.cqmtState.currentProjectId;
+      if (!projectId) {
+        showCQMTError('No project selected');
+        return;
+      }
+
+      try {
+        const requestPayload = {
+          problem_text: problemText,
+          project_id: projectId,
+          ontology_graph_iri: window.cqmtState.currentOntologyIri,
+          use_das: true
+        };
+
+        console.log('Sending DAS request:', requestPayload);
+
+        const token = localStorage.getItem('odras_token');
+        const response = await fetch('/api/cqmt/assist/suggest-sparql', {
+          method: 'POST',
+          headers: {
+            'Authorization': `Bearer ${token}`,
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify(requestPayload)
+        });
+
+        if (response.ok) {
+          const data = await response.json();
+          document.getElementById('qb_sparql').value = data.sparql_draft;
+
+          // Show confidence and notes in a toast
+          const confidencePct = Math.round(data.confidence * 100);
+          showSuccessMessage(`SPARQL generated (${confidencePct}% confidence). ${data.notes}`);
+        } else {
+          const error = await response.json();
+          showCQMTError('Failed to generate SPARQL: ' + (error.detail || error.message));
+        }
+      } catch (error) {
+        console.error('Error suggesting SPARQL:', error);
+        showCQMTError('Failed to suggest SPARQL: ' + error.message);
       }
     }
 

@@ -75,6 +75,9 @@ class CQRunResponse(BaseModel):
 
 class SuggestSPARQLRequest(BaseModel):
     problem_text: str = Field(..., description="Natural language problem statement")
+    project_id: Optional[str] = Field(None, description="Project UUID for ontology context")
+    ontology_graph_iri: Optional[str] = Field(None, description="Specific ontology graph IRI")
+    use_das: bool = Field(False, description="Whether to use DAS for intelligent generation")
 
 class SuggestSPARQLResponse(BaseModel):
     sparql_draft: str = Field(..., description="Generated SPARQL template")
@@ -591,13 +594,178 @@ async def suggest_sparql(
     """
     Suggest SPARQL query from natural language problem text.
     
-    V1: Returns basic template with TODO comments.
-    V2 (future): Use LLM to generate SPARQL from problem + ontology context.
+    If use_das=True and project_id provided, loads ontology context and generates intelligent suggestions.
+    Otherwise returns basic template.
     """
     try:
-        # V1 stub implementation
         problem_text = request.problem_text
         
+        logger.info(f"=== SPARQL SUGGESTION REQUEST ===")
+        logger.info(f"use_das: {request.use_das}")
+        logger.info(f"project_id: {request.project_id}")
+        logger.info(f"ontology_graph_iri: {request.ontology_graph_iri}")
+        logger.info(f"problem_text: {problem_text}")
+        
+        # If DAS is requested and we have project context, call DAS
+        if request.use_das and request.project_id:
+            logger.info("DAS path: use_das=True and project_id provided")
+            try:
+                logger.info(f"DAS suggestion requested for project {request.project_id}, ontology: {request.ontology_graph_iri}")
+                
+                # Get prefixes for the project
+                db_service = DatabaseService(Settings())
+                ontologies = db_service.list_ontologies(project_id=request.project_id)
+                
+                if not ontologies:
+                    logger.warning(f"No ontologies found for project {request.project_id}")
+                else:
+                    logger.info(f"Found {len(ontologies)} ontologies for project")
+                    
+                    target_ontology = None
+                    if request.ontology_graph_iri:
+                        target_ontology = next((o for o in ontologies if o.get("graph_iri") == request.ontology_graph_iri), None)
+                        if not target_ontology:
+                            logger.warning(f"Specified ontology {request.ontology_graph_iri} not found, using first available")
+                    if not target_ontology:
+                        target_ontology = ontologies[0]
+                    
+                    graph_iri = target_ontology.get("graph_iri")
+                    namespace_iri = graph_iri if "#" in graph_iri else f"{graph_iri}#"
+                    
+                    logger.info(f"Using ontology: {graph_iri}")
+                    
+                    # Load ontology details
+                    ontology_context = None
+                    try:
+                        settings = Settings()
+                        from ..services.ontology_manager import OntologyManager
+                        manager = OntologyManager(settings)
+                        ontology_json = manager.get_ontology_json_by_graph(graph_iri)
+                        
+                        # Extract key information for context
+                        classes = ontology_json.get('classes', [])
+                        object_properties = ontology_json.get('object_properties', [])
+                        datatype_properties = ontology_json.get('datatype_properties', [])
+                        
+                        logger.info(f"Loaded ontology with {len(classes)} classes, {len(object_properties)} object properties, {len(datatype_properties)} datatype properties")
+                        
+                        ontology_context = {
+                            'classes': [c.get('name', '') for c in classes[:20]],
+                            'object_properties': [p.get('name', '') for p in object_properties[:20]],
+                            'datatype_properties': [p.get('name', '') for p in datatype_properties[:20]]
+                        }
+                    except Exception as ontology_error:
+                        logger.warning(f"Failed to load ontology details: {ontology_error}")
+                    
+                    # Build DAS prompt with ontology context
+                    classes_list = ', '.join(ontology_context['classes']) if ontology_context and ontology_context['classes'] else 'None'
+                    object_props_list = ', '.join(ontology_context['object_properties']) if ontology_context and ontology_context['object_properties'] else 'None'
+                    datatype_props_list = ', '.join(ontology_context['datatype_properties']) if ontology_context and ontology_context['datatype_properties'] else 'None'
+                    
+                    das_prompt = f"""You are an expert SPARQL query builder for RDF ontologies.
+
+PROBLEM STATEMENT:
+{problem_text}
+
+ONTOLOGY CONTEXT:
+Namespace: {namespace_iri}
+Available Classes: {classes_list}
+Object Properties: {object_props_list}
+Datatype Properties: {datatype_props_list}
+
+TASK:
+Generate a SPARQL SELECT query that answers the problem statement using the ontology classes and properties provided.
+
+REQUIREMENTS:
+1. Use the provided namespace prefix ':' for ontology terms
+2. Always include standard prefixes: rdf, rdfs, owl
+3. The query must be a SELECT query (not INSERT, UPDATE, DELETE)
+4. Use actual class names from the Available Classes list
+5. Use actual property names from the properties lists
+6. If asking for classes in the ontology, query for owl:Class
+7. If asking for instances, use the appropriate class type
+8. Include proper WHERE clause with triple patterns
+9. Use LIMIT if appropriate for large datasets
+10. Return ONLY the SPARQL query - no explanation, no markdown, no additional text
+
+IMPORTANT:
+- If the problem asks to "list classes" or "show classes", query for owl:Class types
+- If the problem asks for instances/examples/data, use rdf:type with specific classes
+- Always use OPTIONAL for labels: OPTIONAL {{ ?subject rdfs:label ?label }}
+- Use proper SPARQL syntax
+
+Example for listing classes:
+PREFIX : <{namespace_iri}>
+PREFIX rdf: <http://www.w3.org/1999/02/22-rdf-syntax-ns#>
+PREFIX rdfs: <http://www.w3.org/2000/01/rdf-schema#>
+PREFIX owl: <http://www.w3.org/2002/07/owl#>
+
+SELECT ?class ?label WHERE {{
+    ?class rdf:type owl:Class .
+    OPTIONAL {{ ?class rdfs:label ?label }}
+    FILTER(STRSTARTS(STR(?class), STR(:)))
+}}
+ORDER BY ?label
+
+Generate the SPARQL query now:"""
+                    
+                    # Call DAS to generate the query
+                    try:
+                        from ..services.das2_core_engine import DAS2CoreEngine
+                        from ..services.rag_service import RAGService
+                        from ..services.qdrant_service import QdrantService
+                        from ..services.sql_first_thread_manager import SqlFirstThreadManager
+                        
+                        # Initialize services
+                        qdrant_service = QdrantService(Settings())
+                        rag_service = RAGService(Settings())
+                        db_service = DatabaseService(Settings())
+                        project_manager = SqlFirstThreadManager(Settings(), qdrant_service)
+                        
+                        das_engine = DAS2CoreEngine(Settings(), rag_service, project_manager, db_service)
+                        
+                        full_response = ""
+                        async for chunk in das_engine.process_message_stream(
+                            project_id=request.project_id,
+                            message=das_prompt,
+                            user_id=user.get("user_id", "system")
+                        ):
+                            if chunk.get("type") == "content":
+                                full_response += chunk.get("content", "")
+                            elif chunk.get("type") == "error":
+                                logger.error(f"DAS error: {chunk.get('message', 'Unknown error')}")
+                                raise Exception(f"DAS error: {chunk.get('message', 'Unknown error')}")
+                        
+                        # Extract SPARQL from response (remove any markdown formatting)
+                        sparql_query = full_response.strip()
+                        if "```sparql" in sparql_query:
+                            sparql_query = sparql_query.split("```sparql")[1].split("```")[0].strip()
+                        elif "```" in sparql_query:
+                            sparql_query = sparql_query.split("```")[1].split("```")[0].strip()
+                        
+                        notes = "Generated by DAS using ontology context."
+                        if ontology_context and ontology_context['classes']:
+                            available_classes = ', '.join(ontology_context['classes'][:5])
+                            notes += f" Available classes: {available_classes}"
+                        
+                        return SuggestSPARQLResponse(
+                            sparql_draft=sparql_query,
+                            confidence=0.85,
+                            notes=notes
+                        )
+                    
+                    except Exception as das_error:
+                        logger.error(f"Failed to call DAS: {das_error}", exc_info=True)
+                        # Fall through to basic template
+                    
+            except Exception as e:
+                logger.error(f"Failed to process DAS request, falling back to template: {e}", exc_info=True)
+                # Fall through to basic template
+        else:
+            logger.info(f"DAS path: Skipping DAS (use_das={request.use_das}, project_id={request.project_id})")
+        
+        # Basic template (fallback or non-DAS mode)
+        logger.info("Returning basic template (30% confidence)")
         template = f"""# Problem: {problem_text}
 # TODO: Replace variables and IRIs with project-specific values
 
