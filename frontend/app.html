@@ -32013,12 +32013,18 @@ def hello_world():
         div.className = 'card';
         div.style.cssText = 'padding: 12px; margin-bottom: 8px;';
 
+        // Default badge styling
+        const defaultBadge = mt.is_default ?
+          `<span style="display: inline-block; padding: 2px 6px; border-radius: 3px; font-size: 10px; font-weight: 600; margin-left: 6px; background: #007bff; color: white;">
+            DEFAULT
+          </span>` : '';
+
         div.innerHTML = `
           <div style="display: flex; justify-content: space-between; align-items: flex-start;">
             <div style="flex: 1;">
               <div style="font-weight: 600; margin-bottom: 4px;">
                 ${mt.label}
-                ${mt.is_default ? '<span class="badge">DEFAULT</span>' : ''}
+                ${defaultBadge}
               </div>
               <div style="color: var(--muted); font-size: 13px;">
                 ${mt.triple_count} triples • Created: ${new Date(mt.created_at).toLocaleString()}
@@ -32298,6 +32304,10 @@ ${JSON.stringify(cqData?.contract_json || { require_columns: [], min_rows: 0 }, 
       const cqId = document.getElementById('cq_id').value;
       const isEdit = !!cqId;
 
+      // Find the modal containing this form
+      const form = event.target;
+      const modal = form.closest('.modal-overlay');
+
       try {
         const projectId = window.cqmtState.currentProjectId;
         if (!projectId) {
@@ -32334,10 +32344,18 @@ ${JSON.stringify(cqData?.contract_json || { require_columns: [], min_rows: 0 }, 
 
         if (response.ok) {
           console.log('✅ CQ saved successfully, closing modal and reloading list...');
-          const modal = document.querySelector('.modal-overlay');
-          if (modal) modal.remove();
 
-          console.log('✅ Modal closed, calling loadCQMTCQs()...');
+          // Close the specific modal
+          if (modal) {
+            modal.remove();
+            console.log('✅ Modal closed');
+          } else {
+            console.warn('⚠️ Modal not found, trying fallback');
+            // Fallback: close any modal overlays
+            document.querySelectorAll('.modal-overlay').forEach(m => m.remove());
+          }
+
+          console.log('✅ Calling loadCQMTCQs()...');
           await loadCQMTCQs();
           console.log('✅ loadCQMTCQs() completed');
           showSuccessMessage(`CQ ${isEdit ? 'updated' : 'created'} successfully`);
@@ -32855,6 +32873,10 @@ ${mtData?.description || ''}</textarea>
       const mtId = document.getElementById('mt_id').value;
       const isEdit = !!mtId;
 
+      // Find the modal containing this form
+      const form = event.target;
+      const modal = form.closest('.modal-overlay');
+
       try {
         const projectId = window.cqmtState.currentProjectId;
         if (!projectId) {
@@ -32897,8 +32919,13 @@ ${mtData?.description || ''}</textarea>
         });
 
         if (response.ok) {
-          const modal = document.querySelector('.modal-overlay');
-          if (modal) modal.remove();
+          // Close the specific modal
+          if (modal) {
+            modal.remove();
+          } else {
+            // Fallback: close any modal overlays
+            document.querySelectorAll('.modal-overlay').forEach(m => m.remove());
+          }
 
           await loadCQMTMicrotheories();
           showSuccessMessage(`Microtheory ${isEdit ? 'updated' : 'created'} successfully`);
