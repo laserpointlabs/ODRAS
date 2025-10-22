@@ -62,10 +62,60 @@
 
 ## 🚧 In Progress
 
-### Bug Fixes
-- [ ] Test and verify microtheory update with triples works end-to-end
-- [ ] Verify CQ execution actually runs against Fuseki
-- [ ] Test contract validation logic
+### Phase 5: UI Test Script ✅ IN PROGRESS
+**Goal**: Create comprehensive test script for UI-visible CQ/MT testing
+
+#### Requirements Analysis ✅
+- [x] Review test requirements for gaps
+- [x] Design test scenario with 3 CQs
+- [x] Plan ontology structure (classes, properties, individuals)
+- [x] Document expected UI behavior
+- [x] Identify future enhancements
+
+#### Backend Implementation
+- [ ] Verify ontology creation API works correctly
+- [ ] Verify class/property creation APIs work correctly
+- [ ] Verify microtheory creation with triples works
+- [ ] Verify DAS suggest-sparql returns valid queries
+- [ ] Verify CQ execution returns pass/fail correctly
+
+#### Frontend Implementation
+- [ ] Verify project appears in project list
+- [ ] Verify CQs appear in CQ/MT tab
+- [ ] Verify pass/fail badges display correctly
+- [ ] Verify coverage tab shows aggregated results
+- [ ] Verify can execute CQs from UI
+
+#### Test Script Implementation
+- [ ] Create project `cqmt-test-project`
+- [ ] Create ontology `TestOntology`
+- [ ] Add 3 classes (Aircraft, FighterJet, TransportPlane)
+- [ ] Add object properties (hasRole, operatedBy)
+- [ ] Add datatype properties (hasMaxSpeed, hasCapacity, isOperational)
+- [ ] Create microtheory with 4 individuals (F22, F35, C130, C17)
+- [ ] Create CQ1: "List All Classes" (use DAS)
+- [ ] Create CQ2: "List All Fighter Jets" (use DAS)
+- [ ] Create CQ3: "Operational Aircraft with Speed" (use DAS)
+- [ ] Execute all CQs and show pass/fail
+- [ ] Display summary in console and UI
+
+**Test Plan**: [CQMT_UI_TEST_PLAN.md](CQMT_UI_TEST_PLAN.md)
+
+### Critical Testing: Full CQ/MT Workflow ✅ COMPLETED
+- [x] Test "Suggest with DAS" generates valid SPARQL (DAS integration working)
+- [x] Test "Test Query" executes against ontology with data (3 rows returned)
+- [x] Verify query results display correctly (rows, columns, execution time)
+- [x] Test saving CQ with generated SPARQL (CQ created successfully)
+- [x] Test CQ execution against microtheory (passed with 3 rows)
+- [x] Verify validation contract enforcement (min_rows: 2, got 3)
+- [x] Test complete workflow: Create MT → Add Data → Create CQ → Execute CQ → Validate Results
+
+**Test Script**: `scripts/cqmt_full_workflow_test.py` - Fully self-contained, builds all data from scratch
+
+### Bug Fixes ✅ VERIFIED
+- [x] Test and verify microtheory update with triples works end-to-end (Fixed triple format)
+- [x] Verify CQ execution actually runs against Fuseki (3 rows returned successfully)
+- [x] Test contract validation logic (min_rows validation working)
 
 ---
 

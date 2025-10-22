@@ -189,6 +189,7 @@ class SPARQLRunner:
             
             # Reconstruct with PREFIX declarations preserved + GRAPH wrapper
             confined_query = f"{prefix_section}\n{select_clause} WHERE {{ GRAPH <{graph_iri}> {{ {where_body} }} }}"
+            logger.info(f"🔍 CONFINE_DEBUG: Confined query:\n{confined_query}")
             return confined_query
         else:
             # Fallback: try to wrap the entire WHERE clause while preserving prefixes
