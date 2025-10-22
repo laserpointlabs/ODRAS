@@ -32220,14 +32220,22 @@ def hello_world():
               <div style="margin-bottom: 16px;">
                 <label style="display: block; margin-bottom: 6px; font-weight: 600;">CQ Name *</label>
                 <input type="text" id="cq_name" value="${cqData?.cq_name || ''}" required 
-                       style="width: 100%; padding: 8px; border: 1px solid var(--border); border-radius: 4px;">
+                       placeholder="e.g., List all aircraft types"
+                       style="width: 100%; padding: 8px; border: 1px solid var(--border); border-radius: 4px; background: var(--panel-2); color: var(--text);">
+                <div style="font-size: 12px; color: var(--muted); margin-top: 4px;">
+                  Brief descriptive name for this competency question
+                </div>
               </div>
               
               <div style="margin-bottom: 16px;">
                 <label style="display: block; margin-bottom: 6px; font-weight: 600;">Problem Statement *</label>
                 <textarea id="problem_text" required rows="3"
-                          style="width: 100%; padding: 8px; border: 1px solid var(--border); border-radius: 4px; font-family: inherit;">
+                          placeholder="e.g., What aircraft types are available for transport missions?"
+                          style="width: 100%; padding: 8px; border: 1px solid var(--border); border-radius: 4px; font-family: inherit; background: var(--panel-2); color: var(--text);">
 ${cqData?.problem_text || ''}</textarea>
+                <div style="font-size: 12px; color: var(--muted); margin-top: 4px;">
+                  Natural language description of what this CQ should answer
+                </div>
               </div>
               
               <div style="margin-bottom: 16px;">
@@ -32243,20 +32251,31 @@ ${cqData?.problem_text || ''}</textarea>
                   </div>
                 </div>
                 <textarea id="sparql_text" required rows="8"
-                          style="width: 100%; padding: 8px; border: 1px solid var(--border); border-radius: 4px; font-family: monospace; font-size: 13px;">
+                          placeholder="PREFIX : &lt;your-namespace#&gt;&#10;PREFIX rdf: &lt;http://www.w3.org/1999/02/22-rdf-syntax-ns#&gt;&#10;&#10;SELECT ?subject ?label WHERE {&#10;    ?subject rdf:type :YourClass .&#10;    ?subject rdfs:label ?label .&#10;}"
+                          style="width: 100%; padding: 8px; border: 1px solid var(--border); border-radius: 4px; font-family: monospace; font-size: 13px; background: var(--panel-2); color: var(--text);">
 ${cqData?.sparql_text || ''}</textarea>
+                <div style="font-size: 12px; color: var(--muted); margin-top: 4px;">
+                  SPARQL query that executes against your ontology. Use the buttons above to insert classes and properties.
+                </div>
               </div>
               
               <div style="margin-bottom: 16px;">
                 <label style="display: block; margin-bottom: 6px; font-weight: 600;">Validation Contract (JSON) *</label>
+                <div style="background: var(--panel-2); padding: 12px; border-radius: 4px; margin-bottom: 8px; font-size: 12px; line-height: 1.6;">
+                  <strong style="color: var(--accent);">Validation Contract Guidelines:</strong><br>
+                  • <code>require_columns</code>: Array of column names that must be present in results<br>
+                  • <code>min_rows</code>: Minimum number of rows expected (integer)<br>
+                  • <code>max_rows</code>: Maximum number of rows allowed (integer, optional)<br>
+                  • <code>max_latency_ms</code>: Maximum query execution time in milliseconds (integer, optional)
+                </div>
                 <textarea id="contract_json" required rows="6"
-                          style="width: 100%; padding: 8px; border: 1px solid var(--border); border-radius: 4px; font-family: monospace; font-size: 13px;">
+                          style="width: 100%; padding: 8px; border: 1px solid var(--border); border-radius: 4px; font-family: monospace; font-size: 13px; background: var(--panel-2); color: var(--text);">
 ${JSON.stringify(cqData?.contract_json || { require_columns: [], min_rows: 0 }, null, 2)}</textarea>
               </div>
               
               <div style="margin-bottom: 16px;">
                 <label style="display: block; margin-bottom: 6px; font-weight: 600;">Default Microtheory</label>
-                <select id="mt_iri_default" style="width: 100%; padding: 8px; border: 1px solid var(--border); border-radius: 4px;">
+                <select id="mt_iri_default" style="width: 100%; padding: 8px; border: 1px solid var(--border); border-radius: 4px; background: var(--panel-2); color: var(--text);">
                   <option value="">None (use project default)</option>
                 </select>
                 <div style="font-size: 12px; color: var(--muted); margin-top: 4px;">
@@ -32266,7 +32285,7 @@ ${JSON.stringify(cqData?.contract_json || { require_columns: [], min_rows: 0 }, 
               
               <div style="margin-bottom: 16px;">
                 <label style="display: block; margin-bottom: 6px; font-weight: 600;">Status</label>
-                <select id="cq_status" style="width: 100%; padding: 8px; border: 1px solid var(--border); border-radius: 4px;">
+                <select id="cq_status" style="width: 100%; padding: 8px; border: 1px solid var(--border); border-radius: 4px; background: var(--panel-2); color: var(--text);">
                   <option value="draft" ${cqData?.status === 'draft' ? 'selected' : ''}>Draft</option>
                   <option value="active" ${cqData?.status === 'active' ? 'selected' : ''}>Active</option>
                   <option value="deprecated" ${cqData?.status === 'deprecated' ? 'selected' : ''}>Deprecated</option>
@@ -32667,20 +32686,20 @@ ${JSON.stringify(cqData?.contract_json || { require_columns: [], min_rows: 0 }, 
               <div style="margin-bottom: 16px;">
                 <label style="display: block; margin-bottom: 6px; font-weight: 600;">Label *</label>
                 <input type="text" id="mt_label" value="${mtData?.label || ''}" required 
-                       style="width: 100%; padding: 8px; border: 1px solid var(--border); border-radius: 4px;">
+                       style="width: 100%; padding: 8px; border: 1px solid var(--border); border-radius: 4px; background: var(--panel-2); color: var(--text);">
               </div>
               
               <div style="margin-bottom: 16px;">
                 <label style="display: block; margin-bottom: 6px; font-weight: 600;">Description</label>
                 <textarea id="mt_description" rows="3"
-                          style="width: 100%; padding: 8px; border: 1px solid var(--border); border-radius: 4px; font-family: inherit;">
+                          style="width: 100%; padding: 8px; border: 1px solid var(--border); border-radius: 4px; font-family: inherit; background: var(--panel-2); color: var(--text);">
 ${mtData?.description || ''}</textarea>
               </div>
               
               ${!isEdit ? `
               <div style="margin-bottom: 16px;">
                 <label style="display: block; margin-bottom: 6px; font-weight: 600;">Clone From (Optional)</label>
-                <select id="mt_clone_from" style="width: 100%; padding: 8px; border: 1px solid var(--border); border-radius: 4px;">
+                <select id="mt_clone_from" style="width: 100%; padding: 8px; border: 1px solid var(--border); border-radius: 4px; background: var(--panel-2); color: var(--text);">
                   <option value="">Create empty microtheory</option>
                 </select>
                 <div style="font-size: 12px; color: var(--muted); margin-top: 4px;">
@@ -32714,9 +32733,9 @@ ${mtData?.description || ''}</textarea>
                 <div id="mt-triples-container" style="max-height: 300px; overflow-y: auto; border: 1px solid var(--border); border-radius: 4px; padding: 12px;">
                   ${isEdit && mtData?.triples ? mtData.triples.map((t, i) => `
                     <div class="triple-row" style="display: flex; gap: 8px; margin-bottom: 8px; align-items: center;">
-                      <input type="text" class="triple-subject" value="${t.subject || ''}" placeholder="Subject" style="flex: 1; padding: 6px; border: 1px solid var(--border); border-radius: 4px; font-family: monospace; font-size: 12px;">
-                      <input type="text" class="triple-predicate" value="${t.predicate || ''}" placeholder="Predicate" style="flex: 1; padding: 6px; border: 1px solid var(--border); border-radius: 4px; font-family: monospace; font-size: 12px;">
-                      <input type="text" class="triple-object" value="${t.object || ''}" placeholder="Object" style="flex: 1; padding: 6px; border: 1px solid var(--border); border-radius: 4px; font-family: monospace; font-size: 12px;">
+                      <input type="text" class="triple-subject" value="${t.subject || ''}" placeholder="Subject" style="flex: 1; padding: 6px; border: 1px solid var(--border); border-radius: 4px; font-family: monospace; font-size: 12px; background: var(--panel-2); color: var(--text);">
+                      <input type="text" class="triple-predicate" value="${t.predicate || ''}" placeholder="Predicate" style="flex: 1; padding: 6px; border: 1px solid var(--border); border-radius: 4px; font-family: monospace; font-size: 12px; background: var(--panel-2); color: var(--text);">
+                      <input type="text" class="triple-object" value="${t.object || ''}" placeholder="Object" style="flex: 1; padding: 6px; border: 1px solid var(--border); border-radius: 4px; font-family: monospace; font-size: 12px; background: var(--panel-2); color: var(--text);">
                       <button type="button" class="btn btn-sm" onclick="removeTripleRow(this)" style="padding: 4px 8px; background: var(--err); color: white;">×</button>
                     </div>
                   `).join('') : '<div style="color: var(--muted); font-size: 13px; text-align: center; padding: 20px;">No triples added yet. Click "Add Triple" or "Copy from Ontology" to add content.</div>'}
@@ -32759,9 +32778,9 @@ ${mtData?.description || ''}</textarea>
       row.className = 'triple-row';
       row.style.cssText = 'display: flex; gap: 8px; margin-bottom: 8px; align-items: center;';
       row.innerHTML = `
-        <input type="text" class="triple-subject" placeholder="Subject" style="flex: 1; padding: 6px; border: 1px solid var(--border); border-radius: 4px; font-family: monospace; font-size: 12px;">
-        <input type="text" class="triple-predicate" placeholder="Predicate" style="flex: 1; padding: 6px; border: 1px solid var(--border); border-radius: 4px; font-family: monospace; font-size: 12px;">
-        <input type="text" class="triple-object" placeholder="Object" style="flex: 1; padding: 6px; border: 1px solid var(--border); border-radius: 4px; font-family: monospace; font-size: 12px;">
+        <input type="text" class="triple-subject" placeholder="Subject" style="flex: 1; padding: 6px; border: 1px solid var(--border); border-radius: 4px; font-family: monospace; font-size: 12px; background: var(--panel-2); color: var(--text);">
+        <input type="text" class="triple-predicate" placeholder="Predicate" style="flex: 1; padding: 6px; border: 1px solid var(--border); border-radius: 4px; font-family: monospace; font-size: 12px; background: var(--panel-2); color: var(--text);">
+        <input type="text" class="triple-object" placeholder="Object" style="flex: 1; padding: 6px; border: 1px solid var(--border); border-radius: 4px; font-family: monospace; font-size: 12px; background: var(--panel-2); color: var(--text);">
         <button type="button" class="btn btn-sm" onclick="removeTripleRow(this)" style="padding: 4px 8px; background: var(--err); color: white;">×</button>
       `;
       container.appendChild(row);
