@@ -23,9 +23,11 @@ logger = logging.getLogger(__name__)
 
 class MicrotheoryCreate(BaseModel):
     label: str = Field(..., description="Human-readable label for the microtheory")
+    description: Optional[str] = Field(None, description="Description of the microtheory")
     iri: Optional[str] = Field(None, description="Custom IRI (auto-generated if not provided)")
     cloneFrom: Optional[str] = Field(None, description="Source microtheory IRI to clone from")
     setDefault: bool = Field(False, description="Set as project default microtheory")
+    triples: Optional[List[Dict[str, str]]] = Field(None, description="List of triples to add to the microtheory")
 
 class MicrotheoryResponse(BaseModel):
     id: str
@@ -168,6 +170,70 @@ async def list_microtheories(
         raise
     except Exception as e:
         logger.error(f"Error in list_microtheories: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+@router.get("/microtheories/{mt_id}")
+async def get_microtheory(
+    mt_id: str,
+    user: dict = Depends(get_user_or_anonymous),
+    service: CQMTService = Depends(get_cqmt_service)
+):
+    """
+    Get a single microtheory with its triples.
+    
+    Returns metadata from PostgreSQL and triples from Fuseki.
+    """
+    try:
+        result = service.get_microtheory(mt_id)
+        
+        if result["success"]:
+            return {"success": True, "data": result["data"]}
+        else:
+            raise HTTPException(status_code=404, detail=result["error"])
+            
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Error in get_microtheory: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+@router.put("/microtheories/{mt_id}")
+async def update_microtheory(
+    mt_id: str,
+    request: MicrotheoryCreate,
+    user: dict = Depends(get_user_or_anonymous),
+    service: CQMTService = Depends(get_cqmt_service)
+):
+    """
+    Update a microtheory (label, description, triples, and default status).
+    
+    Updates metadata in PostgreSQL and triples in Fuseki.
+    """
+    try:
+        user_id = user.get("user_id")
+        
+        result = service.update_microtheory(
+            mt_id=mt_id,
+            label=request.label,
+            description=request.description,
+            triples=request.triples,
+            set_default=request.setDefault,
+            updated_by=user_id if user_id != "anonymous" else None
+        )
+        
+        if result["success"]:
+            return {
+                "success": True,
+                "data": result["data"],
+                "message": "Microtheory updated successfully"
+            }
+        else:
+            raise HTTPException(status_code=400, detail=result["error"])
+            
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Error in update_microtheory: {e}")
         raise HTTPException(status_code=500, detail=str(e))
 
 @router.delete("/microtheories/{mt_id}")

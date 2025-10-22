@@ -1715,11 +1715,14 @@ CREATE TABLE IF NOT EXISTS microtheories (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     project_id UUID NOT NULL REFERENCES projects(project_id) ON DELETE CASCADE,
     label VARCHAR(255) NOT NULL,
+    description TEXT,
     iri VARCHAR(1000) UNIQUE NOT NULL,
     parent_iri VARCHAR(1000),  -- NULL or IRI of cloned source
     is_default BOOLEAN DEFAULT FALSE,
     created_by UUID REFERENCES users(user_id),
     created_at TIMESTAMPTZ DEFAULT NOW(),
+    updated_by UUID REFERENCES users(user_id),
+    updated_at TIMESTAMPTZ DEFAULT NOW(),
     UNIQUE(project_id, label)
 );
 

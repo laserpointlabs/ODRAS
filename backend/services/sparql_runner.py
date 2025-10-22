@@ -501,6 +501,40 @@ class SPARQLRunner:
             logger.error(error_msg)
             return {"success": False, "count": None, "error": error_msg}
     
+    def get_all_triples_from_graph(self, graph_iri: str) -> Dict[str, Any]:
+        """
+        Get all triples from a named graph.
+        
+        Args:
+            graph_iri: IRI of the named graph
+            
+        Returns:
+            {"success": bool, "triples": list or None, "error": str or None}
+            triples format: [{"subject": str, "predicate": str, "object": str}, ...]
+        """
+        try:
+            select_query = f"SELECT ?s ?p ?o WHERE {{ GRAPH <{graph_iri}> {{ ?s ?p ?o }} }}"
+            
+            result = self._execute_sparql_select(select_query)
+            if result["success"]:
+                bindings = result["data"].get("results", {}).get("bindings", [])
+                triples = []
+                for binding in bindings:
+                    triple = {
+                        "subject": binding.get("s", {}).get("value", ""),
+                        "predicate": binding.get("p", {}).get("value", ""),
+                        "object": binding.get("o", {}).get("value", "")
+                    }
+                    triples.append(triple)
+                return {"success": True, "triples": triples, "error": None}
+            else:
+                return {"success": False, "triples": None, "error": result["error"]}
+                
+        except Exception as e:
+            error_msg = f"Failed to get triples: {str(e)}"
+            logger.error(error_msg)
+            return {"success": False, "triples": None, "error": error_msg}
+    
     def insert_sample_triples(self, graph_iri: str, triples: List[Tuple[str, str, str]]) -> Dict[str, Any]:
         """
         Insert sample triples into a named graph for testing.

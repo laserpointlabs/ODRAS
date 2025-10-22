@@ -224,6 +224,179 @@ class CQMTService:
                 "error": f"Failed to list microtheories: {str(e)}"
             }
     
+    def get_microtheory(self, mt_id: str) -> Dict[str, Any]:
+        """
+        Get a single microtheory with its triples.
+        
+        Args:
+            mt_id: Microtheory UUID
+            
+        Returns:
+            {"success": bool, "data": dict or None, "error": str or None}
+        """
+        try:
+            conn = self.db._conn()
+            try:
+                with conn.cursor() as cur:
+                    cur.execute("""
+                        SELECT 
+                            id, label, iri, parent_iri, is_default, 
+                            created_by, created_at
+                        FROM microtheories 
+                        WHERE id = %s
+                    """, (mt_id,))
+                    
+                    row = cur.fetchone()
+                    
+            finally:
+                self.db._return(conn)
+            
+            if not row:
+                return {
+                    "success": False,
+                    "data": None,
+                    "error": "Microtheory not found"
+                }
+            
+            mt_data = {
+                "id": str(row[0]),
+                "label": row[1],
+                "iri": row[2],
+                "parent_iri": row[3],
+                "is_default": row[4],
+                "created_by": str(row[5]) if row[5] else None,
+                "created_at": row[6].isoformat() if row[6] else None,
+                "triple_count": 0,
+                "triples": []
+            }
+            
+            # Get triples from Fuseki
+            triples_result = self.runner.get_all_triples_from_graph(row[2])  # iri
+            if triples_result["success"]:
+                mt_data["triple_count"] = len(triples_result["triples"])
+                mt_data["triples"] = triples_result["triples"]
+            else:
+                # Get count at least
+                count_result = self.runner.count_triples_in_graph(row[2])
+                if count_result["success"]:
+                    mt_data["triple_count"] = count_result["count"]
+            
+            return {
+                "success": True,
+                "data": mt_data,
+                "error": None
+            }
+            
+        except Exception as e:
+            logger.error(f"Error getting microtheory: {e}")
+            return {
+                "success": False,
+                "data": None,
+                "error": f"Failed to get microtheory: {str(e)}"
+            }
+    
+    def update_microtheory(
+        self,
+        mt_id: str,
+        label: str,
+        description: Optional[str] = None,
+        triples: Optional[List[Dict[str, str]]] = None,
+        set_default: bool = False,
+        updated_by: Optional[str] = None
+    ) -> Dict[str, Any]:
+        """
+        Update a microtheory's metadata and triples.
+        
+        Args:
+            mt_id: Microtheory UUID
+            label: New label
+            description: New description
+            triples: List of triples to replace existing triples
+            set_default: Whether to set as project default
+            updated_by: User ID
+            
+        Returns:
+            {"success": bool, "data": dict or None, "error": str or None}
+        """
+        try:
+            conn = self.db._conn()
+            try:
+                with conn.cursor() as cur:
+                    # Get MT details first
+                    cur.execute("""
+                        SELECT iri, project_id FROM microtheories WHERE id = %s
+                    """, (mt_id,))
+                    row = cur.fetchone()
+                    
+                    if not row:
+                        return {
+                            "success": False,
+                            "data": None,
+                            "error": "Microtheory not found"
+                        }
+                    
+                    mt_iri = row[0]
+                    project_id = row[1]
+                    
+                    # Update triples in Fuseki if provided
+                    if triples is not None:
+                        # Drop existing triples
+                        drop_result = self.runner.drop_named_graph(mt_iri)
+                        if not drop_result["success"]:
+                            logger.warning(f"Failed to drop graph {mt_iri}: {drop_result['error']}")
+                        
+                        # Create new graph
+                        create_result = self.runner.create_named_graph(mt_iri)
+                        if not create_result["success"]:
+                            return {
+                                "success": False,
+                                "data": None,
+                                "error": f"Failed to recreate graph: {create_result['error']}"
+                            }
+                        
+                        # Insert new triples
+                        if triples:
+                            triple_tuples = [(t["subject"], t["predicate"], t["object"]) for t in triples]
+                            insert_result = self.runner.insert_sample_triples(mt_iri, triple_tuples)
+                            if not insert_result["success"]:
+                                logger.warning(f"Failed to insert some triples: {insert_result['error']}")
+                    
+                    # Update metadata in PostgreSQL
+                    cur.execute("""
+                        UPDATE microtheories 
+                        SET label = %s, 
+                            description = %s,
+                            updated_by = %s,
+                            updated_at = NOW()
+                        WHERE id = %s
+                    """, (label, description, updated_by, mt_id))
+                    
+                    conn.commit()
+                    
+                    # Handle set_default if requested
+                    if set_default:
+                        set_result = self.set_default_microtheory(mt_id, project_id)
+                        if not set_result["success"]:
+                            logger.warning(f"Failed to set default: {set_result['error']}")
+                    
+                    # Return updated MT data
+                    return {
+                        "success": True,
+                        "data": {"id": mt_id, "label": label, "iri": mt_iri},
+                        "error": None
+                    }
+                    
+            finally:
+                self.db._return(conn)
+                
+        except Exception as e:
+            logger.error(f"Error updating microtheory: {e}")
+            return {
+                "success": False,
+                "data": None,
+                "error": f"Failed to update microtheory: {str(e)}"
+            }
+    
     def delete_microtheory(self, mt_id: str) -> Dict[str, Any]:
         """
         Delete a microtheory and its named graph.
