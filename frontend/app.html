@@ -32242,6 +32242,12 @@ ${cqData?.problem_text || ''}</textarea>
                 <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px;">
                   <label style="font-weight: 600;">SPARQL Query *</label>
                   <div style="display: flex; gap: 8px;">
+                    <button type="button" class="btn btn-sm" onclick="testSPARQLQuery()" style="font-size: 12px; padding: 4px 12px; display: flex; align-items: center; gap: 4px;">
+                      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                        <polygon points="5 3 19 12 5 21 5 3" />
+                      </svg>
+                      Test Query
+                    </button>
                     <button type="button" class="btn btn-sm" onclick="suggestSPARQL()" style="font-size: 12px; padding: 4px 12px; display: flex; align-items: center; gap: 4px;">
                       <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
                         <circle cx="12" cy="12" r="3" />
@@ -32264,6 +32270,16 @@ ${cqData?.problem_text || ''}</textarea>
 ${cqData?.sparql_text || ''}</textarea>
                 <div style="font-size: 12px; color: var(--muted); margin-top: 4px;">
                   SPARQL query that executes against your ontology. Use the buttons above to insert classes and properties.
+                </div>
+                
+                <!-- Test Results Panel -->
+                <div id="cq-test-results" style="display: none; margin-top: 16px; padding: 12px; background: var(--panel-2); border: 1px solid var(--border); border-radius: 4px;">
+                  <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px;">
+                    <label style="font-weight: 600;">Test Results</label>
+                    <button type="button" onclick="document.getElementById('cq-test-results').style.display='none'" style="font-size: 12px; padding: 2px 8px; background: transparent; border: none; color: var(--muted); cursor: pointer;">✕</button>
+                  </div>
+                  <div id="cq-test-status" style="margin-bottom: 8px;"></div>
+                  <div id="cq-test-data" style="max-height: 200px; overflow-y: auto;"></div>
                 </div>
               </div>
               
@@ -32456,6 +32472,95 @@ ${JSON.stringify(cqData?.contract_json || { require_columns: [], min_rows: 0 }, 
       } catch (error) {
         console.error('Error deleting CQ:', error);
         showCQMTError('Failed to delete CQ: ' + error.message);
+      }
+    }
+
+    async function testSPARQLQuery() {
+      const sparql = document.getElementById('sparql_text').value.trim();
+      if (!sparql) {
+        showCQMTError('Please enter a SPARQL query first');
+        return;
+      }
+
+      const projectId = window.cqmtState.currentProjectId;
+      if (!projectId) {
+        showCQMTError('No project selected');
+        return;
+      }
+
+      // Get a microtheory to test against
+      const mts = window.cqmtState.currentMTs || [];
+      if (mts.length === 0) {
+        showCQMTError('No microtheories available. Please create a microtheory first.');
+        return;
+      }
+
+      // Use default MT or first one
+      const defaultMT = mts.find(mt => mt.is_default) || mts[0];
+      const mtIri = defaultMT.iri;
+
+      try {
+        const token = localStorage.getItem('odras_token');
+        const response = await fetch('/api/cqmt/test-query', {
+          method: 'POST',
+          headers: {
+            'Authorization': `Bearer ${token}`,
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify({
+            sparql: sparql,
+            mt_iri: mtIri,
+            project_id: projectId
+          })
+        });
+
+        const data = await response.json();
+        const resultsPanel = document.getElementById('cq-test-results');
+        const statusDiv = document.getElementById('cq-test-status');
+        const dataDiv = document.getElementById('cq-test-data');
+
+        // Show results panel
+        resultsPanel.style.display = 'block';
+
+        if (data.success) {
+          statusDiv.innerHTML = `
+            <div style="color: var(--success); font-size: 12px;">
+              ✅ Query executed successfully | Rows: ${data.row_count} | Time: ${data.execution_time_ms}ms
+            </div>
+          `;
+
+          if (data.row_count > 0) {
+            // Display table
+            let tableHTML = '<table style="width: 100%; font-size: 11px; border-collapse: collapse;">';
+            tableHTML += '<thead><tr>';
+            data.columns.forEach(col => {
+              tableHTML += `<th style="padding: 4px 8px; text-align: left; border-bottom: 1px solid var(--border); font-weight: 600;">${col}</th>`;
+            });
+            tableHTML += '</tr></thead><tbody>';
+
+            data.rows.forEach(row => {
+              tableHTML += '<tr>';
+              row.forEach(cell => {
+                tableHTML += `<td style="padding: 4px 8px; border-bottom: 1px solid var(--border); max-width: 200px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;" title="${cell}">${cell}</td>`;
+              });
+              tableHTML += '</tr>';
+            });
+            tableHTML += '</tbody></table>';
+            dataDiv.innerHTML = tableHTML;
+          } else {
+            dataDiv.innerHTML = '<div style="color: var(--muted); font-size: 12px;">No results returned</div>';
+          }
+        } else {
+          statusDiv.innerHTML = `
+            <div style="color: var(--error); font-size: 12px;">
+              ❌ Query failed: ${data.error || 'Unknown error'}
+            </div>
+          `;
+          dataDiv.innerHTML = '';
+        }
+      } catch (error) {
+        console.error('Error testing query:', error);
+        showCQMTError('Failed to test query: ' + error.message);
       }
     }
 

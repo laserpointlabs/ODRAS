@@ -14,6 +14,7 @@ from ..services.auth import get_user_or_anonymous
 from ..services.config import Settings
 from ..services.db import DatabaseService
 from ..services.cqmt_service import CQMTService
+from ..services.sparql_runner import SPARQLRunner
 
 logger = logging.getLogger(__name__)
 
@@ -87,6 +88,19 @@ class SuggestOntologyDeltasRequest(BaseModel):
 class SuggestOntologyDeltasResponse(BaseModel):
     existing: List[str] = Field(..., description="IRIs that exist in the ontology")
     missing: List[str] = Field(..., description="IRIs referenced but not found in ontology")
+
+class TestQueryRequest(BaseModel):
+    sparql: str = Field(..., description="SPARQL query to test")
+    mt_iri: str = Field(..., description="Microtheory IRI to execute against")
+    project_id: str = Field(..., description="Project UUID")
+
+class TestQueryResponse(BaseModel):
+    success: bool = Field(..., description="Whether query executed successfully")
+    columns: List[str] = Field(..., description="Result columns")
+    rows: List[List[str]] = Field(..., description="Result rows")
+    row_count: int = Field(..., description="Number of result rows")
+    execution_time_ms: int = Field(..., description="Query execution time in milliseconds")
+    error: Optional[str] = Field(None, description="Error message if execution failed")
 
 # =====================================
 # ROUTER SETUP
@@ -714,6 +728,51 @@ async def get_project_prefixes(
         
     except Exception as e:
         logger.error(f"Error getting project prefixes: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+@router.post("/test-query", response_model=TestQueryResponse)
+async def test_query(
+    request: TestQueryRequest,
+    user: dict = Depends(get_user_or_anonymous)
+):
+    """
+    Test a SPARQL query against a microtheory without saving a CQ.
+    
+    Returns execution results immediately for testing during CQ development.
+    """
+    try:
+        # Get services
+        settings = Settings()
+        runner = SPARQLRunner(settings.fuseki_url)
+        
+        # Execute query (no contract validation, no persistence)
+        execution_result = runner.run_select_in_graph(
+            request.mt_iri,
+            request.sparql,
+            {}  # No parameters for test queries
+        )
+        
+        if execution_result["success"]:
+            return TestQueryResponse(
+                success=True,
+                columns=execution_result["columns"],
+                rows=execution_result["rows"],
+                row_count=execution_result["row_count"],
+                execution_time_ms=execution_result["latency_ms"],
+                error=None
+            )
+        else:
+            return TestQueryResponse(
+                success=False,
+                columns=[],
+                rows=[],
+                row_count=0,
+                execution_time_ms=execution_result.get("latency_ms", 0),
+                error=execution_result.get("error", "Unknown error")
+            )
+        
+    except Exception as e:
+        logger.error(f"Error testing query: {e}")
         raise HTTPException(status_code=500, detail=str(e))
 
 # =====================================
