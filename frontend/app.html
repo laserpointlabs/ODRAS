@@ -32492,15 +32492,28 @@ ${JSON.stringify(cqData?.contract_json || { require_columns: [], min_rows: 0 }, 
     async function loadOntologyDetails(graphIri) {
       try {
         const token = localStorage.getItem('odras_token');
-        const response = await fetch(`/api/ontology/summary?graph=${encodeURIComponent(graphIri)}`, {
+        const response = await fetch(`/api/ontology/?graph=${encodeURIComponent(graphIri)}`, {
           headers: { 'Authorization': `Bearer ${token}` }
         });
 
         if (response.ok) {
-          const ontology = await response.json();
+          const result = await response.json();
+          const ontology = result.data || result;
+
+          console.log('🔍 Loaded ontology:', ontology);
+          console.log('🔍 Classes:', ontology.classes?.length || 0);
+          console.log('🔍 Object properties:', ontology.object_properties?.length || 0);
+          console.log('🔍 Datatype properties:', ontology.datatype_properties?.length || 0);
+
+          // Don't close the CQ modal - just show the details modal on top
+          // (The CQ modal will still be accessible underneath)
+
+          // Then show the details modal
           showOntologyDetailsModal(ontology, graphIri);
         } else {
-          showCQMTError('Failed to load ontology details');
+          const errorData = await response.json();
+          console.error('Failed to load ontology:', errorData);
+          showCQMTError('Failed to load ontology details: ' + (errorData.detail || errorData.message));
         }
       } catch (error) {
         console.error('Error loading ontology details:', error);
@@ -32514,10 +32527,14 @@ ${JSON.stringify(cqData?.contract_json || { require_columns: [], min_rows: 0 }, 
       modal.innerHTML = `
         <div class="modal-content" style="max-width: 900px; max-height: 90vh;">
           <div class="modal-header">
-            <h3>Ontology: ${ontology.title || graphIri}</h3>
+            <h3>Ontology: ${ontology.metadata?.name || graphIri}</h3>
             <button class="btn" onclick="this.closest('.modal-overlay').remove()">&times;</button>
           </div>
           <div class="modal-body" style="padding: 20px; overflow-y: auto;">
+            ${(!ontology.classes || ontology.classes.length === 0) &&
+          (!ontology.object_properties || ontology.object_properties.length === 0) &&
+          (!ontology.datatype_properties || ontology.datatype_properties.length === 0) ?
+          '<div style="padding: 20px; text-align: center; color: var(--muted);">No classes or properties found in this ontology.</div>' : ''}
             ${ontology.classes && ontology.classes.length > 0 ? `
               <h4 style="margin: 0 0 12px 0;">Classes</h4>
               <div style="margin-bottom: 20px;">
@@ -32561,26 +32578,50 @@ ${JSON.stringify(cqData?.contract_json || { require_columns: [], min_rows: 0 }, 
     }
 
     function insertClassIntoSPARQL(className) {
+      console.log('🔍 Inserting class:', className);
       const sparqlTextarea = document.getElementById('sparql_text');
+
+      if (!sparqlTextarea) {
+        console.error('❌ Could not find sparql_text textarea');
+        showCQMTError('Could not find SPARQL editor. Please open the CQ editor first.');
+        return;
+      }
+
       const currentValue = sparqlTextarea.value;
       const newValue = currentValue + (currentValue ? '\n    ' : '') + `?subject rdf:type :${className} .`;
       sparqlTextarea.value = newValue;
       sparqlTextarea.focus();
 
-      // Close all modals
-      document.querySelectorAll('.modal-overlay').forEach(m => m.remove());
+      // Close only the ontology details modal (the CQ modal stays open)
+      const currentModal = document.querySelector('.modal-overlay:last-child');
+      if (currentModal) {
+        currentModal.remove();
+      }
+
       showSuccessMessage(`Inserted class "${className}" into SPARQL query`);
     }
 
     function insertPropertyIntoSPARQL(propertyName) {
+      console.log('🔍 Inserting property:', propertyName);
       const sparqlTextarea = document.getElementById('sparql_text');
+
+      if (!sparqlTextarea) {
+        console.error('❌ Could not find sparql_text textarea');
+        showCQMTError('Could not find SPARQL editor. Please open the CQ editor first.');
+        return;
+      }
+
       const currentValue = sparqlTextarea.value;
       const newValue = currentValue + (currentValue ? '\n    ' : '') + `?subject :${propertyName} ?value .`;
       sparqlTextarea.value = newValue;
       sparqlTextarea.focus();
 
-      // Close all modals
-      document.querySelectorAll('.modal-overlay').forEach(m => m.remove());
+      // Close only the ontology details modal (the CQ modal stays open)
+      const currentModal = document.querySelector('.modal-overlay:last-child');
+      if (currentModal) {
+        currentModal.remove();
+      }
+
       showSuccessMessage(`Inserted property "${propertyName}" into SPARQL query`);
     }
 
@@ -32636,6 +32677,18 @@ ${JSON.stringify(cqData?.contract_json || { require_columns: [], min_rows: 0 }, 
 ${mtData?.description || ''}</textarea>
               </div>
               
+              ${!isEdit ? `
+              <div style="margin-bottom: 16px;">
+                <label style="display: block; margin-bottom: 6px; font-weight: 600;">Clone From (Optional)</label>
+                <select id="mt_clone_from" style="width: 100%; padding: 8px; border: 1px solid var(--border); border-radius: 4px;">
+                  <option value="">Create empty microtheory</option>
+                </select>
+                <div style="font-size: 12px; color: var(--muted); margin-top: 4px;">
+                  Copy triples from an existing microtheory
+                </div>
+              </div>
+              ` : ''}
+              
               <div style="margin-bottom: 16px;">
                 <label style="display: flex; align-items: center; gap: 8px;">
                   <input type="checkbox" id="mt_set_default" ${mtData?.is_default ? 'checked' : ''}>
@@ -32679,6 +32732,19 @@ ${mtData?.description || ''}</textarea>
         </div>
       `;
       document.body.appendChild(modal);
+
+      // Populate "clone from" selector if it exists (only for new MTs)
+      if (!isEdit) {
+        const cloneSelector = document.getElementById('mt_clone_from');
+        if (cloneSelector && window.cqmtState && window.cqmtState.currentMTs) {
+          window.cqmtState.currentMTs.forEach(mt => {
+            const option = document.createElement('option');
+            option.value = mt.iri;
+            option.textContent = mt.label + (mt.is_default ? ' (Default)' : '');
+            cloneSelector.appendChild(option);
+          });
+        }
+      }
     }
 
     function addTripleRow() {
@@ -32903,6 +32969,14 @@ ${mtData?.description || ''}</textarea>
           setDefault: document.getElementById('mt_set_default').checked,
           triples: triples
         };
+
+        // Add cloneFrom if creating new MT and selector has a value
+        if (!isEdit) {
+          const cloneFromSelect = document.getElementById('mt_clone_from');
+          if (cloneFromSelect && cloneFromSelect.value) {
+            mtData.cloneFrom = cloneFromSelect.value;
+          }
+        }
 
         const token = localStorage.getItem('odras_token');
         const url = isEdit
