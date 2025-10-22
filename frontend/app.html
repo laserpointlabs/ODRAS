@@ -32242,11 +32242,19 @@ ${cqData?.problem_text || ''}</textarea>
                 <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px;">
                   <label style="font-weight: 600;">SPARQL Query *</label>
                   <div style="display: flex; gap: 8px;">
-                    <button type="button" class="btn btn-sm" onclick="suggestSPARQL()" style="font-size: 12px; padding: 4px 12px;">
-                      ✨ Suggest SPARQL
+                    <button type="button" class="btn btn-sm" onclick="suggestSPARQL()" style="font-size: 12px; padding: 4px 12px; display: flex; align-items: center; gap: 4px;">
+                      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                        <circle cx="12" cy="12" r="3" />
+                        <path d="M12 1v6M12 17v6M4.2 4.2l4.2 4.2M15.6 15.6l4.2 4.2M1 12h6M17 12h6M4.2 19.8l4.2-4.2M15.6 8.4l4.2-4.2" />
+                      </svg>
+                      Suggest SPARQL
                     </button>
-                    <button type="button" class="btn btn-sm" onclick="browseOntologyForCQ()" style="font-size: 12px; padding: 4px 12px;">
-                      🔍 Browse Ontology
+                    <button type="button" class="btn btn-sm" onclick="browseOntologyForCQ()" style="font-size: 12px; padding: 4px 12px; display: flex; align-items: center; gap: 4px;">
+                      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                        <circle cx="11" cy="11" r="8" />
+                        <path d="M21 21l-4.35-4.35" />
+                      </svg>
+                      Browse Ontology
                     </button>
                   </div>
                 </div>
@@ -32719,11 +32727,19 @@ ${mtData?.description || ''}</textarea>
                 <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px;">
                   <label style="font-weight: 600;">Microtheory Content (Triples)</label>
                   <div style="display: flex; gap: 8px;">
-                    <button type="button" class="btn btn-sm" onclick="browseOntologyForMT()" style="font-size: 12px; padding: 4px 12px;">
-                      🔍 Copy from Ontology
+                    <button type="button" class="btn btn-sm" onclick="browseOntologyForMT()" style="font-size: 12px; padding: 4px 12px; display: flex; align-items: center; gap: 4px;">
+                      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                        <circle cx="11" cy="11" r="8" />
+                        <path d="M21 21l-4.35-4.35" />
+                      </svg>
+                      Copy from Ontology
                     </button>
-                    <button type="button" class="btn btn-sm" onclick="addTripleRow()" style="font-size: 12px; padding: 4px 12px;">
-                      + Add Triple
+                    <button type="button" class="btn btn-sm" onclick="addTripleRow()" style="font-size: 12px; padding: 4px 12px; display: flex; align-items: center; gap: 4px;">
+                      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                        <line x1="12" y1="5" x2="12" y2="19" />
+                        <line x1="5" y1="12" x2="19" y2="12" />
+                      </svg>
+                      Add Triple
                     </button>
                   </div>
                 </div>
