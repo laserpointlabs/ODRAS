@@ -94,6 +94,11 @@ class SuggestOntologyDeltasResponse(BaseModel):
 
 router = APIRouter(prefix="/api/cqmt", tags=["cqmt"])
 
+def get_db_service() -> DatabaseService:
+    """Get database service instance."""
+    settings = Settings()
+    return DatabaseService(settings)
+
 def get_cqmt_service() -> CQMTService:
     """Dependency to get CQMTService instance."""
     settings = Settings()
@@ -643,6 +648,72 @@ async def suggest_ontology_deltas(
         
     except Exception as e:
         logger.error(f"Error in suggest_ontology_deltas: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+# =====================================
+# PREFIX MANAGEMENT ENDPOINTS
+# =====================================
+
+@router.get("/projects/{project_id}/prefixes")
+async def get_project_prefixes(
+    project_id: str,
+    ontology_graph_iri: Optional[str] = Query(None, description="Specific ontology graph IRI, otherwise uses project default"),
+    db_service: DatabaseService = Depends(get_db_service),
+    user: dict = Depends(get_user_or_anonymous)
+):
+    """
+    Get SPARQL prefixes for a project's ontology.
+    
+    Returns project-specific namespace prefix plus standard RDF prefixes.
+    """
+    try:
+        # Get project's ontologies
+        ontologies = db_service.list_ontologies(project_id=project_id)
+        
+        if not ontologies:
+            # Return minimal prefixes if no ontology found
+            return {
+                "prefixes": [
+                    {"prefix": "rdf:", "iri": "http://www.w3.org/1999/02/22-rdf-syntax-ns#"},
+                    {"prefix": "rdfs:", "iri": "http://www.w3.org/2000/01/rdf-schema#"},
+                    {"prefix": "owl:", "iri": "http://www.w3.org/2002/07/owl#"}
+                ],
+                "default_ns": None
+            }
+        
+        # Use specified ontology or first one found
+        target_ontology = None
+        if ontology_graph_iri:
+            target_ontology = next((o for o in ontologies if o.get("graph_iri") == ontology_graph_iri), None)
+        
+        if not target_ontology:
+            target_ontology = ontologies[0]
+        
+        graph_iri = target_ontology.get("graph_iri")
+        
+        # Extract namespace from graph IRI
+        # Format: http://.../{ontology_name}# or http://.../{ontology_name}
+        if "#" in graph_iri:
+            namespace_iri = graph_iri
+        else:
+            namespace_iri = f"{graph_iri}#"
+        
+        # Build prefix list
+        prefixes = [
+            {"prefix": ":", "iri": namespace_iri},
+            {"prefix": "rdf:", "iri": "http://www.w3.org/1999/02/22-rdf-syntax-ns#"},
+            {"prefix": "rdfs:", "iri": "http://www.w3.org/2000/01/rdf-schema#"},
+            {"prefix": "owl:", "iri": "http://www.w3.org/2002/07/owl#"}
+        ]
+        
+        return {
+            "prefixes": prefixes,
+            "default_ns": namespace_iri,
+            "ontology_label": target_ontology.get("label", "Unknown")
+        }
+        
+    except Exception as e:
+        logger.error(f"Error getting project prefixes: {e}")
         raise HTTPException(status_code=500, detail=str(e))
 
 # =====================================

@@ -282,10 +282,122 @@
 
 ---
 
+---
+
+## 📋 SPARQL Query Builder Implementation (NEW)
+
+### Phase 1: Prefix Management (Quick Win)
+**Goal**: Eliminate manual prefix typing by auto-injecting project-specific prefixes
+
+#### Backend
+- [ ] Create `GET /api/cqmt/projects/{project_id}/prefixes` endpoint
+  - [ ] Extract namespace from ontology graph IRI
+  - [ ] Return project-specific prefixes
+  - [ ] Include standard prefixes (rdf, rdfs, owl)
+  - [ ] Return default namespace for project
+
+#### Frontend
+- [ ] Add "Insert Prefixes" button to CQ modal
+- [ ] Call prefixes API on CQ modal open
+- [ ] Auto-inject prefixes into SPARQL editor
+- [ ] Show prefix list in tooltip or helper text
+- [ ] Update "Suggest SPARQL" to use project prefixes instead of hardcoded
+
+#### Testing
+- [ ] Test prefix generation for different projects
+- [ ] Verify prefix injection doesn't duplicate existing prefixes
+- [ ] Test with projects having multiple ontologies
+
+---
+
+### Phase 2: Test Query Endpoint
+**Goal**: Enable SPARQL testing during CQ creation without saving
+
+#### Backend
+- [ ] Create `POST /api/cqmt/test-query` endpoint
+  - [ ] Accept SPARQL, mt_iri, project_id
+  - [ ] Reuse existing CQ execution logic
+  - [ ] Execute against Fuseki with microtheory context
+  - [ ] Return results without creating CQ run record
+  - [ ] Handle SPARQL syntax errors gracefully
+  - [ ] Set reasonable timeout (30 seconds)
+
+#### Frontend
+- [ ] Add "Test Query" button to CQ modal
+- [ ] Create query results display panel
+- [ ] Show microtheory selector for testing
+- [ ] Display results (columns, rows, execution time)
+- [ ] Show error messages for failed queries
+- [ ] Add loading state during query execution
+
+#### Testing
+- [ ] Test query execution with valid SPARQL
+- [ ] Test with invalid SPARQL (syntax errors)
+- [ ] Test timeout handling
+- [ ] Test against empty microtheory
+- [ ] Test against microtheory with data
+
+---
+
+### Phase 3: Query Builder Modal
+**Goal**: Interactive SPARQL query building experience
+
+#### Backend
+- [ ] Enhance prefix handling for multiple ontologies
+- [ ] Add query optimization suggestions (optional)
+
+#### Frontend
+- [ ] Create new SPARQL Query Builder modal component
+- [ ] Integrate prefix auto-injection
+- [ ] Integrate test query functionality
+- [ ] Add problem statement input
+- [ ] Add toolbar with actions
+- [ ] Display test results inline
+- [ ] Add "Use This Query" button to insert into CQ
+- [ ] Replace current "Suggest SPARQL" button with "Open Query Builder"
+
+#### Testing
+- [ ] Test modal workflow end-to-end
+- [ ] Test query building and testing
+- [ ] Test inserting query into CQ form
+- [ ] Test modal with multiple ontologies
+
+---
+
+### Phase 4: DAS Integration
+**Goal**: AI-powered SPARQL query generation using actual ontology terms
+
+#### Backend
+- [ ] Enhance `/api/cqmt/assist/suggest-sparql` endpoint
+  - [ ] Accept project_id and ontology_graph_iri parameters
+  - [ ] Load ontology classes/properties using `/api/ontology/` endpoint
+  - [ ] Send ontology context to DAS
+  - [ ] Generate SPARQL using actual ontology terms
+  - [ ] Return query with correct prefixes and IRIs
+  - [ ] Add confidence score to response
+  - [ ] Return multiple query variations
+
+#### Frontend
+- [ ] Add "Suggest with DAS" button to Query Builder
+- [ ] Show loading state during DAS processing
+- [ ] Display generated query in editor
+- [ ] Show confidence score and notes
+- [ ] Allow user to select between query variations
+- [ ] Add "improve query" option for refinement
+
+#### Testing
+- [ ] Test DAS integration with real ontology
+- [ ] Verify generated queries use correct IRIs
+- [ ] Test with ontologies having no classes
+- [ ] Test confidence score accuracy
+- [ ] Test query variations generation
+
+---
+
 ## 🔗 Related Documents
 
 - [CQMT Workbench Specification](CQMT_WORKBENCH_SPECIFICATION.md)
 - [CQMT Workbench Guide](CQMT_WORKBENCH_GUIDE.md)
+- [SPARQL Query Builder Plan](CQMT_SPARQL_QUERY_BUILDER_PLAN.md)
 - [Test Files](../tests/test_cqmt_workbench.py)
 - [API Endpoints](../../backend/api/cqmt.py)
-

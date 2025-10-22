@@ -32323,6 +32323,44 @@ ${JSON.stringify(cqData?.contract_json || { require_columns: [], min_rows: 0 }, 
           mtSelector.appendChild(option);
         });
       }
+
+      // Auto-load prefixes for the selected ontology
+      if (!isEdit || !cqData?.sparql_text) {
+        loadPrefixesForCQ(window.cqmtState.currentOntologyIri);
+      }
+    }
+
+    async function loadPrefixesForCQ(ontologyIri) {
+      const projectId = window.cqmtState.currentProjectId;
+      if (!projectId) return;
+
+      try {
+        const token = localStorage.getItem('odras_token');
+        const url = ontologyIri
+          ? `/api/cqmt/projects/${projectId}/prefixes?ontology_graph_iri=${encodeURIComponent(ontologyIri)}`
+          : `/api/cqmt/projects/${projectId}/prefixes`;
+
+        const response = await fetch(url, {
+          headers: { 'Authorization': `Bearer ${token}` }
+        });
+
+        if (response.ok) {
+          const data = await response.json();
+          const prefixes = data.prefixes || [];
+
+          const sparqlTextarea = document.getElementById('sparql_text');
+          if (sparqlTextarea && !sparqlTextarea.value.trim()) {
+            // Only auto-load if editor is empty
+            let prefixBlock = '';
+            prefixes.forEach(p => {
+              prefixBlock += `PREFIX ${p.prefix} <${p.iri}>\n`;
+            });
+            sparqlTextarea.value = prefixBlock + '\n';
+          }
+        }
+      } catch (error) {
+        console.error('Error loading prefixes:', error);
+      }
     }
 
     async function saveCQ(event) {
