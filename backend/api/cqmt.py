@@ -339,6 +339,88 @@ async def delete_microtheory(
         raise HTTPException(status_code=500, detail=str(e))
 
 # =====================================
+# DEPENDENCY TRACKING ENDPOINTS
+# =====================================
+
+@router.get("/microtheories/{mt_id}/dependencies")
+async def get_mt_dependencies(
+    mt_id: str,
+    user: dict = Depends(get_user_or_anonymous),
+    service: CQMTService = Depends(get_cqmt_service)
+):
+    """
+    Get list of ontology elements this MT depends on.
+    
+    Returns all dependencies with their validation status.
+    """
+    try:
+        dependencies = service.dependency_tracker.get_dependencies(mt_id)
+        
+        return {
+            "success": True,
+            "data": dependencies,
+            "count": len(dependencies)
+        }
+        
+    except Exception as e:
+        logger.error(f"Error getting MT dependencies: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+@router.get("/microtheories/{mt_id}/validation")
+async def validate_mt_references(
+    mt_id: str,
+    user: dict = Depends(get_user_or_anonymous),
+    service: CQMTService = Depends(get_cqmt_service)
+):
+    """
+    Check if all referenced ontology elements still exist.
+    
+    Returns validation status with list of invalid dependencies.
+    """
+    try:
+        result = service.dependency_tracker.validate_dependencies(mt_id)
+        
+        return {
+            "success": True,
+            "valid": result["valid"],
+            "total": result["total"],
+            "valid_count": result["valid_count"],
+            "invalid_count": result["invalid_count"],
+            "invalid_dependencies": result["invalid_dependencies"]
+        }
+        
+    except Exception as e:
+        logger.error(f"Error validating MT references: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+@router.get("/ontologies/{graph_iri}/impact-analysis")
+async def get_ontology_impact(
+    graph_iri: str,
+    element_iri: str = Query(..., description="IRI of changed element"),
+    user: dict = Depends(get_user_or_anonymous),
+    service: CQMTService = Depends(get_cqmt_service)
+):
+    """
+    Find MTs that reference a specific ontology element.
+    
+    Useful for impact analysis when ontology changes.
+    """
+    try:
+        affected_mts = service.dependency_tracker.get_affected_mts(graph_iri, element_iri)
+        
+        return {
+            "success": True,
+            "element_iri": element_iri,
+            "graph_iri": graph_iri,
+            "affected_mts": affected_mts,
+            "count": len(affected_mts)
+        }
+        
+    except Exception as e:
+        logger.error(f"Error getting ontology impact: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+# =====================================
 # COMPETENCY QUESTION ENDPOINTS
 # =====================================
 

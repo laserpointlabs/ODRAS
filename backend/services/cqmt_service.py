@@ -14,6 +14,7 @@ import uuid
 from .sparql_runner import SPARQLRunner
 from .db import DatabaseService
 from .config import Settings
+from .cqmt_dependency_tracker import CQMTDependencyTracker
 
 logger = logging.getLogger(__name__)
 
@@ -28,6 +29,7 @@ class CQMTService:
         self.db = db_service
         self.runner = SPARQLRunner(fuseki_url)
         self.settings = Settings()
+        self.dependency_tracker = CQMTDependencyTracker(db_service, fuseki_url)
         
         # Initialize Redis for event publishing (optional)
         self.redis_client = None
@@ -139,6 +141,19 @@ class CQMTService:
                 if not clone_result["success"]:
                     logger.warning(f"Failed to clone triples from {clone_from} to {iri}: {clone_result['error']}")
                     # Don't fail the whole operation, just log the warning
+            
+            # Extract and store dependencies
+            try:
+                dependencies = self.dependency_tracker.extract_dependencies(iri)
+                if dependencies:
+                    # Set mt_id for each dependency
+                    for dep in dependencies:
+                        dep.mt_id = str(mt_id)
+                    self.dependency_tracker.store_dependencies(str(mt_id), dependencies)
+                    logger.info(f"Extracted and stored {len(dependencies)} dependencies for MT {mt_id}")
+            except Exception as e:
+                logger.warning(f"Failed to extract dependencies for MT {mt_id}: {e}")
+                # Don't fail the whole operation
             
             return {
                 "success": True,
@@ -378,6 +393,20 @@ class CQMTService:
                         set_result = self.set_default_microtheory(mt_id, project_id)
                         if not set_result["success"]:
                             logger.warning(f"Failed to set default: {set_result['error']}")
+                    
+                    # Extract and store dependencies if triples were updated
+                    if triples is not None:
+                        try:
+                            dependencies = self.dependency_tracker.extract_dependencies(mt_iri)
+                            if dependencies:
+                                # Set mt_id for each dependency
+                                for dep in dependencies:
+                                    dep.mt_id = mt_id
+                                self.dependency_tracker.store_dependencies(mt_id, dependencies)
+                                logger.info(f"Extracted and stored {len(dependencies)} dependencies for MT {mt_id}")
+                        except Exception as e:
+                            logger.warning(f"Failed to extract dependencies for MT {mt_id}: {e}")
+                            # Don't fail the whole operation
                     
                     # Return updated MT data
                     return {

@@ -1726,6 +1726,20 @@ CREATE TABLE IF NOT EXISTS microtheories (
     UNIQUE(project_id, label)
 );
 
+-- MT-Ontology Dependency Tracking Table
+-- Tracks which ontology elements (classes, properties) are referenced by each microtheory
+CREATE TABLE IF NOT EXISTS mt_ontology_dependencies (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    mt_id UUID NOT NULL REFERENCES microtheories(id) ON DELETE CASCADE,
+    ontology_graph_iri TEXT NOT NULL,
+    referenced_element_iri TEXT NOT NULL,
+    element_type VARCHAR(50) NOT NULL CHECK (element_type IN ('Class', 'ObjectProperty', 'DatatypeProperty', 'Individual', 'Other')),
+    first_detected_at TIMESTAMPTZ DEFAULT NOW(),
+    last_validated_at TIMESTAMPTZ,
+    is_valid BOOLEAN DEFAULT TRUE,
+    UNIQUE(mt_id, referenced_element_iri)
+);
+
 -- =====================================
 -- CQ/MT WORKBENCH INDEXES
 -- =====================================
@@ -1751,6 +1765,13 @@ CREATE INDEX IF NOT EXISTS idx_mt_iri ON microtheories(iri);
 CREATE INDEX IF NOT EXISTS idx_mt_is_default ON microtheories(is_default);
 CREATE INDEX IF NOT EXISTS idx_mt_parent_iri ON microtheories(parent_iri);
 CREATE INDEX IF NOT EXISTS idx_mt_created_by ON microtheories(created_by);
+
+-- MT dependency tracking indexes
+CREATE INDEX IF NOT EXISTS idx_mt_deps_mt_id ON mt_ontology_dependencies(mt_id);
+CREATE INDEX IF NOT EXISTS idx_mt_deps_element ON mt_ontology_dependencies(referenced_element_iri);
+CREATE INDEX IF NOT EXISTS idx_mt_deps_valid ON mt_ontology_dependencies(is_valid);
+CREATE INDEX IF NOT EXISTS idx_mt_deps_graph ON mt_ontology_dependencies(ontology_graph_iri);
+CREATE INDEX IF NOT EXISTS idx_mt_deps_type ON mt_ontology_dependencies(element_type);
 
 -- =====================================
 -- CQ/MT WORKBENCH FUNCTIONS

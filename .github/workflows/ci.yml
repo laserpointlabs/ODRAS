@@ -162,6 +162,9 @@ jobs:
           echo "🧪 Step 6: CQ/MT Workbench Test..."
           python scripts/cqmt_ui_test.py
 
+          echo "🧪 Step 7: CQMT Dependency Tracking Test..."
+          python -m pytest tests/test_cqmt_dependency_tracking.py -v --tb=short
+
           echo "✅ COMPLETE ODRAS system validation finished"
         env:
           PYTHONPATH: ${{ github.workspace }}
