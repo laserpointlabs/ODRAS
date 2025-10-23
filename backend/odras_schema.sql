@@ -637,7 +637,7 @@ ON CONFLICT (domain) DO NOTHING;
 INSERT INTO namespace_registry (name, type, path, prefix, status, owners, description) VALUES
 ('odras-core', 'core', 'odras/core', 'odras', 'released', ARRAY['admin@odras.local'], 'ODRAS Core Ontology'),
 ('odras-admin', 'core', 'odras/admin', 'admin', 'released', ARRAY['admin@odras.local'], 'ODRAS Admin Reference Ontologies')
-ON CONFLICT (name, type) DO NOTHING;
+ON CONFLICT (name, type) DO UPDATE SET status = 'released';
 
 -- Create initial versions for existing namespaces
 INSERT INTO namespace_versions (namespace_id, version, version_iri, status, released_at)
@@ -1672,3 +1672,183 @@ CREATE INDEX idx_assumptions_created_at ON project_assumptions(created_at);
 COMMENT ON TABLE project_assumptions IS 'Assumptions captured during DAS conversations using /assumption command';
 COMMENT ON COLUMN project_assumptions.conversation_context IS 'JSON array of recent conversation messages for context';
 COMMENT ON COLUMN project_assumptions.status IS 'Status: active, validated (verified true), invalidated (verified false), archived';
+
+-- =====================================
+-- CQ/MT WORKBENCH SCHEMA
+-- =====================================
+
+-- Competency Questions table for test-driven ontology development
+CREATE TABLE IF NOT EXISTS cqs (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    project_id UUID NOT NULL REFERENCES projects(project_id) ON DELETE CASCADE,
+    cq_name VARCHAR(255) NOT NULL,
+    problem_text TEXT NOT NULL,
+    params_json JSONB DEFAULT '{}',
+    sparql_text TEXT NOT NULL,
+    mt_iri_default VARCHAR(1000),
+    contract_json JSONB NOT NULL,  -- {require_columns, min_rows?, max_latency_ms?}
+    status VARCHAR(50) DEFAULT 'draft' CHECK (status IN ('draft', 'active', 'deprecated')),
+    created_by UUID REFERENCES users(user_id),
+    created_at TIMESTAMPTZ DEFAULT NOW(),
+    updated_at TIMESTAMPTZ DEFAULT NOW(),
+    UNIQUE(project_id, cq_name)
+);
+
+-- CQ execution runs table for tracking pass/fail history
+CREATE TABLE IF NOT EXISTS cq_runs (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    cq_id UUID NOT NULL REFERENCES cqs(id) ON DELETE CASCADE,
+    mt_iri VARCHAR(1000) NOT NULL,
+    params_json JSONB DEFAULT '{}',
+    pass BOOLEAN NOT NULL,
+    reason TEXT,
+    row_count INT,
+    columns_json JSONB,
+    rows_preview_json JSONB,
+    latency_ms INT,
+    executed_by UUID REFERENCES users(user_id),
+    created_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+-- Microtheories table for named graph management
+CREATE TABLE IF NOT EXISTS microtheories (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    project_id UUID NOT NULL REFERENCES projects(project_id) ON DELETE CASCADE,
+    label VARCHAR(255) NOT NULL,
+    description TEXT,
+    iri VARCHAR(1000) UNIQUE NOT NULL,
+    parent_iri VARCHAR(1000),  -- NULL or IRI of cloned source
+    is_default BOOLEAN DEFAULT FALSE,
+    created_by UUID REFERENCES users(user_id),
+    created_at TIMESTAMPTZ DEFAULT NOW(),
+    updated_by UUID REFERENCES users(user_id),
+    updated_at TIMESTAMPTZ DEFAULT NOW(),
+    UNIQUE(project_id, label)
+);
+
+-- MT-Ontology Dependency Tracking Table
+-- Tracks which ontology elements (classes, properties) are referenced by each microtheory
+CREATE TABLE IF NOT EXISTS mt_ontology_dependencies (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    mt_id UUID NOT NULL REFERENCES microtheories(id) ON DELETE CASCADE,
+    ontology_graph_iri TEXT NOT NULL,
+    referenced_element_iri TEXT NOT NULL,
+    element_type VARCHAR(50) NOT NULL CHECK (element_type IN ('Class', 'ObjectProperty', 'DatatypeProperty', 'Individual', 'Other')),
+    first_detected_at TIMESTAMPTZ DEFAULT NOW(),
+    last_validated_at TIMESTAMPTZ,
+    is_valid BOOLEAN DEFAULT TRUE,
+    UNIQUE(mt_id, referenced_element_iri)
+);
+
+-- =====================================
+-- CQ/MT WORKBENCH INDEXES
+-- =====================================
+
+-- CQs indexes
+CREATE INDEX IF NOT EXISTS idx_cqs_project_id ON cqs(project_id);
+CREATE INDEX IF NOT EXISTS idx_cqs_status ON cqs(status);
+CREATE INDEX IF NOT EXISTS idx_cqs_created_by ON cqs(created_by);
+CREATE INDEX IF NOT EXISTS idx_cqs_created_at ON cqs(created_at);
+CREATE INDEX IF NOT EXISTS idx_cqs_contract ON cqs USING GIN(contract_json);
+CREATE INDEX IF NOT EXISTS idx_cqs_params ON cqs USING GIN(params_json);
+
+-- CQ runs indexes
+CREATE INDEX IF NOT EXISTS idx_cq_runs_cq_id ON cq_runs(cq_id);
+CREATE INDEX IF NOT EXISTS idx_cq_runs_created_at ON cq_runs(created_at DESC);
+CREATE INDEX IF NOT EXISTS idx_cq_runs_pass ON cq_runs(pass);
+CREATE INDEX IF NOT EXISTS idx_cq_runs_mt_iri ON cq_runs(mt_iri);
+CREATE INDEX IF NOT EXISTS idx_cq_runs_executed_by ON cq_runs(executed_by);
+
+-- Microtheories indexes
+CREATE INDEX IF NOT EXISTS idx_mt_project_id ON microtheories(project_id);
+CREATE INDEX IF NOT EXISTS idx_mt_iri ON microtheories(iri);
+CREATE INDEX IF NOT EXISTS idx_mt_is_default ON microtheories(is_default);
+CREATE INDEX IF NOT EXISTS idx_mt_parent_iri ON microtheories(parent_iri);
+CREATE INDEX IF NOT EXISTS idx_mt_created_by ON microtheories(created_by);
+
+-- MT dependency tracking indexes
+CREATE INDEX IF NOT EXISTS idx_mt_deps_mt_id ON mt_ontology_dependencies(mt_id);
+CREATE INDEX IF NOT EXISTS idx_mt_deps_element ON mt_ontology_dependencies(referenced_element_iri);
+CREATE INDEX IF NOT EXISTS idx_mt_deps_valid ON mt_ontology_dependencies(is_valid);
+CREATE INDEX IF NOT EXISTS idx_mt_deps_graph ON mt_ontology_dependencies(ontology_graph_iri);
+CREATE INDEX IF NOT EXISTS idx_mt_deps_type ON mt_ontology_dependencies(element_type);
+
+-- =====================================
+-- CQ/MT WORKBENCH FUNCTIONS
+-- =====================================
+
+-- Function to update CQ updated_at timestamp
+CREATE OR REPLACE FUNCTION update_cqs_updated_at()
+RETURNS TRIGGER AS $$
+BEGIN
+    NEW.updated_at = NOW();
+    RETURN NEW;
+END;
+$$ language 'plpgsql';
+
+-- Function to ensure only one default MT per project
+CREATE OR REPLACE FUNCTION ensure_single_default_mt()
+RETURNS TRIGGER AS $$
+BEGIN
+    -- If setting a new default MT, unset any existing default
+    IF NEW.is_default = TRUE THEN
+        UPDATE microtheories 
+        SET is_default = FALSE 
+        WHERE project_id = NEW.project_id 
+        AND id != NEW.id 
+        AND is_default = TRUE;
+    END IF;
+    
+    RETURN NEW;
+END;
+$$ language 'plpgsql';
+
+-- =====================================
+-- CQ/MT WORKBENCH TRIGGERS
+-- =====================================
+
+-- Trigger for CQs updated_at
+CREATE TRIGGER update_cqs_updated_at
+    BEFORE UPDATE ON cqs
+    FOR EACH ROW EXECUTE FUNCTION update_cqs_updated_at();
+
+-- Trigger to ensure only one default MT per project
+CREATE TRIGGER trigger_ensure_single_default_mt
+    BEFORE INSERT OR UPDATE ON microtheories
+    FOR EACH ROW
+    WHEN (NEW.is_default = TRUE)
+    EXECUTE FUNCTION ensure_single_default_mt();
+
+-- =====================================
+-- CQ/MT WORKBENCH COMMENTS
+-- =====================================
+
+-- Table comments
+COMMENT ON TABLE cqs IS 'Competency Questions for test-driven ontology development';
+COMMENT ON TABLE cq_runs IS 'Execution history and results for competency question runs';
+COMMENT ON TABLE microtheories IS 'Microtheory metadata for named graph management in Fuseki';
+
+-- Column comments for CQs
+COMMENT ON COLUMN cqs.cq_name IS 'Human-readable name for the competency question';
+COMMENT ON COLUMN cqs.problem_text IS 'Natural language description of what the CQ should answer';
+COMMENT ON COLUMN cqs.params_json IS 'Parameters for SPARQL template binding (Mustache-style variables)';
+COMMENT ON COLUMN cqs.sparql_text IS 'SPARQL SELECT query template with {{var}} placeholders';
+COMMENT ON COLUMN cqs.mt_iri_default IS 'Default microtheory IRI to run this CQ against';
+COMMENT ON COLUMN cqs.contract_json IS 'Pass/fail contract: {require_columns: [], min_rows?: number, max_latency_ms?: number}';
+COMMENT ON COLUMN cqs.status IS 'CQ lifecycle status: draft, active, deprecated';
+
+-- Column comments for CQ runs
+COMMENT ON COLUMN cq_runs.mt_iri IS 'Microtheory IRI (named graph) where CQ was executed';
+COMMENT ON COLUMN cq_runs.params_json IS 'Parameter values used for SPARQL template binding';
+COMMENT ON COLUMN cq_runs.pass IS 'Whether CQ execution passed contract validation';
+COMMENT ON COLUMN cq_runs.reason IS 'Pass/fail reason (compile_error, missing_required_columns, min_rows_not_met, latency_budget_exceeded, etc.)';
+COMMENT ON COLUMN cq_runs.row_count IS 'Number of result rows returned by SPARQL query';
+COMMENT ON COLUMN cq_runs.columns_json IS 'JSON array of column names returned by query';
+COMMENT ON COLUMN cq_runs.rows_preview_json IS 'JSON array of first N rows for UI preview';
+COMMENT ON COLUMN cq_runs.latency_ms IS 'Query execution time in milliseconds';
+
+-- Column comments for microtheories
+COMMENT ON COLUMN microtheories.label IS 'Human-readable label for the microtheory';
+COMMENT ON COLUMN microtheories.iri IS 'Unique IRI for the named graph in Fuseki triplestore';
+COMMENT ON COLUMN microtheories.parent_iri IS 'IRI of source microtheory if this was cloned';
+COMMENT ON COLUMN microtheories.is_default IS 'Whether this is the default MT for CQ runs in this project';

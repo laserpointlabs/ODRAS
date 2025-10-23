@@ -159,6 +159,15 @@ jobs:
           echo "🧪 Step 5: Ontology Inheritance System Test..."
           python -m pytest tests/test_inheritance_system.py -v --tb=short
 
+          echo "🧪 Step 6: CQ/MT Workbench Test..."
+          python scripts/cqmt_ui_test.py
+
+          echo "🧪 Step 7: CQMT Dependency Tracking Test..."
+          python -m pytest tests/test_cqmt_dependency_tracking.py -v --tb=short
+
+          echo "🧪 Step 8: CQMT Change Detection Test..."
+          python -m pytest tests/test_ontology_change_detection.py -v --tb=short
+
           echo "✅ COMPLETE ODRAS system validation finished"
         env:
           PYTHONPATH: ${{ github.workspace }}

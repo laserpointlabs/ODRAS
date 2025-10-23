@@ -808,6 +808,106 @@
       display: flex;
     }
 
+    /* CQ/MT Content */
+    .cqmt-content {
+      display: none;
+      height: calc(100vh - 200px);
+      padding: 20px;
+      overflow-y: auto;
+    }
+
+    .cqmt-content.active {
+      display: block;
+    }
+
+    .cqmt-header {
+      margin-bottom: 20px;
+    }
+
+    .cqmt-header h2 {
+      margin: 0 0 8px 0;
+      font-size: 1.5em;
+      font-weight: 600;
+    }
+
+    .cqmt-header p {
+      margin: 0;
+      color: var(--muted);
+    }
+
+    .cqmt-tabs {
+      display: flex;
+      gap: 8px;
+      background: var(--panel-2);
+      padding: 8px;
+      border-radius: 4px;
+      margin-bottom: 20px;
+    }
+
+    .cqmt-tabs .cqmt-tab {
+      padding: 8px 16px;
+      background: var(--panel-2);
+      border: 1px solid var(--border);
+      border-radius: 4px;
+      color: var(--muted);
+      cursor: pointer;
+      transition: all 0.2s;
+    }
+
+    .cqmt-tabs .cqmt-tab:hover {
+      background: var(--panel);
+      border-color: var(--accent);
+    }
+
+    .cqmt-tabs .cqmt-tab.active {
+      background: var(--accent);
+      color: white;
+    }
+
+    .cqmt-tab-content {
+      display: none;
+    }
+
+    .cqmt-tab-content.active {
+      display: block;
+    }
+
+    .item-list {
+      max-height: 400px;
+      overflow-y: auto;
+      border: 1px solid var(--border);
+      border-radius: 4px;
+      background: var(--panel);
+    }
+
+    .stats-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+      gap: 15px;
+      margin: 20px 0;
+    }
+
+    .stat-card {
+      background: var(--panel);
+      padding: 20px;
+      border-radius: 8px;
+      text-align: center;
+      border-left: 4px solid var(--accent);
+    }
+
+    .stat-number {
+      font-size: 2em;
+      font-weight: bold;
+      color: var(--text);
+      display: block;
+    }
+
+    .stat-label {
+      color: var(--muted);
+      font-size: 0.9em;
+      margin-top: 5px;
+    }
+
     .individuals-tabs-nav {
       width: 200px;
       background: var(--panel-2);
@@ -3325,6 +3425,14 @@
               </svg>
               Individuals
             </button>
+            <button class="workbench-tab" id="cqmtTab" onclick="switchWorkbenchTab('cqmt')">
+              <svg viewBox="0 0 24 24" fill="none" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round">
+                <circle cx="12" cy="12" r="9" />
+                <path d="M9 12l2 2 4-4" />
+                <path d="M8 14s1.5 2 4 2 4-2 4-2" />
+              </svg>
+              CQ/MT
+            </button>
           </div>
 
           <div id="ontoEmpty" class="card onto-empty-state">
@@ -3691,6 +3799,88 @@
                   <h3>Individual Tables</h3>
                   <p>Select an ontology to view its individual instances</p>
                 </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- CQ/MT Content Area -->
+          <div id="cqmtContent" class="cqmt-content" style="display: none;">
+            <div class="cqmt-header">
+              <h2>CQ/MT Workbench</h2>
+              <p>Test-driven ontology development with Competency Questions and Microtheories</p>
+            </div>
+
+            <!-- Ontology Selector for projects with multiple ontologies -->
+            <div style="padding: 16px; background: var(--panel-2); border-bottom: 1px solid var(--border);">
+              <label style="display: block; margin-bottom: 8px; color: var(--muted); font-size: 13px;">
+                Active Ontology Context:
+              </label>
+              <select id="cqmt-ontology-selector" style="width: 300px; margin-bottom: 0;">
+                <option value="">Loading ontologies...</option>
+              </select>
+              <span class="muted" style="margin-left: 12px; font-size: 12px;" id="cqmt-ontology-import-info"></span>
+            </div>
+
+            <div class="cqmt-tabs">
+              <button class="cqmt-tab active" onclick="showCQMTTab('cqs', this)">Competency Questions</button>
+              <button class="cqmt-tab" onclick="showCQMTTab('microtheories', this)">Microtheories</button>
+              <button class="cqmt-tab" onclick="showCQMTTab('coverage', this)">Coverage</button>
+            </div>
+
+            <!-- CQs Tab Content -->
+            <div id="cqmtCQsContent" class="cqmt-tab-content active">
+              <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
+                <h3>Competency Questions</h3>
+                <button class="btn btn-success" onclick="createNewCQ()">+ New CQ</button>
+              </div>
+              <div class="item-list" id="cq-list">
+                <div class="loading">Loading competency questions</div>
+              </div>
+            </div>
+
+            <!-- Microtheories Tab Content -->
+            <div id="cqmtMTsContent" class="cqmt-tab-content" style="display: none;">
+              <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
+                <h3>Microtheories</h3>
+                <button class="btn btn-success" onclick="createNewMT()">+ New Microtheory</button>
+              </div>
+              <div class="item-list" id="mt-list">
+                <div class="loading">Loading microtheories</div>
+              </div>
+            </div>
+
+            <!-- Coverage Tab Content -->
+            <div id="cqmtCoverageContent" class="cqmt-tab-content" style="display: none;">
+              <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
+                <div>
+                  <h3 style="margin: 0;">CQ Coverage Summary</h3>
+                  <p style="margin: 5px 0 0 0; color: var(--muted); font-size: 13px;">Overview of CQ pass/fail status
+                    across microtheories</p>
+                </div>
+                <button class="btn btn-success" onclick="runAllCQs()" style="padding: 8px 16px;">
+                  ▶ Run All CQs
+                </button>
+              </div>
+              <div id="coverage-stats" class="stats-grid">
+                <div class="stat-card">
+                  <span id="total-cqs" class="stat-number">-</span>
+                  <div class="stat-label">Total CQs</div>
+                </div>
+                <div class="stat-card">
+                  <span id="active-cqs" class="stat-number">-</span>
+                  <div class="stat-label">Active CQs</div>
+                </div>
+                <div class="stat-card">
+                  <span id="passing-cqs" class="stat-number">-</span>
+                  <div class="stat-label">Recently Passing</div>
+                </div>
+                <div class="stat-card">
+                  <span id="failing-cqs" class="stat-number">-</span>
+                  <div class="stat-label">Recently Failing</div>
+                </div>
+              </div>
+              <div id="coverage-details">
+                <div class="loading">Loading coverage data</div>
               </div>
             </div>
           </div>
@@ -11092,10 +11282,12 @@ ${insertParts.join('\\n')}
         }
 
         // Update localStorage and URL to match selected project
-        if (projectIdToUse) {
+        // Use selected.id if projectIdToUse wasn't set (fallback)
+        const finalProjectId = projectIdToUse || selected.id;
+        if (finalProjectId) {
           try {
-            localStorage.setItem('active_project_id', projectIdToUse);
-            updateURL(projectIdToUse);
+            localStorage.setItem('active_project_id', finalProjectId);
+            updateURL(finalProjectId);
           } catch (error) {
             console.warn('Failed to update project state:', error);
           }
@@ -11356,7 +11548,11 @@ ${insertParts.join('\\n')}
             pid = (proj && (proj.id || proj.project_id || proj.projectId)) || '';
             pname = (proj && proj.name) || name;
             if (pid) {
-              try { localStorage.setItem('active_project_id', pid); } catch (_) { }
+              try {
+                localStorage.setItem('active_project_id', pid);
+                updateURL(pid); // Update URL with new project
+                updateNamespaceDisplay(pid); // Update namespace display
+              } catch (_) { }
               console.log(`✅ Project "${pname}" created successfully (ID: ${pid})`);
             }
           } else {
@@ -11379,6 +11575,23 @@ ${insertParts.join('\\n')}
           }
           const selected = pid ? { id: pid, name: pname } : (list[0] || { id: null, name: '' });
           updateProjectProgress('🎨 Setting up project interface...');
+
+          // Set active project in localStorage and update URL if we have a new project
+          if (pid) {
+            try {
+              localStorage.setItem('active_project_id', pid);
+              updateURL(pid);
+              updateNamespaceDisplay(pid);
+
+              // Trigger the dropdown change event to properly initialize the new project
+              const selDropdown = qs('#projectSelect2');
+              if (selDropdown && selDropdown.value === pid) {
+                // Dispatch change event to trigger the dropdown's change handler
+                selDropdown.dispatchEvent(new Event('change', { bubbles: true }));
+              }
+            } catch (_) { }
+          }
+
           await renderTree(selected);
 
           // Success indicator
@@ -17079,7 +17292,14 @@ ${insertParts.join('\\n')}
           }
 
           console.log('🎉 Complete save operation successful!');
-          alert('Ontology and layout saved successfully!');
+
+          // Check for changes notification
+          if (json.changes && json.changes.total > 0) {
+            console.log('🔔 Changes detected:', json.changes);
+            showChangeNotification(json.changes, activeOntologyIri);
+          } else {
+            alert('Ontology and layout saved successfully!');
+          }
         } else {
           console.error('❌ Fuseki save failed:', json);
           console.error('❌ Response status:', res.status);
@@ -29039,23 +29259,46 @@ def hello_world():
       // Update tab buttons
       const ontologyTab = document.getElementById('ontologyTab');
       const individualsTab = document.getElementById('individualsTab');
+      const cqmtTab = document.getElementById('cqmtTab');
 
       if (ontologyTab) ontologyTab.classList.toggle('active', tabName === 'ontology');
       if (individualsTab) individualsTab.classList.toggle('active', tabName === 'individuals');
+      if (cqmtTab) cqmtTab.classList.toggle('active', tabName === 'cqmt');
 
       // Show/hide content areas
       const ontoLayout = document.getElementById('ontoLayoutSection');
       const individualsContent = document.getElementById('individualsContent');
+      const cqmtContent = document.getElementById('cqmtContent');
 
       if (tabName === 'ontology') {
         if (ontoLayout) ontoLayout.style.display = 'grid';
         if (individualsContent) individualsContent.classList.remove('active');
+        if (cqmtContent) {
+          cqmtContent.classList.remove('active');
+          cqmtContent.style.display = 'none';
+        }
       } else if (tabName === 'individuals') {
         if (ontoLayout) ontoLayout.style.display = 'none';
         if (individualsContent) individualsContent.classList.add('active');
+        if (cqmtContent) {
+          cqmtContent.classList.remove('active');
+          cqmtContent.style.display = 'none';
+        }
 
         // Load individuals for currently selected ontology
         loadIndividualTablesForCurrentOntology();
+      } else if (tabName === 'cqmt') {
+        if (ontoLayout) ontoLayout.style.display = 'none';
+        if (individualsContent) individualsContent.classList.remove('active');
+        if (cqmtContent) {
+          cqmtContent.classList.add('active');
+          cqmtContent.style.display = 'block';  // Ensure it's visible
+        }
+
+        // Initialize CQ/MT workbench if needed
+        if (typeof initializeCQMTWorkbench === 'function') {
+          initializeCQMTWorkbench();
+        }
       }
     };
 
@@ -31374,6 +31617,104 @@ def hello_world():
     // End of Conceptualizer Workbench System
 
     // ========================================
+    // CQMT Change Notification System
+    // ========================================
+
+    /**
+     * Show change notification dialog after ontology save
+     */
+    function showChangeNotification(changes, graphIri) {
+      const modalId = 'changeNotificationModal';
+      let modal = document.getElementById(modalId);
+
+      // Create modal if it doesn't exist
+      if (!modal) {
+        modal = document.createElement('div');
+        modal.id = modalId;
+        modal.className = 'modal';
+        modal.style.display = 'none';
+        modal.innerHTML = `
+          <div class="modal-content" style="max-width: 600px;">
+            <span class="close-modal" onclick="closeChangeNotification()">&times;</span>
+            <h2 id="changeNotificationTitle" style="margin-top: 0;">Ontology Changes Detected</h2>
+            <div id="changeNotificationContent"></div>
+            <div style="margin-top: 20px; display: flex; gap: 10px; justify-content: flex-end;">
+              <button class="btn" onclick="closeChangeNotification()">Close</button>
+              <button class="btn btn-success" onclick="showChangeDetails()">Show Details</button>
+            </div>
+          </div>
+        `;
+        document.body.appendChild(modal);
+      }
+
+      // Build notification content
+      const content = document.getElementById('changeNotificationContent');
+      const affectedMTs = changes.affected_mts || [];
+
+      let html = `
+        <div style="margin-bottom: 20px;">
+          <p>Your ontology changes affect <strong>${affectedMTs.length}</strong> microtheories in the CQMT workbench.</p>
+        </div>
+        
+        <div style="background: var(--panel); padding: 16px; border-radius: 8px; margin-bottom: 16px;">
+          <h4 style="margin-top: 0;">Change Summary</h4>
+          <ul style="margin: 0; padding-left: 20px;">
+            ${changes.added > 0 ? `<li><strong>Added:</strong> ${changes.added} elements</li>` : ''}
+            ${changes.deleted > 0 ? `<li><strong>Deleted:</strong> ${changes.deleted} elements</li>` : ''}
+            ${changes.renamed > 0 ? `<li><strong>Renamed:</strong> ${changes.renamed} elements</li>` : ''}
+            ${changes.modified > 0 ? `<li><strong>Modified:</strong> ${changes.modified} elements</li>` : ''}
+          </ul>
+        </div>
+      `;
+
+      if (affectedMTs.length > 0) {
+        html += `
+          <div style="background: var(--panel); padding: 16px; border-radius: 8px;">
+            <h4 style="margin-top: 0;">Affected Microtheories</h4>
+            <ul style="margin: 0; padding-left: 20px;">
+              ${affectedMTs.map(mt => `<li>${mt}</li>`).join('')}
+            </ul>
+          </div>
+        `;
+      }
+
+      content.innerHTML = html;
+      modal.style.display = 'flex';
+
+      // Store data for details view
+      window._changeNotificationData = { changes, graphIri };
+    }
+
+    /**
+     * Close change notification dialog
+     */
+    function closeChangeNotification() {
+      const modal = document.getElementById('changeNotificationModal');
+      if (modal) {
+        modal.style.display = 'none';
+      }
+      delete window._changeNotificationData;
+    }
+
+    /**
+     * Show detailed change information
+     */
+    function showChangeDetails() {
+      const data = window._changeNotificationData;
+      if (!data) return;
+
+      alert('Detailed change information:\n\n' +
+        `Total changes: ${data.changes.total}\n` +
+        `Added: ${data.changes.added}\n` +
+        `Deleted: ${data.changes.deleted}\n` +
+        `Renamed: ${data.changes.renamed}\n` +
+        `Modified: ${data.changes.modified}\n\n` +
+        `Affected MTs: ${data.changes.affected_mts.length}\n\n` +
+        'To view complete details, check the CQMT workbench.'
+      );
+    }
+
+    // ========================================
     // DAS Artifact Viewer Modal
     // ========================================
 
@@ -31501,6 +31842,2085 @@ def hello_world():
         });
       }
     });
+
+    // =====================================
+    // CQ/MT WORKBENCH SYSTEM
+    // =====================================
+
+    window.cqmtState = {
+      currentProjectId: null,
+      currentOntologyIri: null,
+      selectedCQId: null,
+      currentCQs: [],
+      currentMTs: [],
+      projectOntologies: []
+    };
+
+    /**
+     * Initialize CQ/MT Workbench
+     */
+    async function initializeCQMTWorkbench() {
+      console.log('🔍 Initializing CQ/MT Workbench...');
+
+      // Get project context
+      const projectId = window.currentProjectId ? window.currentProjectId() : localStorage.getItem('active_project_id');
+      console.log('🔍 CQ/MT Project ID:', projectId);
+
+      if (!projectId) {
+        showCQMTError('No project context available. Please select a project.');
+        return;
+      }
+
+      window.cqmtState.currentProjectId = projectId;
+      await loadCQMTOntologies();
+
+      // Load CQ/MT data immediately (don't wait for ontology selection)
+      await Promise.all([
+        loadCQMTCQs(),
+        loadCQMTMicrotheories(),
+        loadCQMTCoverage()
+      ]);
+
+      // Set up ontology selector change handler
+      const selector = document.getElementById('cqmt-ontology-selector');
+      if (selector) {
+        selector.addEventListener('change', async function (e) {
+          window.cqmtState.currentOntologyIri = e.target.value;
+          console.log('CQ/MT Ontology context changed to:', window.cqmtState.currentOntologyIri);
+          if (window.cqmtState.currentOntologyIri) {
+            await Promise.all([
+              loadCQMTCQs(),
+              loadCQMTMicrotheories(),
+              loadCQMTCoverage()
+            ]);
+          } else {
+            // Don't clear data when no ontology selected - keep showing CQ/MT data
+            console.log('No ontology selected, keeping existing CQ/MT data');
+          }
+        });
+      }
+    }
+
+    /**
+     * Load ontologies for CQ/MT workbench
+     */
+    async function loadCQMTOntologies() {
+      if (!window.cqmtState.currentProjectId) return;
+
+      try {
+        const token = localStorage.getItem('odras_token');
+
+        // Use the proper API endpoint to get project ontologies
+        const response = await fetch(`/api/ontologies?project=${window.cqmtState.currentProjectId}`, {
+          headers: { 'Authorization': `Bearer ${token}` }
+        });
+
+        if (response.ok) {
+          const data = await response.json();
+          const ontologies = [];
+
+          if (data.ontologies) {
+            data.ontologies.forEach(ontology => {
+              ontologies.push({
+                graph_iri: ontology.graphIri,
+                label: ontology.label || 'Unnamed Ontology'
+              });
+            });
+          }
+
+          window.cqmtState.projectOntologies = ontologies;
+        } else {
+          console.warn('Failed to load ontologies for CQ/MT workbench');
+          window.cqmtState.projectOntologies = [];
+        }
+
+        populateCQMTOntologySelector();
+      } catch (error) {
+        console.error('Error loading CQ/MT ontologies:', error);
+        window.cqmtState.projectOntologies = [];
+        populateCQMTOntologySelector();
+      }
+    }
+
+    /**
+     * Populate ontology selector
+     */
+    function populateCQMTOntologySelector() {
+      const selector = document.getElementById('cqmt-ontology-selector');
+      if (!selector) return;
+
+      selector.innerHTML = '<option value="">Select an ontology...</option>';
+
+      window.cqmtState.projectOntologies.forEach(ontology => {
+        const option = document.createElement('option');
+        option.value = ontology.graph_iri;
+        option.textContent = ontology.label || ontology.graph_iri;
+        selector.appendChild(option);
+      });
+
+      // Auto-select first ontology if only one
+      if (window.cqmtState.projectOntologies.length === 1) {
+        selector.value = window.cqmtState.projectOntologies[0].graph_iri;
+        window.cqmtState.currentOntologyIri = window.cqmtState.projectOntologies[0].graph_iri;
+      }
+    }
+
+    /**
+     * Load Competency Questions
+     */
+    async function loadCQMTCQs() {
+      console.log('🔍 Loading CQs for project:', window.cqmtState.currentProjectId);
+      if (!window.cqmtState.currentProjectId) {
+        console.log('🔍 No project ID, skipping CQ load');
+        return;
+      }
+
+      try {
+        const token = localStorage.getItem('odras_token');
+        const response = await fetch(`/api/cqmt/projects/${window.cqmtState.currentProjectId}/cqs`, {
+          headers: { 'Authorization': `Bearer ${token}` }
+        });
+
+        if (response.ok) {
+          const cqs = await response.json();
+          console.log('🔍 Loaded CQs:', cqs.length, 'items');
+          console.log('🔍 CQ data:', cqs);
+          window.cqmtState.currentCQs = cqs;
+
+          // Check if container exists
+          const container = document.getElementById('cq-list');
+          if (!container) {
+            console.error('🔍 Container cq-list not found!');
+            return;
+          }
+
+          displayCQMTCQs();
+          console.log('🔍 Display updated');
+        } else {
+          const errorText = await response.text();
+          console.error('🔍 Failed to load CQs:', response.status, response.statusText, errorText);
+          const container = document.getElementById('cq-list');
+          if (container) {
+            container.innerHTML = '<div class="loading">Error loading competency questions</div>';
+          }
+        }
+      } catch (error) {
+        console.error('Error loading CQs:', error);
+        const container = document.getElementById('cq-list');
+        if (container) {
+          container.innerHTML = '<div class="loading">Error loading competency questions: ' + error.message + '</div>';
+        }
+      }
+    }
+
+    /**
+     * Display Competency Questions
+     */
+    function displayCQMTCQs() {
+      const container = document.getElementById('cq-list');
+      if (!container) return;
+
+      if (window.cqmtState.currentCQs.length === 0) {
+        container.innerHTML = '<div class="loading">No competency questions found. Create your first CQ to get started!</div>';
+        return;
+      }
+
+      container.innerHTML = '';
+
+      window.cqmtState.currentCQs.forEach(cq => {
+        const div = document.createElement('div');
+        div.className = 'card';
+        div.style.cssText = 'padding: 12px; margin-bottom: 8px; cursor: pointer;';
+
+        const runStatusBadge = cq.last_run_status !== null ?
+          `<span style="display: inline-block; padding: 2px 6px; border-radius: 3px; font-size: 10px; font-weight: 600; margin-left: 6px; background: ${cq.last_run_status ? 'var(--ok)' : 'var(--err)'}; color: white;" title="${cq.last_run_reason || ''}">
+            ${cq.last_run_status ? 'PASS' : 'FAIL'}
+          </span>` : '';
+
+        // Status badge colors
+        const statusColors = {
+          'draft': '#6c757d',
+          'active': '#28a745',
+          'deprecated': '#dc3545'
+        };
+        const statusColor = statusColors[cq.status.toLowerCase()] || '#6c757d';
+        const statusBadge = `<span style="display: inline-block; padding: 2px 6px; border-radius: 3px; font-size: 10px; font-weight: 600; margin-left: 6px; background: ${statusColor}; color: white;">
+          ${cq.status.toUpperCase()}
+        </span>`;
+
+        div.innerHTML = `
+          <div style="display: flex; justify-content: space-between; align-items: flex-start;">
+            <div style="flex: 1;">
+              <div style="font-weight: 600; margin-bottom: 4px;">
+                ${cq.cq_name}
+                ${statusBadge}
+                ${runStatusBadge}
+              </div>
+              <div style="color: var(--muted); font-size: 13px;">
+                ${cq.problem_text.substring(0, 100)}${cq.problem_text.length > 100 ? '...' : ''}
+                ${cq.last_run_at ? `• Last run: ${new Date(cq.last_run_at).toLocaleString()}` : ''}
+              </div>
+              ${cq.last_run_status === false && cq.last_run_reason ?
+            `<div style="color: var(--err); font-size: 12px; margin-top: 4px; font-style: italic;">
+                  ⚠️ ${cq.last_run_reason}
+                </div>` : ''}
+            </div>
+            <div style="display: flex; gap: 5px; margin-left: 10px;">
+              <button class="btn btn-sm" onclick="event.stopPropagation(); runCQ('${cq.id}', '${cq.cq_name}')" style="padding: 4px 8px; font-size: 11px; background: var(--ok); color: white;">
+                Run
+              </button>
+              <button class="btn btn-sm" onclick="event.stopPropagation(); editCQ('${cq.id}')" style="padding: 4px 8px; font-size: 11px;">
+                Edit
+              </button>
+              <button class="btn btn-sm" onclick="event.stopPropagation(); deleteCQ('${cq.id}', '${cq.cq_name}')" style="padding: 4px 8px; font-size: 11px; background: var(--err); color: white;">
+                Delete
+              </button>
+            </div>
+          </div>
+        `;
+        container.appendChild(div);
+      });
+    }
+
+    /**
+     * Load Microtheories
+     */
+    async function loadCQMTMicrotheories() {
+      if (!window.cqmtState.currentProjectId) return;
+
+      try {
+        const token = localStorage.getItem('odras_token');
+        const response = await fetch(`/api/cqmt/projects/${window.cqmtState.currentProjectId}/microtheories`, {
+          headers: { 'Authorization': `Bearer ${token}` }
+        });
+
+        if (response.ok) {
+          const mts = await response.json();
+          window.cqmtState.currentMTs = mts;
+          displayCQMTMicrotheories();
+        } else {
+          console.error('Failed to load microtheories');
+          const container = document.getElementById('mt-list');
+          if (container) {
+            container.innerHTML = '<div class="loading">Error loading microtheories</div>';
+          }
+        }
+      } catch (error) {
+        console.error('Error loading microtheories:', error);
+        const container = document.getElementById('mt-list');
+        if (container) {
+          container.innerHTML = '<div class="loading">Error loading microtheories: ' + error.message + '</div>';
+        }
+      }
+    }
+
+    /**
+     * Display Microtheories
+     */
+    function displayCQMTMicrotheories() {
+      const container = document.getElementById('mt-list');
+      if (!container) return;
+
+      if (window.cqmtState.currentMTs.length === 0) {
+        container.innerHTML = '<div class="loading">No microtheories found. Create your first microtheory to get started!</div>';
+        return;
+      }
+
+      container.innerHTML = '';
+
+      window.cqmtState.currentMTs.forEach(mt => {
+        const div = document.createElement('div');
+        div.className = 'card';
+        div.style.cssText = 'padding: 12px; margin-bottom: 8px;';
+
+        // Default badge styling
+        const defaultBadge = mt.is_default ?
+          `<span style="display: inline-block; padding: 2px 6px; border-radius: 3px; font-size: 10px; font-weight: 600; margin-left: 6px; background: #007bff; color: white;">
+            DEFAULT
+          </span>` : '';
+
+        div.innerHTML = `
+          <div style="display: flex; justify-content: space-between; align-items: flex-start;">
+            <div style="flex: 1;">
+              <div style="font-weight: 600; margin-bottom: 4px;">
+                ${mt.label}
+                ${defaultBadge}
+              </div>
+              <div style="color: var(--muted); font-size: 13px;">
+                ${mt.triple_count} triples • Created: ${new Date(mt.created_at).toLocaleString()}
+              </div>
+            </div>
+            <div style="display: flex; gap: 5px; margin-left: 10px;">
+              <button class="btn btn-sm" onclick="editMT('${mt.id}')" style="padding: 4px 8px; font-size: 11px;">
+                Edit
+              </button>
+              <button class="btn btn-sm" onclick="setDefaultMT('${mt.id}')" style="padding: 4px 8px; font-size: 11px;">
+                Set Default
+              </button>
+              <button class="btn btn-sm" onclick="deleteMT('${mt.id}', '${mt.label}')" style="padding: 4px 8px; font-size: 11px; background: var(--err); color: white;">
+                Delete
+              </button>
+            </div>
+          </div>
+        `;
+        container.appendChild(div);
+      });
+    }
+
+    /**
+     * Load Coverage data
+     */
+    async function loadCQMTCoverage() {
+      if (!window.cqmtState.currentProjectId) {
+        const container = document.getElementById('coverage-details');
+        if (container) {
+          container.innerHTML = '<div class="loading">No project selected</div>';
+        }
+        return;
+      }
+
+      try {
+        const token = localStorage.getItem('odras_token');
+        const response = await fetch(`/api/cqmt/projects/${window.cqmtState.currentProjectId}/coverage`, {
+          headers: { 'Authorization': `Bearer ${token}` }
+        });
+
+        if (!response.ok) {
+          throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+        }
+
+        const coverageData = await response.json();
+
+        // Update stats
+        const totalEl = document.getElementById('total-cqs');
+        const activeEl = document.getElementById('active-cqs');
+        const passingEl = document.getElementById('passing-cqs');
+        const failingEl = document.getElementById('failing-cqs');
+
+        if (totalEl) totalEl.textContent = coverageData.summary.total_cqs;
+        if (activeEl) activeEl.textContent = coverageData.summary.total_cqs; // TODO: calculate active from CQs
+        if (passingEl) passingEl.textContent = coverageData.summary.runs_passed;
+        if (failingEl) failingEl.textContent = coverageData.summary.runs_failed;
+
+        // Display coverage grid
+        const container = document.getElementById('coverage-details');
+        if (!container) return;
+
+        if (coverageData.mts.length === 0 || coverageData.cqs.length === 0) {
+          container.innerHTML = '<div class="loading">No CQs or MTs available for coverage analysis</div>';
+          return;
+        }
+
+        let html = `
+          <div style="margin-bottom: 20px;">
+            <h4>Coverage Matrix</h4>
+            <p style="color: var(--muted); font-size: 13px;">
+              Coverage: ${coverageData.summary.coverage_percentage}% • Pass Rate: ${coverageData.summary.pass_rate}%
+            </p>
+          </div>
+          <div style="overflow-x: auto;">
+            <table style="width: 100%; border-collapse: collapse; font-size: 13px;">
+              <thead>
+                <tr style="background: var(--panel-2); border-bottom: 2px solid var(--border);">
+                  <th style="padding: 10px; text-align: left; font-weight: 600;">CQ Name</th>
+        `;
+
+        // Add MT column headers
+        coverageData.mts.forEach(mt => {
+          html += `<th style="padding: 10px; text-align: center; font-weight: 600; min-width: 150px;">${mt.label}</th>`;
+        });
+
+        html += `</tr></thead><tbody>`;
+
+        // Add CQ rows
+        coverageData.cqs.forEach(cq => {
+          html += `<tr style="border-bottom: 1px solid var(--border);">`;
+          html += `<td style="padding: 10px; font-weight: 500;">${cq.name}</td>`;
+
+          coverageData.mts.forEach(mt => {
+            const runInfo = cq.runs_by_mt[mt.iri];
+            let cellContent = '';
+            let cellStyle = 'padding: 10px; text-align: center;';
+
+            if (runInfo.status === 'pass') {
+              cellContent = `✅ PASS${runInfo.row_count !== null ? ` (${runInfo.row_count})` : ''}`;
+              cellStyle += ' background: rgba(40, 167, 69, 0.1); color: var(--ok);';
+            } else if (runInfo.status === 'fail') {
+              cellContent = `❌ FAIL`;
+              cellStyle += ' background: rgba(220, 53, 69, 0.1); color: var(--err);';
+            } else {
+              cellContent = `⚠️ NO RUN`;
+              cellStyle += ' background: rgba(255, 193, 7, 0.1); color: var(--warn);';
+            }
+
+            html += `<td style="${cellStyle}" title="${runInfo.reason || 'No run executed'}">${cellContent}</td>`;
+          });
+
+          html += `</tr>`;
+        });
+
+        html += `</tbody></table></div>`;
+
+        container.innerHTML = html;
+
+      } catch (error) {
+        console.error('Error loading coverage:', error);
+        const container = document.getElementById('coverage-details');
+        if (container) {
+          container.innerHTML = `<div class="loading">Error loading coverage: ${error.message}</div>`;
+        }
+      }
+    }
+
+    /**
+     * Show CQ/MT tab
+     */
+    function showCQMTTab(tabName, clickedElement) {
+      // Hide all tab contents
+      document.querySelectorAll('.cqmt-tab-content').forEach(content => {
+        content.classList.remove('active');
+        content.style.display = 'none';
+      });
+
+      // Remove active from all tabs
+      document.querySelectorAll('.cqmt-tab').forEach(tab => {
+        tab.classList.remove('active');
+      });
+
+      // Show selected tab content
+      const tabContentId = tabName === 'cqs' ? 'cqmtCQsContent' :
+        tabName === 'microtheories' ? 'cqmtMTsContent' :
+          'cqmtCoverageContent';
+      const tabContent = document.getElementById(tabContentId);
+      if (tabContent) {
+        tabContent.classList.add('active');
+        tabContent.style.display = 'block';
+      }
+
+      // Activate selected tab
+      if (clickedElement) {
+        clickedElement.classList.add('active');
+      }
+
+      // Load content if needed
+      if (tabName === 'cqs' && window.cqmtState.currentCQs.length === 0) {
+        loadCQMTCQs();
+      } else if (tabName === 'microtheories' && window.cqmtState.currentMTs.length === 0) {
+        loadCQMTMicrotheories();
+      } else if (tabName === 'coverage') {
+        loadCQMTCoverage();
+      }
+    }
+
+    /**
+     * Show CQ/MT error
+     */
+    function showCQMTError(message) {
+      console.error('CQ/MT Error:', message);
+      showToast(message, 'error');
+    }
+
+    function showSuccessMessage(message) {
+      console.log('CQ/MT Success:', message);
+      showToast(message, 'success');
+    }
+
+    function showToast(message, type = 'info') {
+      // Remove any existing toasts
+      const existingToasts = document.querySelectorAll('.cqmt-toast');
+      existingToasts.forEach(toast => toast.remove());
+
+      const toast = document.createElement('div');
+      toast.className = 'cqmt-toast';
+
+      const bgColor = type === 'error' ? '#ef4444' : type === 'success' ? '#10b981' : '#3b82f6';
+      const icon = type === 'error' ? '✕' : type === 'success' ? '✓' : 'ℹ';
+
+      toast.style.cssText = `
+        position: fixed;
+        top: 20px;
+        right: 20px;
+        background: ${bgColor};
+        color: white;
+        padding: 12px 20px;
+        border-radius: 6px;
+        box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+        z-index: 10000;
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        font-size: 14px;
+        animation: slideIn 0.3s ease-out;
+        max-width: 400px;
+      `;
+
+      toast.innerHTML = `
+        <span style="font-weight: bold; font-size: 16px;">${icon}</span>
+        <span>${message}</span>
+      `;
+
+      document.body.appendChild(toast);
+
+      // Auto-remove after 5 seconds
+      setTimeout(() => {
+        toast.style.animation = 'slideOut 0.3s ease-out';
+        setTimeout(() => toast.remove(), 300);
+      }, 5000);
+
+      // Add animation styles if not already present
+      if (!document.getElementById('cqmt-toast-styles')) {
+        const style = document.createElement('style');
+        style.id = 'cqmt-toast-styles';
+        style.textContent = `
+          @keyframes slideIn {
+            from {
+              transform: translateX(100%);
+              opacity: 0;
+            }
+            to {
+              transform: translateX(0);
+              opacity: 1;
+            }
+          }
+          @keyframes slideOut {
+            from {
+              transform: translateX(0);
+              opacity: 1;
+            }
+            to {
+              transform: translateX(100%);
+              opacity: 0;
+            }
+          }
+        `;
+        document.head.appendChild(style);
+      }
+    }
+
+    function closeCQModal() {
+      const modal = document.querySelector('.cqmt-modal-overlay');
+      if (modal) {
+        modal.remove();
+      }
+    }
+
+    function cancelMT() {
+      const modal = document.getElementById('mt-modal');
+      if (modal) {
+        modal.remove();
+      }
+    }
+
+    async function createNewCQ() {
+      showCQModal();
+    }
+
+    async function editCQ(cqId) {
+      // Load the CQ data first
+      try {
+        const token = localStorage.getItem('odras_token');
+        const response = await fetch(`/api/cqmt/cqs/${cqId}`, {
+          headers: { 'Authorization': `Bearer ${token}` }
+        });
+
+        if (response.ok) {
+          const cqData = response.json();
+          const cq = (await cqData).data || await cqData;
+          showCQModal(cq);
+        } else {
+          showCQMTError('Failed to load CQ for editing');
+        }
+      } catch (error) {
+        console.error('Error loading CQ:', error);
+        showCQMTError('Failed to load CQ: ' + error.message);
+      }
+    }
+
+    function showCQModal(cqData = null) {
+      const isEdit = !!cqData;
+      const modal = document.createElement('div');
+      modal.className = 'modal-overlay';
+      modal.innerHTML = `
+        <div class="modal-content" style="max-width: 800px; max-height: 90vh;">
+          <div class="modal-header">
+            <h3>${isEdit ? 'Edit' : 'Create'} Competency Question</h3>
+            <button class="btn" onclick="this.closest('.modal-overlay').remove()">&times;</button>
+          </div>
+          <div class="modal-body" style="padding: 20px; overflow-y: auto;">
+            <form id="cqForm" onsubmit="saveCQ(event)">
+              <input type="hidden" id="cq_id" value="${cqData?.id || ''}">
+              
+              <div style="margin-bottom: 16px;">
+                <label style="display: block; margin-bottom: 6px; font-weight: 600;">CQ Name *</label>
+                <input type="text" id="cq_name" value="${cqData?.cq_name || ''}" required 
+                       placeholder="e.g., List all aircraft types"
+                       style="width: 100%; padding: 8px; border: 1px solid var(--border); border-radius: 4px; background: var(--panel-2); color: var(--text);">
+                <div style="font-size: 12px; color: var(--muted); margin-top: 4px;">
+                  Brief descriptive name for this competency question
+                </div>
+              </div>
+              
+              <div style="margin-bottom: 16px;">
+                <label style="display: block; margin-bottom: 6px; font-weight: 600;">Problem Statement *</label>
+                <textarea id="problem_text" required rows="3"
+                          placeholder="e.g., What aircraft types are available for transport missions?"
+                          style="width: 100%; padding: 8px; border: 1px solid var(--border); border-radius: 4px; font-family: inherit; background: var(--panel-2); color: var(--text);">
+${cqData?.problem_text || ''}</textarea>
+                <div style="font-size: 12px; color: var(--muted); margin-top: 4px;">
+                  Natural language description of what this CQ should answer
+                </div>
+              </div>
+              
+              <div style="margin-bottom: 16px;">
+                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px;">
+                  <label style="font-weight: 600;">SPARQL Query *</label>
+                  <div style="display: flex; gap: 8px;">
+                    <button type="button" class="btn btn-sm" onclick="testSPARQLQuery()" style="font-size: 12px; padding: 4px 12px; display: flex; align-items: center; gap: 4px;">
+                      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                        <polygon points="5 3 19 12 5 21 5 3" />
+                      </svg>
+                      Test Query
+                    </button>
+                    <button type="button" class="btn btn-sm" onclick="suggestSPARQL()" style="font-size: 12px; padding: 4px 12px; display: flex; align-items: center; gap: 4px;">
+                      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                        <rect x="3" y="3" width="18" height="18" rx="2" ry="2" />
+                        <line x1="9" y1="3" x2="9" y2="21" />
+                        <line x1="3" y1="9" x2="21" y2="9" />
+                      </svg>
+                      Query Builder
+                    </button>
+                    <button type="button" class="btn btn-sm" onclick="browseOntologyForCQ()" style="font-size: 12px; padding: 4px 12px; display: flex; align-items: center; gap: 4px;">
+                      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                        <circle cx="11" cy="11" r="8" />
+                        <path d="M21 21l-4.35-4.35" />
+                      </svg>
+                      Browse Ontology
+                    </button>
+                    <button type="button" class="btn btn-sm" onclick="copyToFuseki()" style="font-size: 12px; padding: 4px 12px; display: flex; align-items: center; gap: 4px;">
+                      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                        <rect x="9" y="9" width="13" height="13" rx="2" ry="2" />
+                        <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1" />
+                      </svg>
+                      Copy to Fuseki
+                    </button>
+                  </div>
+                </div>
+                <textarea id="sparql_text" required rows="8"
+                          placeholder="PREFIX : &lt;your-namespace#&gt;&#10;PREFIX rdf: &lt;http://www.w3.org/1999/02/22-rdf-syntax-ns#&gt;&#10;&#10;SELECT ?subject ?label WHERE {&#10;    ?subject rdf:type :YourClass .&#10;    ?subject rdfs:label ?label .&#10;}"
+                          style="width: 100%; padding: 8px; border: 1px solid var(--border); border-radius: 4px; font-family: monospace; font-size: 13px; background: var(--panel-2); color: var(--text);">
+${cqData?.sparql_text || ''}</textarea>
+                <div style="font-size: 12px; color: var(--muted); margin-top: 4px;">
+                  SPARQL query that executes against your ontology. Use the buttons above to insert classes and properties.
+                </div>
+                
+                <!-- Test Results Panel -->
+                <div id="cq-test-results" style="display: none; margin-top: 16px; padding: 12px; background: var(--panel-2); border: 1px solid var(--border); border-radius: 4px;">
+                  <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px;">
+                    <label style="font-weight: 600;">Test Results</label>
+                    <button type="button" onclick="document.getElementById('cq-test-results').style.display='none'" style="font-size: 12px; padding: 2px 8px; background: transparent; border: none; color: var(--muted); cursor: pointer;">✕</button>
+                  </div>
+                  <div id="cq-test-status" style="margin-bottom: 8px;"></div>
+                  <div id="cq-test-data" style="max-height: 200px; overflow-y: auto;"></div>
+                </div>
+              </div>
+              
+              <div style="margin-bottom: 16px;">
+                <label style="display: block; margin-bottom: 6px; font-weight: 600;">Validation Contract (JSON) *</label>
+                <div style="background: var(--panel-2); padding: 12px; border-radius: 4px; margin-bottom: 8px; font-size: 12px; line-height: 1.6;">
+                  <strong style="color: var(--accent);">Validation Contract Guidelines:</strong><br>
+                  • <code>require_columns</code>: Array of column names that must be present in results<br>
+                  • <code>min_rows</code>: Minimum number of rows expected (integer)<br>
+                  • <code>max_rows</code>: Maximum number of rows allowed (integer, optional)<br>
+                  • <code>max_latency_ms</code>: Maximum query execution time in milliseconds (integer, optional)
+                </div>
+                <textarea id="contract_json" required rows="6"
+                          style="width: 100%; padding: 8px; border: 1px solid var(--border); border-radius: 4px; font-family: monospace; font-size: 13px; background: var(--panel-2); color: var(--text);">
+${JSON.stringify(cqData?.contract_json || { require_columns: [], min_rows: 0 }, null, 2)}</textarea>
+              </div>
+              
+              <div style="margin-bottom: 16px;">
+                <label style="display: block; margin-bottom: 6px; font-weight: 600;">Default Microtheory</label>
+                <select id="mt_iri_default" style="width: 100%; padding: 8px; border: 1px solid var(--border); border-radius: 4px; background: var(--panel-2); color: var(--text);">
+                  <option value="">None (use project default)</option>
+                </select>
+                <div style="font-size: 12px; color: var(--muted); margin-top: 4px;">
+                  Microtheory to use when running this CQ (optional)
+                </div>
+              </div>
+              
+              <div style="margin-bottom: 16px;">
+                <label style="display: block; margin-bottom: 6px; font-weight: 600;">Status</label>
+                <select id="cq_status" style="width: 100%; padding: 8px; border: 1px solid var(--border); border-radius: 4px; background: var(--panel-2); color: var(--text);">
+                  <option value="draft" ${cqData?.status === 'draft' ? 'selected' : ''}>Draft</option>
+                  <option value="active" ${cqData?.status === 'active' ? 'selected' : ''}>Active</option>
+                  <option value="deprecated" ${cqData?.status === 'deprecated' ? 'selected' : ''}>Deprecated</option>
+                </select>
+              </div>
+              
+              <div style="display: flex; gap: 10px; justify-content: flex-end; margin-top: 20px;">
+                <button type="button" class="btn" onclick="this.closest('.modal-overlay').remove()">Cancel</button>
+                <button type="submit" class="btn btn-success">${isEdit ? 'Update' : 'Create'} CQ</button>
+              </div>
+            </form>
+          </div>
+        </div>
+      `;
+      document.body.appendChild(modal);
+
+      // Populate microtheory selector
+      const mtSelector = document.getElementById('mt_iri_default');
+      if (mtSelector && window.cqmtState && window.cqmtState.currentMTs) {
+        window.cqmtState.currentMTs.forEach(mt => {
+          const option = document.createElement('option');
+          option.value = mt.iri;
+          option.textContent = mt.label + (mt.is_default ? ' (Default)' : '');
+          if (cqData && cqData.mt_iri_default === mt.iri) {
+            option.selected = true;
+          }
+          mtSelector.appendChild(option);
+        });
+      }
+
+      // Auto-load prefixes for the selected ontology
+      if (!isEdit || !cqData?.sparql_text) {
+        loadPrefixesForCQ(window.cqmtState.currentOntologyIri);
+      }
+    }
+
+    async function loadPrefixesForCQ(ontologyIri) {
+      const projectId = window.cqmtState.currentProjectId;
+      if (!projectId) return;
+
+      try {
+        const token = localStorage.getItem('odras_token');
+        const url = ontologyIri
+          ? `/api/cqmt/projects/${projectId}/prefixes?ontology_graph_iri=${encodeURIComponent(ontologyIri)}`
+          : `/api/cqmt/projects/${projectId}/prefixes`;
+
+        const response = await fetch(url, {
+          headers: { 'Authorization': `Bearer ${token}` }
+        });
+
+        if (response.ok) {
+          const data = await response.json();
+          const prefixes = data.prefixes || [];
+
+          const sparqlTextarea = document.getElementById('sparql_text');
+          if (sparqlTextarea && !sparqlTextarea.value.trim()) {
+            // Only auto-load if editor is empty
+            let prefixBlock = '';
+            prefixes.forEach(p => {
+              prefixBlock += `PREFIX ${p.prefix} <${p.iri}>\n`;
+            });
+            sparqlTextarea.value = prefixBlock + '\n';
+          }
+        }
+      } catch (error) {
+        console.error('Error loading prefixes:', error);
+      }
+    }
+
+    async function saveCQ(event) {
+      event.preventDefault();
+
+      const cqId = document.getElementById('cq_id').value;
+      const isEdit = !!cqId;
+
+      // Find the modal containing this form
+      const form = event.target;
+      const modal = form.closest('.modal-overlay');
+
+      try {
+        const projectId = window.cqmtState.currentProjectId;
+        if (!projectId) {
+          showCQMTError('No project selected');
+          return;
+        }
+
+        const mtSelector = document.getElementById('mt_iri_default');
+        const mtIriDefault = mtSelector && mtSelector.value ? mtSelector.value : null;
+
+        const sparqlText = document.getElementById('sparql_text').value.trim();
+
+        // Validate that SPARQL contains at least a SELECT statement
+        if (!sparqlText || !sparqlText.toUpperCase().includes('SELECT')) {
+          showCQMTError('Please enter a valid SPARQL SELECT query');
+          return;
+        }
+
+        const cqData = {
+          cq_name: document.getElementById('cq_name').value,
+          problem_text: document.getElementById('problem_text').value,
+          sparql_text: sparqlText,
+          contract_json: JSON.parse(document.getElementById('contract_json').value),
+          params_json: {},
+          status: document.getElementById('cq_status').value,
+          mt_iri_default: mtIriDefault
+        };
+
+        const token = localStorage.getItem('odras_token');
+        const url = isEdit
+          ? `/api/cqmt/cqs/${cqId}`
+          : `/api/cqmt/projects/${projectId}/cqs`;
+
+        const response = await fetch(url, {
+          method: isEdit ? 'PUT' : 'POST',
+          headers: {
+            'Authorization': `Bearer ${token}`,
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify(cqData)
+        });
+
+        if (response.ok) {
+          console.log('✅ CQ saved successfully, closing modal and reloading list...');
+
+          // Close the specific modal
+          if (modal) {
+            modal.remove();
+            console.log('✅ Modal closed');
+          } else {
+            console.warn('⚠️ Modal not found, trying fallback');
+            // Fallback: close any modal overlays
+            document.querySelectorAll('.modal-overlay').forEach(m => m.remove());
+          }
+
+          console.log('✅ Calling loadCQMTCQs()...');
+          await loadCQMTCQs();
+          console.log('✅ loadCQMTCQs() completed');
+          showSuccessMessage(`CQ ${isEdit ? 'updated' : 'created'} successfully`);
+        } else {
+          const error = await response.json();
+          console.error('❌ Failed to save CQ:', error);
+          showCQMTError(`Failed to ${isEdit ? 'update' : 'create'} CQ: ${error.detail || error.message}`);
+        }
+      } catch (error) {
+        console.error('Error saving CQ:', error);
+        showCQMTError('Failed to save CQ: ' + error.message);
+      }
+    }
+
+    async function deleteCQ(cqId, cqName) {
+      if (!confirm(`Are you sure you want to delete the competency question "${cqName}"?`)) {
+        return;
+      }
+
+      try {
+        const token = localStorage.getItem('odras_token');
+        const response = await fetch(`/api/cqmt/cqs/${cqId}`, {
+          method: 'DELETE',
+          headers: { 'Authorization': `Bearer ${token}` }
+        });
+
+        if (response.ok) {
+          console.log('CQ deleted successfully');
+          await loadCQMTCQs();
+        } else {
+          showCQMTError('Failed to delete CQ');
+        }
+      } catch (error) {
+        console.error('Error deleting CQ:', error);
+        showCQMTError('Failed to delete CQ: ' + error.message);
+      }
+    }
+
+    async function runCQ(cqId, cqName) {
+      try {
+        const token = localStorage.getItem('odras_token');
+
+        // Get microtheory to run against
+        const mts = window.cqmtState.currentMTs || [];
+        if (mts.length === 0) {
+          showCQMTError('No microtheories available. Please create a microtheory first.');
+          return;
+        }
+
+        const defaultMT = mts.find(mt => mt.is_default) || mts[0];
+        const mtIri = defaultMT.iri;
+
+        showToast(`Running ${cqName}...`, 'info');
+
+        const response = await fetch(`/api/cqmt/cqs/${cqId}/run`, {
+          method: 'POST',
+          headers: {
+            'Authorization': `Bearer ${token}`,
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify({
+            mt_iri: mtIri,
+            params: {}
+          })
+        });
+
+        if (response.ok) {
+          const result = await response.json();
+          const statusIcon = result.passed ? '✅' : '❌';
+          const statusText = result.passed ? 'PASSED' : 'FAILED';
+          showToast(`${statusIcon} ${cqName} ${statusText} (${result.row_count} rows)`, result.passed ? 'success' : 'error');
+
+          // Refresh CQ list to show updated status
+          await loadCQMTCQs();
+
+          // If on Coverage tab, refresh coverage
+          const coverageTab = document.getElementById('cqmtCoverageContent');
+          if (coverageTab && coverageTab.style.display !== 'none') {
+            await loadCQMTCoverage();
+          }
+        } else {
+          const errorData = await response.json();
+          showCQMTError(`Failed to run CQ: ${errorData.detail || 'Unknown error'}`);
+        }
+      } catch (error) {
+        console.error('Error running CQ:', error);
+        showCQMTError('Failed to run CQ: ' + error.message);
+      }
+    }
+
+    async function runAllCQs() {
+      const cqs = window.cqmtState.currentCQs || [];
+      const mts = window.cqmtState.currentMTs || [];
+
+      if (cqs.length === 0) {
+        showCQMTError('No competency questions available');
+        return;
+      }
+
+      if (mts.length === 0) {
+        showCQMTError('No microtheories available. Please create a microtheory first.');
+        return;
+      }
+
+      if (!confirm(`Run all ${cqs.length} CQs against all ${mts.length} MTs? This will execute ${cqs.length * mts.length} tests.`)) {
+        return;
+      }
+
+      showToast(`Running all CQs...`, 'info');
+
+      let completed = 0;
+      let passed = 0;
+      let failed = 0;
+
+      try {
+        const token = localStorage.getItem('odras_token');
+
+        for (const cq of cqs) {
+          for (const mt of mts) {
+            try {
+              const response = await fetch(`/api/cqmt/cqs/${cq.id}/run`, {
+                method: 'POST',
+                headers: {
+                  'Authorization': `Bearer ${token}`,
+                  'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({
+                  mt_iri: mt.iri,
+                  params: {}
+                })
+              });
+
+              if (response.ok) {
+                const result = await response.json();
+                if (result.passed) {
+                  passed++;
+                } else {
+                  failed++;
+                }
+              } else {
+                failed++;
+              }
+            } catch (error) {
+              console.error(`Error running CQ ${cq.cq_name} against ${mt.label}:`, error);
+              failed++;
+            }
+
+            completed++;
+          }
+        }
+
+        showToast(`✅ Completed: ${completed} runs (${passed} passed, ${failed} failed)`, 'success');
+
+        // Refresh both tabs
+        await loadCQMTCQs();
+        await loadCQMTCoverage();
+
+      } catch (error) {
+        console.error('Error running all CQs:', error);
+        showCQMTError('Failed to run all CQs: ' + error.message);
+      }
+    }
+
+    function copyToFuseki() {
+      // Force fresh read of textarea
+      const textarea = document.getElementById('sparql_text');
+      if (!textarea) {
+        showCQMTError('SPARQL textarea not found');
+        return;
+      }
+
+      const sparql = textarea.value.trim();
+      if (!sparql) {
+        showCQMTError('Please enter a SPARQL query first');
+        return;
+      }
+
+      // Get microtheory to add GRAPH clause
+      const mts = window.cqmtState.currentMTs || [];
+      if (mts.length === 0) {
+        showCQMTError('No microtheories available. Please create a microtheory first.');
+        return;
+      }
+
+      const defaultMT = mts.find(mt => mt.is_default) || mts[0];
+      const mtIri = defaultMT.iri;
+
+      // Extract prefixes and WHERE body
+      const prefixPattern = /(PREFIX\s+\S+\s+<\S+>\s*)+/i;
+      const prefixMatch = sparql.match(prefixPattern);
+      const prefixSection = prefixMatch ? prefixMatch[0] : '';
+
+      // Remove prefixes to get WHERE body
+      const sparqlWithoutPrefixes = sparql.replace(prefixPattern, '').trim();
+
+      // Extract SELECT clause
+      const selectPattern = /SELECT\s+([^\s]+(?:\s+[^\s]+)*)\s+WHERE/i;
+      const selectMatch = sparqlWithoutPrefixes.match(selectPattern);
+      const selectClause = selectMatch ? selectMatch[1].trim() : '*';
+
+      // Extract WHERE clause content
+      const wherePattern = /WHERE\s*\{([\s\S]*)\}/i;
+      const whereMatch = sparqlWithoutPrefixes.match(wherePattern);
+
+      if (!whereMatch) {
+        showCQMTError('Could not parse SPARQL query structure');
+        return;
+      }
+
+      const whereBody = whereMatch[1].trim();
+
+      // Build confined query with GRAPH clause
+      const confinedQuery = `${prefixSection}
+
+SELECT ${selectClause} WHERE {
+    GRAPH <${mtIri}> {
+        ${whereBody}
+    }
+}`;
+
+      // Copy to clipboard
+      navigator.clipboard.writeText(confinedQuery).then(() => {
+        showToast('Query copied to clipboard! Paste into Fuseki query tab.', 'success');
+      }).catch(err => {
+        console.error('Failed to copy:', err);
+        showCQMTError('Failed to copy to clipboard');
+      });
+    }
+
+    async function testSPARQLQuery() {
+      const sparql = document.getElementById('sparql_text').value.trim();
+      if (!sparql) {
+        showCQMTError('Please enter a SPARQL query first');
+        return;
+      }
+
+      const projectId = window.cqmtState.currentProjectId;
+      if (!projectId) {
+        showCQMTError('No project selected');
+        return;
+      }
+
+      // Get a microtheory to test against
+      const mts = window.cqmtState.currentMTs || [];
+      if (mts.length === 0) {
+        showCQMTError('No microtheories available. Please create a microtheory first.');
+        return;
+      }
+
+      // Use default MT or first one
+      const defaultMT = mts.find(mt => mt.is_default) || mts[0];
+      const mtIri = defaultMT.iri;
+
+      try {
+        const token = localStorage.getItem('odras_token');
+        const response = await fetch('/api/cqmt/test-query', {
+          method: 'POST',
+          headers: {
+            'Authorization': `Bearer ${token}`,
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify({
+            sparql: sparql,
+            mt_iri: mtIri,
+            project_id: projectId
+          })
+        });
+
+        const data = await response.json();
+        const resultsPanel = document.getElementById('cq-test-results');
+        const statusDiv = document.getElementById('cq-test-status');
+        const dataDiv = document.getElementById('cq-test-data');
+
+        // Show results panel
+        resultsPanel.style.display = 'block';
+
+        if (data.success) {
+          statusDiv.innerHTML = `
+            <div style="color: var(--success); font-size: 12px;">
+              ✅ Query executed successfully | Rows: ${data.row_count} | Time: ${data.execution_time_ms}ms
+            </div>
+          `;
+
+          if (data.row_count > 0) {
+            // Display table
+            let tableHTML = '<table style="width: 100%; font-size: 11px; border-collapse: collapse;">';
+            tableHTML += '<thead><tr>';
+            data.columns.forEach(col => {
+              tableHTML += `<th style="padding: 4px 8px; text-align: left; border-bottom: 1px solid var(--border); font-weight: 600;">${col}</th>`;
+            });
+            tableHTML += '</tr></thead><tbody>';
+
+            data.rows.forEach(row => {
+              tableHTML += '<tr>';
+              row.forEach(cell => {
+                tableHTML += `<td style="padding: 4px 8px; border-bottom: 1px solid var(--border); max-width: 200px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;" title="${cell}">${cell}</td>`;
+              });
+              tableHTML += '</tr>';
+            });
+            tableHTML += '</tbody></table>';
+            dataDiv.innerHTML = tableHTML;
+          } else {
+            dataDiv.innerHTML = '<div style="color: var(--muted); font-size: 12px;">No results returned</div>';
+          }
+        } else {
+          statusDiv.innerHTML = `
+            <div style="color: var(--error); font-size: 12px;">
+              ❌ Query failed: ${data.error || 'Unknown error'}
+            </div>
+          `;
+          dataDiv.innerHTML = '';
+        }
+      } catch (error) {
+        console.error('Error testing query:', error);
+        showCQMTError('Failed to test query: ' + error.message);
+      }
+    }
+
+    async function suggestSPARQL() {
+      // Open Query Builder modal instead of just suggesting
+      openQueryBuilderModal();
+    }
+
+    function openQueryBuilderModal() {
+      const modal = document.createElement('div');
+      modal.className = 'modal-overlay';
+      modal.id = 'query-builder-modal';
+
+      // Get problem statement from CQ form if available
+      const problemTextarea = document.getElementById('problem_text');
+      const initialProblem = problemTextarea ? problemTextarea.value.trim() : '';
+
+      modal.innerHTML = `
+        <div class="modal-content" style="max-width: 900px; max-height: 90vh;">
+          <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
+            <h3>SPARQL Query Builder</h3>
+            <button onclick="this.closest('.modal-overlay').remove()" style="background: none; border: none; font-size: 24px; cursor: pointer; color: var(--text);">&times;</button>
+          </div>
+          
+          <div style="margin-bottom: 16px;">
+            <label style="display: block; margin-bottom: 6px; font-weight: 600;">Problem Statement</label>
+            <textarea id="qb_problem" rows="2" placeholder="e.g., What aircraft types are available for transport missions?"
+                      style="width: 100%; padding: 8px; border: 1px solid var(--border); border-radius: 4px; background: var(--panel-2); color: var(--text);">${initialProblem}</textarea>
+          </div>
+          
+          <div style="margin-bottom: 16px;">
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px;">
+              <label style="font-weight: 600;">SPARQL Query</label>
+              <div style="display: flex; gap: 8px;">
+                <button type="button" class="btn btn-sm" onclick="qbSuggestWithDAS()" style="font-size: 12px; padding: 4px 12px; display: flex; align-items: center; gap: 4px;">
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                    <circle cx="12" cy="12" r="3" />
+                    <path d="M12 1v6M12 17v6M4.2 4.2l4.2 4.2M15.6 15.6l4.2 4.2M1 12h6M17 12h6M4.2 19.8l4.2-4.2M15.6 8.4l4.2-4.2" />
+                  </svg>
+                  Suggest with DAS
+                </button>
+                <button type="button" class="btn btn-sm" onclick="qbTestQuery()" style="font-size: 12px; padding: 4px 12px; display: flex; align-items: center; gap: 4px;">
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                    <polygon points="5 3 19 12 5 21 5 3" />
+                  </svg>
+                  Test Query
+                </button>
+                <button type="button" class="btn btn-sm" onclick="qbBrowseOntology()" style="font-size: 12px; padding: 4px 12px; display: flex; align-items: center; gap: 4px;">
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                    <circle cx="11" cy="11" r="8" />
+                    <path d="M21 21l-4.35-4.35" />
+                  </svg>
+                  Browse Ontology
+                </button>
+              </div>
+            </div>
+            <textarea id="qb_sparql" rows="12"
+                      placeholder="PREFIX : &lt;your-namespace#&gt;&#10;PREFIX rdf: &lt;http://www.w3.org/1999/02/22-rdf-syntax-ns#&gt;&#10;&#10;SELECT ?subject ?label WHERE {&#10;    ?subject rdf:type :YourClass .&#10;    ?subject rdfs:label ?label .&#10;}"
+                      style="width: 100%; padding: 8px; border: 1px solid var(--border); border-radius: 4px; font-family: monospace; font-size: 13px; background: var(--panel-2); color: var(--text);"></textarea>
+            
+            <!-- Test Results Panel -->
+            <div id="qb-test-results" style="display: none; margin-top: 12px; padding: 12px; background: var(--panel-2); border: 1px solid var(--border); border-radius: 4px;">
+              <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
+                <label style="font-weight: 600;">Test Results</label>
+                <button type="button" onclick="document.getElementById('qb-test-results').style.display='none'" style="font-size: 12px; padding: 2px 8px; background: transparent; border: none; color: var(--muted); cursor: pointer;">✕</button>
+              </div>
+              <div id="qb-test-status" style="margin-bottom: 8px;"></div>
+              <div id="qb-test-data" style="max-height: 200px; overflow-y: auto;"></div>
+            </div>
+          </div>
+          
+          <div style="display: flex; gap: 10px; justify-content: flex-end; margin-top: 20px;">
+            <button type="button" class="btn" onclick="this.closest('.modal-overlay').remove()">Cancel</button>
+            <button type="button" class="btn btn-success" onclick="qbUseQuery()">Use This Query</button>
+          </div>
+        </div>
+      `;
+
+      document.body.appendChild(modal);
+
+      // Auto-load prefixes
+      loadPrefixesForQueryBuilder();
+    }
+
+    async function loadPrefixesForQueryBuilder() {
+      const projectId = window.cqmtState.currentProjectId;
+      if (!projectId) return;
+
+      try {
+        const token = localStorage.getItem('odras_token');
+        const url = `/api/cqmt/projects/${projectId}/prefixes`;
+
+        const response = await fetch(url, {
+          headers: { 'Authorization': `Bearer ${token}` }
+        });
+
+        if (response.ok) {
+          const data = await response.json();
+          const prefixes = data.prefixes || [];
+
+          const sparqlTextarea = document.getElementById('qb_sparql');
+          if (sparqlTextarea && !sparqlTextarea.value.trim()) {
+            let prefixBlock = '';
+            prefixes.forEach(p => {
+              prefixBlock += `PREFIX ${p.prefix} <${p.iri}>\n`;
+            });
+            sparqlTextarea.value = prefixBlock + '\n';
+          }
+        }
+      } catch (error) {
+        console.error('Error loading prefixes:', error);
+      }
+    }
+
+    async function qbTestQuery() {
+      const sparql = document.getElementById('qb_sparql').value.trim();
+      if (!sparql) {
+        showCQMTError('Please enter a SPARQL query first');
+        return;
+      }
+
+      const projectId = window.cqmtState.currentProjectId;
+      if (!projectId) {
+        showCQMTError('No project selected');
+        return;
+      }
+
+      const mts = window.cqmtState.currentMTs || [];
+      if (mts.length === 0) {
+        showCQMTError('No microtheories available. Please create a microtheory first.');
+        return;
+      }
+
+      const defaultMT = mts.find(mt => mt.is_default) || mts[0];
+      const mtIri = defaultMT.iri;
+
+      try {
+        const token = localStorage.getItem('odras_token');
+        const response = await fetch('/api/cqmt/test-query', {
+          method: 'POST',
+          headers: {
+            'Authorization': `Bearer ${token}`,
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify({
+            sparql: sparql,
+            mt_iri: mtIri,
+            project_id: projectId
+          })
+        });
+
+        const data = await response.json();
+        const resultsPanel = document.getElementById('qb-test-results');
+        const statusDiv = document.getElementById('qb-test-status');
+        const dataDiv = document.getElementById('qb-test-data');
+
+        resultsPanel.style.display = 'block';
+
+        if (data.success) {
+          statusDiv.innerHTML = `
+            <div style="color: var(--success); font-size: 12px;">
+              ✅ Query executed successfully | Rows: ${data.row_count} | Time: ${data.execution_time_ms}ms
+            </div>
+          `;
+
+          if (data.row_count > 0) {
+            let tableHTML = '<table style="width: 100%; font-size: 11px; border-collapse: collapse;">';
+            tableHTML += '<thead><tr>';
+            data.columns.forEach(col => {
+              tableHTML += `<th style="padding: 4px 8px; text-align: left; border-bottom: 1px solid var(--border); font-weight: 600;">${col}</th>`;
+            });
+            tableHTML += '</tr></thead><tbody>';
+
+            data.rows.forEach(row => {
+              tableHTML += '<tr>';
+              row.forEach(cell => {
+                tableHTML += `<td style="padding: 4px 8px; border-bottom: 1px solid var(--border); max-width: 200px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;" title="${cell}">${cell}</td>`;
+              });
+              tableHTML += '</tr>';
+            });
+            tableHTML += '</tbody></table>';
+            dataDiv.innerHTML = tableHTML;
+          } else {
+            dataDiv.innerHTML = '<div style="color: var(--muted); font-size: 12px;">No results returned</div>';
+          }
+        } else {
+          statusDiv.innerHTML = `
+            <div style="color: var(--error); font-size: 12px;">
+              ❌ Query failed: ${data.error || 'Unknown error'}
+            </div>
+          `;
+          dataDiv.innerHTML = '';
+        }
+      } catch (error) {
+        console.error('Error testing query:', error);
+        showCQMTError('Failed to test query: ' + error.message);
+      }
+    }
+
+    async function qbSuggestWithDAS() {
+      const problemText = document.getElementById('qb_problem').value.trim();
+      if (!problemText) {
+        showCQMTError('Please enter a problem statement first');
+        return;
+      }
+
+      const projectId = window.cqmtState.currentProjectId;
+      if (!projectId) {
+        showCQMTError('No project selected');
+        return;
+      }
+
+      try {
+        const requestPayload = {
+          problem_text: problemText,
+          project_id: projectId,
+          ontology_graph_iri: window.cqmtState.currentOntologyIri,
+          use_das: true
+        };
+
+        console.log('Sending DAS request:', requestPayload);
+
+        const token = localStorage.getItem('odras_token');
+        const response = await fetch('/api/cqmt/assist/suggest-sparql', {
+          method: 'POST',
+          headers: {
+            'Authorization': `Bearer ${token}`,
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify(requestPayload)
+        });
+
+        if (response.ok) {
+          const data = await response.json();
+          document.getElementById('qb_sparql').value = data.sparql_draft;
+
+          // Show confidence and notes in a toast
+          const confidencePct = Math.round(data.confidence * 100);
+          showSuccessMessage(`SPARQL generated (${confidencePct}% confidence). ${data.notes}`);
+        } else {
+          const error = await response.json();
+          showCQMTError('Failed to generate SPARQL: ' + (error.detail || error.message));
+        }
+      } catch (error) {
+        console.error('Error suggesting SPARQL:', error);
+        showCQMTError('Failed to suggest SPARQL: ' + error.message);
+      }
+    }
+
+    function qbBrowseOntology() {
+      // Use the existing browseOntologyForCQ function
+      browseOntologyForCQ();
+    }
+
+    function qbUseQuery() {
+      const query = document.getElementById('qb_sparql').value.trim();
+      if (!query) {
+        showCQMTError('Please enter a SPARQL query first');
+        return;
+      }
+
+      // Insert problem statement into CQ form if problem_text exists
+      const problemTextarea = document.getElementById('problem_text');
+      const qbProblem = document.getElementById('qb_problem').value.trim();
+      if (problemTextarea && qbProblem) {
+        problemTextarea.value = qbProblem;
+      }
+
+      // Insert query into CQ form if sparql_text exists
+      const sparqlTextarea = document.getElementById('sparql_text');
+      if (sparqlTextarea) {
+        sparqlTextarea.value = query;
+        showSuccessMessage('Query inserted into CQ form');
+      }
+
+      // Close modal
+      document.getElementById('query-builder-modal').remove();
+    }
+
+    async function browseOntologyForCQ() {
+      const projectId = window.cqmtState.currentProjectId;
+      if (!projectId) {
+        showCQMTError('No project selected');
+        return;
+      }
+
+      try {
+        const token = localStorage.getItem('odras_token');
+        const response = await fetch(`/api/ontologies?project=${projectId}`, {
+          headers: { 'Authorization': `Bearer ${token}` }
+        });
+
+        if (response.ok) {
+          const data = await response.json();
+          const ontologies = data.ontologies || [];
+
+          if (ontologies.length === 0) {
+            showCQMTError('No ontologies found in this project');
+            return;
+          }
+
+          // Show ontology browser modal
+          showOntologyBrowserModal(ontologies);
+        } else {
+          showCQMTError('Failed to load ontologies');
+        }
+      } catch (error) {
+        console.error('Error browsing ontology:', error);
+        showCQMTError('Failed to browse ontology: ' + error.message);
+      }
+    }
+
+    function showOntologyBrowserModal(ontologies) {
+      const modal = document.createElement('div');
+      modal.className = 'modal-overlay';
+      modal.innerHTML = `
+        <div class="modal-content" style="max-width: 900px; max-height: 90vh;">
+          <div class="modal-header">
+            <h3>Browse Ontology</h3>
+            <button class="btn" onclick="this.closest('.modal-overlay').remove()">&times;</button>
+          </div>
+          <div class="modal-body" style="padding: 20px; overflow-y: auto;">
+            <p style="margin-bottom: 16px; color: var(--muted);">
+              Select classes and properties to insert into your SPARQL query
+            </p>
+            <div id="ontology-browser-content">
+              ${ontologies.map(onto => `
+                <div style="margin-bottom: 20px; border: 1px solid var(--border); border-radius: 8px; padding: 16px;">
+                  <h4 style="margin: 0 0 12px 0;">${onto.label || onto.graphIri}</h4>
+                  <div style="font-size: 12px; color: var(--muted); margin-bottom: 12px;">${onto.graphIri}</div>
+                  <button class="btn btn-sm" onclick="loadOntologyDetails('${onto.graphIri}')" style="font-size: 12px;">
+                    Browse Classes & Properties
+                  </button>
+                </div>
+              `).join('')}
+            </div>
+          </div>
+        </div>
+      `;
+      document.body.appendChild(modal);
+    }
+
+    async function loadOntologyDetails(graphIri) {
+      try {
+        const token = localStorage.getItem('odras_token');
+        const response = await fetch(`/api/ontology/?graph=${encodeURIComponent(graphIri)}`, {
+          headers: { 'Authorization': `Bearer ${token}` }
+        });
+
+        if (response.ok) {
+          const result = await response.json();
+          const ontology = result.data || result;
+
+          console.log('🔍 Loaded ontology:', ontology);
+          console.log('🔍 Classes:', ontology.classes?.length || 0);
+          console.log('🔍 Object properties:', ontology.object_properties?.length || 0);
+          console.log('🔍 Datatype properties:', ontology.datatype_properties?.length || 0);
+
+          // Don't close the CQ modal - just show the details modal on top
+          // (The CQ modal will still be accessible underneath)
+
+          // Then show the details modal
+          showOntologyDetailsModal(ontology, graphIri);
+        } else {
+          const errorData = await response.json();
+          console.error('Failed to load ontology:', errorData);
+          showCQMTError('Failed to load ontology details: ' + (errorData.detail || errorData.message));
+        }
+      } catch (error) {
+        console.error('Error loading ontology details:', error);
+        showCQMTError('Failed to load ontology details: ' + error.message);
+      }
+    }
+
+    function showOntologyDetailsModal(ontology, graphIri) {
+      const modal = document.createElement('div');
+      modal.className = 'modal-overlay';
+      modal.innerHTML = `
+        <div class="modal-content" style="max-width: 900px; max-height: 90vh;">
+          <div class="modal-header">
+            <h3>Ontology: ${ontology.metadata?.name || graphIri}</h3>
+            <button class="btn" onclick="this.closest('.modal-overlay').remove()">&times;</button>
+          </div>
+          <div class="modal-body" style="padding: 20px; overflow-y: auto;">
+            ${(!ontology.classes || ontology.classes.length === 0) &&
+          (!ontology.object_properties || ontology.object_properties.length === 0) &&
+          (!ontology.datatype_properties || ontology.datatype_properties.length === 0) ?
+          '<div style="padding: 20px; text-align: center; color: var(--muted);">No classes or properties found in this ontology.</div>' : ''}
+            ${ontology.classes && ontology.classes.length > 0 ? `
+              <h4 style="margin: 0 0 12px 0;">Classes</h4>
+              <div style="margin-bottom: 20px;">
+                ${ontology.classes.map(cls => `
+                  <div style="padding: 8px; margin-bottom: 4px; border: 1px solid var(--border); border-radius: 4px; cursor: pointer;" 
+                       onclick="insertClassIntoSPARQL('${cls.name}')">
+                    <strong>${cls.name}</strong>
+                    ${cls.comment ? `<div style="font-size: 12px; color: var(--muted);">${cls.comment}</div>` : ''}
+                  </div>
+                `).join('')}
+              </div>
+            ` : ''}
+            ${ontology.object_properties && ontology.object_properties.length > 0 ? `
+              <h4 style="margin: 0 0 12px 0;">Object Properties</h4>
+              <div style="margin-bottom: 20px;">
+                ${ontology.object_properties.map(prop => `
+                  <div style="padding: 8px; margin-bottom: 4px; border: 1px solid var(--border); border-radius: 4px; cursor: pointer;" 
+                       onclick="insertPropertyIntoSPARQL('${prop.name}')">
+                    <strong>${prop.name}</strong>
+                    ${prop.comment ? `<div style="font-size: 12px; color: var(--muted);">${prop.comment}</div>` : ''}
+                  </div>
+                `).join('')}
+              </div>
+            ` : ''}
+            ${ontology.datatype_properties && ontology.datatype_properties.length > 0 ? `
+              <h4 style="margin: 0 0 12px 0;">Datatype Properties</h4>
+              <div style="margin-bottom: 20px;">
+                ${ontology.datatype_properties.map(prop => `
+                  <div style="padding: 8px; margin-bottom: 4px; border: 1px solid var(--border); border-radius: 4px; cursor: pointer;" 
+                       onclick="insertPropertyIntoSPARQL('${prop.name}')">
+                    <strong>${prop.name}</strong>
+                    ${prop.comment ? `<div style="font-size: 12px; color: var(--muted);">${prop.comment}</div>` : ''}
+                  </div>
+                `).join('')}
+              </div>
+            ` : ''}
+          </div>
+        </div>
+      `;
+      document.body.appendChild(modal);
+    }
+
+    function insertClassIntoSPARQL(className) {
+      console.log('🔍 Inserting class:', className);
+      const sparqlTextarea = document.getElementById('sparql_text');
+
+      if (!sparqlTextarea) {
+        console.error('❌ Could not find sparql_text textarea');
+        showCQMTError('Could not find SPARQL editor. Please open the CQ editor first.');
+        return;
+      }
+
+      const currentValue = sparqlTextarea.value;
+      const newValue = currentValue + (currentValue ? '\n    ' : '') + `?subject rdf:type :${className} .`;
+      sparqlTextarea.value = newValue;
+      sparqlTextarea.focus();
+
+      // Close only the ontology details modal (the CQ modal stays open)
+      const currentModal = document.querySelector('.modal-overlay:last-child');
+      if (currentModal) {
+        currentModal.remove();
+      }
+
+      showSuccessMessage(`Inserted class "${className}" into SPARQL query`);
+    }
+
+    function insertPropertyIntoSPARQL(propertyName) {
+      console.log('🔍 Inserting property:', propertyName);
+      const sparqlTextarea = document.getElementById('sparql_text');
+
+      if (!sparqlTextarea) {
+        console.error('❌ Could not find sparql_text textarea');
+        showCQMTError('Could not find SPARQL editor. Please open the CQ editor first.');
+        return;
+      }
+
+      const currentValue = sparqlTextarea.value;
+      const newValue = currentValue + (currentValue ? '\n    ' : '') + `?subject :${propertyName} ?value .`;
+      sparqlTextarea.value = newValue;
+      sparqlTextarea.focus();
+
+      // Close only the ontology details modal (the CQ modal stays open)
+      const currentModal = document.querySelector('.modal-overlay:last-child');
+      if (currentModal) {
+        currentModal.remove();
+      }
+
+      showSuccessMessage(`Inserted property "${propertyName}" into SPARQL query`);
+    }
+
+    function createNewMT() {
+      showMTModal();
+    }
+
+    async function editMT(mtId) {
+      // Load the MT data first
+      try {
+        const token = localStorage.getItem('odras_token');
+        const response = await fetch(`/api/cqmt/microtheories/${mtId}`, {
+          headers: { 'Authorization': `Bearer ${token}` }
+        });
+
+        if (response.ok) {
+          const mtData = response.json();
+          const mt = (await mtData).data || await mtData;
+          showMTModal(mt);
+        } else {
+          showCQMTError('Failed to load microtheory for editing');
+        }
+      } catch (error) {
+        console.error('Error loading microtheory:', error);
+        showCQMTError('Failed to load microtheory: ' + error.message);
+      }
+    }
+
+    function showMTModal(mtData = null) {
+      const isEdit = !!mtData;
+      const modal = document.createElement('div');
+      modal.className = 'modal-overlay';
+      modal.innerHTML = `
+        <div class="modal-content" style="max-width: 900px; max-height: 90vh;">
+          <div class="modal-header">
+            <h3>${isEdit ? 'Edit' : 'Create'} Microtheory</h3>
+            <button class="btn" onclick="this.closest('.modal-overlay').remove()">&times;</button>
+          </div>
+          <div class="modal-body" style="padding: 20px; overflow-y: auto;">
+            <form id="mtForm" onsubmit="saveMT(event)">
+              <input type="hidden" id="mt_id" value="${mtData?.id || ''}">
+              
+              <div style="margin-bottom: 16px;">
+                <label style="display: block; margin-bottom: 6px; font-weight: 600;">Label *</label>
+                <input type="text" id="mt_label" value="${mtData?.label || ''}" required 
+                       style="width: 100%; padding: 8px; border: 1px solid var(--border); border-radius: 4px; background: var(--panel-2); color: var(--text);">
+              </div>
+              
+              <div style="margin-bottom: 16px;">
+                <label style="display: block; margin-bottom: 6px; font-weight: 600;">Description</label>
+                <textarea id="mt_description" rows="3"
+                          style="width: 100%; padding: 8px; border: 1px solid var(--border); border-radius: 4px; font-family: inherit; background: var(--panel-2); color: var(--text);">
+${mtData?.description || ''}</textarea>
+              </div>
+              
+              ${!isEdit ? `
+              <div style="margin-bottom: 16px;">
+                <label style="display: block; margin-bottom: 6px; font-weight: 600;">Clone From (Optional)</label>
+                <select id="mt_clone_from" style="width: 100%; padding: 8px; border: 1px solid var(--border); border-radius: 4px; background: var(--panel-2); color: var(--text);">
+                  <option value="">Create empty microtheory</option>
+                </select>
+                <div style="font-size: 12px; color: var(--muted); margin-top: 4px;">
+                  Copy triples from an existing microtheory
+                </div>
+              </div>
+              ` : ''}
+              
+              <div style="margin-bottom: 16px;">
+                <label style="display: flex; align-items: center; gap: 8px;">
+                  <input type="checkbox" id="mt_set_default" ${mtData?.is_default ? 'checked' : ''}>
+                  Set as project default microtheory
+                </label>
+              </div>
+
+              <div style="margin-bottom: 16px; padding-top: 16px; border-top: 1px solid var(--border);">
+                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px;">
+                  <label style="font-weight: 600;">Microtheory Content (Triples)</label>
+                  <div style="display: flex; gap: 8px;">
+                    <button type="button" class="btn btn-sm" onclick="browseOntologyForMT()" style="font-size: 12px; padding: 4px 12px; display: flex; align-items: center; gap: 4px;">
+                      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                        <circle cx="11" cy="11" r="8" />
+                        <path d="M21 21l-4.35-4.35" />
+                      </svg>
+                      Copy from Ontology
+                    </button>
+                    <button type="button" class="btn btn-sm" onclick="addTripleRow()" style="font-size: 12px; padding: 4px 12px; display: flex; align-items: center; gap: 4px;">
+                      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                        <line x1="12" y1="5" x2="12" y2="19" />
+                        <line x1="5" y1="12" x2="19" y2="12" />
+                      </svg>
+                      Add Triple
+                    </button>
+                  </div>
+                </div>
+                <p style="font-size: 12px; color: var(--muted); margin-bottom: 12px;">
+                  Define test data triples for this microtheory (RDF format)
+                </p>
+                <div id="mt-triples-container" style="max-height: 300px; overflow-y: auto; border: 1px solid var(--border); border-radius: 4px; padding: 12px;">
+                  ${isEdit && mtData?.triples ? mtData.triples.map((t, i) => `
+                    <div class="triple-row" style="display: flex; gap: 8px; margin-bottom: 8px; align-items: center;">
+                      <input type="text" class="triple-subject" value="${t.subject || ''}" placeholder="Subject" style="flex: 1; padding: 6px; border: 1px solid var(--border); border-radius: 4px; font-family: monospace; font-size: 12px; background: var(--panel-2); color: var(--text);">
+                      <input type="text" class="triple-predicate" value="${t.predicate || ''}" placeholder="Predicate" style="flex: 1; padding: 6px; border: 1px solid var(--border); border-radius: 4px; font-family: monospace; font-size: 12px; background: var(--panel-2); color: var(--text);">
+                      <input type="text" class="triple-object" value="${t.object || ''}" placeholder="Object" style="flex: 1; padding: 6px; border: 1px solid var(--border); border-radius: 4px; font-family: monospace; font-size: 12px; background: var(--panel-2); color: var(--text);">
+                      <button type="button" class="btn btn-sm" onclick="removeTripleRow(this)" style="padding: 4px 8px; background: var(--err); color: white;">×</button>
+                    </div>
+                  `).join('') : '<div style="color: var(--muted); font-size: 13px; text-align: center; padding: 20px;">No triples added yet. Click "Add Triple" or "Copy from Ontology" to add content.</div>'}
+                </div>
+              </div>
+              
+              <div style="display: flex; gap: 10px; justify-content: flex-end; margin-top: 20px;">
+                <button type="button" class="btn" onclick="this.closest('.modal-overlay').remove()">Cancel</button>
+                <button type="submit" class="btn btn-success">${isEdit ? 'Update' : 'Create'} Microtheory</button>
+              </div>
+            </form>
+          </div>
+        </div>
+      `;
+      document.body.appendChild(modal);
+
+      // Populate "clone from" selector if it exists (only for new MTs)
+      if (!isEdit) {
+        const cloneSelector = document.getElementById('mt_clone_from');
+        if (cloneSelector && window.cqmtState && window.cqmtState.currentMTs) {
+          window.cqmtState.currentMTs.forEach(mt => {
+            const option = document.createElement('option');
+            option.value = mt.iri;
+            option.textContent = mt.label + (mt.is_default ? ' (Default)' : '');
+            cloneSelector.appendChild(option);
+          });
+        }
+      }
+    }
+
+    function addTripleRow() {
+      const container = document.getElementById('mt-triples-container');
+      if (container.querySelector('.triple-row')) {
+        // Remove the "no triples" message if it exists
+        const emptyMsg = container.querySelector('div[style*="color: var(--muted)"]');
+        if (emptyMsg) emptyMsg.remove();
+      }
+
+      const row = document.createElement('div');
+      row.className = 'triple-row';
+      row.style.cssText = 'display: flex; gap: 8px; margin-bottom: 8px; align-items: center;';
+      row.innerHTML = `
+        <input type="text" class="triple-subject" placeholder="Subject" style="flex: 1; padding: 6px; border: 1px solid var(--border); border-radius: 4px; font-family: monospace; font-size: 12px; background: var(--panel-2); color: var(--text);">
+        <input type="text" class="triple-predicate" placeholder="Predicate" style="flex: 1; padding: 6px; border: 1px solid var(--border); border-radius: 4px; font-family: monospace; font-size: 12px; background: var(--panel-2); color: var(--text);">
+        <input type="text" class="triple-object" placeholder="Object" style="flex: 1; padding: 6px; border: 1px solid var(--border); border-radius: 4px; font-family: monospace; font-size: 12px; background: var(--panel-2); color: var(--text);">
+        <button type="button" class="btn btn-sm" onclick="removeTripleRow(this)" style="padding: 4px 8px; background: var(--err); color: white;">×</button>
+      `;
+      container.appendChild(row);
+    }
+
+    function removeTripleRow(button) {
+      const row = button.closest('.triple-row');
+      row.remove();
+
+      const container = document.getElementById('mt-triples-container');
+      if (!container.querySelector('.triple-row')) {
+        container.innerHTML = '<div style="color: var(--muted); font-size: 13px; text-align: center; padding: 20px;">No triples added yet. Click "Add Triple" or "Copy from Ontology" to add content.</div>';
+      }
+    }
+
+    async function browseOntologyForMT() {
+      const projectId = window.cqmtState.currentProjectId;
+      if (!projectId) {
+        showCQMTError('No project selected');
+        return;
+      }
+
+      try {
+        const token = localStorage.getItem('odras_token');
+        const response = await fetch(`/api/ontologies?project=${projectId}`, {
+          headers: { 'Authorization': `Bearer ${token}` }
+        });
+
+        if (response.ok) {
+          const data = await response.json();
+          const ontologies = data.ontologies || [];
+
+          if (ontologies.length === 0) {
+            showCQMTError('No ontologies found in this project');
+            return;
+          }
+
+          // Show ontology browser modal for MT
+          showOntologyBrowserModalForMT(ontologies);
+        } else {
+          showCQMTError('Failed to load ontologies');
+        }
+      } catch (error) {
+        console.error('Error browsing ontology:', error);
+        showCQMTError('Failed to browse ontology: ' + error.message);
+      }
+    }
+
+    function showOntologyBrowserModalForMT(ontologies) {
+      const modal = document.createElement('div');
+      modal.className = 'modal-overlay';
+      modal.innerHTML = `
+        <div class="modal-content" style="max-width: 900px; max-height: 90vh;">
+          <div class="modal-header">
+            <h3>Copy Triples from Ontology</h3>
+            <button class="btn" onclick="this.closest('.modal-overlay').remove()">&times;</button>
+          </div>
+          <div class="modal-body" style="padding: 20px; overflow-y: auto;">
+            <p style="margin-bottom: 16px; color: var(--muted);">
+              Select individuals and their triples to copy into your microtheory
+            </p>
+            <div id="ontology-browser-content">
+              ${ontologies.map(onto => `
+                <div style="margin-bottom: 20px; border: 1px solid var(--border); border-radius: 8px; padding: 16px;">
+                  <h4 style="margin: 0 0 12px 0;">${onto.label || onto.graphIri}</h4>
+                  <div style="font-size: 12px; color: var(--muted); margin-bottom: 12px;">${onto.graphIri}</div>
+                  <button class="btn btn-sm" onclick="loadIndividualsForMT('${onto.graphIri}')" style="font-size: 12px;">
+                    Browse Individuals
+                  </button>
+                </div>
+              `).join('')}
+            </div>
+          </div>
+        </div>
+      `;
+      document.body.appendChild(modal);
+    }
+
+    async function loadIndividualsForMT(graphIri) {
+      try {
+        const token = localStorage.getItem('odras_token');
+        const response = await fetch(`/api/individuals/list?graph=${encodeURIComponent(graphIri)}`, {
+          headers: { 'Authorization': `Bearer ${token}` }
+        });
+
+        if (response.ok) {
+          const data = await response.json();
+          showIndividualsModalForMT(data.individuals || [], graphIri);
+        } else {
+          showCQMTError('Failed to load individuals');
+        }
+      } catch (error) {
+        console.error('Error loading individuals:', error);
+        showCQMTError('Failed to load individuals: ' + error.message);
+      }
+    }
+
+    function showIndividualsModalForMT(individuals, graphIri) {
+      const modal = document.createElement('div');
+      modal.className = 'modal-overlay';
+      modal.innerHTML = `
+        <div class="modal-content" style="max-width: 900px; max-height: 90vh;">
+          <div class="modal-header">
+            <h3>Select Individuals to Copy</h3>
+            <button class="btn" onclick="this.closest('.modal-overlay').remove()">&times;</button>
+          </div>
+          <div class="modal-body" style="padding: 20px; overflow-y: auto;">
+            ${individuals.length > 0 ? `
+              <div style="margin-bottom: 12px;">
+                ${individuals.map(ind => `
+                  <div style="padding: 8px; margin-bottom: 4px; border: 1px solid var(--border); border-radius: 4px; cursor: pointer;" 
+                       onclick="copyIndividualToMT('${ind.iri}', '${ind.name}')">
+                    <strong>${ind.name}</strong>
+                    <div style="font-size: 11px; color: var(--muted);">${ind.iri}</div>
+                    <div style="font-size: 12px; color: var(--muted);">Type: ${ind.type || 'Unknown'}</div>
+                  </div>
+                `).join('')}
+              </div>
+            ` : '<p style="color: var(--muted);">No individuals found in this ontology.</p>'}
+          </div>
+        </div>
+      `;
+      document.body.appendChild(modal);
+    }
+
+    async function copyIndividualToMT(individualIri, individualName) {
+      try {
+        const token = localStorage.getItem('odras_token');
+        const response = await fetch(`/api/individuals/${encodeURIComponent(individualIri)}/triples`, {
+          headers: { 'Authorization': `Bearer ${token}` }
+        });
+
+        if (response.ok) {
+          const data = await response.json();
+          const triples = data.triples || [];
+
+          if (triples.length === 0) {
+            showCQMTError('No triples found for this individual');
+            return;
+          }
+
+          // Add triples to the MT form
+          const container = document.getElementById('mt-triples-container');
+          const emptyMsg = container.querySelector('div[style*="color: var(--muted)"]');
+          if (emptyMsg) emptyMsg.remove();
+
+          triples.forEach(triple => {
+            const row = document.createElement('div');
+            row.className = 'triple-row';
+            row.style.cssText = 'display: flex; gap: 8px; margin-bottom: 8px; align-items: center;';
+            row.innerHTML = `
+              <input type="text" class="triple-subject" value="${triple.subject || ''}" placeholder="Subject" style="flex: 1; padding: 6px; border: 1px solid var(--border); border-radius: 4px; font-family: monospace; font-size: 12px;">
+              <input type="text" class="triple-predicate" value="${triple.predicate || ''}" placeholder="Predicate" style="flex: 1; padding: 6px; border: 1px solid var(--border); border-radius: 4px; font-family: monospace; font-size: 12px;">
+              <input type="text" class="triple-object" value="${triple.object || ''}" placeholder="Object" style="flex: 1; padding: 6px; border: 1px solid var(--border); border-radius: 4px; font-family: monospace; font-size: 12px;">
+              <button type="button" class="btn btn-sm" onclick="removeTripleRow(this)" style="padding: 4px 8px; background: var(--err); color: white;">×</button>
+            `;
+            container.appendChild(row);
+          });
+
+          // Close all modals
+          document.querySelectorAll('.modal-overlay').forEach(m => m.remove());
+          showSuccessMessage(`Copied ${triples.length} triples from "${individualName}"`);
+        } else {
+          showCQMTError('Failed to load triples for this individual');
+        }
+      } catch (error) {
+        console.error('Error copying individual:', error);
+        showCQMTError('Failed to copy individual: ' + error.message);
+      }
+    }
+
+    async function saveMT(event) {
+      event.preventDefault();
+
+      const mtId = document.getElementById('mt_id').value;
+      const isEdit = !!mtId;
+
+      // Find the modal containing this form
+      const form = event.target;
+      const modal = form.closest('.modal-overlay');
+
+      try {
+        const projectId = window.cqmtState.currentProjectId;
+        if (!projectId) {
+          showCQMTError('No project selected');
+          return;
+        }
+
+        // Collect triples from the form
+        const tripleRows = document.querySelectorAll('.triple-row');
+        const triples = [];
+        tripleRows.forEach(row => {
+          const subject = row.querySelector('.triple-subject').value.trim();
+          const predicate = row.querySelector('.triple-predicate').value.trim();
+          const object = row.querySelector('.triple-object').value.trim();
+
+          if (subject && predicate && object) {
+            triples.push({ subject, predicate, object });
+          }
+        });
+
+        const mtData = {
+          label: document.getElementById('mt_label').value,
+          description: document.getElementById('mt_description').value,
+          setDefault: document.getElementById('mt_set_default').checked,
+          triples: triples
+        };
+
+        // Add cloneFrom if creating new MT and selector has a value
+        if (!isEdit) {
+          const cloneFromSelect = document.getElementById('mt_clone_from');
+          if (cloneFromSelect && cloneFromSelect.value) {
+            mtData.cloneFrom = cloneFromSelect.value;
+          }
+        }
+
+        const token = localStorage.getItem('odras_token');
+        const url = isEdit
+          ? `/api/cqmt/microtheories/${mtId}`
+          : `/api/cqmt/projects/${projectId}/microtheories`;
+
+        const response = await fetch(url, {
+          method: isEdit ? 'PUT' : 'POST',
+          headers: {
+            'Authorization': `Bearer ${token}`,
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify(mtData)
+        });
+
+        if (response.ok) {
+          // Close the specific modal
+          if (modal) {
+            modal.remove();
+          } else {
+            // Fallback: close any modal overlays
+            document.querySelectorAll('.modal-overlay').forEach(m => m.remove());
+          }
+
+          await loadCQMTMicrotheories();
+          showSuccessMessage(`Microtheory ${isEdit ? 'updated' : 'created'} successfully`);
+        } else {
+          const error = await response.json();
+          showCQMTError(`Failed to ${isEdit ? 'update' : 'create'} microtheory: ${error.detail || error.message}`);
+        }
+      } catch (error) {
+        console.error('Error saving microtheory:', error);
+        showCQMTError('Failed to save microtheory: ' + error.message);
+      }
+    }
+
+    async function setDefaultMT(mtId) {
+      try {
+        const token = localStorage.getItem('odras_token');
+        const response = await fetch(`/api/cqmt/microtheories/${mtId}/set-default`, {
+          method: 'POST',
+          headers: { 'Authorization': `Bearer ${token}` }
+        });
+
+        if (response.ok) {
+          console.log('Default microtheory updated');
+          await loadCQMTMicrotheories();
+          showSuccessMessage('Microtheory set as default');
+        } else {
+          showCQMTError('Failed to set default microtheory');
+        }
+      } catch (error) {
+        console.error('Error setting default microtheory:', error);
+        showCQMTError('Failed to set default microtheory: ' + error.message);
+      }
+    }
+
+    async function deleteMT(mtId, mtLabel) {
+      if (!confirm(`Are you sure you want to delete the microtheory "${mtLabel}"? This will permanently remove all its triples.`)) {
+        return;
+      }
+
+      try {
+        const token = localStorage.getItem('odras_token');
+        const response = await fetch(`/api/cqmt/microtheories/${mtId}`, {
+          method: 'DELETE',
+          headers: { 'Authorization': `Bearer ${token}` }
+        });
+
+        if (response.ok) {
+          console.log('Microtheory deleted successfully');
+          await loadCQMTMicrotheories();
+        } else {
+          showCQMTError('Failed to delete microtheory');
+        }
+      } catch (error) {
+        console.error('Error deleting microtheory:', error);
+        showCQMTError('Failed to delete microtheory: ' + error.message);
+      }
+    }
+
+    // End of CQ/MT Workbench System
 
   </script>
 

@@ -217,3 +217,16 @@ def get_admin_user(authorization: Optional[str] = Header(None)):
 def is_user_admin(user: Dict) -> bool:
     """Check if user has admin privileges."""
     return user.get("is_admin", False)
+
+
+def get_user_or_anonymous(authorization: Optional[str] = Header(None)):
+    """Get user with Bearer token or return anonymous user for CQ/MT endpoints."""
+    try:
+        return get_user(authorization)
+    except HTTPException:
+        # Return anonymous user for CQ/MT endpoints
+        return {
+            "user_id": "anonymous",
+            "username": "anonymous",
+            "is_admin": False,
+        }
