@@ -32087,10 +32087,10 @@ def hello_world():
         const coverageData = await response.json();
 
         // Update stats
-        const totalEl = document.getElementById('total-cqs');
-        const activeEl = document.getElementById('active-cqs');
-        const passingEl = document.getElementById('passing-cqs');
-        const failingEl = document.getElementById('failing-cqs');
+      const totalEl = document.getElementById('total-cqs');
+      const activeEl = document.getElementById('active-cqs');
+      const passingEl = document.getElementById('passing-cqs');
+      const failingEl = document.getElementById('failing-cqs');
 
         if (totalEl) totalEl.textContent = coverageData.summary.total_cqs;
         if (activeEl) activeEl.textContent = coverageData.summary.total_cqs; // TODO: calculate active from CQs
@@ -32098,13 +32098,13 @@ def hello_world():
         if (failingEl) failingEl.textContent = coverageData.summary.runs_failed;
 
         // Display coverage grid
-        const container = document.getElementById('coverage-details');
-        if (!container) return;
+      const container = document.getElementById('coverage-details');
+      if (!container) return;
 
         if (coverageData.mts.length === 0 || coverageData.cqs.length === 0) {
           container.innerHTML = '<div class="loading">No CQs or MTs available for coverage analysis</div>';
-          return;
-        }
+        return;
+      }
 
         let html = `
           <div style="margin-bottom: 20px;">
@@ -32156,7 +32156,7 @@ def hello_world():
 
         html += `</tbody></table></div>`;
 
-        container.innerHTML = html;
+      container.innerHTML = html;
 
       } catch (error) {
         console.error('Error loading coverage:', error);
@@ -32745,7 +32745,14 @@ ${JSON.stringify(cqData?.contract_json || { require_columns: [], min_rows: 0 }, 
     }
 
     function copyToFuseki() {
-      const sparql = document.getElementById('sparql_text').value.trim();
+      // Force fresh read of textarea
+      const textarea = document.getElementById('sparql_text');
+      if (!textarea) {
+        showCQMTError('SPARQL textarea not found');
+        return;
+      }
+      
+      const sparql = textarea.value.trim();
       if (!sparql) {
         showCQMTError('Please enter a SPARQL query first');
         return;
@@ -32770,7 +32777,7 @@ ${JSON.stringify(cqData?.contract_json || { require_columns: [], min_rows: 0 }, 
       const sparqlWithoutPrefixes = sparql.replace(prefixPattern, '').trim();
 
       // Extract SELECT clause
-      const selectPattern = /SELECT\s+([\s\S]*?)\s+WHERE/i;
+      const selectPattern = /SELECT\s+([^\s]+(?:\s+[^\s]+)*)\s+WHERE/i;
       const selectMatch = sparqlWithoutPrefixes.match(selectPattern);
       const selectClause = selectMatch ? selectMatch[1].trim() : '*';
 
