@@ -172,10 +172,13 @@ def get_coverage_matrix(project_id: str) -> Dict[str, Any]:
 ```
 
 **Features**:
-- Click any cell to see full run details
-- "Run All CQs Against All MTs" button for batch execution
-- Sortable/filterable table
-- Export to CSV
+- ✅ Click any cell to see full run details (via tooltip)
+- ✅ "Run All CQs Against All MTs" button for batch execution
+- ✅ Individual "Run" button on each CQ card
+- ✅ Toast notifications for run status
+- ✅ Auto-refresh after running tests
+- [ ] Sortable/filterable table (future enhancement)
+- [ ] Export to CSV (future enhancement)
 
 ### Phase 3: Batch Execution ✅ ADVANCED
 
@@ -246,10 +249,13 @@ def get_coverage_matrix(project_id: str) -> Dict[str, Any]:
 
 1. ✅ Coverage API returns complete matrix
 2. ✅ UI displays grid with all CQ×MT combinations
-3. ✅ Batch execution runs all tests systematically
-4. ✅ Failed runs show detailed error messages
-5. ✅ Missing runs clearly indicated
-6. ✅ Coverage percentage calculated correctly
+3. ✅ Individual CQ run button on each card
+4. ✅ Batch execution runs all tests systematically ("Run All CQs" button)
+5. ✅ Failed runs show detailed error messages
+6. ✅ Missing runs clearly indicated
+7. ✅ Coverage percentage calculated correctly
+8. ✅ Toast notifications for run status
+9. ✅ Auto-refresh after running tests
 
 ## Questions to Resolve
 
@@ -268,11 +274,14 @@ def get_coverage_matrix(project_id: str) -> Dict[str, Any]:
 ## Next Steps
 
 1. ✅ Document the problem (this document)
-2. ⏳ Implement Phase 1: Coverage API
-3. ⏳ Implement Phase 2: Coverage Grid UI
-4. ⏳ Test with existing CQ/MT data
-5. ⏳ Implement Phase 3: Batch Execution
-6. ⏳ Add visual indicators and filters
+2. ✅ Implement Phase 1: Coverage API
+3. ✅ Implement Phase 2: Coverage Grid UI
+4. ✅ Test with existing CQ/MT data (2 MTs, 3 CQs, 100% coverage)
+5. ✅ Implement Phase 3: Batch Execution (Run All CQs button)
+6. ✅ Add individual Run button to CQ cards
+7. ⏳ Add visual indicators and filters (future enhancement)
+8. ⏳ Add execution history viewer (future enhancement)
+9. ⏳ Add trend analysis (future enhancement)
 
 ## Related Documents
 

@@ -3851,8 +3851,16 @@
 
             <!-- Coverage Tab Content -->
             <div id="cqmtCoverageContent" class="cqmt-tab-content" style="display: none;">
-              <h3>CQ Coverage Summary</h3>
-              <p style="margin-bottom: 20px;">Overview of CQ pass/fail status across microtheories</p>
+              <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
+                <div>
+                  <h3 style="margin: 0;">CQ Coverage Summary</h3>
+                  <p style="margin: 5px 0 0 0; color: var(--muted); font-size: 13px;">Overview of CQ pass/fail status
+                    across microtheories</p>
+                </div>
+                <button class="btn btn-success" onclick="runAllCQs()" style="padding: 8px 16px;">
+                  ▶ Run All CQs
+                </button>
+              </div>
               <div id="coverage-stats" class="stats-grid">
                 <div class="stat-card">
                   <span id="total-cqs" class="stat-number">-</span>
@@ -31953,6 +31961,9 @@ def hello_world():
                 </div>` : ''}
             </div>
             <div style="display: flex; gap: 5px; margin-left: 10px;">
+              <button class="btn btn-sm" onclick="event.stopPropagation(); runCQ('${cq.id}', '${cq.cq_name}')" style="padding: 4px 8px; font-size: 11px; background: var(--ok); color: white;">
+                Run
+              </button>
               <button class="btn btn-sm" onclick="event.stopPropagation(); editCQ('${cq.id}')" style="padding: 4px 8px; font-size: 11px;">
                 Edit
               </button>
@@ -32380,6 +32391,13 @@ ${cqData?.problem_text || ''}</textarea>
                       </svg>
                       Browse Ontology
                     </button>
+                    <button type="button" class="btn btn-sm" onclick="copyToFuseki()" style="font-size: 12px; padding: 4px 12px; display: flex; align-items: center; gap: 4px;">
+                      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                        <rect x="9" y="9" width="13" height="13" rx="2" ry="2" />
+                        <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1" />
+                      </svg>
+                      Copy to Fuseki
+                    </button>
                   </div>
                 </div>
                 <textarea id="sparql_text" required rows="8"
@@ -32599,6 +32617,190 @@ ${JSON.stringify(cqData?.contract_json || { require_columns: [], min_rows: 0 }, 
         console.error('Error deleting CQ:', error);
         showCQMTError('Failed to delete CQ: ' + error.message);
       }
+    }
+
+    async function runCQ(cqId, cqName) {
+      try {
+        const token = localStorage.getItem('odras_token');
+
+        // Get microtheory to run against
+        const mts = window.cqmtState.currentMTs || [];
+        if (mts.length === 0) {
+          showCQMTError('No microtheories available. Please create a microtheory first.');
+          return;
+        }
+
+        const defaultMT = mts.find(mt => mt.is_default) || mts[0];
+        const mtIri = defaultMT.iri;
+
+        showToast(`Running ${cqName}...`, 'info');
+
+        const response = await fetch(`/api/cqmt/cqs/${cqId}/run`, {
+          method: 'POST',
+          headers: {
+            'Authorization': `Bearer ${token}`,
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify({
+            mt_iri: mtIri,
+            params: {}
+          })
+        });
+
+        if (response.ok) {
+          const result = await response.json();
+          const statusIcon = result.passed ? '✅' : '❌';
+          const statusText = result.passed ? 'PASSED' : 'FAILED';
+          showToast(`${statusIcon} ${cqName} ${statusText} (${result.row_count} rows)`, result.passed ? 'success' : 'error');
+
+          // Refresh CQ list to show updated status
+          await loadCQMTCQs();
+
+          // If on Coverage tab, refresh coverage
+          const coverageTab = document.getElementById('cqmtCoverageContent');
+          if (coverageTab && coverageTab.style.display !== 'none') {
+            await loadCQMTCoverage();
+          }
+        } else {
+          const errorData = await response.json();
+          showCQMTError(`Failed to run CQ: ${errorData.detail || 'Unknown error'}`);
+        }
+      } catch (error) {
+        console.error('Error running CQ:', error);
+        showCQMTError('Failed to run CQ: ' + error.message);
+      }
+    }
+
+    async function runAllCQs() {
+      const cqs = window.cqmtState.currentCQs || [];
+      const mts = window.cqmtState.currentMTs || [];
+
+      if (cqs.length === 0) {
+        showCQMTError('No competency questions available');
+        return;
+      }
+
+      if (mts.length === 0) {
+        showCQMTError('No microtheories available. Please create a microtheory first.');
+        return;
+      }
+
+      if (!confirm(`Run all ${cqs.length} CQs against all ${mts.length} MTs? This will execute ${cqs.length * mts.length} tests.`)) {
+        return;
+      }
+
+      showToast(`Running all CQs...`, 'info');
+
+      let completed = 0;
+      let passed = 0;
+      let failed = 0;
+
+      try {
+        const token = localStorage.getItem('odras_token');
+
+        for (const cq of cqs) {
+          for (const mt of mts) {
+            try {
+              const response = await fetch(`/api/cqmt/cqs/${cq.id}/run`, {
+                method: 'POST',
+                headers: {
+                  'Authorization': `Bearer ${token}`,
+                  'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({
+                  mt_iri: mt.iri,
+                  params: {}
+                })
+              });
+
+              if (response.ok) {
+                const result = await response.json();
+                if (result.passed) {
+                  passed++;
+                } else {
+                  failed++;
+                }
+              } else {
+                failed++;
+              }
+            } catch (error) {
+              console.error(`Error running CQ ${cq.cq_name} against ${mt.label}:`, error);
+              failed++;
+            }
+
+            completed++;
+          }
+        }
+
+        showToast(`✅ Completed: ${completed} runs (${passed} passed, ${failed} failed)`, 'success');
+
+        // Refresh both tabs
+        await loadCQMTCQs();
+        await loadCQMTCoverage();
+
+      } catch (error) {
+        console.error('Error running all CQs:', error);
+        showCQMTError('Failed to run all CQs: ' + error.message);
+      }
+    }
+
+    function copyToFuseki() {
+      const sparql = document.getElementById('sparql_text').value.trim();
+      if (!sparql) {
+        showCQMTError('Please enter a SPARQL query first');
+        return;
+      }
+
+      // Get microtheory to add GRAPH clause
+      const mts = window.cqmtState.currentMTs || [];
+      if (mts.length === 0) {
+        showCQMTError('No microtheories available. Please create a microtheory first.');
+        return;
+      }
+
+      const defaultMT = mts.find(mt => mt.is_default) || mts[0];
+      const mtIri = defaultMT.iri;
+
+      // Extract prefixes and WHERE body
+      const prefixPattern = /(PREFIX\s+\S+\s+<\S+>\s*)+/i;
+      const prefixMatch = sparql.match(prefixPattern);
+      const prefixSection = prefixMatch ? prefixMatch[0] : '';
+
+      // Remove prefixes to get WHERE body
+      const sparqlWithoutPrefixes = sparql.replace(prefixPattern, '').trim();
+
+      // Extract SELECT clause
+      const selectPattern = /SELECT\s+([\s\S]*?)\s+WHERE/i;
+      const selectMatch = sparqlWithoutPrefixes.match(selectPattern);
+      const selectClause = selectMatch ? selectMatch[1].trim() : '*';
+
+      // Extract WHERE clause content
+      const wherePattern = /WHERE\s*\{([\s\S]*)\}/i;
+      const whereMatch = sparqlWithoutPrefixes.match(wherePattern);
+
+      if (!whereMatch) {
+        showCQMTError('Could not parse SPARQL query structure');
+        return;
+      }
+
+      const whereBody = whereMatch[1].trim();
+
+      // Build confined query with GRAPH clause
+      const confinedQuery = `${prefixSection}
+
+SELECT ${selectClause} WHERE {
+    GRAPH <${mtIri}> {
+        ${whereBody}
+    }
+}`;
+
+      // Copy to clipboard
+      navigator.clipboard.writeText(confinedQuery).then(() => {
+        showToast('Query copied to clipboard! Paste into Fuseki query tab.', 'success');
+      }).catch(err => {
+        console.error('Failed to copy:', err);
+        showCQMTError('Failed to copy to clipboard');
+      });
     }
 
     async function testSPARQLQuery() {
