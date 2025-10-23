@@ -30,6 +30,7 @@ from backend.services.config import Settings
 from backend.services.db import DatabaseService
 from backend.services.namespace_uri_generator import NamespaceURIGenerator
 from backend.services.resource_uri_service import get_resource_uri_service
+from backend.services.ontology_change_detector import OntologyChangeDetector
 from backend.services.auth import (
     get_user as auth_get_user,
     get_admin_user,
@@ -1749,7 +1750,14 @@ async def save_ontology(graph: str, request: Request):
         ttl_bytes = await request.body()
         if not ttl_bytes:
             raise HTTPException(status_code=400, detail="Empty body; expected Turtle content")
+        
+        ttl_content = ttl_bytes.decode("utf-8")
+        
+        # Detect changes BEFORE saving
         s = Settings()
+        change_detector = OntologyChangeDetector(db, s.fuseki_url)
+        change_result = change_detector.detect_changes(graph, ttl_content)
+        
         base = s.fuseki_url.rstrip("/")
         # First, DROP the target graph to avoid lingering triples
         try:
@@ -1772,7 +1780,20 @@ async def save_ontology(graph: str, request: Request):
             auth=auth,
         )
         if 200 <= r.status_code < 300:
-            return {"success": True, "graphIri": graph, "message": "Saved to Fuseki"}
+            # Return change information along with success
+            return {
+                "success": True,
+                "graphIri": graph,
+                "message": "Saved to Fuseki",
+                "changes": {
+                    "total": len(change_result.changes),
+                    "added": change_result.total_added,
+                    "deleted": change_result.total_deleted,
+                    "renamed": change_result.total_renamed,
+                    "modified": change_result.total_modified,
+                    "affected_mts": change_result.affected_mts
+                }
+            }
         raise HTTPException(status_code=500, detail=f"Fuseki returned {r.status_code}: {r.text}")
     except HTTPException:
         raise
