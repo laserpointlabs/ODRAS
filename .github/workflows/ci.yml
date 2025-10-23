@@ -168,6 +168,9 @@ jobs:
           echo "🧪 Step 8: CQMT Change Detection Test..."
           python -m pytest tests/test_ontology_change_detection.py -v --tb=short
 
+          echo "🧪 Step 9: Individual Tables CRUD Test..."
+          python -m pytest tests/test_individuals_crud.py -v --tb=short
+
           echo "✅ COMPLETE ODRAS system validation finished"
         env:
           PYTHONPATH: ${{ github.workspace }}

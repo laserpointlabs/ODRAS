@@ -29757,6 +29757,9 @@ def hello_world():
 
         console.log(`✅ Loaded ${individuals.length} ${className} individuals`);
 
+        // Store individuals globally for edit/delete functions
+        window._currentIndividuals = individuals;
+
         // Generate table with actual individuals
         const tableHtml = generateClassTableWithIndividuals(className, classData, properties, individuals);
         content.innerHTML = tableHtml;
@@ -29853,10 +29856,167 @@ def hello_world():
     }
 
     /**
-     * Placeholder functions for future implementation
+     * Show dialog to add a new individual instance
      */
-    function showAddIndividualDialog(className) {
-      alert(`Add ${className} dialog - Coming soon!`);
+    async function showAddIndividualDialog(className) {
+      try {
+        // Get current project ID
+        const projectId = window.currentProjectId ? window.currentProjectId() : localStorage.getItem('active_project_id');
+        if (!projectId) {
+          alert('No project selected');
+          return;
+        }
+
+        // Get current ontology graph IRI
+        const currentGraphIri = getCurrentOntologyGraphIri();
+        if (!currentGraphIri) {
+          alert('No ontology selected');
+          return;
+        }
+
+        // Get ontology data
+        const ontologyData = await analyzeOntologyStructure(currentGraphIri);
+        if (!ontologyData) {
+          alert('Failed to load ontology data');
+          return;
+        }
+
+        // Get class properties
+        const properties = await getClassProperties(className, ontologyData);
+
+        // Find class data
+        const classData = ontologyData.classes?.find(c => c.name === className);
+        if (!classData) {
+          alert(`Class ${className} not found`);
+          return;
+        }
+
+        // Create modal
+        const modal = document.createElement('div');
+        modal.style.cssText = `
+          position: fixed; top: 0; left: 0; right: 0; bottom: 0;
+          background: rgba(0,0,0,0.8); display: flex; align-items: center; justify-content: center;
+          z-index: 10000; padding: 20px;
+        `;
+
+        // Build form fields
+        let formFieldsHtml = '';
+        formFieldsHtml += `
+          <div style="margin-bottom: 16px;">
+            <label style="display: block; margin-bottom: 4px; color: var(--text); font-size: 13px; font-weight: 600;">Name <span style="color: var(--err);">*</span></label>
+            <input type="text" id="individualName" required 
+                   style="width: 100%; padding: 8px; background: var(--panel); border: 1px solid var(--border); border-radius: 4px; color: var(--text); font-size: 14px;">
+          </div>
+        `;
+
+        // Add fields for each property
+        properties.forEach(prop => {
+          const unitsText = prop.units ? ` (${prop.units})` : '';
+          const requiredText = prop.required ? '<span style="color: var(--err);">*</span>' : '';
+
+          formFieldsHtml += `
+            <div style="margin-bottom: 16px;">
+              <label style="display: block; margin-bottom: 4px; color: var(--text); font-size: 13px;">
+                ${prop.label}${unitsText} ${requiredText}
+              </label>
+              <input type="text" id="prop_${prop.name}" ${prop.required ? 'required' : ''}
+                     placeholder="${prop.comment || ''}"
+                     style="width: 100%; padding: 8px; background: var(--panel); border: 1px solid var(--border); border-radius: 4px; color: var(--text); font-size: 14px;">
+            </div>
+          `;
+        });
+
+        modal.innerHTML = `
+          <div style="background: var(--panel); border: 1px solid var(--border); border-radius: 12px;
+                      width: 90%; max-width: 600px; max-height: 80vh; display: flex; flex-direction: column;">
+            <div style="padding: 20px; border-bottom: 1px solid var(--border);">
+              <h3 style="margin: 0; color: var(--accent);">Add ${className}</h3>
+            </div>
+
+            <div style="padding: 20px; overflow-y: auto; flex: 1;">
+              <form id="addIndividualForm">
+                ${formFieldsHtml}
+              </form>
+            </div>
+
+            <div style="padding: 20px; border-top: 1px solid var(--border); display: flex; justify-content: flex-end; gap: 8px;">
+              <button id="cancelBtn" class="btn" style="padding: 8px 16px;">Cancel</button>
+              <button id="submitBtn" class="btn btn-success" style="padding: 8px 16px;">Create Individual</button>
+            </div>
+          </div>
+        `;
+
+        document.body.appendChild(modal);
+
+        // Event handlers
+        document.getElementById('cancelBtn').onclick = () => modal.remove();
+        document.getElementById('submitBtn').onclick = async () => {
+          const form = document.getElementById('addIndividualForm');
+          if (!form.checkValidity()) {
+            form.reportValidity();
+            return;
+          }
+
+          // Gather form data
+          const name = document.getElementById('individualName').value.trim();
+          if (!name) {
+            alert('Name is required');
+            return;
+          }
+
+          const props = {};
+          properties.forEach(prop => {
+            const value = document.getElementById(`prop_${prop.name}`).value.trim();
+            if (value) {
+              props[prop.name] = value;
+            }
+          });
+
+          // Submit to API
+          try {
+            const token = localStorage.getItem('odras_token');
+            const response = await fetch(`/api/individuals/${projectId}/individuals/${className}`, {
+              method: 'POST',
+              headers: {
+                'Content-Type': 'application/json',
+                'Authorization': `Bearer ${token}`
+              },
+              body: JSON.stringify({
+                name: name,
+                class_type: className,
+                properties: props,
+                graph_iri: currentGraphIri
+              })
+            });
+
+            if (!response.ok) {
+              const error = await response.json();
+              throw new Error(error.detail || 'Failed to create individual');
+            }
+
+            modal.remove();
+            alert(`Successfully created ${name}`);
+
+            // Refresh the individual tables
+            await loadIndividualTablesForCurrentOntology();
+          } catch (error) {
+            console.error('Error creating individual:', error);
+            alert(`Failed to create individual: ${error.message}`);
+          }
+        };
+
+        // Close on outside click
+        modal.onclick = (e) => {
+          if (e.target === modal) modal.remove();
+        };
+
+        // Focus on name input
+        setTimeout(() => document.getElementById('individualName').focus(), 100);
+
+      } catch (error) {
+        console.error('Error showing add individual dialog:', error);
+        alert(`Failed to open dialog: ${error.message}`);
+      }
     }
 
     function showImportRequirementsDialog() {
@@ -31584,8 +31744,8 @@ def hello_world():
           html += `
             <td style="padding: 12px;">
               <div style="display: flex; gap: 4px;">
-                <button class="btn btn-sm" onclick="editIndividual('${className}', '${individual.instance_id || individual.id}')">Edit</button>
-                <button class="btn btn-sm btn-danger" onclick="deleteIndividual('${className}', '${individual.instance_id || individual.id}')">Delete</button>
+                <button class="btn btn-sm" onclick="editIndividual('${className}', '${individual.instance_uri || individual.uri || individual.instance_id || individual.id}')">Edit</button>
+                <button class="btn btn-sm btn-danger" onclick="deleteIndividual('${className}', '${individual.instance_uri || individual.uri || individual.instance_id || individual.id}')">Delete</button>
               </div>
             </td>
           `;
@@ -31712,6 +31872,475 @@ def hello_world():
         `Affected MTs: ${data.changes.affected_mts.length}\n\n` +
         'To view complete details, check the CQMT workbench.'
       );
+    }
+
+    // ========================================
+    // Individual Creation Form System
+    // ========================================
+
+    // Initialize Mermaid
+    // Individual Creation Form System
+    // ========================================
+
+    /**
+     * Show individual form modal (create or edit)
+     */
+    function showIndividualFormModal(className, classData, properties, existingIndividual) {
+      const isEdit = existingIndividual !== null;
+      const modalId = 'individualFormModal';
+      let modal = document.getElementById(modalId);
+
+      // Create modal if it doesn't exist
+      if (!modal) {
+        modal = document.createElement('div');
+        modal.id = modalId;
+        modal.className = 'modal';
+        modal.style.display = 'none';
+        modal.innerHTML = `
+          <div class="modal-content" style="max-width: 700px; max-height: 90vh; overflow-y: auto;">
+            <span class="close-modal" onclick="closeIndividualForm()">&times;</span>
+            <h2 id="individualFormTitle" style="margin-top: 0;"></h2>
+            <div id="individualFormContent"></div>
+            <div style="margin-top: 20px; display: flex; gap: 10px; justify-content: flex-end;">
+              <button class="btn" onclick="closeIndividualForm()">Cancel</button>
+              <button class="btn btn-success" onclick="submitIndividualForm()">${isEdit ? 'Update' : 'Create'}</button>
+            </div>
+          </div>
+        `;
+        document.body.appendChild(modal);
+      }
+
+      // Set title
+      document.getElementById('individualFormTitle').textContent =
+        isEdit ? `Edit ${className}` : `Create ${className}`;
+
+      // Build form
+      const content = document.getElementById('individualFormContent');
+      const formHtml = generateIndividualForm(className, classData, properties, existingIndividual);
+      content.innerHTML = formHtml;
+
+      // Show modal
+      modal.style.display = 'flex';
+
+      // Store context
+      window._individualFormContext = {
+        className,
+        classData,
+        properties,
+        existingIndividual,
+        isEdit
+      };
+    }
+
+    /**
+     * Generate individual form HTML
+     */
+    function generateIndividualForm(className, classData, properties, existingIndividual) {
+      const isEdit = existingIndividual !== null;
+
+      // Group properties by inheritance
+      const directProps = properties.filter(p => !p.inherited);
+      const inheritedProps = properties.filter(p => p.inherited);
+
+      // Group inherited by parent
+      const inheritedByParent = {};
+      inheritedProps.forEach(prop => {
+        const parent = prop.inheritedFrom || 'Unknown';
+        if (!inheritedByParent[parent]) {
+          inheritedByParent[parent] = [];
+        }
+        inheritedByParent[parent].push(prop);
+      });
+
+      let html = `
+        <form id="individualForm" onsubmit="return false;">
+          <div style="margin-bottom: 20px;">
+            <p style="color: var(--muted); margin: 0;">${classData.comment || classData.definition || 'No description available'}</p>
+          </div>
+      `;
+
+      // Name field (always first)
+      const existingName = existingIndividual?.name || existingIndividual?.instance_name || '';
+      html += `
+        <div class="form-field" style="margin-bottom: 16px;">
+          <label for="individualName" style="display: block; margin-bottom: 4px; font-weight: 500;">
+            Name <span style="color: var(--err);">*</span>
+          </label>
+          <input 
+            type="text" 
+            id="individualName" 
+            name="name" 
+            value="${existingName}"
+            required
+            style="width: 100%; padding: 8px; border: 1px solid var(--border); border-radius: 4px; background: var(--bg); color: var(--text);"
+            placeholder="Enter individual name"
+          />
+          <small style="color: var(--muted);">This will be used as the rdfs:label</small>
+        </div>
+      `;
+
+      // Direct properties
+      if (directProps.length > 0) {
+        html += `
+          <div style="margin-bottom: 20px;">
+            <h3 style="margin-bottom: 12px; font-size: 16px;">Properties</h3>
+            ${directProps.map(prop => generatePropertyField(prop, existingIndividual)).join('')}
+          </div>
+        `;
+      }
+
+      // Inherited properties grouped by parent
+      if (Object.keys(inheritedByParent).length > 0) {
+        html += '<div style="margin-bottom: 20px;">';
+        html += '<h3 style="margin-bottom: 12px; font-size: 16px;">Inherited Properties</h3>';
+
+        Object.entries(inheritedByParent).forEach(([parent, props]) => {
+          html += `
+            <div style="margin-bottom: 16px; padding: 12px; background: var(--panel); border-radius: 6px; border-left: 3px solid var(--accent);">
+              <div style="margin-bottom: 8px; font-size: 13px; color: var(--muted);">
+                Inherited from <strong>${parent}</strong> <span style="font-size: 11px;">↑</span>
+              </div>
+              ${props.map(prop => generatePropertyField(prop, existingIndividual, true)).join('')}
+            </div>
+          `;
+        });
+
+        html += '</div>';
+      }
+
+      html += '</form>';
+      return html;
+    }
+
+    /**
+     * Generate field for a single property
+     */
+    function generatePropertyField(prop, existingIndividual, inherited = false) {
+      const fieldId = `prop_${prop.name}`;
+      const existingValue = existingIndividual?.properties?.[prop.name] || '';
+      const required = prop.required ? '<span style="color: var(--err);">*</span>' : '';
+      const inheritedBadge = inherited ? '<span style="font-size: 11px; color: var(--muted); margin-left: 4px;">↑</span>' : '';
+
+      let inputHtml = '';
+
+      // Determine input type based on property
+      if (prop.type === 'object') {
+        // Object property - dropdown (placeholder for now)
+        inputHtml = `
+          <input 
+            type="text" 
+            id="${fieldId}" 
+            name="${prop.name}" 
+            value="${existingValue}"
+            ${prop.required ? 'required' : ''}
+            style="width: 100%; padding: 8px; border: 1px solid var(--border); border-radius: 4px; background: var(--bg); color: var(--text);"
+            placeholder="Select ${prop.range || 'individual'}"
+          />
+          <small style="color: var(--muted);">Object property - reference to ${prop.range || 'another individual'}</small>
+        `;
+      } else if (prop.enumeration_values && prop.enumeration_values.length > 0) {
+        // Enumeration - select dropdown
+        inputHtml = `
+          <select 
+            id="${fieldId}" 
+            name="${prop.name}" 
+            ${prop.required ? 'required' : ''}
+            style="width: 100%; padding: 8px; border: 1px solid var(--border); border-radius: 4px; background: var(--bg); color: var(--text);"
+          >
+            <option value="">-- Select --</option>
+            ${prop.enumeration_values.map(val =>
+          `<option value="${val}" ${existingValue === val ? 'selected' : ''}>${val}</option>`
+        ).join('')}
+          </select>
+        `;
+      } else if (prop.range === 'xsd:integer' || prop.range === 'xsd:decimal') {
+        // Number
+        inputHtml = `
+          <input 
+            type="number" 
+            id="${fieldId}" 
+            name="${prop.name}" 
+            value="${existingValue}"
+            ${prop.required ? 'required' : ''}
+            step="${prop.range === 'xsd:decimal' ? '0.01' : '1'}"
+            style="width: 100%; padding: 8px; border: 1px solid var(--border); border-radius: 4px; background: var(--bg); color: var(--text);"
+            placeholder="Enter ${prop.label || prop.name}"
+          />
+        `;
+      } else if (prop.range === 'xsd:boolean') {
+        // Boolean - checkbox
+        inputHtml = `
+          <input 
+            type="checkbox" 
+            id="${fieldId}" 
+            name="${prop.name}" 
+            ${existingValue === 'true' || existingValue === true ? 'checked' : ''}
+            style="width: 20px; height: 20px;"
+          />
+          <label for="${fieldId}" style="margin-left: 8px;">${prop.label || prop.name}</label>
+        `;
+      } else {
+        // Text (default)
+        inputHtml = `
+          <input 
+            type="text" 
+            id="${fieldId}" 
+            name="${prop.name}" 
+            value="${existingValue}"
+            ${prop.required ? 'required' : ''}
+            style="width: 100%; padding: 8px; border: 1px solid var(--border); border-radius: 4px; background: var(--bg); color: var(--text);"
+            placeholder="Enter ${prop.label || prop.name}"
+          />
+        `;
+      }
+
+      return `
+        <div class="form-field" style="margin-bottom: 12px;">
+          <label for="${fieldId}" style="display: block; margin-bottom: 4px; font-weight: 500;">
+            ${prop.label || prop.name} ${required} ${inheritedBadge}
+          </label>
+          ${inputHtml}
+          ${prop.comment ? `<small style="color: var(--muted); display: block; margin-top: 4px;">${prop.comment}</small>` : ''}
+          ${prop.units ? `<small style="color: var(--muted); display: block; margin-top: 4px;">Units: ${prop.units}</small>` : ''}
+        </div>
+      `;
+    }
+
+    /**
+     * Close individual form modal
+     */
+    function closeIndividualForm() {
+      const modal = document.getElementById('individualFormModal');
+      if (modal) {
+        modal.style.display = 'none';
+      }
+      delete window._individualFormContext;
+    }
+
+    /**
+     * Submit individual form
+     */
+    async function submitIndividualForm() {
+      const context = window._individualFormContext;
+      if (!context) {
+        alert('Form context missing');
+        return;
+      }
+
+      try {
+        // Collect form data
+        const form = document.getElementById('individualForm');
+        const formData = new FormData(form);
+
+        const individualData = {
+          name: formData.get('name'),
+          class_type: context.className,
+          properties: {}
+        };
+
+        // Collect all property values
+        context.properties.forEach(prop => {
+          const value = formData.get(prop.name);
+          if (value !== null && value !== '') {
+            individualData.properties[prop.name] = value;
+          }
+        });
+
+        console.log('🔍 Submitting individual:', individualData);
+
+        // Get project ID and token
+        const projectId = localStorage.getItem('active_project_id');
+        const token = localStorage.getItem(tokenKey);
+
+        if (!projectId || !token) {
+          throw new Error('Missing project ID or authentication token');
+        }
+
+        // Get current ontology graph
+        const currentGraph = getCurrentOntologyGraphIri();
+        if (!currentGraph) {
+          throw new Error('No ontology selected');
+        }
+
+        // Call API with graph parameter
+        // For edit, extract the ID part from the URI
+        let individualId = '';
+        let individualUri = '';
+        if (context.isEdit && context.existingIndividual) {
+          const uri = context.existingIndividual.instance_uri || context.existingIndividual.uri;
+          console.log('🔍 Existing individual:', context.existingIndividual);
+          console.log('🔍 URI:', uri);
+          if (uri) {
+            // Store full URI for request body
+            individualUri = uri;
+            // Extract ID part (after # or last /) for path parameter
+            const parts = uri.split('#');
+            individualId = parts.length > 1 ? parts[1] : uri.split('/').pop();
+            console.log('🔍 Using URI fragment as ID:', individualId);
+            console.log('🔍 Full URI for backend:', individualUri);
+          } else {
+            // Fallback to instance_id
+            individualId = context.existingIndividual.instance_id || context.existingIndividual.id;
+            individualUri = individualId;
+            console.log('🔍 Using instance_id:', individualId);
+          }
+        }
+
+        const baseUrl = context.isEdit
+          ? `/api/individuals/${projectId}/individuals/${context.className}/${individualId}`
+          : `/api/individuals/${projectId}/individuals/${context.className}`;
+
+        let url = baseUrl + (currentGraph ? `?graph=${encodeURIComponent(currentGraph)}` : '');
+
+        // For edit, add uri to query string if it's different from ID
+        if (context.isEdit && individualUri && individualUri !== individualId) {
+          url += (url.includes('?') ? '&' : '?') + `uri=${encodeURIComponent(individualUri)}`;
+        }
+        const method = context.isEdit ? 'PUT' : 'POST';
+
+        console.log(`🔍 Calling API: ${method} ${url}`);
+        console.log(`🔍 Request body:`, individualData);
+
+        const response = await fetch(url, {
+          method,
+          headers: {
+            'Authorization': `Bearer ${token}`,
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify(individualData)
+        });
+
+        if (!response.ok) {
+          const error = await response.json();
+          throw new Error(error.detail || `HTTP ${response.status}`);
+        }
+
+        const result = await response.json();
+        console.log('✅ Individual created:', result);
+
+        // Close modal
+        closeIndividualForm();
+
+        // Refresh table
+        await showIndividualTable(context.className);
+
+        alert(`Individual ${context.isEdit ? 'updated' : 'created'} successfully!`);
+      } catch (error) {
+        console.error('❌ Error submitting individual:', error);
+        alert('Failed to create individual: ' + error.message);
+      }
+    }
+
+    /**
+     * Edit individual
+     */
+    async function editIndividual(className, individualId) {
+      console.log(`🔍 Editing individual ${individualId} of class ${className}`);
+
+      try {
+        // Get individual data from table context
+        const individuals = window._currentIndividuals || [];
+        console.log('🔍 Looking for individual with ID:', individualId);
+        console.log('🔍 Available individuals:', individuals);
+
+        const individual = individuals.find(ind =>
+          ind.instance_id === individualId ||
+          ind.id === individualId ||
+          ind.instance_uri === individualId ||
+          ind.uri === individualId
+        );
+
+        if (!individual) {
+          console.error('❌ Individual not found in array');
+          alert('Individual not found');
+          return;
+        }
+
+        console.log('✅ Found individual:', individual);
+
+        // Get ontology data
+        const ontologyData = window.currentOntologyData;
+        if (!ontologyData) {
+          alert('No ontology loaded');
+          return;
+        }
+
+        // Get class data
+        const classData = ontologyData.classes?.find(c => c.name === className);
+        if (!classData) {
+          alert(`Class ${className} not found`);
+          return;
+        }
+
+        // Get properties
+        const properties = await getClassProperties(className, ontologyData);
+        console.log(`✅ Got ${properties.length} properties for ${className}`);
+
+        // Show form with existing data
+        showIndividualFormModal(className, classData, properties, individual);
+      } catch (error) {
+        console.error('❌ Error editing individual:', error);
+        alert('Failed to edit individual: ' + error.message);
+      }
+    }
+
+    /**
+     * Delete individual
+     */
+    async function deleteIndividual(className, individualId) {
+      if (!confirm(`Are you sure you want to delete this ${className} individual?`)) {
+        return;
+      }
+
+      console.log(`🗑️ Deleting individual ${individualId} of class ${className}`);
+
+      try {
+        const projectId = localStorage.getItem('active_project_id');
+        const token = localStorage.getItem(tokenKey);
+
+        if (!projectId || !token) {
+          throw new Error('Missing project ID or authentication token');
+        }
+
+        const currentGraph = getCurrentOntologyGraphIri();
+
+        // Check if individualId is a full URI or just an ID
+        let uriParam = '';
+        let pathId = individualId;
+        if (individualId.includes('://') || individualId.includes('#')) {
+          // It's a full URI - extract ID part for path
+          const parts = individualId.split('#');
+          pathId = parts.length > 1 ? parts[1] : individualId.split('/').pop();
+          uriParam = `&uri=${encodeURIComponent(individualId)}`;
+        }
+
+        const url = `/api/individuals/${projectId}/individuals/${className}/${pathId}` +
+          (currentGraph ? `?graph=${encodeURIComponent(currentGraph)}${uriParam}` : uriParam ? `?${uriParam.substring(1)}` : '');
+
+        console.log(`🔍 Deleting individual: DELETE ${url}`);
+
+        const response = await fetch(url, {
+          method: 'DELETE',
+          headers: {
+            'Authorization': `Bearer ${token}`
+          }
+        });
+
+        if (!response.ok) {
+          const error = await response.json();
+          throw new Error(error.detail || `HTTP ${response.status}`);
+        }
+
+        console.log('✅ Individual deleted');
+
+        // Refresh table by reloading current table
+        await showIndividualTable(className);
+
+        alert('Individual deleted successfully!');
+      } catch (error) {
+        console.error('❌ Error deleting individual:', error);
+        alert('Failed to delete individual: ' + error.message);
+      }
     }
 
     // ========================================
