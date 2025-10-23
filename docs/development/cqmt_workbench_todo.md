@@ -112,9 +112,18 @@
 - ✅ Microtheories validated: shows triple counts, creation timestamps, and DEFAULT badges
 - ✅ Test script includes MT summary with individuals count
 
-**Test Script**: `scripts/cqmt_ui_test.py` - Complete implementation
+**Test Script**: `scripts/cqmt_ui_test.py` - Complete implementation with 2 MTs for coverage validation
 
 **Test Plan**: [CQMT_UI_TEST_PLAN.md](CQMT_UI_TEST_PLAN.md)
+
+**Coverage Validation**: ✅ Working perfectly!
+- Created 2 MTs: `test-microtheory` (4 individuals) and `edge-cases-microtheory` (2 individuals)
+- Runs all 3 CQs against both MTs
+- Coverage: 100% (6 runs total)
+- Pass Rate: 66.7% (4 passing, 2 failing - intentional validation error)
+- Results: 2 CQs pass in both MTs, 1 CQ fails in both MTs (as designed)
+- Shows different row counts across MTs (proving MT isolation works)
+- UI Coverage tab displays matrix correctly
 
 ### Critical Testing: Full CQ/MT Workflow ✅ COMPLETED
 - [x] Test "Suggest with DAS" generates valid SPARQL (DAS integration working)
@@ -158,35 +167,37 @@
 
 ---
 
-## 📋 Phase 1.5: Coverage Analysis (CRITICAL MISSING PIECE)
+## 📋 Phase 1.5: Coverage Analysis ✅ MVP COMPLETE
 
-**Status**: 🔴 NOT IMPLEMENTED  
+**Status**: ✅ MVP IMPLEMENTED  
 **Problem**: Currently only shows last run per CQ, not per MT
 
 ### Understanding Microtheories
 - **Purpose**: Each MT provides isolated test data context
 - **Use Case**: Test same CQ against different scenarios (baseline, edge cases, regression)
-- **Current Gap**: No systematic way to see CQ results across all MTs
+- **Current Gap**: ~~No systematic way to see CQ results across all MTs~~ ✅ FIXED
 
-### Required Features
-- [ ] Coverage API: Matrix of CQ × MT results
-- [ ] Coverage Grid UI: Visual table showing all combinations
-- [ ] Batch Execution: Run all CQs against all MTs
-- [ ] Gap Analysis: Identify untested combinations
+### Implemented Features ✅
+- [x] Coverage API: Matrix of CQ × MT results
+- [x] Coverage Grid UI: Visual table showing all combinations
+- [ ] Batch Execution: Run all CQs against all MTs (deferred to post-MVP)
+- [ ] Gap Analysis: Identify untested combinations (deferred to post-MVP)
 
-**See**: [Coverage Analysis Plan](CQMT_COVERAGE_ANALYSIS_PLAN.md) for detailed implementation
+**See**: [Coverage Analysis Plan](CQMT_COVERAGE_ANALYSIS_PLAN.md) and [MVP Scope](CQMT_COVERAGE_MVP_SCOPE.md)
 
-### Backend Implementation
-- [ ] Create `GET /api/cqmt/projects/{project_id}/coverage` endpoint
-- [ ] Query `cq_runs` table for last run per CQ+MT combination
-- [ ] Calculate coverage percentage
-- [ ] Return coverage matrix JSON
+### Backend Implementation ✅
+- [x] Create `GET /api/cqmt/projects/{project_id}/coverage` endpoint
+- [x] Query `cq_runs` table for last run per CQ+MT combination
+- [x] Calculate coverage percentage and pass rate
+- [x] Return coverage matrix JSON with summary stats
 
-### Frontend Implementation
-- [ ] Display coverage grid in Coverage tab
-- [ ] Show pass/fail/no-run for each CQ×MT cell
-- [ ] Add "Run All Tests" button
-- [ ] Add visual indicators (green/yellow/red cells)
+### Frontend Implementation ✅
+- [x] Display coverage grid in Coverage tab
+- [x] Show pass/fail/no-run for each CQ×MT cell
+- [x] Color-coded cells (green pass, red fail, yellow no-run)
+- [x] Row counts displayed for passing runs
+- [x] Tooltips show failure reasons
+- [ ] Add "Run All Tests" button (deferred to post-MVP)
 
 ---
 

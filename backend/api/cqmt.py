@@ -584,6 +584,35 @@ async def get_cq_runs(
         raise HTTPException(status_code=500, detail=str(e))
 
 # =====================================
+# COVERAGE ANALYSIS
+# =====================================
+
+@router.get("/projects/{project_id}/coverage")
+async def get_coverage(
+    project_id: str,
+    user: dict = Depends(get_user_or_anonymous),
+    service: CQMTService = Depends(get_cqmt_service)
+):
+    """
+    Get coverage matrix showing CQ execution results across all MTs.
+    
+    Returns a matrix with last run status for each CQ×MT combination.
+    """
+    try:
+        result = service.get_coverage_matrix(project_id)
+        
+        if result["success"]:
+            return result["data"]
+        else:
+            raise HTTPException(status_code=500, detail=result["error"])
+            
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Error in get_coverage: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+# =====================================
 # DAS ASSIST ENDPOINTS (STUBS)
 # =====================================
 

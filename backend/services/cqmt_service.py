@@ -1365,3 +1365,142 @@ class CQMTService:
             
         except Exception as e:
             logger.warning(f"Failed to publish CQ run event: {e}")
+    
+    # =====================================
+    # COVERAGE ANALYSIS
+    # =====================================
+    
+    def get_coverage_matrix(self, project_id: str) -> Dict[str, Any]:
+        """
+        Get coverage matrix showing CQ execution results across all MTs.
+        
+        Returns a matrix of last run results for each CQ×MT combination.
+        
+        Args:
+            project_id: Project UUID
+            
+        Returns:
+            {
+                "success": bool,
+                "data": {
+                    "cqs": [list of CQ coverage data],
+                    "mts": [list of MT data],
+                    "summary": coverage statistics
+                },
+                "error": str or None
+            }
+        """
+        try:
+            conn = self.db._conn()
+            try:
+                with conn.cursor() as cur:
+                    # Get all CQs for project
+                    cur.execute("""
+                        SELECT id, cq_name, mt_iri_default
+                        FROM cqs
+                        WHERE project_id = %s
+                        ORDER BY cq_name
+                    """, (project_id,))
+                    cqs = cur.fetchall()
+                    
+                    # Get all MTs for project
+                    cur.execute("""
+                        SELECT iri, label
+                        FROM microtheories
+                        WHERE project_id = %s
+                        ORDER BY label
+                    """, (project_id,))
+                    mts = cur.fetchall()
+                    
+                    # Get last run for each CQ×MT combination
+                    coverage_data = []
+                    for cq_row in cqs:
+                        cq_id, cq_name, mt_default = cq_row
+                        runs_by_mt = {}
+                        
+                        for mt_row in mts:
+                            mt_iri, mt_label = mt_row
+                            
+                            # Get last run for this CQ+MT combination
+                            cur.execute("""
+                                SELECT pass, row_count, created_at, reason
+                                FROM cq_runs
+                                WHERE cq_id = %s AND mt_iri = %s
+                                ORDER BY created_at DESC
+                                LIMIT 1
+                            """, (cq_id, mt_iri))
+                            
+                            run_result = cur.fetchone()
+                            if run_result:
+                                pass_status, row_count, created_at, reason = run_result
+                                runs_by_mt[mt_iri] = {
+                                    "status": "pass" if pass_status else "fail",
+                                    "row_count": row_count,
+                                    "last_run": created_at.isoformat() if created_at else None,
+                                    "reason": reason
+                                }
+                            else:
+                                runs_by_mt[mt_iri] = {
+                                    "status": "no_run",
+                                    "row_count": None,
+                                    "last_run": None,
+                                    "reason": None
+                                }
+                        
+                        coverage_data.append({
+                            "id": str(cq_id),
+                            "name": cq_name,
+                            "runs_by_mt": runs_by_mt
+                        })
+                    
+                    # Calculate summary statistics
+                    total_cqs = len(cqs)
+                    total_mts = len(mts)
+                    total_possible_runs = total_cqs * total_mts
+                    
+                    runs_completed = 0
+                    runs_passed = 0
+                    for cq_data in coverage_data:
+                        for mt_iri, run_info in cq_data["runs_by_mt"].items():
+                            if run_info["status"] != "no_run":
+                                runs_completed += 1
+                                if run_info["status"] == "pass":
+                                    runs_passed += 1
+                    
+                    coverage_percentage = (runs_completed / total_possible_runs * 100) if total_possible_runs > 0 else 0
+                    pass_rate = (runs_passed / runs_completed) if runs_completed > 0 else 0
+                    
+                    summary = {
+                        "total_cqs": total_cqs,
+                        "total_mts": total_mts,
+                        "total_possible_runs": total_possible_runs,
+                        "runs_completed": runs_completed,
+                        "runs_passed": runs_passed,
+                        "runs_failed": runs_completed - runs_passed,
+                        "coverage_percentage": round(coverage_percentage, 1),
+                        "pass_rate": round(pass_rate * 100, 1)
+                    }
+                    
+                    # Format MT data
+                    mt_list = [{"iri": mt_iri, "label": mt_label} for mt_iri, mt_label in mts]
+                    
+            finally:
+                self.db._return(conn)
+            
+            return {
+                "success": True,
+                "data": {
+                    "cqs": coverage_data,
+                    "mts": mt_list,
+                    "summary": summary
+                },
+                "error": None
+            }
+            
+        except Exception as e:
+            logger.error(f"Error getting coverage matrix: {e}")
+            return {
+                "success": False,
+                "data": None,
+                "error": f"Failed to get coverage matrix: {str(e)}"
+            }

@@ -32055,66 +32055,105 @@ def hello_world():
      * Load Coverage data
      */
     async function loadCQMTCoverage() {
-      if (!window.cqmtState.currentProjectId || window.cqmtState.currentCQs.length === 0) {
+      if (!window.cqmtState.currentProjectId) {
         const container = document.getElementById('coverage-details');
         if (container) {
-          container.innerHTML = '<div class="loading">No CQs available for coverage analysis</div>';
+          container.innerHTML = '<div class="loading">No project selected</div>';
         }
         return;
       }
 
-      // Calculate basic statistics
-      const totalCQs = window.cqmtState.currentCQs.length;
-      const activeCQs = window.cqmtState.currentCQs.filter(cq => cq.status === 'active').length;
-      const passingCQs = window.cqmtState.currentCQs.filter(cq => cq.last_run_status === true).length;
-      const failingCQs = window.cqmtState.currentCQs.filter(cq => cq.last_run_status === false).length;
+      try {
+        const token = localStorage.getItem('odras_token');
+        const response = await fetch(`/api/cqmt/projects/${window.cqmtState.currentProjectId}/coverage`, {
+          headers: { 'Authorization': `Bearer ${token}` }
+        });
 
-      const totalEl = document.getElementById('total-cqs');
-      const activeEl = document.getElementById('active-cqs');
-      const passingEl = document.getElementById('passing-cqs');
-      const failingEl = document.getElementById('failing-cqs');
+        if (!response.ok) {
+          throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+        }
 
-      if (totalEl) totalEl.textContent = totalCQs;
-      if (activeEl) activeEl.textContent = activeCQs;
-      if (passingEl) passingEl.textContent = passingCQs;
-      if (failingEl) failingEl.textContent = failingCQs;
+        const coverageData = await response.json();
 
-      // Display detailed coverage
-      const container = document.getElementById('coverage-details');
-      if (!container) return;
+        // Update stats
+        const totalEl = document.getElementById('total-cqs');
+        const activeEl = document.getElementById('active-cqs');
+        const passingEl = document.getElementById('passing-cqs');
+        const failingEl = document.getElementById('failing-cqs');
 
-      if (window.cqmtState.currentMTs.length === 0) {
-        container.innerHTML = '<div class="loading">No microtheories available for coverage analysis</div>';
-        return;
-      }
+        if (totalEl) totalEl.textContent = coverageData.summary.total_cqs;
+        if (activeEl) activeEl.textContent = coverageData.summary.total_cqs; // TODO: calculate active from CQs
+        if (passingEl) passingEl.textContent = coverageData.summary.runs_passed;
+        if (failingEl) failingEl.textContent = coverageData.summary.runs_failed;
 
-      let html = '<h4>Coverage by Microtheory</h4>';
+        // Display coverage grid
+        const container = document.getElementById('coverage-details');
+        if (!container) return;
 
-      window.cqmtState.currentMTs.forEach(mt => {
-        const relevantCQs = window.cqmtState.currentCQs.filter(cq =>
-          cq.mt_iri_default === mt.iri ||
-          (mt.is_default && !cq.mt_iri_default)
-        );
+        if (coverageData.mts.length === 0 || coverageData.cqs.length === 0) {
+          container.innerHTML = '<div class="loading">No CQs or MTs available for coverage analysis</div>';
+          return;
+        }
 
-        const mtPassing = relevantCQs.filter(cq => cq.last_run_status === true).length;
-        const mtFailing = relevantCQs.filter(cq => cq.last_run_status === false).length;
-        const coverage = relevantCQs.length > 0 ? Math.round((mtPassing / relevantCQs.length) * 100) : 0;
-
-        html += `
-          <div class="card" style="margin: 10px 0;">
-            <h4>${mt.label} ${mt.is_default ? '(Default)' : ''}</h4>
-            <div style="margin: 10px 0;">
-              <strong>Coverage: ${coverage}%</strong> 
-              (${mtPassing} passing, ${mtFailing} failing, ${relevantCQs.length} total)
-            </div>
-            <div style="background: var(--border); height: 10px; border-radius: 5px; overflow: hidden;">
-              <div style="width: ${coverage}%; height: 100%; background: ${coverage > 80 ? 'var(--ok)' : coverage > 50 ? 'var(--warn)' : 'var(--err)'};"></div>
-            </div>
+        let html = `
+          <div style="margin-bottom: 20px;">
+            <h4>Coverage Matrix</h4>
+            <p style="color: var(--muted); font-size: 13px;">
+              Coverage: ${coverageData.summary.coverage_percentage}% • Pass Rate: ${coverageData.summary.pass_rate}%
+            </p>
           </div>
+          <div style="overflow-x: auto;">
+            <table style="width: 100%; border-collapse: collapse; font-size: 13px;">
+              <thead>
+                <tr style="background: var(--panel-2); border-bottom: 2px solid var(--border);">
+                  <th style="padding: 10px; text-align: left; font-weight: 600;">CQ Name</th>
         `;
-      });
 
-      container.innerHTML = html;
+        // Add MT column headers
+        coverageData.mts.forEach(mt => {
+          html += `<th style="padding: 10px; text-align: center; font-weight: 600; min-width: 150px;">${mt.label}</th>`;
+        });
+
+        html += `</tr></thead><tbody>`;
+
+        // Add CQ rows
+        coverageData.cqs.forEach(cq => {
+          html += `<tr style="border-bottom: 1px solid var(--border);">`;
+          html += `<td style="padding: 10px; font-weight: 500;">${cq.name}</td>`;
+
+          coverageData.mts.forEach(mt => {
+            const runInfo = cq.runs_by_mt[mt.iri];
+            let cellContent = '';
+            let cellStyle = 'padding: 10px; text-align: center;';
+
+            if (runInfo.status === 'pass') {
+              cellContent = `✅ PASS${runInfo.row_count !== null ? ` (${runInfo.row_count})` : ''}`;
+              cellStyle += ' background: rgba(40, 167, 69, 0.1); color: var(--ok);';
+            } else if (runInfo.status === 'fail') {
+              cellContent = `❌ FAIL`;
+              cellStyle += ' background: rgba(220, 53, 69, 0.1); color: var(--err);';
+            } else {
+              cellContent = `⚠️ NO RUN`;
+              cellStyle += ' background: rgba(255, 193, 7, 0.1); color: var(--warn);';
+            }
+
+            html += `<td style="${cellStyle}" title="${runInfo.reason || 'No run executed'}">${cellContent}</td>`;
+          });
+
+          html += `</tr>`;
+        });
+
+        html += `</tbody></table></div>`;
+
+        container.innerHTML = html;
+
+      } catch (error) {
+        console.error('Error loading coverage:', error);
+        const container = document.getElementById('coverage-details');
+        if (container) {
+          container.innerHTML = `<div class="loading">Error loading coverage: ${error.message}</div>`;
+        }
+      }
     }
 
     /**
