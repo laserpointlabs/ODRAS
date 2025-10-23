@@ -637,7 +637,7 @@ ON CONFLICT (domain) DO NOTHING;
 INSERT INTO namespace_registry (name, type, path, prefix, status, owners, description) VALUES
 ('odras-core', 'core', 'odras/core', 'odras', 'released', ARRAY['admin@odras.local'], 'ODRAS Core Ontology'),
 ('odras-admin', 'core', 'odras/admin', 'admin', 'released', ARRAY['admin@odras.local'], 'ODRAS Admin Reference Ontologies')
-ON CONFLICT (name, type) DO NOTHING;
+ON CONFLICT (name, type) DO UPDATE SET status = 'released';
 
 -- Create initial versions for existing namespaces
 INSERT INTO namespace_versions (namespace_id, version, version_iri, status, released_at)

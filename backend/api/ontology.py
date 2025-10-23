@@ -14,6 +14,7 @@ from pydantic import BaseModel, Field
 from ..services.config import Settings
 from ..services.db import DatabaseService
 from ..services.ontology_manager import OntologyManager
+from ..services.ontology_change_detector import OntologyChangeDetector
 from ..services.auth import get_user
 
 logger = logging.getLogger(__name__)
@@ -918,3 +919,41 @@ async def update_class(
     except Exception as e:
         logger.error(f"Failed to update class: {e}")
         raise HTTPException(status_code=500, detail=f"Failed to update class: {str(e)}")
+
+
+@router.get("/{graph_iri}/changes")
+async def get_ontology_changes(
+    graph_iri: str,
+    db_service: DatabaseService = Depends(get_db_service),
+    user: dict = Depends(get_user)
+):
+    """
+    Get recent changes to an ontology.
+    
+    This endpoint returns information about recent changes detected when saving the ontology.
+    Note: For historical changes, you would need to store change history (future enhancement).
+    
+    Args:
+        graph_iri: The ontology graph IRI
+        
+    Returns:
+        Recent change information from last save
+    """
+    try:
+        # For now, return a placeholder response
+        # Future enhancement: Store change history in database
+        # Current implementation only detects changes during save
+        
+        return {
+            "success": True,
+            "message": "Change history endpoint - stores not yet implemented",
+            "data": {
+                "graph_iri": graph_iri,
+                "note": "Changes are detected during save and returned in the save response. "
+                       "Historical change tracking is a future enhancement."
+            }
+        }
+        
+    except Exception as e:
+        logger.error(f"Failed to get ontology changes: {e}")
+        raise HTTPException(status_code=500, detail=f"Failed to get changes: {str(e)}")
