@@ -1758,6 +1758,69 @@ async def save_ontology(graph: str, request: Request):
         change_detector = OntologyChangeDetector(db, s.fuseki_url)
         change_result = change_detector.detect_changes(graph, ttl_content)
         
+        # Detect property renames and create mappings
+        from backend.services.property_migration import PropertyMigrationService
+        migration_service = PropertyMigrationService()
+        
+        property_renames = change_detector.detect_property_renames(change_result.changes)
+        class_renames = change_detector.detect_class_renames(change_result.changes)
+        pending_migrations = []
+        pending_class_migrations = []
+        
+        # Create mappings for detected property renames
+        for rename in property_renames:
+            # Extract project_id from graph_iri (assumes format: base/projects/{project_id}/ontologies/{ontology})
+            # This is a simple heuristic - may need refinement
+            try:
+                project_id = graph.split("/projects/")[1].split("/")[0] if "/projects/" in graph else None
+                if project_id:
+                    # Get class name from domain (simplified - assumes single domain)
+                    # TODO: Improve class detection logic
+                    old_property_name = rename["old_name"]
+                    new_property_name = rename["new_name"]
+                    
+                    # Get property type from rename (deleted element's type)
+                    property_type = rename.get("property_type", "DatatypeProperty")
+                    
+                    # Create mapping (class_name will be determined during migration)
+                    mapping_id = migration_service.create_mapping(
+                        project_id=project_id,
+                        graph_iri=graph,
+                        class_name="*",  # Wildcard for all classes
+                        old_property_name=old_property_name,
+                        new_property_name=new_property_name,
+                        old_property_iri=rename.get("old_iri"),
+                        new_property_iri=rename.get("new_iri"),
+                        change_type="rename",
+                        change_details={
+                            "confidence": rename.get("confidence", "medium"),
+                            "property_type": property_type
+                        }
+                    )
+                    
+                    pending_migrations.append({
+                        "mapping_id": mapping_id,
+                        "old_property_name": old_property_name,
+                        "new_property_name": new_property_name,
+                        "class_name": "*"  # Will be expanded during migration
+                    })
+            except Exception as e:
+                logger.warning(f"Failed to create property mapping: {e}")
+        
+        # Track class renames (no database mapping needed - direct migration)
+        for rename in class_renames:
+            try:
+                project_id = graph.split("/projects/")[1].split("/")[0] if "/projects/" in graph else None
+                if project_id:
+                    pending_class_migrations.append({
+                        "old_class_name": rename["old_name"],
+                        "new_class_name": rename["new_name"],
+                        "old_iri": rename.get("old_iri"),
+                        "new_iri": rename.get("new_iri")
+                    })
+            except Exception as e:
+                logger.warning(f"Failed to track class rename: {e}")
+        
         base = s.fuseki_url.rstrip("/")
         # First, DROP the target graph to avoid lingering triples
         try:
@@ -1781,7 +1844,7 @@ async def save_ontology(graph: str, request: Request):
         )
         if 200 <= r.status_code < 300:
             # Return change information along with success
-            return {
+            response = {
                 "success": True,
                 "graphIri": graph,
                 "message": "Saved to Fuseki",
@@ -1794,6 +1857,16 @@ async def save_ontology(graph: str, request: Request):
                     "affected_mts": change_result.affected_mts
                 }
             }
+            
+            # Add pending migrations if any
+            if pending_migrations:
+                response["pending_migrations"] = pending_migrations
+            
+            # Add pending class migrations if any
+            if pending_class_migrations:
+                response["pending_class_migrations"] = pending_class_migrations
+            
+            return response
         raise HTTPException(status_code=500, detail=f"Fuseki returned {r.status_code}: {r.text}")
     except HTTPException:
         raise

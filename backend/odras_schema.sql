@@ -956,6 +956,37 @@ CREATE TABLE IF NOT EXISTS individual_instances (
     UNIQUE(table_id, class_name, instance_name)
 );
 
+-- Property mappings for handling ontology property renames
+CREATE TABLE IF NOT EXISTS property_mappings (
+    mapping_id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    project_id UUID NOT NULL,
+    graph_iri TEXT NOT NULL,
+    class_name VARCHAR(100) NOT NULL,
+    
+    -- Old and new property names
+    old_property_name VARCHAR(255) NOT NULL,
+    new_property_name VARCHAR(255) NOT NULL,
+    
+    -- Property IRI (if available)
+    old_property_iri TEXT,
+    new_property_iri TEXT,
+    
+    -- Migration status
+    migration_status VARCHAR(20) DEFAULT 'pending' CHECK (migration_status IN ('pending', 'applied', 'skipped', 'failed')),
+    migration_date TIMESTAMPTZ,
+    
+    -- Additional context
+    change_type VARCHAR(50) NOT NULL, -- 'rename', 'type_change', 'domain_change'
+    change_details JSONB DEFAULT '{}',
+    
+    -- Auditing
+    created_at TIMESTAMPTZ DEFAULT NOW(),
+    created_by UUID REFERENCES public.users(user_id) ON DELETE SET NULL,
+    
+    -- Unique constraint to prevent duplicate mappings
+    UNIQUE(project_id, graph_iri, class_name, old_property_name, new_property_name)
+);
+
 -- Data mapping configurations for external data import
 CREATE TABLE IF NOT EXISTS data_mapping_configs (
     mapping_id UUID PRIMARY KEY DEFAULT gen_random_uuid(),

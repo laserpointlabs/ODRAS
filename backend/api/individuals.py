@@ -26,6 +26,7 @@ from ..services.ontology_manager import OntologyManager
 from ..services.config import Settings
 from ..services.individual_table_manager import IndividualTableManager
 from ..services.constraint_analyzer import ConstraintAnalyzer
+from ..services.property_migration import PropertyMigrationService
 
 logger = logging.getLogger(__name__)
 
@@ -924,7 +925,9 @@ async def create_fuseki_individual(
         
         # Build SPARQL INSERT query
         # Use the class name directly as a type reference
-        class_iri = f"<{graph_iri}#{class_name}>"
+        # Replace spaces with underscores for IRI compatibility
+        class_name_for_iri = class_name.replace(" ", "")
+        class_iri = f"<{graph_iri}#{class_name_for_iri}>"
         triples = [
             f"<{individual_uri}> rdf:type {class_iri} .",
             f"<{individual_uri}> rdfs:label \"{individual.name}\" ."
@@ -933,7 +936,9 @@ async def create_fuseki_individual(
         # Add property triples
         for prop_name, prop_value in individual.properties.items():
             # Ensure property name is wrapped as IRI
-            prop_iri = prop_name if prop_name.startswith('<') and prop_name.endswith('>') else f"<{graph_iri}#{prop_name}>"
+            # Remove spaces for IRI compatibility (e.g., "has Max Speed" -> "hasMaxSpeed")
+            prop_name_for_iri = prop_name.replace(" ", "")
+            prop_iri = prop_name if prop_name.startswith('<') and prop_name.endswith('>') else f"<{graph_iri}#{prop_name_for_iri}>"
             if isinstance(prop_value, str):
                 triples.append(f"<{individual_uri}> {prop_iri} \"{prop_value}\" .")
             else:
@@ -1197,3 +1202,127 @@ async def validate_individual_constraints(
     Validate individual against ontology constraints using Fuseki
     """
     return {"valid": True, "errors": [], "warnings": []}
+
+
+# =====================================
+# PROPERTY MIGRATION ENDPOINTS
+# =====================================
+
+@router.get("/{project_id}/property-mappings")
+async def get_property_mappings(
+    project_id: str,
+    graph: Optional[str] = Query(None),
+    class_name: Optional[str] = Query(None),
+    current_user: dict = Depends(get_current_user)
+):
+    """
+    Get pending property mappings that need migration
+    """
+    try:
+        graph_iri = graph
+        if not graph_iri:
+            raise HTTPException(400, "graph parameter required")
+        
+        migration_service = PropertyMigrationService()
+        mappings = migration_service.get_pending_mappings(project_id, graph_iri, class_name)
+        
+        # Add affected individuals count
+        for mapping in mappings:
+            mapping['affected_count'] = migration_service.get_affected_individuals_count(
+                project_id, graph_iri, mapping['class_name'], mapping['old_property_name']
+            )
+        
+        return {"mappings": mappings}
+        
+    except Exception as e:
+        logger.error(f"Error getting property mappings: {e}")
+        raise HTTPException(500, f"Failed to get property mappings: {str(e)}")
+
+
+@router.post("/{project_id}/property-mappings/migrate")
+async def migrate_property(
+    project_id: str,
+    mapping_data: Dict[str, Any],
+    current_user: dict = Depends(get_current_user)
+):
+    """
+    Migrate individual properties from old name to new name
+    """
+    try:
+        graph_iri = mapping_data.get("graph_iri")
+        class_name = mapping_data.get("class_name")
+        old_property_name = mapping_data.get("old_property_name")
+        new_property_name = mapping_data.get("new_property_name")
+        
+        if not all([graph_iri, class_name, old_property_name, new_property_name]):
+            raise HTTPException(400, "Missing required fields")
+        
+        migration_service = PropertyMigrationService()
+        result = migration_service.migrate_individuals(
+            project_id, graph_iri, class_name, old_property_name, new_property_name
+        )
+        
+        return result
+        
+    except Exception as e:
+        logger.error(f"Error migrating property: {e}")
+        raise HTTPException(500, f"Failed to migrate property: {str(e)}")
+
+
+@router.post("/{project_id}/property-mappings/skip")
+async def skip_property_migration(
+    project_id: str,
+    mapping_data: Dict[str, Any],
+    current_user: dict = Depends(get_current_user)
+):
+    """
+    Skip a property migration (property values will be lost)
+    """
+    try:
+        graph_iri = mapping_data.get("graph_iri")
+        class_name = mapping_data.get("class_name")
+        old_property_name = mapping_data.get("old_property_name")
+        new_property_name = mapping_data.get("new_property_name")
+        
+        if not all([graph_iri, class_name, old_property_name, new_property_name]):
+            raise HTTPException(400, "Missing required fields")
+        
+        migration_service = PropertyMigrationService()
+        migration_service.skip_mapping(
+            project_id, graph_iri, class_name, old_property_name, new_property_name
+        )
+        
+        return {"success": True, "message": "Migration skipped"}
+        
+    except Exception as e:
+        logger.error(f"Error skipping migration: {e}")
+        raise HTTPException(500, f"Failed to skip migration: {str(e)}")
+
+
+@router.post("/{project_id}/class-mappings/migrate")
+async def migrate_class_rename(
+    project_id: str,
+    mapping_data: Dict[str, Any],
+    current_user: dict = Depends(get_current_user)
+):
+    """
+    Migrate individuals from old class name to new class name
+    """
+    try:
+        graph_iri = mapping_data.get("graph_iri")
+        old_class_name = mapping_data.get("old_class_name")
+        new_class_name = mapping_data.get("new_class_name")
+        
+        if not all([graph_iri, old_class_name, new_class_name]):
+            raise HTTPException(400, "Missing required fields: graph_iri, old_class_name, new_class_name")
+        
+        migration_service = PropertyMigrationService()
+        result = migration_service.migrate_class_rename(
+            project_id, graph_iri, old_class_name, new_class_name
+        )
+        
+        return result
+        
+    except Exception as e:
+        logger.error(f"Error migrating class rename: {e}")
+        raise HTTPException(500, f"Failed to migrate class rename: {str(e)}")
