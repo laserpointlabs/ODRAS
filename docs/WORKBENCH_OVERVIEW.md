@@ -60,6 +60,30 @@ The ODRAS documentation has been reorganized into focused workbench and architec
 - **Key Features**: Thread management, context capture, debugging tools
 - **Next Priorities**: Enhanced UI, advanced filtering, performance analytics
 
+#### 10. Event Management Workbench (`event-management-workbench/`)
+- **Purpose**: Event flow management, monitoring, and analysis
+- **Status**: [CURRENT_STATUS.md](workbenches/event-management-workbench/CURRENT_STATUS.md)
+- **Key Features**: Event flow visualization, monitoring dashboard, pattern analysis
+- **Next Priorities**: Event flow visualization, monitoring dashboard, pattern analysis
+
+#### 11. Data Management Workbench (`data-management-workbench/`)
+- **Purpose**: Central data orchestration, transformation, and integration
+- **Status**: [CURRENT_STATUS.md](workbenches/data-management-workbench/CURRENT_STATUS.md)
+- **Key Features**: Data connectors, pipelines, quality monitoring, lineage tracking
+- **Next Priorities**: Data connector framework, pipeline system, transformation engine
+
+#### 12. Pub/Sub Workbench (`pubsub-workbench/`)
+- **Purpose**: Publish/subscribe messaging management and monitoring
+- **Status**: [CURRENT_STATUS.md](workbenches/pubsub-workbench/CURRENT_STATUS.md)
+- **Key Features**: Message routing, monitoring, pattern analysis, security
+- **Next Priorities**: Message routing configuration, monitoring dashboard, pattern analysis
+
+#### 13. Process Workbench (`process-workbench/`)
+- **Purpose**: BPMN process management, execution, and monitoring
+- **Status**: [CURRENT_STATUS.md](workbenches/process-workbench/CURRENT_STATUS.md)
+- **Key Features**: Process definition editor, execution engine, monitoring dashboard
+- **Next Priorities**: Process definition editor, execution engine, monitoring dashboard
+
 ### Architecture Components (`docs/architecture/`)
 
 #### 1. Core Architecture (`core-architecture/`)
@@ -102,9 +126,10 @@ The ODRAS documentation has been reorganized into focused workbench and architec
 
 ## Workbench Count
 
-- **Total Workbenches**: 9
+- **Total Workbenches**: 13
 - **Core Workbenches**: 5 (CQMT, Ontology, Requirements, DAS, Knowledge Management)
 - **Specialized Workbenches**: 4 (Conceptualizer, Configurator, Tabularizer, Thread Manager)
+- **Infrastructure Workbenches**: 4 (Event Management, Data Management, Pub/Sub, Process)
 
 ## Usage
 
