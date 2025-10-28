@@ -1,70 +1,96 @@
 # ODRAS - Ontology-Driven Requirements Analysis System
 
-ODRAS is an intelligent platform that transforms complex requirements documents (like CDDs, ICDs, and technical specifications) into structured, traceable system models. It uses AI-powered analysis guided by systems engineering ontologies to extract requirements, identify relationships, and generate conceptual system architectures that engineers can build upon.
+## What is ODRAS?
 
-## 🚀 Features
+ODRAS is like having a smart assistant that reads your requirements documents and helps you understand what they really mean. Instead of manually going through hundreds of pages of technical documents, ODRAS uses AI to:
+
+- **Find all the requirements** hidden in your documents
+- **Organize them** in a logical, traceable way  
+- **Suggest system designs** that could meet those requirements
+- **Answer questions** about your requirements in plain English
+
+Think of it as a bridge between messy, real-world documents and clean, structured engineering models that your team can actually work with.
+
+**Perfect for**: Systems engineers, requirements analysts, project managers, and anyone who needs to make sense of complex technical documents quickly.
+
+## 🚀 Key Capabilities
+
+### **Requirements Analysis Engine**
+- **Smart Document Processing**: Automatically extracts requirements from PDFs, Word docs, and other formats
+- **AI-Powered Extraction**: Uses large language models guided by systems engineering ontologies
+- **Confidence Scoring**: Provides confidence levels for each extracted requirement
+- **Traceability**: Links every requirement back to its source document and location
+
+### **Conceptual System Modeling**
+- **Architecture Generation**: Creates multiple system architecture options from requirements
+- **Component Identification**: Automatically identifies system components and their relationships
+- **Interface Mapping**: Discovers and maps system interfaces and data flows
+- **Alternative Solutions**: Generates multiple design alternatives with trade-off analysis
 
 ### **Digital Assistance System (DAS)**
-- **AI-Powered Chat Interface**: Intelligent conversation system with context awareness
-- **Voice Integration**: Voice-to-text and text-to-speech capabilities
-- **Session Intelligence**: Advanced session management and conversation history
-- **Smart Suggestions**: Contextual recommendations based on user queries
+- **AI Chat Interface**: Ask questions about your requirements and get intelligent answers
+- **Voice Integration**: Speak your questions and get voice responses
+- **Context-Aware Help**: DAS understands your project context and provides relevant suggestions
+- **Session Management**: Maintains conversation history across analysis sessions
 
 ### **Ontology Workbench**
-- **Visual Ontology Editor**: Interactive Cytoscape-based diagram editor
-- **Named Views System**: Save and restore different ontology states
-- **Import/Export**: Support for RDF, OWL, and Turtle formats
-- **Real-time Collaboration**: Multi-user ontology editing capabilities
+- **Visual Requirements Editor**: Interactive diagram editor for requirements and system models
+- **Ontology Management**: Create and manage systems engineering ontologies
+- **Import/Export**: Support for RDF, OWL, and other standard formats
+- **Collaborative Editing**: Multiple team members can work on the same project
 
-### **Document Processing**
-- **Intelligent Ingestion**: Automated document parsing and analysis
-- **Requirements Extraction**: AI-powered requirements identification
-- **Knowledge Management**: Vector-based knowledge storage and retrieval
-- **BPMN Integration**: Workflow-driven document processing
-
-### **Project Management**
-- **Multi-Project Support**: Organize work across different projects
-- **Namespace Management**: Hierarchical URI organization
-- **User Management**: Role-based access control
-- **Federated Access**: Cross-project resource sharing
+### **Project Organization**
+- **Multi-Project Support**: Manage multiple requirements analysis projects
+- **Document Management**: Organize and version control your source documents
+- **User Management**: Role-based access control for team collaboration
+- **Federated Access**: Share resources across different projects and teams
 
 ## 🛠️ Technology Stack
 
-- **Backend**: Python 3.8+, FastAPI, PostgreSQL, Neo4j, Qdrant
-- **Frontend**: HTML5, JavaScript, Cytoscape.js
-- **AI/ML**: OpenAI GPT, Ollama, Sentence Transformers
-- **Workflow**: Camunda BPMN Engine
-- **Infrastructure**: Docker, Docker Compose
+- **Backend**: Python 3.8+, FastAPI for the API server
+- **Databases**: PostgreSQL (metadata), Neo4j (relationships), Qdrant (vector search)
+- **AI/ML**: OpenAI GPT, Ollama, Sentence Transformers for document analysis
+- **Frontend**: HTML5, JavaScript, Cytoscape.js for interactive diagrams
+- **Workflow**: BPMN Engine for automated document processing workflows
+- **Infrastructure**: Docker and Docker Compose for easy deployment
 
 ## 📦 Quick Start
 
-### Prerequisites
-- Docker and Docker Compose
-- Python 3.8+ (for local development)
-- Git
+### What You Need
+- A computer with Docker installed (handles all the technical setup)
+- Some requirements documents to analyze (PDFs, Word docs, etc.)
+- About 10 minutes to get started
 
-### Installation
+### Get ODRAS Running
 
-1. **Clone the repository**
+1. **Download ODRAS**
    ```bash
    git clone https://github.com/laserpointlabs/ODRAS.git
    cd ODRAS
    ```
 
-2. **Run the installation script**
+2. **Install everything automatically**
    ```bash
    chmod +x install.sh
    ./install.sh
    ```
+   This sets up all the databases and services ODRAS needs.
 
-3. **Start the system**
+3. **Start ODRAS**
    ```bash
    ./odras.sh start
    ```
 
-4. **Access the application**
-   - Web Interface: http://localhost:8000
-   - Default credentials: `admin/admin` or `jdehart/jdehart`
+4. **Open ODRAS in your browser**
+   - Go to: http://localhost:8000
+   - Login with: `admin` / `admin` (or `das_service` / `das_service_2024!` for testing)
+
+### Your First Analysis
+
+1. **Upload a document**: Go to the Document Management section and upload a requirements document
+2. **Start analysis**: Click "Analyze Document" and let ODRAS extract requirements
+3. **Ask questions**: Use the DAS chat to ask about your requirements
+4. **View results**: See the extracted requirements and generated system models
 
 ## 📚 Documentation
 
@@ -158,4 +184,4 @@ This project is licensed under the MIT License - see the [LICENSE](LICENSE) file
 
 ---
 
-**ODRAS** - Empowering intelligent requirements analysis through ontology-driven methodologies.
+**ODRAS** - Transform complex requirements documents into actionable system models with AI-powered analysis.
