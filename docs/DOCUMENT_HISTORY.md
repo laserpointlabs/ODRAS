@@ -22,12 +22,18 @@ This document tracks all documentation changes, consolidations, and deletions to
   - `configurator-workbench/` - Manual configuration capabilities
   - `tabularizer-workbench/` - Transform individuals into structured tables
   - `thread-manager-workbench/` - DAS conversation thread management
+  - `event-management-workbench/` - Event flow management and monitoring
+  - `data-management-workbench/` - Central data orchestration and integration
+  - `pubsub-workbench/` - Publish/subscribe messaging management
+  - `process-workbench/` - BPMN process management and execution
 - `docs/architecture/` - Architecture component documentation
   - `core-architecture/` - Fundamental system structure
   - `database-architecture/` - Data storage and management
   - `rag-architecture/` - Retrieval-Augmented Generation
   - `event-architecture/` - Event-driven communication
   - `integration-architecture/` - External system integration
+  - `REFACTOR_ARCHITECTURE.md` - Critical refactoring strategy
+  - `PLUGGABLE_ARCHITECTURE.md` - Plugin-based architecture design
 
 **Key Benefits:**
 - Clear separation of workbench and architecture concerns
