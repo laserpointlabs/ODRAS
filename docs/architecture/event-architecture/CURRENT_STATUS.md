@@ -24,6 +24,10 @@ The event architecture defines the event-driven communication and processing sys
 - [ ] Advanced event routing
 - [ ] Event versioning
 - [ ] Event security
+- [ ] Publishing events (content published, updated, retracted)
+- [ ] Subscription events (created, updated, cancelled)
+- [ ] Network events (joined, left, announcements)
+- [ ] Real-time publishing notifications
 
 ## Technical Debt
 - Performance optimization needed
@@ -41,6 +45,8 @@ The event architecture defines the event-driven communication and processing sys
 - Database Architecture
 - Core Architecture
 - DAS Workbench
+- Publishing Workbench (publishing events)
+- All Workbenches (workbench events)
 
 ## Testing Status
 - Unit tests: ✅ Complete

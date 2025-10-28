@@ -84,6 +84,12 @@ The ODRAS documentation has been reorganized into focused workbench and architec
 - **Key Features**: Process definition editor, execution engine, monitoring dashboard
 - **Next Priorities**: Process definition editor, execution engine, monitoring dashboard
 
+#### 14. Publishing Workbench (`publishing-workbench/`)
+- **Purpose**: Project artifact publishing and network collaboration
+- **Status**: [CURRENT_STATUS.md](workbenches/publishing-workbench/CURRENT_STATUS.md)
+- **Key Features**: Content publishing, project networks, subscriptions, real-time updates
+- **Next Priorities**: Publishing domain model, network management, content publishing
+
 ### Architecture Components (`docs/architecture/`)
 
 #### 1. Core Architecture (`core-architecture/`)
@@ -126,10 +132,11 @@ The ODRAS documentation has been reorganized into focused workbench and architec
 
 ## Workbench Count
 
-- **Total Workbenches**: 13
+- **Total Workbenches**: 14
 - **Core Workbenches**: 5 (CQMT, Ontology, Requirements, DAS, Knowledge Management)
 - **Specialized Workbenches**: 4 (Conceptualizer, Configurator, Tabularizer, Thread Manager)
 - **Infrastructure Workbenches**: 4 (Event Management, Data Management, Pub/Sub, Process)
+- **Collaboration Workbenches**: 1 (Publishing)
 
 ## Usage
 
