@@ -18,6 +18,10 @@ This document tracks all documentation changes, consolidations, and deletions to
   - `requirements-workbench/` - Requirements analysis and management
   - `das-workbench/` - Distributed Autonomous System management
   - `knowledge-management-workbench/` - Knowledge management and retrieval
+  - `conceptualizer-workbench/` - AI-powered system conceptualization
+  - `configurator-workbench/` - Manual configuration capabilities
+  - `tabularizer-workbench/` - Transform individuals into structured tables
+  - `thread-manager-workbench/` - DAS conversation thread management
 - `docs/architecture/` - Architecture component documentation
   - `core-architecture/` - Fundamental system structure
   - `database-architecture/` - Data storage and management
@@ -36,6 +40,7 @@ This document tracks all documentation changes, consolidations, and deletions to
 - CQMT documentation → `workbenches/cqmt-workbench/`
 - Ontology documentation → `workbenches/ontology-workbench/`
 - DAS documentation → `workbenches/das-workbench/`
+- Thread Manager documentation → `workbenches/thread-manager-workbench/`
 - RAG documentation → `architecture/rag-architecture/`
 - Database documentation → `architecture/database-architecture/`
 
@@ -44,6 +49,8 @@ This document tracks all documentation changes, consolidations, and deletions to
 - Tracks implementation status, completed features, in-progress work, and pending features
 - Includes technical debt, next priorities, dependencies, and testing status
 - Provides clear visibility into what needs to be completed
+- **Total Workbenches**: 9 (5 core + 4 specialized)
+- **Total Architecture Components**: 5
 
 ## New Documentation - October 12, 2025
 

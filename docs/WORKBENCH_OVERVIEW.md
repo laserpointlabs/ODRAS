@@ -36,6 +36,30 @@ The ODRAS documentation has been reorganized into focused workbench and architec
 - **Key Features**: Document ingestion, knowledge chunking, search capabilities
 - **Next Priorities**: Advanced knowledge organization, visualization
 
+#### 6. Conceptualizer Workbench (`conceptualizer-workbench/`)
+- **Purpose**: AI-powered system conceptualization from requirements
+- **Status**: [CURRENT_STATUS.md](workbenches/conceptualizer-workbench/CURRENT_STATUS.md)
+- **Key Features**: DAS integration, configuration management, graph visualization
+- **Next Priorities**: Manual configuration wizard, enhanced visualization
+
+#### 7. Configurator Workbench (`configurator-workbench/`)
+- **Purpose**: Manual configuration capabilities for nested ontology-based tables
+- **Status**: [CURRENT_STATUS.md](workbenches/configurator-workbench/CURRENT_STATUS.md)
+- **Key Features**: Manual individual creation, ontology integration
+- **Next Priorities**: Configuration wizard UI, step-by-step creation
+
+#### 8. Tabularizer Workbench (`tabularizer-workbench/`)
+- **Purpose**: Transform ontological individuals into structured, analyzable tables
+- **Status**: [CURRENT_STATUS.md](workbenches/tabularizer-workbench/CURRENT_STATUS.md)
+- **Key Features**: Table generation, data export, analysis tools
+- **Next Priorities**: Core tabularization engine, visualization UI
+
+#### 9. Thread Manager Workbench (`thread-manager-workbench/`)
+- **Purpose**: DAS conversation thread management and debugging
+- **Status**: [CURRENT_STATUS.md](workbenches/thread-manager-workbench/CURRENT_STATUS.md)
+- **Key Features**: Thread management, context capture, debugging tools
+- **Next Priorities**: Enhanced UI, advanced filtering, performance analytics
+
 ### Architecture Components (`docs/architecture/`)
 
 #### 1. Core Architecture (`core-architecture/`)
@@ -75,6 +99,12 @@ The ODRAS documentation has been reorganized into focused workbench and architec
 3. **Priority Management**: Next priorities are clearly defined for each component
 4. **Dependency Mapping**: Dependencies between components are clearly documented
 5. **Testing Visibility**: Testing status is tracked for each component
+
+## Workbench Count
+
+- **Total Workbenches**: 9
+- **Core Workbenches**: 5 (CQMT, Ontology, Requirements, DAS, Knowledge Management)
+- **Specialized Workbenches**: 4 (Conceptualizer, Configurator, Tabularizer, Thread Manager)
 
 ## Usage
 
