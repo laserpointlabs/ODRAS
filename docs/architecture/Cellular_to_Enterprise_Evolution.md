@@ -51,6 +51,17 @@ This document describes how **autonomous Project Cells** evolve into an **alive 
 - Local data only
 - Manual validation
 
+### Gruninger's Foundation: Activity Clusters
+
+Based on Gruninger & Fox's TOVE ontology, each workbench activity is structured as an **activity cluster**:
+
+**Activity Cluster Structure:**
+- **Activity**: Basic transformational action primitive
+- **Enabling States**: What must be true for activity to occur
+- **Caused States**: What is true after activity completes
+- **Terminal States**: `use`, `consume`, `release`, `produce`
+- **Status Transitions**: `possible` → `committed` → `enabled` → `completed`
+
 ### Cell-Level Event Capture
 
 ```mermaid
@@ -127,7 +138,35 @@ WIRR_Cell_CQs:
   # Constraint Verification
   - "What certification rules apply?"
   - "What compatibility requirements exist?"
+  
+  # Temporal Projection (Gruninger's Core Task)
+  - "Given integration actions at times T1-T5, what are weapon/platform properties at time T10?"
+  - "What is the sequence of activities to complete integration?"
+  - "Can we benchmark integration processes across projects?"
+  - "What happens if we delay platform delivery by 2 weeks?"
+  - "What are effects of unexpected weapon failure?"
+  - "What is minimum cycle time for integration?"
 ```
+
+### Gruninger's Mathematical Rigor
+
+**CQs as Necessary and Sufficient Axioms:**
+
+Each CQ must be provable as a theorem. The ontology contains **necessary and sufficient axioms** to answer the CQ. If any axiom is removed, the theorem cannot be proven.
+
+**Successor State Axioms:**
+
+Gruninger uses successor state axioms to solve temporal projection:
+
+```first-order-logic
+// For any action e, state s, activity a:
+holds(status(s,a,enabled), do(e,σ)) ⟺ 
+  (e = enable(s,a) ∧ holds(status(s,a,committed), σ)) ∨
+  (holds(status(s,a,enabled), σ) ∧ 
+   ¬(e = complete(s,a) ∨ e = disenable(s,a)))
+```
+
+**This solves the frame problem**: What changes? What stays the same?
 
 ### CQ Testing Against Microtheories
 
@@ -475,6 +514,7 @@ graph TB
     subgraph "Stage 1: Self-Validation"
         CQ1[CQ Testing]
         MT1[Microtheory Validation]
+        THEOREM[Theorem Proof]
     end
     
     subgraph "Stage 2: Discovery"
@@ -500,8 +540,9 @@ graph TB
     
     EB --> CQ1
     CQ1 --> MT1
+    MT1 --> THEOREM
     
-    MT1 --> DISCOVER
+    THEOREM --> DISCOVER
     DISCOVER --> COMPAT
     
     COMPAT --> CONNECT
@@ -511,6 +552,26 @@ graph TB
     NETWORK --> GAP
     NETWORK --> FLOW
 ```
+
+### Gruninger's Six Enterprise Tasks in ODRAS
+
+Each stage incorporates Gruninger's enterprise engineering tasks:
+
+**Stage 1 (Self-Validation):**
+- **Temporal Projection**: CQs test what happens over time
+- **Planning**: Sequence of activities to complete cell work
+
+**Stage 2 (Discovery):**
+- **Benchmarking**: Can this cell's activities be used by another?
+- **Hypothetical Reasoning**: What if cells connect differently?
+
+**Stage 3 (Connection):**
+- **Execution Monitoring**: Event bus monitors real-time connections
+- **Hypothetical Reasoning**: Validate "what-if" scenarios
+
+**Stage 4 (Enterprise Network):**
+- **Time-Based Competition**: Optimize cell interactions for speed
+- **Temporal Projection**: Enterprise-wide temporal reasoning
 
 ---
 
@@ -525,6 +586,7 @@ graph TB
 | **Not Executable** | Text-based | Can't test connections |
 | **Hard to Maintain** | Manual updates | Falls out of sync |
 | **No Discovery** | Manual identification | Missed connections |
+| **No Mathematical Basis** | Ad-hoc conventions | Not provable |
 
 ### ODRAS Living Thread Solutions
 
@@ -535,6 +597,31 @@ graph TB
 | **Executable** | SPARQL queries | Real testing |
 | **Auto-Maintain** | Event replay | Self-healing |
 | **Auto-Discovery** | Event bus patterns | Finds opportunities |
+| **Mathematical Rigor** | Successor state axioms | Provable theorems |
+
+### Gruninger's Key Innovation: Necessary and Sufficient Axioms
+
+**The Problem:** How do we know if an ontology is complete?
+**The Answer:** CQs define what the ontology MUST answer, and we prove those axioms are necessary and sufficient.
+
+**Theorem-Based Validation:**
+```first-order-logic
+Theorem: At any time t, state s, activity a, there exists status X such that:
+T_successor ∪ T_occurrence ⊢ holds(status(s,a,X), t)
+
+// If this theorem holds, we've proven temporal projection works
+// If any axiom removed, theorem fails → axiom is necessary
+```
+
+**This is fundamentally different from**:
+- Document traces (can't prove anything)
+- Manual reviews (subject to human error)
+- Ad-hoc conventions (not rigorous)
+
+**ODRAS applies this rigor** through:
+- CQ = theorem statement
+- SPARQL = proof execution
+- Success/failure = theorem validity
 
 ### Key Innovations
 
@@ -740,3 +827,110 @@ ODRAS creates an enterprise system that **discovers itself, validates itself, an
 - Project Thread Intelligence Architecture
 - Decoupled Event Architecture
 - Gruninger & Fox: Competency Question Methodology
+
+---
+
+## Appendix: Key Terms and Definitions
+
+### Formal Logic and Mathematical Foundations
+
+#### First-Order Logic (FOL)
+A formal system for expressing statements about objects and their relationships using:
+- Constants, variables, predicates, functions
+- Logical connectives (∧, ∨, ¬, →, ↔)
+- Quantifiers (∀, ∃)
+
+Provides the mathematical foundation for proving competency questions as theorems.
+
+#### Axioms
+Assertions assumed true without proof. Types include:
+- **Definitional**: Define concepts
+- **Assertional**: State facts
+- **Successor State**: Specify state changes over time
+
+Must be **necessary and sufficient**—removing any breaks theorems.
+
+#### Competency Questions (CQs)
+Natural language questions an ontology must answer. Structure:
+- Natural language question
+- Formalization (first-order logic or SPARQL)
+- Validation contract
+
+Each CQ is a provable theorem.
+
+#### Microtheories (MTs)
+Isolated named graphs in Fuseki for testing CQs. Characteristics:
+- Isolated contexts
+- Named graph URIs
+- Test data only
+- Independent evaluation
+
+#### Successor State Axioms
+Axioms specifying how states change over time. Solve the **frame problem**:
+```first-order-logic
+holds(status(s,a,enabled), do(e,σ)) ⟺ 
+  (e = enable(s,a) ∧ holds(status(s,a,committed), σ)) ∨
+  (holds(status(s,a,enabled), σ) ∧ 
+   ¬(e = complete(s,a) ∨ e = disenable(s,a)))
+```
+
+#### Activity Clusters
+Gruninger's foundation for processes:
+- Activity (transformation primitive)
+- Enabling states (preconditions)
+- Caused states (postconditions)
+- Terminal states: `use`, `consume`, `release`, `produce`
+- Status transitions: `possible` → `committed` → `enabled` → `completed`
+
+#### Frame Problem
+Determining what changes vs. stays the same when actions occur. Solved by successor state axioms.
+
+---
+
+### Enterprise Engineering Tasks (Gruninger & Fox)
+
+1. **Temporal Projection**: Properties of resources/activities over time
+2. **Planning and Scheduling**: Activity sequences and timing
+3. **Benchmarking**: Cross-enterprise activity comparison
+4. **Hypothetical Reasoning**: What-if analysis
+5. **Execution Monitoring**: Real-time adaptation to events
+6. **Time-Based Competition**: Minimize cycle time, maximize concurrency
+
+---
+
+### ODRAS-Specific Terms
+
+#### Project Cell
+Fundamental atomic unit encapsulating models, evidence, requirements, metrics, and provenance.
+
+#### Event Bus
+Publish/subscribe messaging (Redis/NATS/Kafka) for decoupled cell communication.
+
+#### Data & Event Workbench (DMW)
+Centralized repository: Event Log (Postgres), Artifact Registry (Minio), Connectors.
+
+#### Living Digital Thread
+Event-driven, CQ-validated, executable traceability (vs. static document-based).
+
+---
+
+### Acronyms Quick Reference
+
+| Acronym | Definition |
+|---------|------------|
+| **CQ** | Competency Question |
+| **MT** | Microtheory |
+| **DDD** | Domain-Driven Design |
+| **ODRAS** | Ontology-Driven Requirements Analysis System |
+| **DMW** | Data & Event Workbench |
+| **FOL** | First-Order Logic |
+| **TOVE** | Toronto Virtual Enterprise (Gruninger's ontology) |
+| **BFO** | Basic Formal Ontology |
+| **DAS** | Digital Assistance System |
+| **SPARQL** | Query language for RDF graphs |
+| **OWL** | Web Ontology Language |
+| **RDF** | Resource Description Framework |
+
+---
+
+*For complete definitions, see the Appendix in ENTERPRISE_ENGINEERING_CQ_INTEGRATION_PLAN.md*

@@ -29,26 +29,59 @@ This plan integrates **Gruninger's Competency Question (CQ) methodology** from e
 ### Core Principles
 
 **Gruninger and Fox's Approach** uses competency questions as:
+- **Necessary and Sufficient Axioms**: CQs characterize ontologies such that they contain necessary and sufficient axioms to represent and solve the questions
 - **Requirements**: What questions must the ontology answer?
 - **Validation**: How do we know the ontology is correct?
 - **Scope Definition**: What concepts and relationships are needed?
 - **Testing**: Executable specifications for ontology functionality
+- **Mathematical Rigor**: CQs must be provable - if any axiom is removed, the theorem can no longer be proven
 
 ### CQ-Driven Development Lifecycle
 
 ```
 1. Identify Competency Questions
    ↓
-2. Formalize in First-Order Logic
+2. Formalize in First-Order Logic (Successor State Axioms)
    ↓
-3. Design Ontology to Answer CQs
+3. Design Ontology to Answer CQs (Microtheories)
    ↓
 4. Implement Ontology
    ↓
-5. Test CQs Against Ontology
+5. Prove Theorems (CQs solvable)
    ↓
-6. Iterate Based on CQ Failures
+6. Test CQs Against Ontology
+   ↓
+7. Iterate Based on CQ Failures
 ```
+
+### Enterprise Engineering Tasks (Gruninger & Fox, 1995)
+
+The paper identifies six core enterprise engineering tasks that CQs must address:
+
+1. **Temporal Projection**: Given actions at different times, what are properties of resources and activities at arbitrary points in time?
+   - Addresses the frame problem (what changes vs. stays the same)
+   - Activity-based costing implications
+   - Successor state axioms solve this
+
+2. **Planning and Scheduling**: What sequence of activities achieves goals? At what times?
+   - Sequence planning
+   - Temporal coordination
+
+3. **Benchmarking**: Can activities from one enterprise be used in another while satisfying constraints?
+   - Cross-enterprise applicability
+   - Constraint satisfaction
+
+4. **Hypothetical Reasoning**: What happens if tasks are moved or resources changed?
+   - "What-if" analysis
+   - Impact analysis
+
+5. **Execution Monitoring**: What are effects of external/unexpected events?
+   - Real-time adaptation
+   - Exception handling
+
+6. **Time-Based Competition**: Minimize cycle time by minimizing actions and maximizing concurrency
+   - Bottleneck identification
+   - Concurrent activity optimization
 
 ### CQ Categories (Enterprise Engineering Focus)
 
@@ -57,6 +90,8 @@ This plan integrates **Gruninger's Competency Question (CQ) methodology** from e
 3. **Process Validation**: "What processes are involved?"
 4. **Constraint Verification**: "What rules must be satisfied?"
 5. **Query Execution**: "Can we answer specific business questions?"
+6. **Temporal Reasoning**: "What happens over time?"
+7. **Cross-Enterprise Comparison**: "Can we benchmark across enterprises?"
 
 ---
 
@@ -641,3 +676,225 @@ EnterpriseCQMetrics:
 - CQMT Workbench Specification
 - Domain-Driven Design (Evans, 2003)
 - Enterprise Ontology Development Best Practices
+
+---
+
+## Appendix: Key Terms and Definitions
+
+### Formal Logic and Mathematical Foundations
+
+#### First-Order Logic (FOL)
+**Definition:** A formal system used to express statements about objects and their relationships. First-order logic includes:
+- **Constants**: Specific objects (e.g., `WeaponSystem123`)
+- **Variables**: Placeholders for objects (e.g., `?weapon`)
+- **Predicates**: Properties or relationships (e.g., `canCarry(aircraft, weapon)`)
+- **Functions**: Mappings from objects to objects (e.g., `motherOf(person)`)
+- **Logical Connectives**: `∧` (and), `∨` (or), `¬` (not), `→` (implies), `↔` (iff)
+- **Quantifiers**: `∀` (for all), `∃` (there exists)
+
+**Example:**
+```first-order-logic
+∀ weapon ∃ aircraft (canCarry(aircraft, weapon) ∧ certified(aircraft, weapon))
+```
+*Translation: For every weapon, there exists an aircraft that can carry it and is certified for it.*
+
+**Why Important:** First-order logic provides the mathematical foundation for proving competency questions as theorems.
+
+#### Axioms
+**Definition:** Assertions assumed to be true without proof. In ontology development, axioms:
+- Define the semantic meaning of concepts
+- Specify constraints and relationships
+- Provide inference rules for reasoning
+
+**Types of Axioms:**
+- **Definitional**: Define what concepts mean
+- **Assertional**: State facts about specific instances
+- **Successor State**: Specify how states change over time (solve frame problem)
+
+**Example:**
+```first-order-logic
+∀ aircraft, weapon (
+  certified(aircraft, weapon) → canCarry(aircraft, weapon)
+)
+```
+*Translation: If an aircraft is certified for a weapon, then it can carry that weapon.*
+
+**Necessary and Sufficient:** An axiom is **necessary** if removing it breaks a theorem. It's **sufficient** if all theorems are provable with it. Gruninger requires axioms to be both.
+
+#### Competency Questions (CQs)
+**Definition:** Natural language questions that an ontology must be able to answer. CQs serve three purposes:
+1. **Requirements**: What must the ontology answer?
+2. **Validation**: How do we know the ontology is correct?
+3. **Characterization**: What are the ontology's capabilities?
+
+**Structure:**
+- **Natural Language**: Human-readable question
+- **Formalization**: First-order logic or SPARQL query
+- **Validation Contract**: Criteria for success
+
+**Example:**
+```
+Natural Language: "What aircraft can carry weapon X?"
+SPARQL: SELECT ?aircraft WHERE { ?aircraft :canCarry :weaponX }
+Validation: Must return at least one result
+```
+
+**Why Critical:** CQs provide mathematical rigor—each CQ is a provable theorem.
+
+#### Microtheories (MTs)
+**Definition:** Isolated, controlled contexts for testing competency questions. Named graphs in Fuseki that contain:
+- Test data for specific scenarios
+- Isolated contexts for validation
+- Independent evaluation environments
+
+**Characteristics:**
+- **Isolated**: One MT's data doesn't affect another
+- **Named Graphs**: Each MT has a unique graph URI
+- **Test Data**: Contains only data needed for validation
+- **Validation Context**: Tests CQs against specific scenarios
+
+**Example:**
+```sparql
+GRAPH <http://usn/wirr/baseline> {
+  :weapon1 rdf:type :WeaponSystem .
+  :aircraft1 rdf:type :Aircraft .
+  :aircraft1 :canCarry :weapon1 .
+}
+```
+
+**Why Important:** Microtheories enable isolated testing of specific scenarios without polluting production data.
+
+#### Successor State Axioms
+**Definition:** Axioms in first-order logic that specify how states change over time. They solve the **frame problem**: determining what changes vs. what stays the same when an action occurs.
+
+**Structure:**
+```first-order-logic
+holds(fluent, do(action, situation)) ⟺
+  (action = action_that_enables ∧ precondition) ∨
+  (holds(fluent, situation) ∧ ¬action_disables)
+```
+
+**Example (from Gruninger):**
+```first-order-logic
+holds(status(s,a,enabled), do(e,σ)) ⟺ 
+  (e = enable(s,a) ∧ holds(status(s,a,committed), σ)) ∨
+  (holds(status(s,a,enabled), σ) ∧ 
+   ¬(e = complete(s,a) ∨ e = disenable(s,a)))
+```
+
+**Translation:** A state is enabled after action e iff either:
+1. e was an enable action AND the state was committed, OR
+2. The state was already enabled AND e was NOT complete or disenable
+
+**Why Critical:** Successor state axioms enable temporal projection—predicting future states.
+
+#### Activity Clusters
+**Definition:** Gruninger's foundation for representing processes. An activity cluster consists of:
+- **Activity**: Basic transformational action primitive
+- **Enabling States**: Preconditions (what must be true before)
+- **Caused States**: Postconditions (what is true after)
+- **Terminal States**: `use`, `consume`, `release`, `produce`
+- **Status Transitions**: `possible` → `committed` → `enabled` → `completed`
+
+**Why Important:** Provides the foundation for representing enterprise processes.
+
+#### Frame Problem
+**Definition:** The challenge of determining what changes vs. what stays the same when an action occurs. Successor state axioms solve this by explicitly stating both:
+- What enables a fluent to be true
+- What prevents a fluent from being true
+
+**Example:** When loading a weapon onto an aircraft:
+- What changes: weapon location, aircraft configuration
+- What stays the same: weapon weight, aircraft type
+
+---
+
+### ODRAS-Specific Terms
+
+#### Project Cell
+**Definition:** The fundamental atomic unit of work in ODRAS. Each cell encapsulates:
+- Models (ontologies, data structures)
+- Evidence (documentation, test results)
+- Derived Requirements
+- Satisfaction metrics
+- Provenance (audit trail)
+
+**Operational Modes:**
+- TESTING (BLAST Radius): Validation and impact analysis
+- Production: Live operational state
+- DAS: AI-powered assistance
+
+#### Event Bus
+**Definition:** Publish/subscribe messaging system (Redis/NATS/Kafka) that enables decoupled communication between cells.
+
+**Key Concepts:**
+- **Publisher**: Cells publish events about their state
+- **Subscriber**: Cells subscribe to relevant event streams
+- **Decoupled**: Cells don't need direct knowledge of each other
+
+#### Data & Event Workbench (DMW)
+**Definition:** Centralized repository for:
+- **Event Log**: Append-only event log (Postgres)
+- **Artifact Registry**: Versioned, content-addressed artifacts (Minio)
+- **Connectors**: Stable, versioned APIs for workbench interaction
+
+#### Layered Ontology Architecture
+**Definition:** ODRAS's ontology organization:
+- **Core**: Fundamental ontological categories (BFO)
+- **L1 (Strategic)**: Systems engineering concepts
+- **L2 (Architectural)**: Domain-specific patterns
+- **Applied**: Project-specific instances
+
+#### Digital Thread
+**Definition:** Traceability links between requirements, design, implementation, and test. Traditional digital threads are static and break easily. ODRAS creates a **living digital thread** that is:
+- Event-driven (updates automatically)
+- CQ-validated (continuously verified)
+- Executable (SPARQL queries)
+
+---
+
+### Acronyms
+
+| Acronym | Full Name | Definition |
+|---------|-----------|------------|
+| **CQ** | Competency Question | Natural language question that ontology must answer |
+| **MT** | Microtheory | Isolated named graph for testing CQs |
+| **DDD** | Domain-Driven Design | Software development approach emphasizing domain modeling |
+| **ODRAS** | Ontology-Driven Requirements Analysis System | The system described in these documents |
+| **DMW** | Data & Event Workbench | Centralized event and artifact repository |
+| **BPMN** | Business Process Model and Notation | Standard for modeling business processes |
+| **RAG** | Retrieval-Augmented Generation | AI technique combining retrieval and generation |
+| **SPARQL** | SPARQL Protocol and RDF Query Language | Query language for RDF graphs |
+| **OWL** | Web Ontology Language | Language for defining ontologies |
+| **RDF** | Resource Description Framework | Data model for semantic web |
+| **DAS** | Digital Assistance System | AI-powered assistant in ODRAS |
+| **WIRR** | Weapon Integration Requirements Repository | Example project cell |
+| **TOVE** | Toronto Virtual Enterprise | Gruninger's enterprise ontology |
+| **BFO** | Basic Formal Ontology | Upper-level ontology for science |
+
+---
+
+### Key Concepts Summary
+
+**Competency Questions in Context:**
+1. Start with business questions
+2. Formalize as first-order logic
+3. Execute as SPARQL queries
+4. Validate against microtheories
+5. Prove as theorems
+
+**The Evolution:**
+1. **Isolated Cell**: Develops own CQs and tests them
+2. **Discovery**: Cells find each other through events
+3. **Integration**: CQs validate compatibility
+4. **Enterprise Network**: Living digital thread emerges
+
+**The Mathematical Foundation:**
+- CQs = Theorem statements
+- SPARQL = Proof execution
+- Success/Failure = Theorem validity
+- This rigor prevents the failures of traditional digital threads
+
+---
+
+*This appendix provides essential definitions for understanding the integration of Gruninger's methodology into ODRAS. For deeper study, see the original papers and ODRAS documentation.*
