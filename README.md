@@ -1,6 +1,6 @@
-# ODRAS - Open Data Repository and Analysis System
+# ODRAS - Ontology-Driven Requirements Analysis System
 
-ODRAS is a comprehensive platform for ontology-driven requirements analysis, featuring an advanced ontology workbench, Digital Assistance System (DAS), and intelligent document processing capabilities.
+ODRAS is an intelligent platform that transforms complex requirements documents (like CDDs, ICDs, and technical specifications) into structured, traceable system models. It uses AI-powered analysis guided by systems engineering ontologies to extract requirements, identify relationships, and generate conceptual system architectures that engineers can build upon.
 
 ## 🚀 Features
 
