@@ -2,6 +2,42 @@
 
 ## Date: January 2025
 
+## Top-Level Epics
+
+### #69 - Complete ODRAS MVP - Workbench Improvements and New Features
+- **Priority:** High
+- **Status:** OPEN (GitHub Issue #69)
+- **Timeline:** 6-8 weeks
+- **Strategy:** MVP-First with Incremental Refactoring
+- **Components:**
+  - CQMT Workbench Cleanup (#63, #64, #65, #66)
+  - Ontology Workbench Improvements (#63, #64, #66, #49)
+  - Conceptualizer Enhancements (#61)
+  - Configurator Workbench (NEW - as plugin)
+  - Tabularizer Workbench (NEW - as plugin)
+  - Data Manager Workbench (#54 - as plugin)
+  - Thread Restore Functionality (see #70)
+  - DAS Training System (#67)
+- **GitHub:** https://github.com/laserpointlabs/ODRAS/issues/69
+
+### #70 - Thread Restore Functionality - DAS Workflow Reliability
+- **Priority:** High
+- **Status:** OPEN (GitHub Issue #70)
+- **Type:** Enhancement
+- **Scope:** Thread persistence, conversation history, state recovery
+- **Related:** Part of MVP Epic (#69), enhances DAS reliability (#65, #67)
+- **GitHub:** https://github.com/laserpointlabs/ODRAS/issues/70
+
+### #71 - Incremental Refactoring Strategy - Build Foundation While Delivering MVP
+- **Priority:** High
+- **Status:** OPEN (GitHub Issue #71)
+- **Type:** Refactoring
+- **Strategy:** Refactor code as you touch it, build new components in refactored pattern
+- **Phase 1:** MVP Completion (Weeks 1-8) - Incremental refactoring
+- **Phase 2:** Complete Refactoring (Weeks 9-12) - Full refactor (#55, #56)
+- **Related:** #55, #56, #52
+- **GitHub:** https://github.com/laserpointlabs/ODRAS/issues/71
+
 ## Bug Fixes
 
 ### #49 - Ontology renaming breaks individual data associations
@@ -206,15 +242,29 @@
 
 ## Summary Statistics
 
-- **Total Issues Created:** ~30+
+- **Total Issues Created:** ~35+
+- **Top-Level Epics:** 3 (#69, #70, #71)
 - **Bug Fixes:** 7 (including #49, #63, #64, #65, #66, and XFAIL tests)
-- **Enhancements:** 1 (#67 - Chat History Integration)
-- **Critical Blockers:** 2 (Backend/Frontend refactoring)
+- **Enhancements:** 4 (including #67, #69, #70, #71)
+- **Critical Blockers:** 2 (Backend/Frontend refactoring - #55, #56)
 - **Foundation Infrastructure:** 6
 - **MVP Features:** 8
 - **UI/UX:** 2
 - **New Workbenches:** 5
 - **Known Test Failures (XFAIL):** 2 (Migration tests documented)
+
+## Issue Hierarchy
+
+### Epic #69: MVP Completion
+- Lower-level issues: #63, #64, #65, #66, #49, #61, #54, #67
+- Related epic: #70 (Thread Restore)
+
+### Epic #70: Thread Restore
+- Part of: #69 (MVP Completion)
+
+### Epic #71: Incremental Refactoring
+- Lower-level issues: #55, #56
+- Related epic: #69 (MVP Completion)
 
 ## Critical Path
 
