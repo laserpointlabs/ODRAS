@@ -180,6 +180,20 @@ Deduplication → #52 System Ontology → #51 Vendor Import →
 5. **Phase 4:** Vendor evaluation workflow
 6. **Phase 5:** UI enhancements and new workbenches
 
+---
+
+## Recent Issues (January 2025)
+
+### #61 - Conceptualizer Should Store Individuals in Fuseki for CQ Compatibility
+**Priority**: High  
+**Status**: Open  
+**Problem**: DAS conceptualizer stores individuals only in PostgreSQL, but CQs query Fuseki via SPARQL  
+**Impact**: CQs return 0 rows, can't validate ontology  
+**Solution**: Modify conceptualizer to store in both PostgreSQL AND Fuseki  
+**Workaround**: Use `scripts/sync_das_individuals_to_fuseki.py` to manually sync
+
+
+
 
 
 
