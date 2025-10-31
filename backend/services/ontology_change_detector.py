@@ -10,7 +10,7 @@ Compares old and new versions to identify:
 """
 
 import logging
-from typing import Dict, List, Optional, Set, Tuple
+from typing import Dict, List, Optional, Set, Tuple, Any
 from dataclasses import dataclass
 from SPARQLWrapper import SPARQLWrapper, JSON
 from backend.services.db import DatabaseService
@@ -390,6 +390,85 @@ class OntologyChangeDetector:
                 ))
         
         return changes
+    
+    def detect_property_renames(self, changes: List[ElementChange]) -> List[Dict[str, Any]]:
+        """
+        Detect potential property renames by comparing deleted and added properties.
+        
+        Returns:
+            List of potential rename mappings
+        """
+        renames = []
+        
+        # Get deleted and added properties
+        deleted_props = [c for c in changes if c.change_type == 'deleted' and c.element_type in ['DatatypeProperty', 'ObjectProperty']]
+        added_props = [c for c in changes if c.change_type == 'added' and c.element_type in ['DatatypeProperty', 'ObjectProperty']]
+        
+        # Simple heuristic: if a property is deleted and another similar one is added, it might be a rename
+        # This is simplistic but catches common cases
+        for deleted in deleted_props:
+            deleted_label = deleted.change_details.get("label", "")
+            deleted_local_name = deleted.element_iri.split("#")[-1].split("/")[-1]
+            
+            for added in added_props:
+                added_label = added.change_details.get("label", "")
+                added_local_name = added.element_iri.split("#")[-1].split("/")[-1]
+                
+                # Check if labels are similar (potential rename)
+                if deleted_label and added_label and deleted_label != added_label:
+                    # Use labels (with spaces) instead of IRI names (without spaces)
+                    # This matches how frontend stores property names in database
+                    old_name = deleted_label
+                    new_name = added_label
+                    
+                    renames.append({
+                        "old_name": old_name,
+                        "new_name": new_name,
+                        "old_iri": deleted.element_iri,
+                        "new_iri": added.element_iri,
+                        "old_local_name": deleted_local_name,
+                        "new_local_name": added_local_name,
+                        "property_type": deleted.element_type,  # Include property type
+                        "confidence": "medium"
+                    })
+        
+        return renames
+    
+    def detect_class_renames(self, changes: List[ElementChange]) -> List[Dict[str, Any]]:
+        """
+        Detect potential class renames by comparing deleted and added classes.
+        
+        Returns:
+            List of potential class rename mappings
+        """
+        renames = []
+        
+        # Get deleted and added classes
+        deleted_classes = [c for c in changes if c.change_type == 'deleted' and c.element_type == 'Class']
+        added_classes = [c for c in changes if c.change_type == 'added' and c.element_type == 'Class']
+        
+        # Simple heuristic: if a class is deleted and another similar one is added, it might be a rename
+        for deleted in deleted_classes:
+            deleted_label = deleted.change_details.get("label", "")
+            deleted_local_name = deleted.element_iri.split("#")[-1].split("/")[-1]
+            
+            for added in added_classes:
+                added_label = added.change_details.get("label", "")
+                added_local_name = added.element_iri.split("#")[-1].split("/")[-1]
+                
+                # Check if labels are similar (potential rename)
+                if deleted_label and added_label and deleted_label != added_label:
+                    renames.append({
+                        "old_name": deleted_label,
+                        "new_name": added_label,
+                        "old_iri": deleted.element_iri,
+                        "new_iri": added.element_iri,
+                        "old_local_name": deleted_local_name,
+                        "new_local_name": added_local_name,
+                        "confidence": "medium"
+                    })
+        
+        return renames
     
     def _find_affected_mts(self, graph_iri: str, changes: List[ElementChange]) -> List[str]:
         """

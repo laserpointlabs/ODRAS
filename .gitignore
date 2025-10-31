@@ -58,3 +58,9 @@ models/
 cleanup/deleted_docs/
 cleanup/removed_files/
 # Keep unused_scripts as safety net: cleanup/unused_scripts/
+
+# Chat history backups (too large for repo - can be regenerated)
+data/cursor_chat_backups/
+
+# Spec/story cache
+.specstory/

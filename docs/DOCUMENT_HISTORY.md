@@ -2,6 +2,88 @@
 
 This document tracks all documentation changes, consolidations, and deletions to maintain historical record.
 
+## New Documentation - January 4, 2025
+
+### Publishing and Domain Architecture
+**Created:** `docs/architecture/PUBLISHING_ARCHITECTURE.md`
+**Purpose:** Comprehensive publishing mechanism for project artifacts and network collaboration
+**Size:** 500+ lines
+**Status:** Active - Core publishing system design
+
+**Created:** `docs/architecture/DOMAIN_DRIVEN_ARCHITECTURE.md`
+**Purpose:** Domain-driven design framework for ODRAS business logic organization
+**Size:** 400+ lines
+**Status:** Active - Domain architecture foundation
+
+**Created:** `docs/workbenches/publishing-workbench/CURRENT_STATUS.md`
+**Purpose:** Publishing workbench implementation status and roadmap
+**Size:** 200+ lines
+**Status:** Active - Publishing workbench development
+
+**Updated:** `docs/WORKBENCH_OVERVIEW.md`
+**Changes:** Added Publishing workbench, updated workbench count to 14
+**Status:** Active - Updated workbench overview
+
+**Updated:** `docs/architecture/event-architecture/CURRENT_STATUS.md`
+**Changes:** Added publishing events, subscription events, network events
+**Status:** Active - Enhanced event architecture
+
+## New Documentation - October 12, 2025
+
+### Workbench and Architecture Organization
+**Created:** `docs/WORKBENCH_OVERVIEW.md`
+**Purpose:** Comprehensive overview of reorganized workbench and architecture documentation
+**Branch:** `cursor/organize-odras-documentation-folders-d83a`
+**Size:** 200+ lines
+**Status:** Active - Primary reference for workbench organization
+
+**New Structure Created:**
+- `docs/workbenches/` - Individual workbench documentation
+  - `cqmt-workbench/` - Conceptual Query Management Tool
+  - `ontology-workbench/` - Ontology management and editing
+  - `requirements-workbench/` - Requirements analysis and management
+  - `das-workbench/` - Distributed Autonomous System management
+  - `knowledge-management-workbench/` - Knowledge management and retrieval
+  - `conceptualizer-workbench/` - AI-powered system conceptualization
+  - `configurator-workbench/` - Manual configuration capabilities
+  - `tabularizer-workbench/` - Transform individuals into structured tables
+  - `thread-manager-workbench/` - DAS conversation thread management
+  - `event-management-workbench/` - Event flow management and monitoring
+  - `data-management-workbench/` - Central data orchestration and integration
+  - `pubsub-workbench/` - Publish/subscribe messaging management
+  - `process-workbench/` - BPMN process management and execution
+- `docs/architecture/` - Architecture component documentation
+  - `core-architecture/` - Fundamental system structure
+  - `database-architecture/` - Data storage and management
+  - `rag-architecture/` - Retrieval-Augmented Generation
+  - `event-architecture/` - Event-driven communication
+  - `integration-architecture/` - External system integration
+  - `REFACTOR_ARCHITECTURE.md` - Critical refactoring strategy
+  - `PLUGGABLE_ARCHITECTURE.md` - Plugin-based architecture design
+
+**Key Benefits:**
+- Clear separation of workbench and architecture concerns
+- Status tracking with `CURRENT_STATUS.md` files for each component
+- Priority management with defined next steps
+- Dependency mapping between components
+- Testing status visibility
+
+**Files Moved:**
+- CQMT documentation → `workbenches/cqmt-workbench/`
+- Ontology documentation → `workbenches/ontology-workbench/`
+- DAS documentation → `workbenches/das-workbench/`
+- Thread Manager documentation → `workbenches/thread-manager-workbench/`
+- RAG documentation → `architecture/rag-architecture/`
+- Database documentation → `architecture/database-architecture/`
+
+**Status Documents Created:**
+- Each workbench and architecture component now has a `CURRENT_STATUS.md` file
+- Tracks implementation status, completed features, in-progress work, and pending features
+- Includes technical debt, next priorities, dependencies, and testing status
+- Provides clear visibility into what needs to be completed
+- **Total Workbenches**: 9 (5 core + 4 specialized)
+- **Total Architecture Components**: 5
+
 ## New Documentation - October 12, 2025
 
 ### Ontology Imports Persistence Issues - Lessons Learned

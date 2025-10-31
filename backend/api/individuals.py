@@ -26,6 +26,7 @@ from ..services.ontology_manager import OntologyManager
 from ..services.config import Settings
 from ..services.individual_table_manager import IndividualTableManager
 from ..services.constraint_analyzer import ConstraintAnalyzer
+from ..services.property_migration import PropertyMigrationService
 
 logger = logging.getLogger(__name__)
 
@@ -63,6 +64,7 @@ class IndividualCreate(BaseModel):
     name: str = Field(..., description="Individual instance name")
     class_type: str = Field(..., description="Ontology class this individual belongs to")
     properties: Dict[str, Any] = Field(default={}, description="Property values")
+    graph_iri: Optional[str] = Field(None, description="Ontology graph IRI")
     
 class IndividualUpdate(BaseModel):
     name: Optional[str] = Field(None, description="Updated name")
@@ -304,15 +306,20 @@ async def create_individual(
     try:
         logger.info(f"🔍 Creating individual {individual.name} for class {class_name}")
         
-        # Get ontology graph
-        graph_iri = await get_project_ontology_graph(project_id)
+        # Get ontology graph from request or fallback to getting from project
+        graph_iri = individual.graph_iri
         if not graph_iri:
-            raise HTTPException(404, "No ontology found for project")
+            graph_iri = await get_project_ontology_graph(project_id)
+            if not graph_iri:
+                raise HTTPException(404, "No ontology found for project")
         
         # Create individual in Fuseki
         individual_uri = await create_fuseki_individual(
             graph_iri, class_name, individual
         )
+        
+        # Also store in database for Individual Tables
+        await store_individual_in_db(project_id, graph_iri, class_name, individual, individual_uri)
         
         logger.info(f"✅ Individual created: {individual_uri}")
         return {"success": True, "individual_uri": individual_uri}
@@ -330,20 +337,39 @@ async def update_individual(
     class_name: str,
     individual_id: str,
     update_data: IndividualUpdate,
+    graph: Optional[str] = Query(None),
+    uri: Optional[str] = Query(None),
     current_user: dict = Depends(get_current_user)
 ):
     """
     Update an existing individual
     """
     try:
-        # Get ontology graph
-        graph_iri = await get_project_ontology_graph(project_id)
+        logger.info(f"🔍 Updating individual: project={project_id}, class={class_name}, id={individual_id}")
+        logger.info(f"🔍 Update data: {update_data}")
+        
+        # Get ontology graph from query parameter or fallback
+        graph_iri = graph
         if not graph_iri:
-            raise HTTPException(404, "No ontology found for project")
+            graph_iri = await get_project_ontology_graph(project_id)
+            if not graph_iri:
+                raise HTTPException(404, "No ontology found for project")
         
-        # Update individual in Fuseki
-        await update_fuseki_individual(graph_iri, individual_id, update_data)
+        logger.info(f"🔍 Using graph IRI: {graph_iri}")
         
+        # Use provided URI or construct from individual_id
+        individual_uri = uri if uri else individual_id
+        
+        # Update individual in Fuseki (may fail if not in Fuseki)
+        try:
+            await update_fuseki_individual(graph_iri, individual_uri, update_data)
+        except Exception as e:
+            logger.warning(f"⚠️ Fuseki update failed (may not exist in Fuseki): {e}")
+        
+        # Update in database
+        await update_individual_in_db(project_id, graph_iri, class_name, individual_uri, update_data)
+        
+        logger.info(f"✅ Successfully updated individual: {individual_id}")
         return {"success": True}
         
     except Exception as e:
@@ -358,20 +384,38 @@ async def delete_individual(
     project_id: str,
     class_name: str,
     individual_id: str,
+    graph: Optional[str] = Query(None),
+    uri: Optional[str] = Query(None),
     current_user: dict = Depends(get_current_user)
 ):
     """
     Delete an individual instance
     """
     try:
-        # Get ontology graph
-        graph_iri = await get_project_ontology_graph(project_id)
+        logger.info(f"🗑️ Deleting individual: project={project_id}, class={class_name}, id={individual_id}")
+        
+        # Get ontology graph from query parameter or fallback
+        graph_iri = graph
         if not graph_iri:
-            raise HTTPException(404, "No ontology found for project")
+            graph_iri = await get_project_ontology_graph(project_id)
+            if not graph_iri:
+                raise HTTPException(404, "No ontology found for project")
         
-        # Delete individual from Fuseki
-        await delete_fuseki_individual(graph_iri, individual_id)
+        logger.info(f"🔍 Using graph IRI: {graph_iri}")
         
+        # Use provided URI or construct from individual_id
+        individual_uri = uri if uri else individual_id
+        
+        # Delete individual from Fuseki (may fail if not in Fuseki)
+        try:
+            await delete_fuseki_individual(graph_iri, individual_uri)
+        except Exception as e:
+            logger.warning(f"⚠️ Fuseki delete failed (may not exist in Fuseki): {e}")
+        
+        # Delete from database
+        await delete_individual_in_db(project_id, graph_iri, class_name, individual_uri)
+        
+        logger.info(f"✅ Successfully deleted individual: {individual_id}")
         return {"success": True}
         
     except Exception as e:
@@ -699,6 +743,58 @@ async def get_project_ontology_graph(project_id: str) -> Optional[str]:
     # For now, return None - this will be implemented when we have project-ontology mapping
     return None
 
+async def store_individual_in_db(
+    project_id: str,
+    graph_iri: str,
+    class_name: str,
+    individual: IndividualCreate,
+    individual_uri: str
+):
+    """
+    Store individual in database for Individual Tables
+    """
+    try:
+        with get_db_connection() as conn:
+            cursor = conn.cursor()
+            
+            # Get or create table configuration
+            cursor.execute("""
+                SELECT table_id FROM individual_tables_config
+                WHERE project_id = %s AND graph_iri = %s
+            """, (project_id, graph_iri))
+            
+            result = cursor.fetchone()
+            if not result:
+                # Create table config if it doesn't exist
+                table_id = str(uuid.uuid4())
+                cursor.execute("""
+                    INSERT INTO individual_tables_config (
+                        table_id, project_id, graph_iri, ontology_label, ontology_structure, created_at
+                    ) VALUES (%s, %s, %s, %s, %s, %s)
+                """, (table_id, project_id, graph_iri, "Auto-created", "{}", datetime.utcnow()))
+            else:
+                table_id = result[0]
+            
+            # Store individual instance
+            instance_id = str(uuid.uuid4())
+            cursor.execute("""
+                INSERT INTO individual_instances (
+                    instance_id, table_id, class_name, instance_name,
+                    instance_uri, properties, source_type, created_at
+                ) VALUES (%s, %s, %s, %s, %s, %s, %s, %s)
+            """, (
+                instance_id, table_id, class_name, individual.name,
+                individual_uri, json.dumps(individual.properties),
+                "manual", datetime.utcnow()
+            ))
+            
+            conn.commit()
+            logger.info(f"✅ Stored individual {individual.name} in database")
+            
+    except Exception as e:
+        logger.error(f"❌ Error storing individual in database: {e}")
+        # Don't raise - Fuseki creation succeeded, DB storage is secondary
+
 async def query_class_individuals_from_db(project_id: str, graph_iri: str, class_name: str) -> List[Dict[str, Any]]:
     """
     Query individuals from Individual Tables database
@@ -821,41 +917,53 @@ async def create_fuseki_individual(
     """
     try:
         settings = Settings()
-        sparql = SPARQLWrapper(settings.fuseki_update_url)
+        fuseki_update_url = f"{settings.fuseki_url.rstrip('/')}/update"
+        sparql = SPARQLWrapper(fuseki_update_url)
         
         # Generate unique URI for individual
         individual_uri = f"{graph_iri}#{individual.name}_{uuid.uuid4().hex[:8]}"
         
         # Build SPARQL INSERT query
+        # Use the class name directly as a type reference
+        # Replace spaces with underscores for IRI compatibility
+        class_name_for_iri = class_name.replace(" ", "")
+        class_iri = f"<{graph_iri}#{class_name_for_iri}>"
         triples = [
-            f"<{individual_uri}> rdf:type ?class .",
+            f"<{individual_uri}> rdf:type {class_iri} .",
             f"<{individual_uri}> rdfs:label \"{individual.name}\" ."
         ]
         
         # Add property triples
         for prop_name, prop_value in individual.properties.items():
+            # Ensure property name is wrapped as IRI
+            # Remove spaces for IRI compatibility (e.g., "has Max Speed" -> "hasMaxSpeed")
+            prop_name_for_iri = prop_name.replace(" ", "")
+            prop_iri = prop_name if prop_name.startswith('<') and prop_name.endswith('>') else f"<{graph_iri}#{prop_name_for_iri}>"
             if isinstance(prop_value, str):
-                triples.append(f"<{individual_uri}> {prop_name} \"{prop_value}\" .")
+                triples.append(f"<{individual_uri}> {prop_iri} \"{prop_value}\" .")
             else:
-                triples.append(f"<{individual_uri}> {prop_name} {prop_value} .")
+                triples.append(f"<{individual_uri}> {prop_iri} {prop_value} .")
         
         query = f"""
         PREFIX rdf: <http://www.w3.org/1999/02/22-rdf-syntax-ns#>
         PREFIX rdfs: <http://www.w3.org/2000/01/rdf-schema#>
         
-        INSERT {{
+        INSERT DATA {{
             GRAPH <{graph_iri}> {{
                 {' '.join(triples)}
             }}
         }}
-        WHERE {{
-            ?class rdfs:label "{class_name}" .
-        }}
         """
+        
+        logger.info(f"🔍 Creating Fuseki individual with URI: {individual_uri}")
+        logger.info(f"🔍 SPARQL INSERT query:\n{query}")
         
         sparql.setQuery(query)
         sparql.method = "POST"
-        sparql.query()
+        result = sparql.query()
+        
+        logger.info(f"✅ Fuseki INSERT result: {result}")
+        logger.info(f"✅ Fuseki individual created successfully: {individual_uri}")
         
         return individual_uri
         
@@ -871,15 +979,208 @@ async def update_fuseki_individual(
     """
     Update individual in Fuseki triplestore
     """
-    # Implementation for updating individuals
-    pass
+    try:
+        settings = Settings()
+        fuseki_update_url = f"{settings.fuseki_url}/update"
+        sparql = SPARQLWrapper(fuseki_update_url)
+        
+        # Construct individual URI - handle both full URI and ID
+        if individual_id.startswith('http://') or individual_id.startswith('https://'):
+            # Full URI provided
+            individual_uri = f"<{individual_id}>"
+        else:
+            # Just ID provided
+            individual_uri = f"<{graph_iri}#{individual_id}>"
+        
+        # Build DELETE clauses for old values
+        delete_clauses = []
+        insert_clauses = []
+        
+        # If name is being updated, delete old label and insert new one
+        if update_data.name:
+            delete_clauses.append(f"{individual_uri} rdfs:label ?oldName .")
+            insert_clauses.append(f"{individual_uri} rdfs:label \"{update_data.name}\" .")
+        
+        # If properties are being updated, delete old properties and insert new ones
+        if update_data.properties:
+            for prop_name, prop_value in update_data.properties.items():
+                # Convert property name to proper IRI format
+                if prop_name.startswith('http://') or prop_name.startswith('https://'):
+                    prop_iri = f"<{prop_name}>"
+                elif ':' in prop_name:
+                    prop_iri = prop_name
+                else:
+                    prop_iri = f"<{graph_iri}#{prop_name}>"
+                
+                # Delete old property value with specific predicate
+                delete_clauses.append(f"{individual_uri} {prop_iri} ?oldPropValue_{prop_name} .")
+                
+                # Insert new property value
+                if isinstance(prop_value, str):
+                    insert_clauses.append(f"{individual_uri} {prop_iri} \"{prop_value}\" .")
+                else:
+                    insert_clauses.append(f"{individual_uri} {prop_iri} {prop_value} .")
+        
+        # Build DELETE/INSERT query
+        query = f"""
+        PREFIX rdf: <http://www.w3.org/1999/02/22-rdf-syntax-ns#>
+        PREFIX rdfs: <http://www.w3.org/2000/01/rdf-schema#>
+        
+        DELETE {{
+            GRAPH <{graph_iri}> {{
+                {' '.join(delete_clauses)}
+            }}
+        }}
+        INSERT {{
+            GRAPH <{graph_iri}> {{
+                {' '.join(insert_clauses)}
+            }}
+        }}
+        WHERE {{
+            GRAPH <{graph_iri}> {{
+                {individual_uri} rdf:type ?class .
+                OPTIONAL {{ {individual_uri} rdfs:label ?oldName }}
+                {' '.join([f'OPTIONAL {{ {individual_uri} <{graph_iri}#{prop_name}> ?oldPropValue_{prop_name} }}' for prop_name in (update_data.properties or {}).keys()])}
+            }}
+        }}
+        """
+        
+        logger.info(f"🔍 SPARQL UPDATE query:\n{query}")
+        sparql.setQuery(query)
+        sparql.method = "POST"
+        result = sparql.query()
+        logger.info(f"✅ SPARQL UPDATE result: {result}")
+        
+        return True
+        
+    except Exception as e:
+        logger.error(f"❌ Error updating Fuseki individual: {e}")
+        raise e
 
 async def delete_fuseki_individual(graph_iri: str, individual_id: str):
     """
     Delete individual from Fuseki triplestore
     """
-    # Implementation for deleting individuals
-    pass
+    try:
+        settings = Settings()
+        fuseki_update_url = f"{settings.fuseki_url.rstrip('/')}/update"
+        sparql = SPARQLWrapper(fuseki_update_url)
+        
+        # Handle both full URI and ID
+        if individual_id.startswith('http://') or individual_id.startswith('https://'):
+            # Full URI provided
+            individual_uri = f"<{individual_id}>"
+        else:
+            # Just ID provided
+            individual_uri = f"<{graph_iri}#{individual_id}>"
+        
+        # DELETE query to remove all triples about this individual
+        query = f"""
+        PREFIX rdf: <http://www.w3.org/1999/02/22-rdf-syntax-ns#>
+        PREFIX rdfs: <http://www.w3.org/2000/01/rdf-schema#>
+        
+        DELETE {{
+            GRAPH <{graph_iri}> {{
+                ?s ?p ?o .
+            }}
+        }}
+        WHERE {{
+            GRAPH <{graph_iri}> {{
+                BIND({individual_uri} AS ?s)
+                ?s ?p ?o .
+            }}
+        }}
+        """
+        
+        sparql.setQuery(query)
+        sparql.method = "POST"
+        sparql.query()
+        
+        logger.info(f"✅ Deleted individual from Fuseki: {individual_id}")
+        
+    except Exception as e:
+        logger.error(f"❌ Error deleting Fuseki individual: {e}")
+        raise e
+
+async def update_individual_in_db(project_id: str, graph_iri: str, class_name: str, individual_id: str, update_data: IndividualUpdate):
+    """
+    Update individual in database
+    """
+    try:
+        with get_db_connection() as conn:
+            cursor = conn.cursor()
+            
+            # Build update query based on what's provided
+            updates = []
+            params = []
+            
+            if update_data.name:
+                updates.append("instance_name = %s")
+                params.append(update_data.name)
+            
+            if update_data.properties:
+                updates.append("properties = %s")
+                params.append(json.dumps(update_data.properties))
+            
+            if updates:
+                updates.append("updated_at = %s")
+                params.append(datetime.utcnow())
+                
+                # Build WHERE clause params - match by instance_uri only
+                where_params = [individual_id, project_id, graph_iri, class_name]
+                
+                # Combine SET params and WHERE params
+                all_params = params + where_params
+                
+                cursor.execute(f"""
+                    UPDATE individual_instances
+                    SET {', '.join(updates)}
+                    WHERE instance_uri = %s
+                    AND instance_id IN (
+                        SELECT ii.instance_id 
+                        FROM individual_instances ii
+                        JOIN individual_tables_config itc ON ii.table_id = itc.table_id
+                        WHERE itc.project_id = %s 
+                        AND itc.graph_iri = %s
+                        AND ii.class_name = %s
+                    )
+                """, all_params)
+                
+                conn.commit()
+                logger.info(f"✅ Updated individual in database: {individual_id}")
+            
+    except Exception as e:
+        logger.error(f"❌ Error updating individual in database: {e}")
+        # Don't raise - Fuseki update succeeded, DB update is secondary
+
+async def delete_individual_in_db(project_id: str, graph_iri: str, class_name: str, individual_id: str):
+    """
+    Delete individual from database
+    """
+    try:
+        with get_db_connection() as conn:
+            cursor = conn.cursor()
+            
+            # Delete individual from database - match by instance_uri only
+            cursor.execute("""
+                DELETE FROM individual_instances
+                WHERE instance_uri = %s
+                AND instance_id IN (
+                    SELECT ii.instance_id 
+                    FROM individual_instances ii
+                    JOIN individual_tables_config itc ON ii.table_id = itc.table_id
+                    WHERE itc.project_id = %s 
+                    AND itc.graph_iri = %s
+                    AND ii.class_name = %s
+                )
+            """, (individual_id, project_id, graph_iri, class_name))
+            
+            conn.commit()
+            logger.info(f"✅ Deleted individual from database: {individual_id}")
+            
+    except Exception as e:
+        logger.error(f"❌ Error deleting individual from database: {e}")
+        # Don't raise - Fuseki deletion succeeded, DB deletion is secondary
 
 async def process_data_mapping(
     graph_iri: str,
@@ -901,3 +1202,127 @@ async def validate_individual_constraints(
     Validate individual against ontology constraints using Fuseki
     """
     return {"valid": True, "errors": [], "warnings": []}
+
+
+# =====================================
+# PROPERTY MIGRATION ENDPOINTS
+# =====================================
+
+@router.get("/{project_id}/property-mappings")
+async def get_property_mappings(
+    project_id: str,
+    graph: Optional[str] = Query(None),
+    class_name: Optional[str] = Query(None),
+    current_user: dict = Depends(get_current_user)
+):
+    """
+    Get pending property mappings that need migration
+    """
+    try:
+        graph_iri = graph
+        if not graph_iri:
+            raise HTTPException(400, "graph parameter required")
+        
+        migration_service = PropertyMigrationService()
+        mappings = migration_service.get_pending_mappings(project_id, graph_iri, class_name)
+        
+        # Add affected individuals count
+        for mapping in mappings:
+            mapping['affected_count'] = migration_service.get_affected_individuals_count(
+                project_id, graph_iri, mapping['class_name'], mapping['old_property_name']
+            )
+        
+        return {"mappings": mappings}
+        
+    except Exception as e:
+        logger.error(f"Error getting property mappings: {e}")
+        raise HTTPException(500, f"Failed to get property mappings: {str(e)}")
+
+
+@router.post("/{project_id}/property-mappings/migrate")
+async def migrate_property(
+    project_id: str,
+    mapping_data: Dict[str, Any],
+    current_user: dict = Depends(get_current_user)
+):
+    """
+    Migrate individual properties from old name to new name
+    """
+    try:
+        graph_iri = mapping_data.get("graph_iri")
+        class_name = mapping_data.get("class_name")
+        old_property_name = mapping_data.get("old_property_name")
+        new_property_name = mapping_data.get("new_property_name")
+        
+        if not all([graph_iri, class_name, old_property_name, new_property_name]):
+            raise HTTPException(400, "Missing required fields")
+        
+        migration_service = PropertyMigrationService()
+        result = migration_service.migrate_individuals(
+            project_id, graph_iri, class_name, old_property_name, new_property_name
+        )
+        
+        return result
+        
+    except Exception as e:
+        logger.error(f"Error migrating property: {e}")
+        raise HTTPException(500, f"Failed to migrate property: {str(e)}")
+
+
+@router.post("/{project_id}/property-mappings/skip")
+async def skip_property_migration(
+    project_id: str,
+    mapping_data: Dict[str, Any],
+    current_user: dict = Depends(get_current_user)
+):
+    """
+    Skip a property migration (property values will be lost)
+    """
+    try:
+        graph_iri = mapping_data.get("graph_iri")
+        class_name = mapping_data.get("class_name")
+        old_property_name = mapping_data.get("old_property_name")
+        new_property_name = mapping_data.get("new_property_name")
+        
+        if not all([graph_iri, class_name, old_property_name, new_property_name]):
+            raise HTTPException(400, "Missing required fields")
+        
+        migration_service = PropertyMigrationService()
+        migration_service.skip_mapping(
+            project_id, graph_iri, class_name, old_property_name, new_property_name
+        )
+        
+        return {"success": True, "message": "Migration skipped"}
+        
+    except Exception as e:
+        logger.error(f"Error skipping migration: {e}")
+        raise HTTPException(500, f"Failed to skip migration: {str(e)}")
+
+
+@router.post("/{project_id}/class-mappings/migrate")
+async def migrate_class_rename(
+    project_id: str,
+    mapping_data: Dict[str, Any],
+    current_user: dict = Depends(get_current_user)
+):
+    """
+    Migrate individuals from old class name to new class name
+    """
+    try:
+        graph_iri = mapping_data.get("graph_iri")
+        old_class_name = mapping_data.get("old_class_name")
+        new_class_name = mapping_data.get("new_class_name")
+        
+        if not all([graph_iri, old_class_name, new_class_name]):
+            raise HTTPException(400, "Missing required fields: graph_iri, old_class_name, new_class_name")
+        
+        migration_service = PropertyMigrationService()
+        result = migration_service.migrate_class_rename(
+            project_id, graph_iri, old_class_name, new_class_name
+        )
+        
+        return result
+        
+    except Exception as e:
+        logger.error(f"Error migrating class rename: {e}")
+        raise HTTPException(500, f"Failed to migrate class rename: {str(e)}")

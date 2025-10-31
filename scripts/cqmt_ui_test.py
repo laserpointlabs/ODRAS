@@ -165,6 +165,68 @@ INSERT DATA {{
         sys.exit(1)
     print("✅ Added 3 properties\n")
     
+    # Step 6b: Add individuals via Individual Tables API
+    print("6b. Adding individuals via Individual Tables API...")
+    individuals_to_create = [
+        {
+            "name": "F-22_Raptor",
+            "class_type": "Aircraft",
+            "properties": {
+                "hasMaxSpeed": "Mach 2.25",
+                "isOperational": "true"
+            },
+            "graph_iri": graph_iri
+        },
+        {
+            "name": "F-35_Lightning",
+            "class_type": "Aircraft",
+            "properties": {
+                "hasMaxSpeed": "Mach 1.6",
+                "isOperational": "true"
+            },
+            "graph_iri": graph_iri
+        },
+        {
+            "name": "F-16_FightingFalcon",
+            "class_type": "Fighter Jet",
+            "properties": {
+                "hasMaxSpeed": "Mach 2.05",
+                "isOperational": "true"
+            },
+            "graph_iri": graph_iri
+        },
+        {
+            "name": "C-130_Hercules",
+            "class_type": "Transport Plane",
+            "properties": {
+                "hasCapacity": "92",
+                "isOperational": "true"
+            },
+            "graph_iri": graph_iri
+        },
+        {
+            "name": "C-17_Globemaster",
+            "class_type": "Transport Plane",
+            "properties": {
+                "hasCapacity": "102",
+                "isOperational": "true"
+            },
+            "graph_iri": graph_iri
+        }
+    ]
+    
+    for ind_data in individuals_to_create:
+        create_ind_resp = requests.post(
+            f"{BASE_URL}/api/individuals/{project_id}/individuals/{ind_data['class_type']}",
+            headers=headers,
+            json=ind_data
+        )
+        if create_ind_resp.status_code not in [200, 201]:
+            print(f"⚠️  Failed to create individual {ind_data['name']}: {create_ind_resp.text}")
+        else:
+            print(f"   ✅ Created {ind_data['name']}")
+    print("✅ Added individuals via Individual Tables\n")
+    
     # Step 7: Create microtheory with individuals
     print("7. Creating microtheory with individuals...")
     mt_label = "test-microtheory"
