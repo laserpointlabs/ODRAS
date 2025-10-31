@@ -1,100 +1,62 @@
 ODRAS Software Description
 ==========================
 
-Executive Summary
------------------
-ODRAS (Ontology-Driven Requirements Analysis System) is a problem-agnostic knowledge operations platform that assembles project-specific environments from a common architectural core. The system unifies knowledge management, requirements analysis, and decision assistance into an extensible suite of pluggable workbenches. Each deployment emphasizes consistent UI theming, strict isolation of tenant project cells, and full observability across artifact, data, and workflow lifecycles.
+Introduction
+------------
+ODRAS (Ontology-Driven Requirements Analysis System) operates as a problem-agnostic knowledge platform that assembles project-specific environments from a shared architectural core. Rather than tailoring code to individual missions, the platform organizes every initiative—including the WIR (Warfighter Integrated Requirements) use case—around normalized knowledge assets, workflows, and decision support. Analysts and decision makers experience a consistent user interface, while program owners retain the flexibility to compose new capabilities by onboarding additional workbenches and DAS (Decision Assistance System) actions.
 
 Core Platform Principles
 ------------------------
-- **Problem-agnostic foundation**: The platform treats every initiative as a collection of normalized knowledge assets and workflows, enabling reuse across the WIR (Warfighter Integrated Requirements) scenario as well as future domains.
-- **Composable capabilities**: Pluggable workbenches and DAS (Decision Assistance System) actions yield a tailored operating picture without code rewrites.
-- **Continuous alignment**: Parent-child project structures keep enterprise directives linked to delivery teams, preserving context while allowing autonomy.
+At the heart of ODRAS is a design philosophy that treats knowledge management, requirements authoring, and operational coordination as a single continuum. The system balances autonomy and alignment through a parent-child project hierarchy: enterprise directives originate in parent initiatives and flow to child projects, while synthesized insights and performance data travel back up. Workbench isolation, containerized deployment, and shared observability ensure that new domains can be added without destabilizing established missions.
+
+These principles manifest as:
+- **Problem agnosticism** that enables reuse of the same software fabric across current and future operational theaters.
+- **Composable capability delivery** where pluggable workbenches expose new functionality without code rewrites.
+- **Continuous alignment** through governance rules that cascade from parent to child projects yet allow local overrides.
 
 User Interface Design & Theme
 -----------------------------
-ODRAS maintains a restrained, monochromatic interface anchored by a vertical command rail and keyboard-oriented workflows. Major UI characteristics include:
-- **Minimalist theme** with palette-constrained iconography ensuring accessibility and legibility in high-intensity, low-light command environments.
-- **Workbench-centric layout** where each workspace exposes a focused toolset, aggregated status cards, and contextual DAS prompts.
-- **Keyboard-first ergonomics** to accelerate analysts’ movement between knowledge review, requirement authoring, and publishing tasks.
-- **Responsive grid system** that flexes seamlessly from large mission displays to laptop-class devices.
+The ODRAS interface embraces a restrained, monochromatic aesthetic anchored by a vertical command rail that keeps the experience consistent across workbenches. Analysts navigate primarily through keyboard shortcuts, enabling fast transitions between knowledge review, requirement authoring, and publication tasks even under time pressure. A responsive grid adjusts effortlessly from large mission displays to laptop form factors, while carefully curated black-and-white iconography keeps the visual language aligned with the broader application theme. Status cards, contextual prompts, and DAS action suggestions appear within the same layout conventions, reinforcing a sense of continuity as users move from one workbench to another.
 
-Modular Workbench Architecture
-------------------------------
-Workbenches encapsulate functional domains (e.g., knowledge intake, requirements vetting, publishing orchestration). They are dynamically registered modules that share authentication, project context, and event bus connectivity while remaining isolated at the service boundary. High-level behaviors include:
-- Runtime discovery of available workbenches via the registry service.
-- Fine-grained capability exposure governed by project cell membership and role-based policies.
-- DAS-driven augmentation where recommendations surface inline through action cards.
-
-> Detailed workbench inventories and operating modes are captured in **Appendix A**.
+Workbench Architecture & Operation
+----------------------------------
+Workbenches are modular service bundles that encapsulate complete functional domains—knowledge intake, requirements vetting, publication orchestration, or future mission analytics. Each workbench is dynamically registered through the run registry, inheriting shared authentication, project context, and event bus connectivity. When a user enters a project cell, the platform determines which workbenches are available, applies role-aware capability filters, and presents a tailored operational surface. DAS insights flow into that surface as inline prompts and action cards, helping analysts maintain situational awareness without leaving their current context. Detailed breakdowns of individual workbenches, their specialty roles, and roadmap items are provided in Appendix A to maintain focus in the main narrative.
 
 Parent-Child Project Structure
 ------------------------------
-Projects follow a hierarchical model: parent initiatives define overarching mission objectives, while child projects execute focused campaign phases. Relationships propagate:
-- **Governance controls** that cascade mandatory policies to children while allowing localized overrides.
-- **Shared knowledge baselines** where curated artifacts flow downward and synthesized insights propagate upward.
-- **Cross-project lineage** that makes dependency tracking explicit for auditability and post-operation analysis.
+Projects evolve through a hierarchical structure where parent initiatives articulate mission objectives and policy controls, while child projects execute discrete campaigns or product increments. Governance settings, mandatory workflows, and knowledge baselines cascade downward, giving delivery teams the guidance they need without sacrificing agility. In the opposite direction, telemetry, curated knowledge, and mission outcomes flow upward, preserving provenance and enabling enterprise-level oversight. This bidirectional exchange is essential for ensuring that strategic decisions remain grounded in field realities while field activities stay aligned with enterprise intent.
 
 Project Cells & Performance Tracking
 ------------------------------------
-Project cells represent the operational teams at the edge of delivery. Each cell operates with:
-- Dedicated workbench instances bound to its charter and security posture.
-- An observable “batting average” metric, reflecting requirement acceptance rates, schedule adherence, and action completion velocity.
-- Embedded DAS feedback loops that elevate underperforming trends and surface remediation actions.
+Within each project, ODRAS creates project cells—enclaves for cross-functional teams assigned to specific deliverables. Every cell operates with dedicated workbench instances bound to its charter and security posture. Performance is tracked as a “batting average,” a composite indicator that captures requirement acceptance rates, schedule adherence, and the completion of DAS-assigned actions. These metrics surface in mission readiness dashboards, allowing leadership to identify high performers, target coaching, or trigger additional DAS interventions when trends decline. As DAS capabilities progress toward proactive automation, project cells will receive early warnings and suggested remediation steps before issues fully materialize.
 
 Knowledge Flow & Data Lifecycle
 --------------------------------
-Knowledge assets progress through an ingestion, enrichment, validation, and publication pipeline:
-- **Ingestion**: Source documents enter via BPMN-governed pipelines ensuring metadata normalization.
-- **Enrichment**: Semantic tagging, ontology alignment, and entity resolution occur within the knowledge workbench.
-- **Validation**: Analysts confirm accuracy within project cells, leveraging DAS suggestions and cross-checks.
-- **Publication**: Approved artifacts move into Minio-backed persistent storage, ready for downstream consumption and AI augmentation.
+Knowledge travels through a disciplined lifecycle. Ingestion begins with BPMN-governed pipelines that normalize documents, extract metadata, and load assets into Minio-based storage. Enrichment layers semantic tagging, ontology alignment, and entity resolution carried out within the knowledge workbench. Validation occurs inside project cells where analysts confirm accuracy, apply domain judgment, and leverage DAS suggestions to highlight potential gaps. After approval, assets transition into published knowledge products ready for downstream systems, analytics, or AI augmentation. The lifecycle emphasizes traceability and reversibility so that teams can revisit decisions, reconstitute context, and reissue corrected artifacts when necessary.
 
 Artifact & Data Publishing
 --------------------------
-- **Artifact publishing** orchestrates version-controlled releases to enterprise repositories, with audit trails anchored to the event bus.
-- **Data publishing** routes structured exports to analytics, simulation, or partner systems, honoring data classification and tenant isolation.
-- **Workflow guardrails** enforce review, approval, and compliance sign-offs prior to release, maintaining readiness for regulated environments.
+Publishing is handled with equal care. Artifact releases follow version-controlled pathways that notify stakeholders and maintain audit trails on the event bus. Structured data exports are routed to analytics platforms, simulation engines, or partner systems, honoring classification boundaries and tenant isolation along the way. Publication workflows include built-in guardrails—review states, approval chains, compliance attestations—to ensure readiness for regulated environments. ODRAS treats publishing as a collaborative exercise: workbenches coordinate through the event bus to queue required actions, and DAS can recommend additional reviews or highlight missing evidence prior to release.
 
 Requirements Publishing
 -----------------------
-The requirements workbench synthesizes validated knowledge into structured requirements packages. Key elements include:
-- Structured authoring templates aligned with acquisition standards.
-- Automated traceability linking requirements back to originating knowledge assets.
-- Stage-gate publishing that pushes baseline sets to external requirement repositories while logging state transitions on the event bus.
+The requirements workbench synthesizes validated knowledge into structured deliverables tuned to acquisition standards. Analysts work within guided authoring templates that keep formatting consistent and ensure mandatory metadata is captured. Automatic traceability links each requirement back to the knowledge assets that informed it, preserving provenance for future audits. When a requirement package reaches baseline status, the system pushes it to external repositories and records every transition on the event bus. That event history supports retrospective analysis and feeds the batting-average metrics that underpin project cell performance dashboards.
 
 Event Bus Utilization
 ---------------------
-The event bus underpins orchestration and observability:
-- **Inter-workbench coordination**: Publish/subscribe patterns align actions between knowledge curation, requirement drafting, and DAS insights.
-- **Telemetry capture**: Every significant state change emits events for dashboards, audit, and machine learning pipelines.
-- **Action triggers**: DAS actions and automated remediations subscribe to event streams, enabling proactive engagement as capabilities mature.
+The event bus is the platform’s connective tissue. Workbenches publish state changes, task completions, and policy triggers to shared channels, allowing other services to react without tight coupling. DAS actions subscribe to these streams to understand context, identify anomalies, and suggest next steps. Telemetry consumers build dashboards and machine learning pipelines directly on the same event data, reducing duplication and ensuring that all stakeholders operate from a consistent picture. As proactive DAS capabilities come online, the bus will enable the system to initiate tasks in anticipation of user needs rather than waiting for manual intervention.
 
-Workbench Isolation & Security
+Workbench Isolation, Security & Containerization
+-----------------------------------------------
+Isolation is enforced both logically and operationally. Each workbench runs in its own containerized service boundary, preventing faults from spilling into adjacent capabilities. Project data adheres to attribute-based access control policies tied to project cell membership, guaranteeing that teams see only the assets they are authorized to handle. Parent projects can impose baseline controls, while child projects may layer stricter policies to accommodate classified missions. Containerization simplifies deployment across environments: orchestrators such as Helm or docker-compose instantiate the required workbench set, bind them to project-specific storage, and register them with the event bus and authentication services. This approach keeps the platform agile enough to launch new project cells quickly while preserving the predictability required for enterprise-scale operations.
+
+DAS Integration & Action Model
 ------------------------------
-- Each workbench executes within containerized service boundaries, ensuring faults and escalations remain contained.
-- Tenant data isolation enforces project cell-specific data stores and access policies, mediated by attribute-based access control (ABAC).
-- Security posture inherits baseline controls from parents while allowing child projects to introduce stricter overlays for classified work.
+The Decision Assistance System threads through all aspects of ODRAS. Today it provides reactive prompts, surfacing suggested actions in response to analyst behavior, requirement state changes, or anomalies detected in telemetry. The design, however, anticipates a proactive future: DAS will soon initiate investigations, recommend new knowledge acquisitions, and schedule workbench tasks before users request them. The action catalog already spans knowledge enrichment, requirement refinement, publication readiness checks, and inter-project coordination. As the system learns from project cell batting averages and broader event patterns, these actions will transition from recommendations to proactive assignments that keep teams aligned without manual orchestration.
 
-Containerization & Deployment Model
------------------------------------
-- Core services, workbenches, and integration adapters are containerized for predictable deployment across environments.
-- Project cells can be replicated horizontally by instantiating additional container sets bound to new tenants.
-- Deployment orchestrators (Helm charts, docker-compose stacks, or platform-native equivalents) integrate with CI/CD pipelines for rapid fielding.
-
-DAS Integration & Actions
--------------------------
-The Decision Assistance System acts as a cross-cutting intelligence layer:
-- **Current state**: Reactive prompts and action cards surface based on analyst activity, requirement state changes, and anomaly detection.
-- **Future state**: DAS is designed to become proactive, initiating investigations, recommending knowledge acquisitions, and scheduling workbench tasks without explicit prompts.
-- **Action catalog**: DAS actions span knowledge enrichment, requirement refinement, publication readiness checks, and inter-project coordination tasks.
-
-Core Capabilities for WIR & Beyond
----------------------------------
-- **Mission readiness dashboards** summarizing project cell batting averages, readiness states, and action queues.
-- **Extensible data schemas** accommodating emerging sensor feeds, intelligence products, or partner data.
-- **Adaptive policy enforcement** mapping evolving regulatory requirements into deployable rule sets.
-- **Cross-domain integration** hooks enabling future workbenches to onboard with minimal friction.
+Core Capabilities for WIR & Future Missions
+-------------------------------------------
+Delivering value to the WIR program requires capabilities that also scale to other domains. Mission readiness dashboards aggregate project cell performance, DAS task queues, and publication timelines to provide commanders and program leads with a concise operational picture. Extensible data schemas absorb emerging sensor feeds or intelligence products without schema rewrites. Adaptive policy enforcement maps evolving regulations into deployable rule sets, ensuring compliance stays synchronized with real-world constraints. Finally, cross-domain integration hooks invite new workbenches and partner systems to join the ecosystem with minimal friction, protecting the platform’s long-term adaptability.
 
 Appendix A: Workbench Reference
 -------------------------------
