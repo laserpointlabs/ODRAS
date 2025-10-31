@@ -33045,6 +33045,11 @@ def hello_world():
     }
 
     async function editCQ(cqId) {
+      // Ensure MTs are loaded before editing
+      if (window.cqmtState.currentMTs.length === 0) {
+        await loadCQMTMicrotheories();
+      }
+
       // Load the CQ data first
       try {
         const token = localStorage.getItem('odras_token');
@@ -33566,7 +33571,19 @@ SELECT ${selectClause} WHERE {
 
       // Use default MT or first one
       const defaultMT = mts.find(mt => mt.is_default) || mts[0];
-      const mtIri = defaultMT.iri;
+      const mtIri = defaultMT?.iri;
+
+      console.log('🔍 Test Query Debug:', {
+        sparql_length: sparql.length,
+        mt_iri: mtIri,
+        project_id: projectId,
+        mts_count: mts.length
+      });
+
+      if (!mtIri) {
+        showCQMTError('No microtheory IRI available. Please refresh the page.');
+        return;
+      }
 
       try {
         const token = localStorage.getItem('odras_token');
@@ -33584,6 +33601,8 @@ SELECT ${selectClause} WHERE {
         });
 
         const data = await response.json();
+        console.log('🔍 Test Query Response:', data);
+
         const resultsPanel = document.getElementById('cq-test-results');
         const statusDiv = document.getElementById('cq-test-status');
         const dataDiv = document.getElementById('cq-test-data');
@@ -33609,8 +33628,20 @@ SELECT ${selectClause} WHERE {
 
             data.rows.forEach(row => {
               tableHTML += '<tr>';
-              row.forEach(cell => {
-                tableHTML += `<td style="padding: 4px 8px; border-bottom: 1px solid var(--border); max-width: 200px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;" title="${cell}">${cell}</td>`;
+              row.forEach((cell, index) => {
+                let displayValue = cell;
+                // If column name ends with "Name", display as-is (it's already a name)
+                const columnName = data.columns[index];
+                if (columnName && columnName.toLowerCase().endsWith('name')) {
+                  displayValue = cell;
+                } else if (cell && cell.includes('#')) {
+                  // Extract readable name from URI (fragment after #)
+                  displayValue = cell.split('#').pop();
+                } else if (cell && cell.includes('/')) {
+                  // For full URLs without #, use the last part
+                  displayValue = cell.split('/').pop();
+                }
+                tableHTML += `<td style="padding: 4px 8px; border-bottom: 1px solid var(--border); max-width: 200px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;" title="${cell}">${displayValue}</td>`;
               });
               tableHTML += '</tr>';
             });

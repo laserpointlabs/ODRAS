@@ -21,16 +21,20 @@
 
 This script:
 - Queries PostgreSQL for all individuals created by DAS
-- Inserts them into Fuseki as RDF triples
+- Inserts them into Fuseki **microtheory graph** as RDF triples
 - Handles correct class name capitalization (Requirement vs requirement)
+- Auto-detects default microtheory if not provided
 
 ### 2. Fixed CQ Generation
 **File**: `scripts/generate_cqmt_from_ontology_complete.py`
 
 Updated to:
-- Wrap queries in GRAPH clauses pointing to ontology graph
+- **NOT wrap queries in GRAPH clauses** (SPARQLRunner wraps for microtheory)
 - Use `min_rows=0` so CQs don't fail when no data exists
 - Don't create fake sample data
+
+### 3. Key Insight
+The SPARQLRunner wraps queries in a GRAPH clause for the microtheory. We shouldn't add another GRAPH clause - that creates nested GRAPH clauses that look in the wrong place!
 
 ---
 
@@ -69,25 +73,29 @@ Updated to:
 
 ## Usage
 
-### Step 1: Run Conceptualizer
-The conceptualizer creates individuals in PostgreSQL.
-
-### Step 2: Sync to Fuseki
-```bash
-python scripts/sync_das_individuals_to_fuseki.py \
-  861db85c-2d0b-4c52-841f-63f8a1b6fb70 \
-  "https://xma-adt.usnc.mil/odras/core/861db85c-2d0b-4c52-841f-63f8a1b6fb70/ontologies/bseo-v1"
-```
-
-### Step 3: Generate CQs
+### Step 1: Generate CQs
 ```bash
 python scripts/generate_cqmt_from_ontology_complete.py \
   861db85c-2d0b-4c52-841f-63f8a1b6fb70 \
   --graph-iri "https://xma-adt.usnc.mil/odras/core/861db85c-2d0b-4c52-841f-63f8a1b6fb70/ontologies/bseo-v1"
 ```
 
-### Step 4: View Results
+### Step 2: Run Conceptualizer
+The conceptualizer creates individuals in PostgreSQL.
+
+### Step 3: Sync to Microtheory Graph
+```bash
+python scripts/sync_das_individuals_to_fuseki.py \
+  861db85c-2d0b-4c52-841f-63f8a1b6fb70 \
+  "https://xma-adt.usnc.mil/odras/core/861db85c-2d0b-4c52-841f-63f8a1b6fb70/ontologies/bseo-v1"
+```
+
+This syncs individuals to the **default microtheory** so CQs can find them.
+
+### Step 4: Test CQs in UI
 http://localhost:8000/app?project=861db85c-2d0b-4c52-841f-63f8a1b6fb70&wb=cqmt
+
+Click "Edit" on any CQ, then "Test Query" - should return rows!
 
 ---
 
@@ -112,4 +120,3 @@ To get the relationship CQs working:
 **Success Rate**: 62% (8/13 CQs passing)  
 **Total Individuals**: 219 synced to Fuseki  
 **Main Issue**: Missing relationships between individuals
-

@@ -214,18 +214,9 @@ def create_competency_question(client: httpx.Client, project_id: str, mt_iri: st
     """Create a competency question."""
     print(f"❓ Creating CQ: {cq_name}...")
     
-    # Extract base URI from mt_iri if it's a microtheory, otherwise use as-is
-    # For microtheories, use the ontology graph IRI instead
-    if mt_iri and '/mt/' in mt_iri:
-        # Extract project and ontology from microtheory IRI
-        # e.g., http://localhost:8000/mt/861db85c-2d0b-4c52-841f-63f8a1b6fb70/bseo-v1-baseline
-        parts = mt_iri.split('/mt/')
-        if len(parts) > 1:
-            mt_path = parts[1]
-            project_id_from_mt = mt_path.split('/')[0]
-            # Use the ontology graph IRI
-            base_uri = f"https://xma-adt.usnc.mil/odras/core/{project_id_from_mt}/ontologies/bseo-v1"
-            sparql_text = wrap_query_in_graph(sparql_text, base_uri)
+    # DON'T wrap in GRAPH clause - the SPARQLRunner will wrap in the microtheory GRAPH clause
+    # If individuals are in the ontology graph, they need to be synced to the microtheory
+    # Otherwise, queries will look in empty microtheory graph
     
     response = client.post(
         f"{BASE_URL}/api/cqmt/projects/{project_id}/cqs",
@@ -270,15 +261,15 @@ PREFIX : <{base_uri}#>
 PREFIX rdf: <http://www.w3.org/1999/02/22-rdf-syntax-ns#>
 PREFIX rdfs: <http://www.w3.org/2000/01/rdf-schema#>
 
-SELECT ?instance ?label WHERE {{
+SELECT ?instance ?instanceName WHERE {{
     ?instance rdf:type :{class_id} .
-    OPTIONAL {{ ?instance rdfs:label ?label }}
+    ?instance :name ?instanceName .
 }}
 """
         
         cq_id = create_competency_question(
             client, project_id, mt_iri, cq_name, problem_text, sparql,
-            ["instance", "label"], min_rows=0
+            ["instance", "instanceName"], min_rows=1
         )
         
         if cq_id:
@@ -325,12 +316,12 @@ PREFIX : <{base_uri}#>
 PREFIX rdf: <http://www.w3.org/1999/02/22-rdf-syntax-ns#>
 PREFIX rdfs: <http://www.w3.org/2000/01/rdf-schema#>
 
-SELECT ?process ?label WHERE {{
+SELECT ?process ?processName WHERE {{
     ?process rdf:type :{process_class} .
-    OPTIONAL {{ ?process rdfs:label ?label }}
+    ?process :name ?processName .
 }}
 """,
-            ["process", "label"], min_rows=0
+            ["process", "processName"], min_rows=1
         )
         if temporal_cq:
             cqs.append({"name": "Temporal Projection", "id": temporal_cq})
@@ -345,13 +336,15 @@ PREFIX : <{base_uri}#>
 PREFIX rdf: <http://www.w3.org/1999/02/22-rdf-syntax-ns#>
 PREFIX rdfs: <http://www.w3.org/2000/01/rdf-schema#>
 
-SELECT ?requirement ?component WHERE {{
+SELECT ?requirement ?requirementName ?component ?componentName WHERE {{
     ?requirement rdf:type :{requirement_class} .
+    ?requirement :name ?requirementName .
     ?requirement :deploys ?component .
     ?component rdf:type :{component_class} .
+    ?component :name ?componentName .
 }}
 """,
-        ["requirement", "component"], min_rows=0
+        ["requirement", "requirementName", "component", "componentName"], min_rows=1
     )
     if planning_cq:
         cqs.append({"name": "Planning and Scheduling", "id": planning_cq})
@@ -366,13 +359,15 @@ PREFIX : <{base_uri}#>
 PREFIX rdf: <http://www.w3.org/1999/02/22-rdf-syntax-ns#>
 PREFIX rdfs: <http://www.w3.org/2000/01/rdf-schema#>
 
-SELECT ?requirement ?constraint WHERE {{
+SELECT ?requirement ?requirementName ?constraint ?constraintName WHERE {{
     ?requirement rdf:type :{requirement_class} .
+    ?requirement :name ?requirementName .
     ?requirement :has_constraint ?constraint .
     ?constraint rdf:type :{constraint_class} .
+    ?constraint :name ?constraintName .
 }}
 """,
-            ["requirement", "constraint"], min_rows=0
+            ["requirement", "requirementName", "constraint", "constraintName"], min_rows=1
         )
     if benchmarking_cq:
         cqs.append({"name": "Benchmarking", "id": benchmarking_cq})
@@ -387,14 +382,16 @@ PREFIX : <{base_uri}#>
 PREFIX rdf: <http://www.w3.org/1999/02/22-rdf-syntax-ns#>
 PREFIX rdfs: <http://www.w3.org/2000/01/rdf-schema#>
 
-SELECT ?component ?function WHERE {{
+SELECT ?component ?componentName ?function ?functionName WHERE {{
     ?component rdf:type :{component_class} .
+    ?component :name ?componentName .
     ?component :performs ?process .
     ?process :realizes ?function .
     ?function rdf:type :{function_class} .
+    ?function :name ?functionName .
 }}
 """,
-            ["component", "function"], min_rows=0
+            ["component", "componentName", "function", "functionName"], min_rows=1
         )
     if hypothetical_cq:
         cqs.append({"name": "Hypothetical Reasoning", "id": hypothetical_cq})
@@ -409,13 +406,15 @@ PREFIX : <{base_uri}#>
 PREFIX rdf: <http://www.w3.org/1999/02/22-rdf-syntax-ns#>
 PREFIX rdfs: <http://www.w3.org/2000/01/rdf-schema#>
 
-SELECT ?component ?process WHERE {{
+SELECT ?component ?componentName ?process ?processName WHERE {{
     ?component rdf:type :{component_class} .
+    ?component :name ?componentName .
     ?component :performs ?process .
     ?process rdf:type :{process_class} .
+    ?process :name ?processName .
 }}
 """,
-            ["component", "process"], min_rows=0
+            ["component", "componentName", "process", "processName"], min_rows=1
         )
     if monitoring_cq:
         cqs.append({"name": "Execution Monitoring", "id": monitoring_cq})
@@ -430,12 +429,14 @@ PREFIX : <{base_uri}#>
 PREFIX rdf: <http://www.w3.org/1999/02/22-rdf-syntax-ns#>
 PREFIX rdfs: <http://www.w3.org/2000/01/rdf-schema#>
 
-SELECT ?requirement ?constraint WHERE {{
+SELECT ?requirement ?requirementName ?constraint ?constraintName WHERE {{
     ?requirement rdf:type :{requirement_class} .
+    ?requirement :name ?requirementName .
     ?requirement :has_constraint ?constraint .
+    ?constraint :name ?constraintName .
 }}
 """,
-            ["requirement", "constraint"], min_rows=0
+            ["requirement", "requirementName", "constraint", "constraintName"], min_rows=1
         )
     if constraint_cq:
         cqs.append({"name": "Constraint Verification", "id": constraint_cq})
@@ -619,6 +620,23 @@ def main():
         # Generate CQs
         basic_cqs = generate_basic_cqs(client, args.project_id, mt_iri, base_uri, analysis)
         gruninger_cqs = generate_gruninger_cqs(client, args.project_id, mt_iri, base_uri, analysis)
+        
+        # Sync DAS individuals to microtheory so CQs can find them
+        print("\n📥 Syncing DAS individuals to microtheory...")
+        try:
+            import subprocess
+            sync_result = subprocess.run(
+                ["python", "scripts/sync_das_individuals_to_fuseki.py", args.project_id, graph_iri],
+                capture_output=True,
+                text=True
+            )
+            if sync_result.returncode == 0:
+                print("✅ Synced individuals to microtheory")
+            else:
+                print(f"⚠️  Sync failed: {sync_result.stderr}")
+        except Exception as e:
+            print(f"⚠️  Could not sync individuals: {e}")
+            print("   Run manually: python scripts/sync_das_individuals_to_fuseki.py <project_id> <graph_iri>")
         
         # Summary
         print("\n" + "=" * 60)
