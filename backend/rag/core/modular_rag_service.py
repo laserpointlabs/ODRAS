@@ -328,15 +328,19 @@ Include specific technical details, specifications, and implementation notes."""
             if project_thread_context:
                 system_prompt += f"\n\nPROJECT CONTEXT: {project_thread_context}"
 
+            # Use generate_response method which supports both OpenAI and Ollama
             response = await self.llm_team.generate_response(
                 system_prompt=system_prompt,
                 user_message=question,
                 context=context,
+                temperature=0.7,
             )
 
             return {
                 "answer": response.get("content", ""),
                 "confidence": "high" if len(relevant_chunks) >= 3 else "medium",
+                "model_used": response.get("model", self.settings.llm_model),
+                "provider_used": response.get("provider", self.settings.llm_provider),
             }
 
         except Exception as e:

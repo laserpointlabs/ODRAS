@@ -15,9 +15,21 @@ class Settings(BaseSettings):
     ollama_url: str = "http://localhost:11434"
     redis_url: str = "redis://localhost:6379"
 
-    llm_provider: str = "openai"  # openai | ollama
-    llm_model: str = "gpt-4o-mini"
-    openai_api_key: Optional[str] = None
+    llm_provider: str = Field(
+        default="openai",
+        alias="LLM_PROVIDER",
+        description="LLM provider: openai | ollama"
+    )
+    llm_model: str = Field(
+        default="gpt-4o-mini",
+        alias="LLM_MODEL",
+        description="LLM model name (e.g., gpt-4o-mini, llama3:8b-instruct)"
+    )
+    openai_api_key: Optional[str] = Field(
+        default=None,
+        alias="OPENAI_API_KEY",
+        description="OpenAI API key (required if LLM_PROVIDER=openai)"
+    )
 
     collection_name: str = "odras_requirements"
 

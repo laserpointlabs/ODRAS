@@ -196,6 +196,9 @@ jobs:
           echo "🧪 Step 4.5: RAG Modularization Test..."
           python -m pytest tests/test_rag_modular.py -v --tb=short -m "not integration"
 
+          echo "🧪 Step 4.6: RAG LLM Configuration Test..."
+          python -m pytest tests/test_rag_llm_config.py -v --tb=short -m "not integration"
+
           echo "🧪 Step 5: Ontology Inheritance System Test..."
           python -m pytest tests/test_inheritance_system.py -v --tb=short
 
