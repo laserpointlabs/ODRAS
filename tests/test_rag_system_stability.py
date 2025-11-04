@@ -73,7 +73,7 @@ def upload_document(token, project_id, file_path, doc_type="requirements"):
 
 def test_query(token, project_id, question):
     headers = {"Authorization": f"Bearer {token}"}
-    response = requests.post(f"{BASE_URL}/api/das2/chat", json={
+    response = requests.post(f"{BASE_URL}/api/das/chat", json={
         "message": question,
         "project_id": project_id
     }, headers=headers)

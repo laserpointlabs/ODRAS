@@ -100,7 +100,7 @@ class TestCompleteLifecycle:
             # Check if project thread was created
             print("  Checking project thread creation...")
             threads_resp = await client.get(
-                f"/api/das2/project/{project_id}/threads",
+                f"/api/das/project/{project_id}/threads",
                 headers=auth_headers
             )
 
@@ -455,7 +455,7 @@ This document should be processed into knowledge assets that can be searched and
                 await asyncio.sleep(3)  # Wait for cleanup processing
 
                 thread_check_resp = await client.get(
-                    f"/api/das2/project/{project_id}/threads",
+                    f"/api/das/project/{project_id}/threads",
                     headers=auth_headers
                 )
 

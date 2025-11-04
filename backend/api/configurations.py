@@ -15,8 +15,8 @@ from backend.services.auth import get_user as get_current_user
 from backend.services.configuration_manager import ConfigurationManager, get_db_connection
 from backend.services.graph_builder import GraphBuilder
 from backend.services.das_integration import DASIntegration
-from backend.services.das2_core_engine import DAS2CoreEngine
-from backend.api.das2 import get_das2_engine
+from backend.services.das_core_engine import DASCoreEngine
+from backend.api.das import get_das_engine
 import psycopg2.extras
 
 logger = logging.getLogger(__name__)
@@ -874,7 +874,7 @@ async def conceptualize_and_store_individual(
     individual_id: str,
     request_data: Dict[str, Any] = {},
     current_user: dict = Depends(get_current_user),
-    das_engine: DAS2CoreEngine = Depends(get_das2_engine)
+    das_engine: DASCoreEngine = Depends(get_das_engine)
 ):
     """
     Generate concepts with DAS and store as individuals in database
@@ -1467,7 +1467,7 @@ async def get_stored_configuration_graph(
 async def generate_concepts_with_das(
     individual: Dict[str, Any], 
     ontology_structure: Dict[str, Any],
-    das_engine: DAS2CoreEngine,
+    das_engine: DASCoreEngine,
     project_id: str,
     user_id: str
 ) -> Dict[str, List[Dict[str, Any]]]:

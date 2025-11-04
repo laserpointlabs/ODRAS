@@ -415,3 +415,50 @@ async def get_rag_query_status(
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Failed to get RAG query status: {str(e)}")
 
+
+@router.get("/user-tasks/{process_instance_id}/status")
+async def get_user_task_status(process_instance_id: str, user=Depends(get_user)):
+    """Get status of a user task in a BPMN workflow"""
+    settings = Settings()
+    camunda_rest = f"{settings.camunda_base_url.rstrip('/')}/engine-rest"
+    
+    try:
+        instance_url = f"{camunda_rest}/process-instance/{process_instance_id}"
+        
+        async with httpx.AsyncClient(timeout=10) as client:
+            response = await client.get(instance_url)
+            response.raise_for_status()
+            instance = response.json()
+
+            # Get current activities
+            activities_url = (
+                f"{camunda_rest}/process-instance/{process_instance_id}/activity-instances"
+            )
+            activities_response = await client.get(activities_url)
+            activities_response.raise_for_status()
+            activities = activities_response.json()
+
+            # Determine current state
+            current_state = "unknown"
+            if activities.get("childActivityInstances"):
+                for activity in activities["childActivityInstances"]:
+                    if activity.get("activityId") == "Task_UserReview":
+                        current_state = "waiting_for_user_review"
+                    elif activity.get("activityId") == "Gateway_UserChoice":
+                        current_state = "user_decision_made"
+                    elif activity.get("activityId") == "Task_LLMProcessing":
+                        current_state = "llm_processing"
+                    elif activity.get("activityId") == "Task_StoreVector":
+                        current_state = "storing_results"
+
+            return {
+                "process_instance_id": process_instance_id,
+                "current_state": current_state,
+                "process_status": instance.get("state", "unknown"),
+                "business_key": instance.get("businessKey"),
+                "start_time": instance.get("startTime"),
+                "end_time": instance.get("endTime"),
+            }
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Error fetching task status: {str(e)}")
+

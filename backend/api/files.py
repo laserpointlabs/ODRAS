@@ -4,7 +4,9 @@ Provides REST API for file upload, download, and management.
 """
 
 import io
+import json
 import logging
+from datetime import datetime
 from typing import Any, Dict, List, Optional
 
 import httpx
@@ -973,6 +975,115 @@ async def check_file_knowledge_assets(
         raise HTTPException(status_code=500, detail=f"Failed to check knowledge assets: {str(e)}")
 
 
+@router.get("/project/{project_id}", response_model=FileListResponse)
+async def list_project_files(
+    project_id: str,
+    mime_type: Optional[str] = Query(None, description="Filter by MIME type"),
+    search: Optional[str] = Query(None, description="Search by filename"),
+    created_after: Optional[str] = Query(None, description="Filter by creation date (ISO format)"),
+    created_before: Optional[str] = Query(None, description="Filter by creation date (ISO format)"),
+    limit: int = Query(100, description="Maximum number of results"),
+    offset: int = Query(0, description="Result offset for pagination"),
+    storage_service: FileStorageService = Depends(get_file_storage_service),
+    db: DatabaseService = Depends(get_db_service),
+    user: Dict = Depends(get_user),
+):
+    """
+    List files for a specific project with optional filtering.
+
+    Args:
+        project_id: Project ID to filter files
+        mime_type: Optional MIME type filter
+        search: Optional search term for filename
+        created_after: Optional creation date filter (ISO format)
+        created_before: Optional creation date filter (ISO format)
+        limit: Maximum number of results
+        offset: Result offset for pagination
+        storage_service: File storage service
+        db: Database service
+        user: Authenticated user
+
+    Returns:
+        List of files with metadata
+    """
+    try:
+        # Check project access
+        if not user.get("is_admin", False) and not db.is_user_member(project_id=project_id, user_id=user["user_id"]):
+            raise HTTPException(status_code=403, detail="Not a member of this project")
+        
+        # Get files from storage service
+        files = await storage_service.list_files(
+            project_id=project_id,
+            limit=limit,
+            offset=offset
+        )
+        
+        # Apply filters
+        filtered_files = files
+        if mime_type:
+            filtered_files = [f for f in filtered_files if f.get("content_type") == mime_type]
+        if search:
+            search_lower = search.lower()
+            filtered_files = [f for f in filtered_files if search_lower in f.get("filename", "").lower()]
+        if created_after:
+            from datetime import datetime
+            after_date = datetime.fromisoformat(created_after.replace('Z', '+00:00'))
+            filtered_files = [f for f in filtered_files if f.get("created_at") and datetime.fromisoformat(f.get("created_at").replace('Z', '+00:00')) >= after_date]
+        if created_before:
+            from datetime import datetime
+            before_date = datetime.fromisoformat(created_before.replace('Z', '+00:00'))
+            filtered_files = [f for f in filtered_files if f.get("created_at") and datetime.fromisoformat(f.get("created_at").replace('Z', '+00:00')) <= before_date]
+
+        # Convert to response format
+        file_responses = []
+        for file_data in filtered_files:
+            try:
+                # Handle date conversion
+                created_at = file_data.get("created_at")
+                updated_at = file_data.get("updated_at")
+                if isinstance(created_at, datetime):
+                    created_at = created_at.isoformat()
+                elif created_at:
+                    created_at = str(created_at)
+                if isinstance(updated_at, datetime):
+                    updated_at = updated_at.isoformat()
+                elif updated_at:
+                    updated_at = str(updated_at)
+                
+                file_responses.append(FileMetadataResponse(
+                    file_id=file_data.get("id") or file_data.get("file_id") or "",
+                    filename=file_data.get("filename", "unknown"),
+                    content_type=file_data.get("content_type", "application/octet-stream"),
+                    size=file_data.get("file_size") or file_data.get("size", 0),
+                    hash_md5=file_data.get("hash_md5", ""),
+                    hash_sha256=file_data.get("hash_sha256", ""),
+                    storage_path=file_data.get("storage_path", ""),
+                    project_id=file_data.get("project_id"),
+                    tags=file_data.get("tags") or {},
+                    created_at=created_at or "",
+                    updated_at=updated_at or "",
+                    visibility=file_data.get("visibility", "private"),
+                    created_by=file_data.get("created_by"),
+                    iri=file_data.get("iri"),
+                ))
+            except Exception as e:
+                logger.warning(f"Failed to convert file data to response: {e}, file_data: {file_data}")
+                continue
+
+        return FileListResponse(
+            success=True,
+            files=file_responses,
+            total_count=len(file_responses),
+            message="Files retrieved successfully",
+        )
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Failed to list project files: {e}")
+        raise HTTPException(status_code=500, detail=f"Failed to list files: {str(e)}")
+
+
 @router.get("/", response_model=FileListResponse)
 async def list_files(
     project_id: Optional[str] = Query(None, description="Filter by project ID"),
@@ -1125,6 +1236,201 @@ async def get_storage_info(
     except Exception as e:
         logger.error(f"Failed to get storage info: {e}")
         raise HTTPException(status_code=500, detail=f"Failed to get storage info: {str(e)}")
+
+
+@router.get("/{file_id}/metadata", response_model=FileMetadataResponse)
+async def get_file_metadata(
+    file_id: str,
+    storage_service: FileStorageService = Depends(get_file_storage_service),
+    user: Dict = Depends(get_user),
+):
+    """
+    Get file metadata by file ID.
+    
+    Args:
+        file_id: Unique file identifier
+        storage_service: File storage service
+        user: Authenticated user
+        
+    Returns:
+        File metadata
+    """
+    try:
+        # Get file metadata
+        metadata = await storage_service.get_file_metadata(file_id)
+        if not metadata:
+            raise HTTPException(status_code=404, detail="File not found")
+        
+        # Check access permissions
+        is_admin = user.get("is_admin", False)
+        is_owner = metadata.get("created_by") == user["user_id"]
+        is_public = metadata.get("visibility") == "public"
+        
+        # Only allow access if user is admin, owner, or file is public
+        if not (is_admin or is_owner or is_public):
+            raise HTTPException(status_code=403, detail="Not authorized to view this file")
+        
+        # Map database fields to response model
+        return FileMetadataResponse(
+            file_id=metadata.get("id") or metadata.get("file_id") or file_id,
+            filename=metadata.get("filename", "unknown"),
+            content_type=metadata.get("content_type", "application/octet-stream"),
+            size=metadata.get("file_size") or metadata.get("size", 0),
+            hash_md5=metadata.get("hash_md5", ""),
+            hash_sha256=metadata.get("hash_sha256", ""),
+            storage_path=metadata.get("storage_path", ""),
+            project_id=metadata.get("project_id"),
+            tags=metadata.get("tags") or {},
+            created_at=metadata.get("created_at").isoformat() if isinstance(metadata.get("created_at"), datetime) else metadata.get("created_at", ""),
+            updated_at=metadata.get("updated_at").isoformat() if isinstance(metadata.get("updated_at"), datetime) else metadata.get("updated_at", ""),
+            visibility=metadata.get("visibility", "private"),
+            created_by=metadata.get("created_by"),
+            iri=metadata.get("iri"),
+        )
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Failed to get file metadata: {e}")
+        raise HTTPException(status_code=500, detail=f"Failed to get file metadata: {str(e)}")
+
+
+class FileMetadataUpdateRequest(BaseModel):
+    """Request model for updating file metadata"""
+    tags: Optional[Dict[str, Any]] = None
+    description: Optional[str] = None
+    visibility: Optional[str] = Field(None, pattern="^(private|public)$")
+
+
+@router.put("/{file_id}/metadata", response_model=FileMetadataResponse)
+async def update_file_metadata(
+    file_id: str,
+    body: FileMetadataUpdateRequest,
+    storage_service: FileStorageService = Depends(get_file_storage_service),
+    db: DatabaseService = Depends(get_db_service),
+    user: Dict = Depends(get_user),
+):
+    """
+    Update file metadata (tags, description, visibility).
+    
+    Args:
+        file_id: Unique file identifier
+        body: Metadata update request
+        storage_service: File storage service
+        db: Database service
+        user: Authenticated user
+        
+    Returns:
+        Updated file metadata
+    """
+    try:
+        # Check file ownership
+        file_metadata = await storage_service.get_file_metadata(file_id)
+        if not file_metadata:
+            raise HTTPException(status_code=404, detail="File not found")
+
+        is_admin = user.get("is_admin", False)
+        is_owner = file_metadata.get("created_by") == user["user_id"]
+
+        if not (is_admin or is_owner):
+            raise HTTPException(status_code=403, detail="Not authorized to edit this file")
+
+        # Update tags if provided
+        if body.tags is not None:
+            ok = await storage_service.update_file_tags(file_id, body.tags)
+            if not ok:
+                raise HTTPException(status_code=404, detail="File metadata not found")
+        
+        # Update visibility if provided
+        if body.visibility is not None:
+            ok = await storage_service.update_file_visibility(file_id, body.visibility)
+            if not ok:
+                raise HTTPException(status_code=500, detail="Failed to update file visibility")
+        
+        # Update description if provided (store in metadata JSON field)
+        if body.description is not None:
+            # Get database connection from DatabaseService
+            # DatabaseService has _conn() method for connection pool
+            try:
+                conn = db._conn()
+                try:
+                    with conn.cursor() as cur:
+                        # Get current metadata
+                        cur.execute("SELECT metadata FROM files WHERE id = %s", (file_id,))
+                        row = cur.fetchone()
+                        current_metadata = row[0] if row and row[0] else {}
+                        if isinstance(current_metadata, str):
+                            current_metadata = json.loads(current_metadata)
+                        elif not isinstance(current_metadata, dict):
+                            current_metadata = {}
+                        
+                        # Update description
+                        current_metadata["description"] = body.description
+                        
+                        # Save back to database
+                        cur.execute(
+                            "UPDATE files SET metadata = %s::jsonb, updated_at = NOW() WHERE id = %s",
+                            (json.dumps(current_metadata), file_id)
+                        )
+                        conn.commit()
+                finally:
+                    db._return(conn)
+            except AttributeError as e:
+                # If db doesn't have _conn, create direct connection
+                logger.warning(f"DatabaseService._conn() not available, using direct connection: {e}")
+                import psycopg2
+                from ..services.config import Settings
+                settings = Settings()
+                conn = psycopg2.connect(
+                    host=settings.postgres_host,
+                    port=settings.postgres_port,
+                    database=settings.postgres_database,
+                    user=settings.postgres_user,
+                    password=settings.postgres_password,
+                )
+                try:
+                    with conn.cursor() as cur:
+                        cur.execute("SELECT metadata FROM files WHERE id = %s", (file_id,))
+                        row = cur.fetchone()
+                        current_metadata = row[0] if row and row[0] else {}
+                        if isinstance(current_metadata, str):
+                            current_metadata = json.loads(current_metadata)
+                        elif not isinstance(current_metadata, dict):
+                            current_metadata = {}
+                        current_metadata["description"] = body.description
+                        cur.execute(
+                            "UPDATE files SET metadata = %s::jsonb, updated_at = NOW() WHERE id = %s",
+                            (json.dumps(current_metadata), file_id)
+                        )
+                        conn.commit()
+                finally:
+                    conn.close()
+        
+        # Return updated metadata
+        updated_metadata = await storage_service.get_file_metadata(file_id)
+        if not updated_metadata:
+            raise HTTPException(status_code=404, detail="File not found after update")
+        
+        return FileMetadataResponse(
+            file_id=updated_metadata.get("id") or updated_metadata.get("file_id") or file_id,
+            filename=updated_metadata.get("filename", "unknown"),
+            content_type=updated_metadata.get("content_type", "application/octet-stream"),
+            size=updated_metadata.get("file_size") or updated_metadata.get("size", 0),
+            hash_md5=updated_metadata.get("hash_md5", ""),
+            hash_sha256=updated_metadata.get("hash_sha256", ""),
+            storage_path=updated_metadata.get("storage_path", ""),
+            project_id=updated_metadata.get("project_id"),
+            tags=updated_metadata.get("tags") or {},
+            created_at=updated_metadata.get("created_at").isoformat() if isinstance(updated_metadata.get("created_at"), datetime) else updated_metadata.get("created_at", ""),
+            updated_at=updated_metadata.get("updated_at").isoformat() if isinstance(updated_metadata.get("updated_at"), datetime) else updated_metadata.get("updated_at", ""),
+            visibility=updated_metadata.get("visibility", "private"),
+            created_by=updated_metadata.get("created_by"),
+            iri=updated_metadata.get("iri"),
+        )
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Failed to update file metadata: {e}")
+        raise HTTPException(status_code=500, detail=f"Failed to update file metadata: {str(e)}")
 
 
 @router.put("/{file_id}/tags")

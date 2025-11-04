@@ -264,7 +264,7 @@ class ODRASSetup:
         async with httpx.AsyncClient(timeout=60.0) as client:
             try:
                 response = await client.post(
-                    f"{self.base_url}/api/das2/chat",
+                    f"{self.base_url}/api/das/chat",
                     json={
                         "message": "How many UAS are mentioned in the specifications?",
                         "project_id": self.project_id

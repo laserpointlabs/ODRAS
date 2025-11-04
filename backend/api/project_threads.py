@@ -83,7 +83,7 @@ async def create_project_thread(
         project_name = project[0] if project else "Unknown Project"
 
         # Try DAS2 first (preferred)
-        thread_result = await _create_thread_with_das2(project_id, user_id, username, project_name)
+        thread_result = await _create_thread_with_das(project_id, user_id, username, project_name)
         if thread_result["success"]:
             return ProjectThreadResponse(**thread_result)
 
@@ -105,16 +105,16 @@ async def create_project_thread(
         raise HTTPException(status_code=500, detail=f"Failed to create project thread: {str(e)}")
 
 
-async def _create_thread_with_das2(project_id: str, user_id: str, username: str, project_name: str) -> Dict[str, Any]:
-    """Try to create project thread with DAS2"""
+async def _create_thread_with_das(project_id: str, user_id: str, username: str, project_name: str) -> Dict[str, Any]:
+    """Try to create project thread with DAS"""
     try:
-        from backend.api.das2 import das2_engine
+        from backend.api.das import das_engine
 
-        if not das2_engine or not das2_engine.project_manager:
-            return {"success": False, "error": "DAS2 not available"}
+        if not das_engine or not das_engine.project_manager:
+            return {"success": False, "error": "DAS not available"}
 
         # Check if thread already exists (SQL-first format)
-        existing_context = await das2_engine.project_manager.get_project_thread_by_project_id(project_id)
+        existing_context = await das_engine.project_manager.get_project_thread_by_project_id(project_id)
         if existing_context and "error" not in existing_context:
             # Extract thread ID from SQL-first format
             if "project_thread" in existing_context:
@@ -132,7 +132,7 @@ async def _create_thread_with_das2(project_id: str, user_id: str, username: str,
                 }
 
         # Create new project thread (SQL-first format)
-        thread_context = await das2_engine.project_manager.create_project_thread(
+        thread_context = await das_engine.project_manager.create_project_thread(
             project_id=project_id,
             user_id=user_id
         )
@@ -143,7 +143,7 @@ async def _create_thread_with_das2(project_id: str, user_id: str, username: str,
         else:
             project_thread_id = getattr(thread_context, 'project_thread_id', None)
 
-        logger.info(f"Created DAS2 project thread {project_thread_id} for project {project_id}")
+        logger.info(f"Created DAS project thread {project_thread_id} for project {project_id}")
 
         return {
             "success": True,
@@ -207,10 +207,10 @@ async def get_project_thread_info(
         if not user_id:
             raise HTTPException(status_code=401, detail="User not authenticated")
 
-        # Try DAS2 first
-        das2_info = await _get_thread_info_das2(project_id, user_id)
-        if das2_info["found"]:
-            return das2_info
+        # Try DAS first
+        das_info = await _get_thread_info_das(project_id, user_id)
+        if das_info.get("found"):
+            return ProjectThreadInfoResponse(**das_info)
 
         # Try DAS1
         das1_info = await _get_thread_info_das1(project_id, user_id)
@@ -231,15 +231,15 @@ async def get_project_thread_info(
         raise HTTPException(status_code=500, detail=str(e))
 
 
-async def _get_thread_info_das2(project_id: str, user_id: str) -> Dict[str, Any]:
-    """Get project thread info from DAS2"""
+async def _get_thread_info_das(project_id: str, user_id: str) -> Dict[str, Any]:
+    """Get project thread info from DAS"""
     try:
-        from backend.api.das2 import das2_engine
+        from backend.api.das import das_engine
 
-        if not das2_engine or not das2_engine.project_manager:
+        if not das_engine or not das_engine.project_manager:
             return {"found": False}
 
-        thread_context = await das2_engine.project_manager.get_project_thread_by_project_id(project_id)
+        thread_context = await das_engine.project_manager.get_project_thread_by_project_id(project_id)
         if not thread_context:
             return {"found": False}
 

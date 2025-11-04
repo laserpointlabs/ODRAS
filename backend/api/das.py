@@ -1,1167 +1,802 @@
 """
-⚠️ DEPRECATED - DO NOT USE DAS1 ⚠️
+DAS API - Simple Digital Assistant API ✅ CURRENT ACTIVE VERSION
 
-This is the original DAS (Digital Assistant System) implementation.
-This version is DEPRECATED and should NOT be used for new development.
+This is the CURRENT and RECOMMENDED DAS implementation.
+Use this for all new development and projects.
 
-🚀 USE DAS2 INSTEAD: backend/api/das2.py
-🚀 USE DAS2 ENGINE: backend/services/das2_core_engine.py
+✅ Simple, clean architecture
+✅ Direct context + LLM approach
+✅ Easy to debug and maintain
+✅ NO complex intelligence layers, just context + LLM
 
-DAS2 provides the same functionality with a cleaner, simpler architecture.
-This file is kept for reference only and may be removed in future versions.
-
-For new projects, use:
-- API: /api/das2/chat
-- Engine: DAS2CoreEngine
-
-=== ORIGINAL DOCUMENTATION (DEPRECATED) ===
-DAS API endpoints for the Digital Assistance System
-
-Provides REST API endpoints for DAS functionality including chat, session management,
-command execution, and suggestions.
+API Endpoints:
+- POST /api/das/chat - Send message to DAS
+- GET /api/das/project/{project_id}/thread - Get project thread
+- GET /api/das/project/{project_id}/history - Get conversation history
 """
 
 import logging
 from datetime import datetime
 from typing import Any, Dict, List, Optional
-from fastapi import APIRouter, Depends, HTTPException, status
-from pydantic import BaseModel, Field
+from fastapi import APIRouter, Depends, HTTPException
+from pydantic import BaseModel
 
-from ..services.das_core_engine import DASCoreEngine, DASResponse, DASProjectThread
-from ..services.session_manager import SessionManager, SessionContext, SessionEvent
+from ..services.das_core_engine import DASCoreEngine, DASResponse
 from ..services.config import Settings
 from ..services.rag_service import RAGService
+from ..services.project_thread_manager import ProjectThreadManager
+from ..services.auth import get_user
 from ..services.db import DatabaseService
-from ..services.auth import get_user as get_current_user
 
 logger = logging.getLogger(__name__)
 
-# Initialize router
-router = APIRouter(prefix="/api/das", tags=["DAS"])
-
-# Global DAS engine and session manager instances (will be initialized in main.py)
-das_engine: Optional[DASCoreEngine] = None
-session_manager: Optional[SessionManager] = None
-
-
-# Pydantic models for API requests/responses
-class ChatRequest(BaseModel):
-    message: str = Field(..., description="User message to process")
-    project_thread_id: Optional[str] = Field(None, description="Existing project thread ID")
-    project_id: Optional[str] = Field(None, description="Current project ID for context")
-    ontology_id: Optional[str] = Field(None, description="Current ontology ID for context")
-    workbench: Optional[str] = Field(None, description="Current workbench (ontology, files, knowledge, etc.)")
-
-
-class ChatResponse(BaseModel):
+# Simple request models
+class DASChatRequest(BaseModel):
     message: str
-    confidence: str
-    intent: str
-    suggestions: List[Dict[str, Any]] = []
-    commands: List[Dict[str, Any]] = []
-    artifacts: List[Dict[str, Any]] = []
+    project_id: str
+    project_thread_id: Optional[str] = None
+
+class DASChatResponse(BaseModel):
+    message: str
+    sources: List[Dict[str, Any]] = []
     metadata: Dict[str, Any] = {}
 
+# Router
+router = APIRouter(prefix="/api/das", tags=["DAS"])
 
-class ProjectThreadCreateRequest(BaseModel):
-    project_id: str = Field(..., description="Project ID for the thread")
-
-
-class ProjectThreadResponse(BaseModel):
-    project_thread_id: str
-    user_id: str
-    project_id: str
-    start_time: str
-    status: str
+# Global engine instance
+das_engine: Optional[DASCoreEngine] = None
 
 
-class CommandExecuteRequest(BaseModel):
-    command: Dict[str, Any] = Field(..., description="Command to execute")
-    session_id: str = Field(..., description="Session ID")
-
-
-class SuggestionResponse(BaseModel):
-    id: str
-    title: str
-    description: str
-    action: str
-    confidence: str
-    category: str
-
-
-# Dependency to get DAS engine
 async def get_das_engine() -> DASCoreEngine:
-    """Get the global DAS engine instance"""
-    if das_engine is None:
-        raise HTTPException(
-            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
-            detail="DAS engine not initialized"
-        )
+    """Get DAS engine dependency"""
+    global das_engine
+    if not das_engine:
+        raise HTTPException(status_code=503, detail="DAS not initialized")
     return das_engine
 
 
-# Chat endpoints
-@router.post("/chat/send", response_model=ChatResponse)
-async def send_message(
-    request: ChatRequest,
-    current_user: dict = Depends(get_current_user),
+@router.post("/chat", response_model=DASChatResponse)
+async def das_chat(
+    request: DASChatRequest,
+    user: dict = Depends(get_user),
     engine: DASCoreEngine = Depends(get_das_engine)
 ):
     """
-    Send a message to DAS and get a response
+    DAS Chat - Simple approach
+    Sends ALL context to LLM and returns response with sources
     """
     try:
-        user_id = current_user.get("user_id")
+        user_id = user.get("user_id")
         if not user_id:
-            raise HTTPException(
-                status_code=status.HTTP_401_UNAUTHORIZED,
-                detail="User not authenticated"
+            raise HTTPException(status_code=401, detail="User not authenticated")
+
+        print(f"DAS_API: Processing message='{request.message}' for project={request.project_id}")
+
+        # Use unified streaming method and collect all chunks for non-streaming response
+        full_response = ""
+        final_metadata = {}
+        sources = []
+
+        async for chunk in engine.process_message_stream(
+            project_id=request.project_id,
+            message=request.message,
+            user_id=user_id,
+            project_thread_id=request.project_thread_id
+        ):
+            if chunk.get("type") == "content":
+                full_response += chunk.get("content", "")
+            elif chunk.get("type") == "done":
+                final_metadata = chunk.get("metadata", {})
+                sources = final_metadata.get("sources", [])
+            elif chunk.get("type") == "error":
+                raise HTTPException(status_code=500, detail=chunk.get("message", "Unknown error"))
+
+        return DASChatResponse(
+            message=full_response,
+            sources=sources,
+            metadata=final_metadata
+        )
+
+    except Exception as e:
+        logger.error(f"DAS chat error: {e}")
+        raise HTTPException(status_code=500, detail=f"DAS error: {str(e)}")
+
+
+@router.post("/chat/stream")
+async def das_chat_stream(
+    request: DASChatRequest,
+    user: dict = Depends(get_user),
+    engine: DASCoreEngine = Depends(get_das_engine)
+):
+    """
+    DAS Chat Streaming - Streams response as it's generated
+    """
+    from fastapi.responses import StreamingResponse
+    import json
+    import asyncio
+
+    async def generate_stream():
+        try:
+            user_id = user.get("user_id")
+            if not user_id:
+                yield f"data: {json.dumps({'type': 'error', 'message': 'User not authenticated'})}\n\n"
+                return
+
+            print(f"DAS_API_STREAM: Processing message='{request.message}' for project={request.project_id}")
+            
+            # Monitor connection pool before processing
+            try:
+                settings = Settings()
+                db_service = DatabaseService(settings)
+                pool_status = db_service.get_pool_status()
+                logger.info(f"🔍 DAS_STREAM: Pool status before - In use: {pool_status.get('connections_in_use', 0)}/{pool_status.get('maxconn', 40)}")
+                
+                if pool_status.get('leaked_connections', 0) > 0:
+                    logger.warning(f"⚠️ DAS_STREAM: {pool_status['leaked_connections']} potentially leaked connections detected")
+            except Exception as e:
+                logger.warning(f"Failed to check pool status: {e}")
+
+            # Process with DAS engine and stream the response
+            response_stream = engine.process_message_stream(
+                project_id=request.project_id,
+                message=request.message,
+                user_id=user_id,
+                project_thread_id=request.project_thread_id
             )
 
-        # Get or create project thread
-        if request.project_thread_id:
-            session = await engine.get_project_thread(request.project_thread_id)
-            if not session:
-                # Project thread not found, return 404
-                raise HTTPException(
-                    status_code=status.HTTP_404_NOT_FOUND,
-                    detail=f"Project thread {request.project_thread_id} not found. Project threads are created when projects are created."
-                )
-            else:
-                # Update project thread with current context if provided
-                if session_manager and (request.ontology_id or request.workbench):
-                    context_updates = {}
-                    if request.ontology_id:
-                        context_updates["active_ontology"] = request.ontology_id
-                    if request.workbench:
-                        context_updates["current_workbench"] = request.workbench
+            # Stream the response
+            async for chunk in response_stream:
+                yield f"data: {json.dumps(chunk)}\n\n"
+                
+            # Monitor connection pool after processing
+            try:
+                post_pool_status = db_service.get_pool_status()
+                logger.info(f"🔍 DAS_STREAM: Pool status after - In use: {post_pool_status.get('connections_in_use', 0)}/{post_pool_status.get('maxconn', 40)}")
+                
+                # Detect connection leaks (increase in connections during request)
+                pre_connections = pool_status.get('connections_in_use', 0)
+                post_connections = post_pool_status.get('connections_in_use', 0)
+                if post_connections > pre_connections:
+                    logger.warning(f"🚨 DAS_STREAM: Possible connection leak - increased from {pre_connections} to {post_connections}")
+            except Exception as e:
+                logger.warning(f"Failed to check pool status after processing: {e}")
 
-                    if context_updates:
-                        await session_manager.update_session_context(session.project_thread_id, context_updates)
-                        logger.info(f"Updated DAS project thread context: {context_updates}")
+        except Exception as e:
+            logger.error(f"DAS stream error: {e}")
+            yield f"data: {json.dumps({'type': 'error', 'message': str(e)})}\n\n"
+
+    return StreamingResponse(
+        generate_stream(),
+        media_type="text/event-stream",
+        headers={
+            "Cache-Control": "no-cache",
+            "Connection": "keep-alive",
+            "Access-Control-Allow-Origin": "*",
+            "Access-Control-Allow-Headers": "Content-Type, Authorization",
+            "X-Accel-Buffering": "no"  # Disable nginx buffering
+        }
+    )
+
+
+@router.get("/project/{project_id}/thread")
+async def get_das_project_thread(
+    project_id: str,
+    user: dict = Depends(get_user),
+    engine: DASCoreEngine = Depends(get_das_engine)
+):
+    """Get project thread info for DAS (SQL-first compatible)"""
+    try:
+        # Get project context using SQL-first approach
+        project_context = await engine.project_manager.get_project_thread_by_project_id(project_id)
+
+        if not project_context or "error" in project_context:
+            raise HTTPException(
+                status_code=404,
+                detail=f"No project thread found for project {project_id}. Create a project first."
+            )
+
+        # Handle both SQL-first context format and direct thread format
+        if "project_thread" in project_context:
+            # From get_project_context format
+            thread_data = project_context["project_thread"]
+            conversation_count = len(project_context.get("conversation_history", []))
+            events_count = len(project_context.get("recent_events", []))
         else:
-            # No project thread ID provided - need existing project with thread
-            if not request.project_id:
-                raise HTTPException(
-                    status_code=status.HTTP_400_BAD_REQUEST,
-                    detail="Project ID is required to access DAS functionality"
-                )
+            # Direct thread format
+            thread_data = project_context
+            conversation_count = 0  # Will be loaded separately
+            events_count = 0  # Will be loaded separately
 
-            # Try to get legacy session, but don't fail if not found
-            # The new intelligent processing will handle project threads properly
-            session = await engine.get_project_thread_by_project_id(request.project_id)
-
-            # Set additional context if provided
-            if session_manager and (request.ontology_id or request.workbench):
-                context_updates = {}
-                if request.ontology_id:
-                    context_updates["active_ontology"] = request.ontology_id
-                if request.workbench:
-                    context_updates["current_workbench"] = request.workbench
-
-                if context_updates:
-                    await session_manager.update_session_context(session.project_thread_id, context_updates)
-
-        # Process message with project intelligence
-        current_context = {
-            "project_id": request.project_id,
-            "ontology_id": request.ontology_id,
-            "workbench": request.workbench
+        return {
+            "project_thread_id": thread_data["project_thread_id"],
+            "project_id": thread_data["project_id"],
+            "created_at": thread_data["created_at"].isoformat() if hasattr(thread_data["created_at"], "isoformat") else str(thread_data["created_at"]),
+            "conversation_count": conversation_count,
+            "events_count": events_count,
+            "sql_first": True
         }
 
-        # Use simple processing - just project context + RAG, no hard-coded intelligence
-        response = await engine.process_message_simple(
-            request.project_id or (session.project_id if session else request.project_id),
-            request.message,
-            user_id,
-            current_context
-        )
-
-        # Convert to API response
-        # Convert string suggestions to dictionary format
-        suggestions_dict = []
-        if response.suggestions:
-            for i, suggestion in enumerate(response.suggestions):
-                suggestions_dict.append({
-                    "id": f"suggestion_{i}",
-                    "text": suggestion,
-                    "type": "suggestion"
-                })
-
-        return ChatResponse(
-            message=response.message,
-            confidence=response.confidence.value,
-            intent=response.intent.value,
-            suggestions=suggestions_dict,
-            commands=response.commands or [],
-            artifacts=response.artifacts or [],
-            metadata=response.metadata or {}
-        )
-
-    except HTTPException:
-        # Re-raise HTTPExceptions (like our 404s) without modification
-        raise
-    except Exception as e:
-        logger.error(f"Error processing chat message: {e}")
-        raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=f"Error processing message: {str(e)}"
-        )
-
-
-
-
-@router.get("/project-thread/{project_thread_id}/history")
-async def get_project_thread_history(
-    project_thread_id: str,
-    current_user: dict = Depends(get_current_user),
-    engine: DASCoreEngine = Depends(get_das_engine)
-):
-    """
-    Get chat history for a project thread
-    """
-    try:
-        session = await engine.get_project_thread(project_thread_id)
-        if not session:
-            raise HTTPException(
-                status_code=status.HTTP_404_NOT_FOUND,
-                detail="Project thread not found"
-            )
-
-        # Check user access
-        if session.user_id != current_user.get("user_id"):
-            raise HTTPException(
-                status_code=status.HTTP_403_FORBIDDEN,
-                detail="Access denied to this project thread"
-            )
-
-        # Get conversation history from session context
-        history = []
-        for entry in session.context.get("conversation_history", []):
-            history.append({
-                "type": "user",
-                "message": entry.get("user_message"),
-                "timestamp": entry.get("timestamp")
-            })
-            history.append({
-                "type": "das",
-                "message": entry.get("das_response"),
-                "metadata": {"intent": entry.get("intent")},
-                "timestamp": entry.get("timestamp")
-            })
-
-        return {"project_thread_id": project_thread_id, "history": history}
-
     except HTTPException:
         raise
     except Exception as e:
-        logger.error(f"Error getting project thread history: {e}")
-        raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=f"Error retrieving project thread history: {str(e)}"
-        )
+        logger.error(f"Error getting DAS thread: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
 
 
-# Project thread discovery and management endpoints
-@router.get("/project/{project_id}/thread", response_model=ProjectThreadResponse)
-async def get_project_thread_by_project_id(
+@router.get("/project/{project_id}/history")
+async def get_das_conversation_history(
     project_id: str,
-    current_user: dict = Depends(get_current_user),
+    user: dict = Depends(get_user),
     engine: DASCoreEngine = Depends(get_das_engine)
 ):
-    """
-    Get or create project thread for a project - this is the main entry point
-    """
+    """Get conversation history for project (SQL-first compatible)"""
     try:
-        user_id = current_user.get("user_id")
-        if not user_id:
+        project_context = await engine.project_manager.get_project_thread_by_project_id(project_id)
+
+        if not project_context or "error" in project_context:
             raise HTTPException(
-                status_code=status.HTTP_401_UNAUTHORIZED,
-                detail="User not authenticated"
+                status_code=404,
+                detail=f"No project thread found for project {project_id}"
             )
 
-        # Use the intelligent system to get or create project thread
-        if hasattr(engine, 'process_message_with_intelligence'):
-            # New system: get or create via project manager
-            if not engine.project_manager:
-                raise HTTPException(
-                    status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
-                    detail="Project intelligence not initialized - check Redis/Qdrant connections"
-                )
+        # Handle SQL-first format (debug what we're getting)
+        if "project_thread" in project_context:
+            # SQL-first format
+            print(f"🔍 DAS_HISTORY_DEBUG: Found project_thread in context")
+            print(f"   Context keys: {list(project_context.keys())}")
 
-            project_thread = await engine.project_manager.get_project_thread_by_project_id(project_id)
-            if not project_thread:
-                raise HTTPException(
-                    status_code=status.HTTP_404_NOT_FOUND,
-                    detail=f"No project thread found for project {project_id}. Project threads are created when projects are created."
-                )
+            conversation_history = project_context.get("conversation_history", [])
+            project_thread_id = project_context["project_thread"]["project_thread_id"]
 
-            return ProjectThreadResponse(
-                project_thread_id=project_thread.project_thread_id,
-                user_id=project_thread.created_by,
-                project_id=project_thread.project_id,
-                start_time=project_thread.created_at.isoformat(),
-                status="active"
-            )
-        else:
-            # Legacy system fallback
-            session = await engine.get_project_thread_by_project_id(project_id)
-            if not session:
-                raise HTTPException(
-                    status_code=status.HTTP_404_NOT_FOUND,
-                    detail=f"No project thread found for project {project_id}. Project threads are created when projects are created."
-                )
+            print(f"🔍 DAS_HISTORY_DEBUG: SQL-first conversation data")
+            print(f"   Raw conversations from context: {len(conversation_history)}")
+            print(f"   Thread ID: {project_thread_id}")
 
-            return ProjectThreadResponse(
-                project_thread_id=session.project_thread_id,
-                user_id=session.user_id,
-                project_id=session.project_id,
-                start_time=session.started_at.isoformat(),
-                status="active"
-            )
+            if conversation_history:
+                print(f"   First conversation keys: {list(conversation_history[0].keys())}")
+            else:
+                print(f"   ❌ No conversation_history in project_context")
 
-    except HTTPException:
-        # Re-raise HTTPExceptions (like our 404s) without modification
-        raise
-    except Exception as e:
-        logger.error(f"Error getting project thread for project {project_id}: {e}")
-        raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=f"Error getting project thread: {str(e)}"
-        )
+            # The conversation_history is ALREADY formatted by SQL-first manager
+            print(f"🔍 DAS_HISTORY_DEBUG: Processing formatted conversations")
+            print(f"   Formatted conversations count: {len(conversation_history)}")
 
+            if conversation_history:
+                print(f"   First formatted conversation keys: {list(conversation_history[0].keys())}")
+                print(f"   Has user_message: {'user_message' in conversation_history[0]}")
+                print(f"   Has das_response: {'das_response' in conversation_history[0]}")
 
-@router.get("/project/{project_id}/thread/history")
-async def get_project_thread_history_by_project(
-    project_id: str,
-    current_user: dict = Depends(get_current_user),
-    engine: DASCoreEngine = Depends(get_das_engine)
-):
-    """
-    Get conversation history for a project's thread
-    """
-    try:
-        user_id = current_user.get("user_id")
-        if not user_id:
-            raise HTTPException(
-                status_code=status.HTTP_401_UNAUTHORIZED,
-                detail="User not authenticated"
-            )
-
-        # Get the project thread
-        if hasattr(engine, 'process_message_with_intelligence') and engine.project_manager:
-            project_thread = await engine.project_manager.get_project_thread_by_project_id(project_id)
-            if not project_thread:
-                raise HTTPException(
-                    status_code=status.HTTP_404_NOT_FOUND,
-                    detail=f"No project thread found for project {project_id}. Project threads are created when projects are created."
-                )
-
-            # Build conversation history from both conversation_history AND project_events
+            # Convert formatted conversation to DAS history format (what DAS dock expects)
             history = []
-
-            # First, add conversations from project_events (where they're actually stored)
-            for event in project_thread.project_events:
-                if event.get("event_type") == "das_question":
-                    event_data = event.get("key_data", {})
-                    user_msg = event_data.get("user_message")
-                    das_response = event_data.get("das_response")
-                    timestamp = event.get("timestamp")
-                    intent = event_data.get("intent", "question")
-
-                    if user_msg and das_response:
-                        history.append({
-                            "type": "user",
-                            "message": user_msg,
-                            "timestamp": timestamp
-                        })
-                        history.append({
-                            "type": "das",
-                            "message": das_response,
-                            "metadata": {
-                                "intent": intent,
-                                "source": "knowledge_base"
-                            },
-                            "timestamp": timestamp
-                        })
-
-            # Then add any additional entries from conversation_history (conversation memory, etc.)
-            for entry in project_thread.conversation_history:
-                # Skip if this conversation is already in project_events
-                user_msg = entry.get("user_message")
-                if not any(event.get("key_data", {}).get("user_message") == user_msg
-                          for event in project_thread.project_events
-                          if event.get("event_type") == "das_question"):
-
+            for conv in conversation_history:
+                # Handle already-formatted conversation pairs
+                if conv.get("user_message"):
+                    # User message
                     history.append({
                         "type": "user",
-                        "message": entry.get("user_message"),
-                        "timestamp": entry.get("timestamp")
-                    })
-                    history.append({
-                        "type": "das",
-                        "message": entry.get("das_response"),
-                        "metadata": {
-                            "intent": entry.get("intent"),
-                            "source": entry.get("source", "conversation_memory")
-                        },
-                        "timestamp": entry.get("timestamp")
+                        "message": conv["user_message"],
+                        "timestamp": conv.get("timestamp"),
+                        "sql_first": True
                     })
 
-            # Sort by timestamp to maintain chronological order
-            history.sort(key=lambda x: x.get("timestamp", ""))
+                    # Assistant response (if present)
+                    if conv.get("das_response"):
+                        # Prepare metadata in DAS dock expected format
+                        rag_context = conv.get("rag_context", {})
+                        metadata = {
+                            "confidence": "medium",  # Default confidence
+                            "sources": rag_context.get("sources", []),  # ← DAS dock expects this field
+                            "chunks_found": rag_context.get("chunks_found", 0),
+                            "sql_first": True,
+                            "processing_time": conv.get("processing_time", 0)
+                        }
 
-            return {
-                "project_id": project_id,
-                "project_thread_id": project_thread.project_thread_id,
-                "history": history
-            }
+                        print(f"🔍 DAS_HISTORY_DEBUG: Assistant response metadata")
+                        print(f"   Sources count: {len(metadata['sources'])}")
+                        print(f"   Chunks found: {metadata['chunks_found']}")
+
+                        history.append({
+                            "type": "das",
+                            "message": conv["das_response"],
+                            "timestamp": conv.get("timestamp"),
+                            "metadata": metadata,  # ← Properly formatted for DAS dock
+                            "sql_first": True
+                        })
+
+            print(f"🔍 DAS_HISTORY_DEBUG: Created {len(history)} history entries for DAS dock")
         else:
-            raise HTTPException(
-                status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
-                detail="Project intelligence not available"
-            )
+            # Legacy format fallback
+            conversation_history = getattr(project_context, 'conversation_history', [])
+            project_thread_id = getattr(project_context, 'project_thread_id', 'unknown')
+            history = conversation_history
+
+        return {
+            "history": history,
+            "project_id": project_id,
+            "project_thread_id": project_thread_id,
+            "sql_first": "project_thread" in project_context if project_context else False
+        }
 
     except HTTPException:
-        # Re-raise HTTPExceptions (like our 404s) without modification
         raise
     except Exception as e:
-        logger.error(f"Error getting project thread history for project {project_id}: {e}")
-        raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=f"Error getting project thread history: {str(e)}"
-        )
+        logger.error(f"Error getting DAS history: {e}")
+        import traceback
+        traceback.print_exc()
+        raise HTTPException(status_code=500, detail=str(e))
 
 
-@router.post("/project-thread/start", response_model=ProjectThreadResponse)
-async def start_project_thread(
-    request: ProjectThreadCreateRequest,
-    current_user: dict = Depends(get_current_user),
+@router.delete("/project/{project_id}/conversation/last")
+async def delete_last_conversation(
+    project_id: str,
+    user: dict = Depends(get_user),
     engine: DASCoreEngine = Depends(get_das_engine)
 ):
-    """
-    Start a new DAS project thread
-    """
+    """Delete the last conversation entry (user message + DAS response) from project thread"""
     try:
-        user_id = current_user.get("user_id")
+        user_id = user.get("user_id")
         if not user_id:
+            raise HTTPException(status_code=401, detail="User not authenticated")
+
+        print(f"DAS_DELETE: Deleting last conversation for project {project_id}")
+
+        # Get project thread
+        project_context = await engine.project_manager.get_project_thread_by_project_id(project_id)
+        if not project_context or "error" in project_context:
             raise HTTPException(
-                status_code=status.HTTP_401_UNAUTHORIZED,
-                detail="User not authenticated"
+                status_code=404,
+                detail=f"No project thread found for project {project_id}"
             )
 
-        session = await engine.start_project_thread(user_id, request.project_id)
+        project_thread_id = None
+        if "project_thread" in project_context:
+            project_thread_id = project_context["project_thread"]["project_thread_id"]
+        else:
+            project_thread_id = getattr(project_context, 'project_thread_id', None)
 
-        return ProjectThreadResponse(
-            project_thread_id=session.project_thread_id,
-            user_id=session.user_id,
-            project_id=session.project_id,
-            start_time=session.started_at.isoformat(),
-            status="active"
-        )
-
-    except Exception as e:
-        logger.error(f"Error starting project thread: {e}")
-        raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=f"Error starting project thread: {str(e)}"
-        )
-
-
-@router.get("/project-thread/{project_thread_id}", response_model=ProjectThreadResponse)
-async def get_project_thread(
-    project_thread_id: str,
-    current_user: dict = Depends(get_current_user),
-    engine: DASCoreEngine = Depends(get_das_engine)
-):
-    """
-    Get project thread information
-    """
-    try:
-        session = await engine.get_project_thread(project_thread_id)
-        if not session:
+        if not project_thread_id:
             raise HTTPException(
-                status_code=status.HTTP_404_NOT_FOUND,
-                detail="Project thread not found"
+                status_code=404,
+                detail="Project thread ID not found"
             )
 
-        # Check user access
-        if session.user_id != current_user.get("user_id"):
-            raise HTTPException(
-                status_code=status.HTTP_403_FORBIDDEN,
-                detail="Access denied to this project thread"
-            )
+        # Delete the last conversation entry (user + assistant pair)
+        success = await engine.project_manager.delete_last_conversation(project_thread_id)
 
-        return ProjectThreadResponse(
-            project_thread_id=session.project_thread_id,
-            user_id=session.user_id,
-            project_id=session.project_id,
-            start_time=session.started_at.isoformat(),
-            status="active"
-        )
+        if success:
+            return {"success": True, "message": "Last conversation deleted successfully"}
+        else:
+            return {"success": False, "message": "No conversation to delete"}
 
     except HTTPException:
         raise
     except Exception as e:
-        logger.error(f"Error getting project thread: {e}")
-        raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=f"Error retrieving project thread: {str(e)}"
-        )
+        logger.error(f"Error deleting last conversation: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
 
 
-
-
-# Command execution endpoints
-@router.post("/commands/execute")
-async def execute_command(
-    request: CommandExecuteRequest,
-    current_user: dict = Depends(get_current_user),
+@router.get("/project/{project_id}/prompt-context")
+async def get_prompt_context(
+    project_id: str,
+    user: dict = Depends(get_user),
     engine: DASCoreEngine = Depends(get_das_engine)
 ):
     """
-    Execute a DAS command
+    Get the DAS prompt context for a project without running LLMs.
+    This endpoint shows exactly what context would be sent to the LLM.
     """
     try:
-        # For now, return a placeholder response
-        # This will be implemented when we add command execution
+        user_id = user.get("user_id")
+        if not user_id:
+            raise HTTPException(status_code=401, detail="User not authenticated")
+
+        print(f"DAS_PROMPT_CONTEXT: Getting prompt context for project {project_id}")
+
+        # Get project thread context (same as streaming method)
+        project_context = await engine.project_manager.get_project_context(project_id)
+        if not project_context or "error" in project_context:
+            raise HTTPException(
+                status_code=404,
+                detail=f"No project thread found for project {project_id}"
+            )
+
+        # Extract components
+        conversation_history = project_context.get("conversation_history", [])
+        recent_events = project_context.get("recent_events", [])
+        project_metadata = project_context.get("project_metadata", {})
+
+        # Build context sections (same as streaming method)
+        context_sections = []
+
+        # Add conversation history
+        if conversation_history:
+            context_sections.append("CONVERSATION HISTORY:")
+
+            # Handle both new format (conversation pairs) and legacy format
+            if isinstance(conversation_history, list) and conversation_history and isinstance(conversation_history[0], dict):
+                if "user_message" in conversation_history[0] and "das_response" in conversation_history[0]:
+                    # New format: conversation pairs
+                    for conv in conversation_history[-10:]:
+                        user_msg = conv.get("user_message", "")
+                        das_response = conv.get("das_response", "")
+                        if user_msg:
+                            context_sections.append(f"User: {user_msg}")
+                        if das_response:
+                            context_sections.append(f"DAS: {das_response}")
+                        context_sections.append("")
+                else:
+                    # Legacy format: individual role/content messages
+                    for conv in conversation_history[-10:]:
+                        role = conv.get("role", "")
+                        content = conv.get("content", "")
+                        if role and content:
+                            if role == "user":
+                                context_sections.append(f"User: {content}")
+                            elif role == "assistant":
+                                context_sections.append(f"DAS: {content}")
+                            context_sections.append("")
+
+        # Add project context
+        context_sections.append("PROJECT CONTEXT:")
+
+        # Get comprehensive project details
+        project_details = None
+        if hasattr(engine, 'db_service') and engine.db_service:
+            try:
+                project_details = engine.db_service.get_project_comprehensive(project_id)
+            except Exception as e:
+                print(f"DAS_PROMPT_CONTEXT: Failed to get project details: {e}")
+        elif hasattr(engine.project_manager, 'db_service') and engine.project_manager.db_service:
+            try:
+                project_details = engine.project_manager.db_service.get_project_comprehensive(project_id)
+            except Exception as e:
+                print(f"DAS_PROMPT_CONTEXT: Failed to get project details via project_manager: {e}")
+
+        if project_details:
+            context_sections.append(f"Project: {project_details.get('name', 'Unknown')} (ID: {project_id})")
+
+            if project_details.get('description'):
+                context_sections.append(f"Description: {project_details.get('description')}")
+
+            if project_details.get('domain'):
+                context_sections.append(f"Domain: {project_details.get('domain')}")
+
+            if project_details.get('creator_username'):
+                context_sections.append(f"Created by: {project_details.get('creator_username')}")
+
+            if project_details.get('created_at'):
+                context_sections.append(f"Created: {project_details.get('created_at')}")
+
+            # Namespace information
+            if project_details.get('namespace_name'):
+                context_sections.append(f"Namespace: {project_details.get('namespace_name')} ({project_details.get('namespace_path', 'N/A')})")
+                if project_details.get('namespace_description'):
+                    context_sections.append(f"Namespace description: {project_details.get('namespace_description')}")
+                if project_details.get('namespace_status'):
+                    context_sections.append(f"Namespace status: {project_details.get('namespace_status')}")
+
+            # Project URI
+            if project_details.get('project_uri'):
+                context_sections.append(f"Project URI: {project_details.get('project_uri')}")
+        else:
+            context_sections.append(f"Project ID: {project_id} (details unavailable)")
+
+        # Add comprehensive project metadata
+        if project_metadata:
+            # Files in project
+            files = project_metadata.get('files', [])
+            if files:
+                context_sections.append("PROJECT FILES:")
+                for file_info in files:
+                    title = file_info.get('title', 'Unknown')
+                    doc_type = file_info.get('document_type', 'document')
+                    filename = file_info.get('filename', 'unknown')
+                    context_sections.append(f"• {title} ({doc_type}) - {filename}")
+
+            # Ontologies in project with full details from Fuseki
+            ontologies = project_metadata.get('ontologies', [])
+            if ontologies:
+                context_sections.append("PROJECT ONTOLOGIES:")
+                for ontology_info in ontologies:
+                    graph_iri = ontology_info.get('graph_iri')
+                    label = ontology_info.get('label', 'Unknown Ontology')
+                    role = ontology_info.get('role', 'base')
+
+                    context_sections.append(f"  {label} ({role}):")
+
+                    # Fetch comprehensive ontology details
+                    if graph_iri:
+                        try:
+                            ontology_details = await engine._fetch_ontology_details(graph_iri)
+                            if ontology_details:
+                                engine._add_ontology_content_to_context(context_sections, ontology_details, "    ")
+                        except Exception as e:
+                            print(f"DAS_PROMPT_CONTEXT: Failed to fetch ontology details for {graph_iri}: {e}")
+                            context_sections.append("    [Ontology details unavailable]")
+
+        # Add recent project activity
+        if recent_events:
+            context_sections.append("RECENT PROJECT ACTIVITY:")
+            for event in recent_events[-20:]:  # Last 20 events
+                event_type = event.get("event_type", "")
+                summary = event.get("summary", "")
+                timestamp = event.get("timestamp", "")
+                if event_type and summary:
+                    if timestamp:
+                        context_sections.append(f"• {event_type}: {summary} ({timestamp})")
+                    else:
+                        context_sections.append(f"• {event_type}: {summary}")
+
+        # Build the complete context
+        full_context = "\n".join(context_sections)
+
+        # Build the complete prompt that would be sent to LLM
+        complete_prompt = f"""You are DAS, a digital assistant for this project. Answer the user's question using ALL the context provided.
+
+IMPORTANT INSTRUCTIONS:
+1. ALWAYS use the provided context as the authoritative source
+2. If information is in the context, state it confidently
+3. If information is NOT in the context, clearly say "I don't have that information"
+4. For ambiguous pronouns (it, its, that) without clear context, ask for clarification
+5. For comprehensive queries (tables, lists), include ALL relevant information
+6. For questions outside this project's domain, politely redirect
+7. NEVER contradict previous responses - be consistent
+8. When context is unclear or missing, ask specific clarifying questions
+
+{full_context}
+
+USER QUESTION: [User's question would go here]
+
+Provide a natural, helpful response using whatever context is relevant. Reference conversation history for "what did I ask" type questions. Use knowledge from documents when relevant. Be conversational."""
+
         return {
-            "success": False,
-            "message": "Command execution not yet implemented",
-            "command": request.command,
-            "session_id": request.session_id
-        }
-
-    except Exception as e:
-        logger.error(f"Error executing command: {e}")
-        raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=f"Error executing command: {str(e)}"
-        )
-
-
-@router.get("/commands/templates")
-async def get_command_templates(
-    current_user: dict = Depends(get_current_user)
-):
-    """
-    Get available command templates
-    """
-    try:
-        # Return basic command templates
-        templates = [
-            {
-                "command": "retrieve_ontology",
-                "type": "api_call",
-                "endpoint": "/api/ontologies/{ontology_id}",
-                "method": "GET",
-                "description": "Retrieve ontology by ID",
-                "category": "ontology_management"
-            },
-            {
-                "command": "create_class",
-                "type": "api_call",
-                "endpoint": "/api/ontologies/{ontology_id}/classes",
-                "method": "POST",
-                "description": "Create new class in ontology",
-                "category": "ontology_management"
-            },
-            {
-                "command": "run_analysis",
-                "type": "workflow",
-                "workflow_id": "requirements_analysis_workflow",
-                "description": "Run full requirements analysis on document",
-                "category": "analysis_workflows"
-            },
-            {
-                "command": "upload_document",
-                "type": "api_call",
-                "endpoint": "/api/files/upload",
-                "method": "POST",
-                "description": "Upload a document for processing",
-                "category": "file_operations"
+            "project_id": project_id,
+            "context_sections": context_sections,
+            "full_context": full_context,
+            "complete_prompt": complete_prompt,
+            "context_stats": {
+                "total_sections": len(context_sections),
+                "conversation_entries": len(conversation_history),
+                "recent_events": len(recent_events),
+                "ontologies": len(project_metadata.get('ontologies', [])),
+                "files": len(project_metadata.get('files', [])),
+                "context_length": len(full_context),
+                "prompt_length": len(complete_prompt)
             }
-        ]
+        }
 
-        return {"templates": templates}
-
+    except HTTPException:
+        raise
     except Exception as e:
-        logger.error(f"Error getting command templates: {e}")
-        raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=f"Error retrieving command templates: {str(e)}"
-        )
+        logger.error(f"Error getting prompt context: {e}")
+        import traceback
+        traceback.print_exc()
+        raise HTTPException(status_code=500, detail=str(e))
 
 
-# Suggestions endpoints
-# @router.get("/suggestions/{session_id}")
-# async def get_suggestions(
-#     session_id: str,
-#     current_user: dict = Depends(get_current_user),
-#     engine: DASCoreEngine = Depends(get_das_engine)
-# ):
-#     """
-#     Get suggestions for a session
-#     """
-#     try:
-#         session = await engine.get_session(session_id)
-#         if not session:
-#             raise HTTPException(
-#                 status_code=status.HTTP_404_NOT_FOUND,
-#                 detail="Session not found"
-#             )
-#
-#         # Check user access
-#         if session.user_id != current_user.get("user_id"):
-#             raise HTTPException(
-#                 status_code=status.HTTP_403_FORBIDDEN,
-#                 detail="Access denied to this session"
-#             )
-#
-#         # For now, return basic suggestions based on session context
-#         suggestions = []
-#
-#         if session.active_project:
-#             suggestions.append({
-#                 "id": "analyze_project",
-#                 "title": "Analyze Project",
-#                 "description": "Run requirements analysis on your active project",
-#                 "action": "run_analysis",
-#                 "confidence": "high",
-#                 "category": "analysis_workflows"
-#             })
-#
-#         suggestions.extend([
-#             {
-#                 "id": "browse_ontologies",
-#                 "title": "Browse Ontologies",
-#                 "description": "View available ontologies in the system",
-#                 "action": "list_ontologies",
-#                 "confidence": "medium",
-#                 "category": "ontology_management"
-#             },
-#             {
-#                 "id": "upload_document",
-#                 "title": "Upload Document",
-#                 "description": "Upload a new document for analysis",
-#                 "action": "upload_document",
-#                 "confidence": "medium",
-#                 "category": "file_operations"
-#             }
-#         ])
-#
-#         return {"suggestions": suggestions}
-#
-#     except HTTPException:
-#         raise
-#     except Exception as e:
-#         logger.error(f"Error getting suggestions: {e}")
-#         raise HTTPException(
-#             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-#             detail=f"Error retrieving suggestions: {str(e)}"
-#         )
-
-
-# Health check endpoints
-@router.get("/health")
-async def health_check():
+@router.get("/health/connections")
+async def get_connection_health(user: dict = Depends(get_user)):
     """
-    DAS health check endpoint
-    """
-    return {
-        "status": "healthy",
-        "service": "DAS",
-        "timestamp": datetime.now().isoformat(),
-        "version": "1.0.0"
-    }
-
-
-@router.get("/llm/health")
-async def llm_health_check():
-    """
-    LLM health check endpoint
+    Get database connection pool health status for DAS monitoring
     """
     try:
-        from ..services.config import Settings
-        from ..services.llm_team import LLMTeam
-
         settings = Settings()
-        llm_team = LLMTeam(settings)
-
-        # Test LLM connectivity with a simple query
-        test_response = await llm_team.analyze_requirement(
-            requirement_text="Test connectivity",
-            ontology_json_schema={"type": "object", "properties": {"test": {"type": "string"}}},
-            custom_personas=[{
-                "name": "System Health Checker",
-                "system_prompt": "You are a system health checker. Respond with a simple test message.",
-                "is_active": True
-            }]
-        )
-
+        db_service = DatabaseService(settings)
+        
+        pool_status = db_service.get_pool_status()
+        
+        # Add warnings for potential issues
+        warnings = []
+        if pool_status.get("leaked_connections", 0) > 0:
+            warnings.append(f"{pool_status['leaked_connections']} potentially leaked connections detected")
+            
+        if pool_status.get("connections_in_use", 0) > (pool_status.get("maxconn", 40) * 0.8):
+            warnings.append(f"High connection usage: {pool_status['connections_in_use']}/{pool_status['maxconn']}")
+        
         return {
-            "status": "healthy",
-            "service": "LLM",
-            "provider": settings.llm_provider,
-            "model": settings.llm_model,
-            "timestamp": datetime.now().isoformat(),
-            "test_response": test_response.get("analysis", "Connected")[:100] + "..." if test_response else "No response"
-        }
-    except Exception as e:
-        logger.error(f"LLM health check failed: {e}")
-        return {
-            "status": "unhealthy",
-            "service": "LLM",
-            "error": str(e),
+            "status": "healthy" if not warnings else "warning",
+            "pool_status": pool_status,
+            "warnings": warnings,
             "timestamp": datetime.now().isoformat()
         }
-
-
-# Session management endpoints
-@router.post("/session/create")
-async def create_session(
-    project_id: Optional[str] = None,
-    current_user: dict = Depends(get_current_user)
-):
-    """
-    Create a new session when user logs in or starts working
-    """
-    try:
-        user_id = current_user.get("user_id")
-        if not user_id:
-            raise HTTPException(
-                status_code=status.HTTP_401_UNAUTHORIZED,
-                detail="User not authenticated"
-            )
-
-        # Create session using session manager
-        if session_manager:
-            session_context = await session_manager.create_session(user_id, project_id)
-
-            return {
-                "session_id": session_context.session_id,
-                "user_id": session_context.user_id,
-                "project_id": session_context.project_id,
-                "start_time": session_context.start_time.isoformat(),
-                "goal_setting_prompt": "Hi! I'm DAS, your session assistant. What would you like to accomplish today? (Optional - this helps me prepare relevant information and assist you better)"
-            }
-        else:
-            raise HTTPException(
-                status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
-                detail="Session manager not initialized"
-            )
-
+        
     except Exception as e:
-        logger.error(f"Error creating session: {e}")
-        raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=f"Error creating session: {str(e)}"
-        )
+        logger.error(f"Error getting connection health: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
 
 
-class SessionGoalsRequest(BaseModel):
-    goals: str = Field(..., description="User's session goals")
+# =====================================
+# DAS ACTIONS - ASSUMPTIONS API
+# =====================================
 
-@router.post("/session/{session_id}/goals")
-async def set_session_goals(
-    session_id: str,
-    request: SessionGoalsRequest,
-    current_user: dict = Depends(get_current_user)
-):
-    """
-    Set goals for the session
-    """
-    try:
-        if session_manager:
-            success = await session_manager.set_session_goals(session_id, request.goals)
-            if success:
-                return {
-                    "success": True,
-                    "message": f"Session goals set. I'm preparing relevant context for: {request.goals}",
-                    "session_id": session_id
-                }
-            else:
-                raise HTTPException(
-                    status_code=status.HTTP_404_NOT_FOUND,
-                    detail="Session not found"
-                )
-        else:
-            raise HTTPException(
-                status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
-                detail="Session manager not initialized"
-            )
-
-    except Exception as e:
-        logger.error(f"Error setting session goals: {e}")
-        raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=f"Error setting session goals: {str(e)}"
-        )
+# Dependency to get database service
+async def get_db_service() -> DatabaseService:
+    """Get database service dependency"""
+    from ..services.config import Settings
+    settings = Settings()
+    return DatabaseService(settings)
 
 
-class SessionEventRequest(BaseModel):
-    event_type: str = Field(..., description="Type of event")
-    event_data: dict = Field(..., description="Event data")
-
-@router.post("/session/{session_id}/events")
-async def capture_session_event(
-    session_id: str,
-    request: SessionEventRequest,
-    current_user: dict = Depends(get_current_user)
-):
-    """
-    Capture a session event (called by frontend when user does something)
-    """
-    try:
-        if session_manager:
-            success = await session_manager.capture_event(session_id, request.event_type, request.event_data)
-            return {"success": success, "event_type": request.event_type}
-        else:
-            raise HTTPException(
-                status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
-                detail="Session manager not initialized"
-            )
-
-    except Exception as e:
-        logger.error(f"Error capturing session event: {e}")
-        raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=f"Error capturing event: {str(e)}"
-        )
+class AssumptionRequest(BaseModel):
+    """Request model for saving an assumption"""
+    content: str
+    context: Optional[str] = None  # JSON string of conversation context
 
 
-@router.get("/session/{session_id}/context")
-async def get_session_context(
-    session_id: str,
-    current_user: dict = Depends(get_current_user)
-):
-    """
-    Get current session context for DAS
-    """
-    try:
-        if session_manager:
-            context = await session_manager.get_session_context(session_id)
-            if context:
-                return context.to_dict()
-            else:
-                raise HTTPException(
-                    status_code=status.HTTP_404_NOT_FOUND,
-                    detail="Session not found"
-                )
-        else:
-            raise HTTPException(
-                status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
-                detail="Session manager not initialized"
-            )
-
-    except Exception as e:
-        logger.error(f"Error getting session context: {e}")
-        raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=f"Error getting session context: {str(e)}"
-        )
-
-
-@router.get("/session/{session_id}/activity")
-async def get_session_activity_summary(
-    session_id: str,
-    limit: int = 10,
-    current_user: dict = Depends(get_current_user)
-):
-    """
-    Get recent activity summary for DAS context awareness
-    """
-    try:
-        if session_manager:
-            activity_summary = await session_manager.get_recent_activity_summary(session_id, limit)
-            return activity_summary
-        else:
-            raise HTTPException(
-                status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
-                detail="Session manager not initialized"
-            )
-
-    except Exception as e:
-        logger.error(f"Error getting session activity: {e}")
-        raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=f"Error getting session activity: {str(e)}"
-        )
-
-
-# Enhanced event capture endpoints for frontend integration
-class OntologySelectionRequest(BaseModel):
-    ontology_id: str = Field(..., description="Selected ontology ID")
-    ontology_name: str = Field(None, description="Ontology display name")
-
-@router.post("/session/{session_id}/events/ontology-selected")
-async def capture_ontology_selection(
-    session_id: str,
-    request: OntologySelectionRequest,
-    current_user: dict = Depends(get_current_user)
-):
-    """
-    Capture ontology selection event
-    """
-    try:
-        if session_manager:
-            success = await session_manager.capture_ontology_selection(
-                session_id, request.ontology_id, request.ontology_name
-            )
-            return {
-                "success": success,
-                "event_type": "ontology_selected",
-                "ontology_id": request.ontology_id
-            }
-        else:
-            raise HTTPException(
-                status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
-                detail="Session manager not initialized"
-            )
-
-    except Exception as e:
-        logger.error(f"Error capturing ontology selection: {e}")
-        raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=f"Error capturing event: {str(e)}"
-        )
-
-
-class DocumentUploadEventRequest(BaseModel):
-    document_id: str = Field(..., description="Uploaded document ID")
-    filename: str = Field(..., description="Original filename")
-    document_type: str = Field(None, description="Type of document")
-    file_size: int = Field(None, description="File size in bytes")
-
-@router.post("/session/{session_id}/events/document-uploaded")
-async def capture_document_upload_event(
-    session_id: str,
-    request: DocumentUploadEventRequest,
-    current_user: dict = Depends(get_current_user)
-):
-    """
-    Capture document upload event
-    """
-    try:
-        if session_manager:
-            success = await session_manager.capture_document_upload(
-                session_id,
-                request.document_id,
-                request.filename,
-                request.document_type,
-                request.file_size
-            )
-            return {
-                "success": success,
-                "event_type": "document_uploaded",
-                "document_id": request.document_id
-            }
-        else:
-            raise HTTPException(
-                status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
-                detail="Session manager not initialized"
-            )
-
-    except Exception as e:
-        logger.error(f"Error capturing document upload: {e}")
-        raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=f"Error capturing event: {str(e)}"
-        )
-
-
-class WorkbenchChangeRequest(BaseModel):
-    workbench: str = Field(..., description="New workbench name")
-    previous_workbench: str = Field(None, description="Previous workbench name")
-
-@router.post("/session/{session_id}/events/workbench-changed")
-async def capture_workbench_change(
-    session_id: str,
-    request: WorkbenchChangeRequest,
-    current_user: dict = Depends(get_current_user)
-):
-    """
-    Capture workbench change event
-    """
-    try:
-        if session_manager:
-            success = await session_manager.capture_workbench_change(
-                session_id, request.workbench, request.previous_workbench
-            )
-            return {
-                "success": success,
-                "event_type": "workbench_changed",
-                "workbench": request.workbench
-            }
-        else:
-            raise HTTPException(
-                status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
-                detail="Session manager not initialized"
-            )
-
-    except Exception as e:
-        logger.error(f"Error capturing workbench change: {e}")
-        raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=f"Error capturing event: {str(e)}"
-        )
-
-
-class AnalysisEventRequest(BaseModel):
-    analysis_type: str = Field(..., description="Type of analysis")
-    target_id: str = Field(..., description="Target document/ontology ID")
-    target_type: str = Field("document", description="Type of target")
-    results_summary: dict = Field(None, description="Analysis results summary")
-
-@router.post("/session/{session_id}/events/analysis-started")
-async def capture_analysis_started_event(
-    session_id: str,
-    request: AnalysisEventRequest,
-    current_user: dict = Depends(get_current_user)
-):
-    """
-    Capture analysis started event
-    """
-    try:
-        if session_manager:
-            success = await session_manager.capture_analysis_started(
-                session_id,
-                request.analysis_type,
-                request.target_id,
-                request.target_type
-            )
-            return {
-                "success": success,
-                "event_type": "analysis_started",
-                "analysis_type": request.analysis_type
-            }
-        else:
-            raise HTTPException(
-                status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
-                detail="Session manager not initialized"
-            )
-
-    except Exception as e:
-        logger.error(f"Error capturing analysis started: {e}")
-        raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=f"Error capturing event: {str(e)}"
-        )
-
-
-@router.post("/session/{session_id}/events/analysis-completed")
-async def capture_analysis_completed_event(
-    session_id: str,
-    request: AnalysisEventRequest,
-    current_user: dict = Depends(get_current_user)
-):
-    """
-    Capture analysis completed event
-    """
-    try:
-        if session_manager:
-            success = await session_manager.capture_analysis_completed(
-                session_id,
-                request.analysis_type,
-                request.target_id,
-                request.results_summary
-            )
-            return {
-                "success": success,
-                "event_type": "analysis_completed",
-                "analysis_type": request.analysis_type
-            }
-        else:
-            raise HTTPException(
-                status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
-                detail="Session manager not initialized"
-            )
-
-    except Exception as e:
-        logger.error(f"Error capturing analysis completed: {e}")
-        raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=f"Error capturing event: {str(e)}"
-        )
-
-
-@router.delete("/project/{project_id}/thread/last-message")
-async def remove_last_message_from_thread(
+@router.post("/project/{project_id}/assumption")
+async def save_assumption(
     project_id: str,
-    current_user: dict = Depends(get_current_user),
-    engine: DASCoreEngine = Depends(get_das_engine)
+    request: AssumptionRequest,
+    user: dict = Depends(get_user),
+    db: DatabaseService = Depends(get_db_service)
 ):
     """
-    Remove the last message pair (user + DAS) from project thread for edit & retry
+    Save a confirmed assumption to the database
+    Used after DAS refines an assumption via /assumption command
     """
     try:
-        user_id = current_user.get("user_id")
+        user_id = user.get("user_id")
         if not user_id:
-            raise HTTPException(
-                status_code=status.HTTP_401_UNAUTHORIZED,
-                detail="User not authenticated"
-            )
+            raise HTTPException(status_code=401, detail="User not authenticated")
+        
+        conn = db._conn()
+        try:
+            cursor = conn.cursor()
+            cursor.execute("""
+                INSERT INTO project_assumptions 
+                (project_id, content, created_by, conversation_context, status)
+                VALUES (%s, %s, %s, %s, 'active')
+                RETURNING assumption_id, created_at
+            """, (project_id, request.content, user_id, request.context))
+            
+            result = cursor.fetchone()
+            assumption_id = result[0]
+            created_at = result[1]
+            
+            conn.commit()
+            
+            logger.info(f"✅ Assumption saved: {assumption_id} for project {project_id}")
+            
+            return {
+                "success": True,
+                "assumption_id": str(assumption_id),
+                "created_at": created_at.isoformat()
+            }
+        finally:
+            db._return(conn)
+    
+    except Exception as e:
+        logger.error(f"Error saving assumption: {e}")
+        raise HTTPException(status_code=500, detail=f"Failed to save assumption: {str(e)}")
 
-        # Get the project thread
-        if hasattr(engine, 'project_manager') and engine.project_manager:
-            project_thread = await engine.project_manager.get_project_thread_by_project_id(project_id)
-            if not project_thread:
-                raise HTTPException(
-                    status_code=status.HTTP_404_NOT_FOUND,
-                    detail=f"No project thread found for project {project_id}. Project threads are created when projects are created."
-                )
 
-            # Remove last conversation entry if it exists
-            if project_thread.conversation_history:
-                removed_entry = project_thread.conversation_history.pop()
+@router.get("/project/{project_id}/assumptions")
+async def get_assumptions(
+    project_id: str,
+    db: DatabaseService = Depends(get_db_service)
+):
+    """
+    Get all assumptions for a project
+    Used by frontend to populate Assumptions node in treeview
+    """
+    try:
+        logger.info(f"📋 ASSUMPTIONS_API: Fetching assumptions for project {project_id}")
+        
+        conn = db._conn()
+        try:
+            cursor = conn.cursor()
+            cursor.execute("""
+                SELECT assumption_id, content, created_at, status, notes
+                FROM project_assumptions
+                WHERE project_id = %s
+                ORDER BY created_at DESC
+            """, (project_id,))
+            
+            rows = cursor.fetchall()
+            logger.info(f"📋 ASSUMPTIONS_API: Found {len(rows)} assumptions")
+            
+            assumptions = []
+            for row in rows:
+                assumptions.append({
+                    "id": str(row[0]),
+                    "content": row[1],
+                    "created_at": row[2].isoformat() if row[2] else None,
+                    "status": row[3],
+                    "notes": row[4]
+                })
+            
+            logger.info(f"📋 ASSUMPTIONS_API: Returning {len(assumptions)} assumptions")
+            return {"assumptions": assumptions}
+            
+        finally:
+            db._return(conn)
+    
+    except Exception as e:
+        logger.error(f"Error retrieving assumptions: {e}")
+        raise HTTPException(status_code=500, detail=f"Failed to retrieve assumptions: {str(e)}")
 
-                # Persist the updated thread
-                await engine.project_manager._persist_project_thread(project_thread)
 
-                return {
-                    "success": True,
-                    "removed_message": removed_entry.get("user_message", ""),
-                    "remaining_entries": len(project_thread.conversation_history)
-                }
-            else:
-                return {
-                    "success": False,
-                    "message": "No conversation history to remove"
-                }
-        else:
-            raise HTTPException(
-                status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
-                detail="Project intelligence not available"
-            )
-
+@router.put("/project/{project_id}/assumption/{assumption_id}")
+async def update_assumption(
+    project_id: str,
+    assumption_id: str,
+    request: AssumptionRequest,
+    user: dict = Depends(get_user),
+    db: DatabaseService = Depends(get_db_service)
+):
+    """
+    Update an existing assumption
+    Allows users to edit assumption content or add notes
+    """
+    try:
+        user_id = user.get("user_id")
+        if not user_id:
+            raise HTTPException(status_code=401, detail="User not authenticated")
+        
+        conn = db._conn()
+        try:
+            cursor = conn.cursor()
+            cursor.execute("""
+                UPDATE project_assumptions
+                SET content = %s
+                WHERE assumption_id = %s AND project_id = %s
+                RETURNING assumption_id
+            """, (request.content, assumption_id, project_id))
+            
+            result = cursor.fetchone()
+            if not result:
+                raise HTTPException(status_code=404, detail="Assumption not found")
+            
+            conn.commit()
+            
+            return {"success": True, "assumption_id": str(result[0])}
+        finally:
+            db._return(conn)
+    
     except HTTPException:
-        # Re-raise HTTPExceptions (like our 404s) without modification
         raise
     except Exception as e:
-        logger.error(f"Error removing last message from project thread: {e}")
-        raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=f"Error removing message: {str(e)}"
-        )
+        logger.error(f"Error updating assumption: {e}")
+        raise HTTPException(status_code=500, detail=f"Failed to update assumption: {str(e)}")
 
 
-# Initialize DAS engine function
-async def initialize_das_engine(settings: Settings, rag_service: RAGService, db_service: DatabaseService, redis_client):
-    """
-    Initialize the global DAS engine and session manager instances
-    """
-    global das_engine, session_manager
+# Initialize DAS engine
+async def initialize_das_engine():
+    """Initialize DAS engine with required services"""
+    global das_engine
+
     try:
-        # Get qdrant service from rag_service for project intelligence
-        qdrant_service = rag_service.qdrant_service if hasattr(rag_service, 'qdrant_service') else None
+        # Import here to avoid circular imports
+        from ..services.qdrant_service import QdrantService
+        from ..services.db import DatabaseService
+        import redis.asyncio as redis
 
-        # Initialize with SQL-first thread manager
+        settings = Settings()
+
+        # Initialize services
+        qdrant_service = QdrantService(settings)
+        db_service = DatabaseService(settings)
+        rag_service = RAGService(settings)
+
+        # Redis (optional)
+        redis_client = None
+        try:
+            redis_client = redis.from_url(settings.redis_url)
+            await redis_client.ping()
+            logger.info("DAS: Redis connected")
+        except Exception as e:
+            logger.warning(f"DAS: Redis not available: {e}")
+
+        # Project manager (SQL-first implementation)
         from ..services.sql_first_thread_manager import SqlFirstThreadManager
-        sql_first_project_manager = SqlFirstThreadManager(settings, qdrant_service)
+        project_manager = SqlFirstThreadManager(settings, qdrant_service)
 
-        das_engine = DASCoreEngine(settings, rag_service, db_service, redis_client, project_manager=sql_first_project_manager)
-        session_manager = SessionManager(settings, redis_client)
-        logger.info("DAS engine and session manager initialized with project intelligence")
+        # Create DAS engine
+        das_engine = DASCoreEngine(settings, rag_service, project_manager, db_service)
+
+        logger.info("DAS Engine initialized successfully - SIMPLE APPROACH")
+
     except Exception as e:
         logger.error(f"Failed to initialize DAS engine: {e}")
         raise

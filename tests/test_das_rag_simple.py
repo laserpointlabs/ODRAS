@@ -121,7 +121,7 @@ class SimpleDASTester:
         async with httpx.AsyncClient(timeout=30.0) as client:
             # Try to get existing thread first
             response = await client.get(
-                f"{self.base_url}/api/das2/project/{self.project_id}/thread",
+                f"{self.base_url}/api/das/project/{self.project_id}/thread",
                 headers=self.auth_headers()
             )
 
@@ -132,7 +132,7 @@ class SimpleDASTester:
             else:
                 # Create new thread
                 response = await client.post(
-                    f"{self.base_url}/api/das2/project/{self.project_id}/thread",
+                    f"{self.base_url}/api/das/project/{self.project_id}/thread",
                     headers=self.auth_headers(),
                     json={"create_if_not_exists": True}
                 )
@@ -257,7 +257,7 @@ The aircraft utilizes a proven quadcopter design with carbon fiber construction 
 
         async with httpx.AsyncClient(timeout=60.0) as client:
             response = await client.post(
-                f"{self.base_url}/api/das2/chat/stream",
+                f"{self.base_url}/api/das/chat/stream",
                 headers=self.auth_headers(),
                 json={
                     "message": question,

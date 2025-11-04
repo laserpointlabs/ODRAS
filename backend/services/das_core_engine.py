@@ -1,1256 +1,1865 @@
 """
-⚠️ DEPRECATED - DO NOT USE DAS1 CORE ENGINE ⚠️
+DAS Core Engine - Simple Digital Assistant ✅ CURRENT ACTIVE VERSION
 
-This is the original DAS Core Engine implementation.
-This version is DEPRECATED and should NOT be used for new development.
+This is the CURRENT and RECOMMENDED DAS Core Engine implementation.
+Use this for all new development and projects.
 
-🚀 USE DAS2 CORE ENGINE INSTEAD: backend/services/das2_core_engine.py
+✅ Simple, clean architecture - NO complex intelligence layers
+✅ Straightforward workflow:
+   1. Collect project_thread context
+   2. Collect RAG context
+   3. Send ALL to LLM with user question
+   4. Return response with sources
 
-DAS2CoreEngine provides the same functionality with a much cleaner, simpler architecture:
-- No complex intelligence layers
-- Direct context + LLM approach
-- Easier to debug and maintain
-- Better performance
+✅ Easy to debug and maintain
+✅ Better performance than DAS1
+✅ Direct context + LLM approach - no bullshit
 
-This file is kept for reference only and may be removed in future versions.
-
-=== ORIGINAL DOCUMENTATION (DEPRECATED) ===
-DAS Core Engine - Advanced Digital Assistant with RAG Integration and Session Learning
-
-This is the comprehensive DAS engine that provides advanced agent capabilities,
-integrates with the RAG query process, and learns from session interactions.
+⚠️ DO NOT USE DASCoreEngine (backend/services/das_core_engine.py) - it's deprecated
 """
 
 import json
 import logging
 import uuid
 from datetime import datetime
-from enum import Enum
-from typing import Any, Dict, List, Optional, Union
+from typing import Any, Dict, List, Optional
 from dataclasses import dataclass
 
 from .config import Settings
 from .rag_service import RAGService
-from .db import DatabaseService
-from .session_manager import SessionManager, SessionContext
-from .project_thread_manager import ProjectThreadManager, ProjectThreadContext, ProjectEvent, ProjectEventType
-from .project_intelligence_service import ProjectIntelligenceService
+from .project_thread_manager import ProjectThreadManager, ProjectEventType
 
 logger = logging.getLogger(__name__)
 
 
-class DASIntent(Enum):
-    """DAS intent classification"""
-    QUESTION = "question"
-    COMMAND = "command"
-    CLARIFICATION = "clarification"
-    GREETING = "greeting"
-    CONVERSATION_MEMORY = "conversation_memory"  # "What did I ask?", "What were we talking about?"
-    UNKNOWN = "unknown"
-
-
-class DASConfidence(Enum):
-    """DAS confidence levels"""
-    HIGH = "high"
-    MEDIUM = "medium"
-    LOW = "low"
-
-
 @dataclass
 class DASResponse:
-    """DAS response object"""
+    """Simple DAS response"""
     message: str
-    confidence: DASConfidence = DASConfidence.MEDIUM
-    intent: DASIntent = DASIntent.UNKNOWN
-    suggestions: Optional[List[str]] = None
-    commands: Optional[List[Dict[str, Any]]] = None
-    artifacts: Optional[List[Dict[str, Any]]] = None
-    session_id: Optional[str] = None
-    metadata: Optional[Dict[str, Any]] = None
-
-
-@dataclass
-class DASProjectThread:
-    """DAS project thread object"""
-    project_thread_id: str
-    user_id: str
-    project_id: str
-    started_at: datetime = None
-    last_activity: datetime = None
-    context: Dict[str, Any] = None
+    sources: List[Dict[str, Any]] = None
+    metadata: Dict[str, Any] = None
 
     def __post_init__(self):
-        if self.started_at is None:
-            self.started_at = datetime.now()
-        if self.last_activity is None:
-            self.last_activity = datetime.now()
-        if self.context is None:
-            self.context = {}
+        if self.sources is None:
+            self.sources = []
+        if self.metadata is None:
+            self.metadata = {}
 
 
 class DASCoreEngine:
     """
-    Advanced DAS Core Engine with RAG integration and project thread management
+    DAS - Dead Simple Digital Assistant
 
-    This engine provides:
-    - Advanced conversational AI capabilities
-    - Deep RAG integration for knowledge queries
-    - Project thread context awareness and learning
-    - Vector store integration for experience learning
-    - Intelligent command execution
-    - Contextual suggestions and assistance
+    Does exactly what you want:
+    - Collects ALL context (project thread, RAG, conversation)
+    - Builds ONE prompt with everything
+    - Sends to LLM
+    - Returns response with sources
+
+    NO intelligence layers, NO complex logic, NO bullshit.
     """
 
-    def __init__(self, settings: Settings, rag_service: RAGService, db_service: DatabaseService, redis_client=None, project_manager=None):
+    def __init__(self, settings: Settings, rag_service: RAGService, project_manager, db_service=None):
         self.settings = settings
         self.rag_service = rag_service
+        self.project_manager = project_manager  # Now SqlFirstThreadManager
         self.db_service = db_service
-        self.redis = redis_client
 
-        # Use provided project manager (should be SqlFirstThreadManager)
-        if project_manager:
-            self.project_manager = project_manager
-            logger.info("DAS Core Engine using provided SQL-first project manager")
+        # Check if we're using SQL-first thread manager
+        self.sql_first_threads = hasattr(project_manager, 'get_project_context')
+        if self.sql_first_threads:
+            logger.info("DAS initialized with SQL-first thread manager")
         else:
-            # Fallback: create SQL-first manager
-            qdrant_service = rag_service.qdrant_service if hasattr(rag_service, 'qdrant_service') else None
-            if not qdrant_service:
-                raise RuntimeError("Qdrant service required for project intelligence")
+            logger.warning("DAS using legacy thread manager - consider upgrading")
 
-            from .sql_first_thread_manager import SqlFirstThreadManager
-            self.project_manager = SqlFirstThreadManager(settings, qdrant_service)
-            logger.info("DAS Core Engine created SQL-first project manager")
-        # Initialize project intelligence with qdrant service from rag_service
-        qdrant_service = rag_service.qdrant_service if hasattr(rag_service, 'qdrant_service') else None
-        if qdrant_service:
-            self.project_intelligence = ProjectIntelligenceService(settings, redis_client, qdrant_service, rag_service)
-        else:
-            logger.warning("No Qdrant service available for project intelligence")
-            self.project_intelligence = None
+        logger.info("DAS Core Engine initialized - SIMPLE APPROACH")
 
-        logger.info(f"Project intelligence initialized - Redis: {'Available' if redis_client else 'Not available (cache disabled)'}")
+    def _serialize_project_details(self, project_details):
+        """Convert project details to JSON-serializable format"""
+        if not project_details:
+            return None
 
-        # Legacy support - will be phased out
-        self.project_threads: Dict[str, DASProjectThread] = {}
+        serialized = {}
+        for key, value in project_details.items():
+            if hasattr(value, 'isoformat'):  # datetime object
+                serialized[key] = value.isoformat()
+            else:
+                serialized[key] = value
+        return serialized
 
-        logger.info("DAS Core Engine initialized with comprehensive project intelligence")
+    async def _fetch_ontology_details(self, graph_iri: str, visited_imports: set = None) -> Dict[str, Any]:
+        """
+        Fetch comprehensive ontology details from Fuseki including imported ontologies
+        Returns classes, object properties, data properties with their metadata
+        """
+        try:
+            import httpx
 
-    async def get_project_thread_by_project_id(self, project_id: str) -> Optional[DASProjectThread]:
-        """Get existing project thread by project ID. Returns None if no thread exists."""
-        # First, try to find existing project thread for this project
-        existing_thread = await self._find_project_thread_by_project_id(project_id)
-        if existing_thread:
-            logger.info(f"Found existing project thread {existing_thread.project_thread_id} for project {project_id}")
-            return existing_thread
+            # Track visited imports to prevent infinite recursion
+            if visited_imports is None:
+                visited_imports = set()
 
-        logger.info(f"No project thread found for project {project_id}")
-        return None
+            if graph_iri in visited_imports:
+                logger.warning(f"Circular import detected for {graph_iri}, skipping")
+                return {}
 
-    async def start_project_thread(self, user_id: str, project_id: str) -> DASProjectThread:
-        """Start a new DAS project thread with full context awareness"""
-        project_thread_id = str(uuid.uuid4())
+            visited_imports.add(graph_iri)
 
-        project_thread = DASProjectThread(
-            project_thread_id=project_thread_id,
-            user_id=user_id,
-            project_id=project_id,
-            started_at=datetime.now(),
-            last_activity=datetime.now(),
-            context={
-                "project_id": project_id,
-                "conversation_history": [],
-                "learned_preferences": {},
-                "active_workflows": []
-            }
-        )
+            # First, get imports for this ontology
+            imports_query = f"""
+            PREFIX owl: <http://www.w3.org/2002/07/owl#>
 
-        self.project_threads[project_thread_id] = project_thread
+            SELECT ?import WHERE {{
+                GRAPH <{graph_iri}> {{
+                    ?ontology a owl:Ontology .
+                    ?ontology owl:imports ?import .
+                }}
+            }}
+            """
 
-        # Persist to Redis if available
-        if self.redis:
-            await self._persist_project_thread(project_thread)
-            # Also create project ID index for discovery
-            await self.redis.set(f"das_project_index:{project_id}", project_thread_id, ex=86400 * 7)
+            fuseki_url = f"{self.settings.fuseki_url}/query"
+            imported_ontologies = []
 
-        # Log project thread creation for analytics
-        logger.info(f"Created DAS project thread {project_thread_id} for project {project_id} by user {user_id}")
-        return project_thread
+            async with httpx.AsyncClient(timeout=10.0) as client:
+                # Get imports
+                import_response = await client.post(
+                    fuseki_url,
+                    data={"query": imports_query},
+                    headers={"Accept": "application/json"},
+                    auth=(self.settings.fuseki_user, self.settings.fuseki_password) if hasattr(self.settings, 'fuseki_user') and self.settings.fuseki_user else None
+                )
 
-    async def get_project_thread(self, project_thread_id: str) -> Optional[DASProjectThread]:
-        """Get existing DAS project thread"""
-        # First check memory cache
-        project_thread = self.project_threads.get(project_thread_id)
-        if project_thread:
-            project_thread.last_activity = datetime.now()
-            return project_thread
+                if import_response.status_code == 200:
+                    import_results = import_response.json()
+                    import_bindings = import_results.get("results", {}).get("bindings", [])
 
-        # If not in memory, try to load from Redis
-        if self.redis:
-            project_thread = await self._load_project_thread(project_thread_id)
-            if project_thread:
-                self.project_threads[project_thread_id] = project_thread
-                project_thread.last_activity = datetime.now()
-                return project_thread
+                    for binding in import_bindings:
+                        import_iri = binding["import"]["value"]
+                        imported_ontologies.append(import_iri)
+                        logger.info(f"Found import: {graph_iri} imports {import_iri}")
 
-        # NEW: Also check the new ProjectThreadManager system (Qdrant vector store)
-        if self.project_manager:
-            try:
-                new_thread = await self.project_manager.get_project_thread(project_thread_id)
-                if new_thread:
-                    # Convert new system thread to legacy format for compatibility
-                    legacy_thread = DASProjectThread(
-                        project_thread_id=new_thread.project_thread_id,
-                        user_id=new_thread.created_by,
-                        project_id=new_thread.project_id,
-                        started_at=new_thread.created_at,
-                        last_activity=new_thread.last_activity,
-                        context={
-                            "project_id": new_thread.project_id,
-                            "conversation_history": new_thread.conversation_history,
-                            "project_events": new_thread.project_events,
-                            "active_ontologies": new_thread.active_ontologies,
-                            "current_workbench": new_thread.current_workbench,
-                            "project_goals": new_thread.project_goals
-                        }
-                    )
-                    # Cache in memory for future lookups
-                    self.project_threads[project_thread_id] = legacy_thread
-                    logger.info(f"Found thread {project_thread_id} in new system, converted to legacy format")
-                    return legacy_thread
-            except Exception as e:
-                logger.warning(f"Error checking new system for thread {project_thread_id}: {e}")
+            # SPARQL query to get ALL ontology content including individuals, restrictions, disjoint classes, etc.
+            sparql_query = f"""
+            PREFIX owl: <http://www.w3.org/2002/07/owl#>
+            PREFIX rdf: <http://www.w3.org/1999/02/22-rdf-syntax-ns#>
+            PREFIX rdfs: <http://www.w3.org/2000/01/rdf-schema#>
+            PREFIX skos: <http://www.w3.org/2004/02/skos/core#>
+            PREFIX dc: <http://purl.org/dc/elements/1.1/>
+            PREFIX dcterms: <http://purl.org/dc/terms/>
+            PREFIX foaf: <http://xmlns.com/foaf/0.1/>
 
-        return None
+            SELECT ?class ?className ?classComment ?classDefinition ?classExample ?classIdentifier
+                   ?classCreator ?classCreatedDate ?classModifiedBy ?classModifiedDate
+                   ?classPriority ?classStatus ?classSubClassOf ?classEquivalentClass ?classDisjointWith
 
-    async def process_message_simple(
+                   ?objProp ?objPropName ?objPropComment ?objPropDefinition ?objPropExample
+                   ?domain ?range ?objPropCreator ?objPropCreatedDate ?objPropModifiedBy
+                   ?objPropInverseOf ?objPropSubPropertyOf ?objPropEquivalentProperty ?objPropDisjointWith
+
+                   ?dataProp ?dataPropName ?dataPropComment ?dataPropDefinition ?dataPropExample
+                   ?dataDomain ?dataRange ?dataPropCreator ?dataPropCreatedDate ?dataPropModifiedBy
+                   ?dataPropSubPropertyOf ?dataPropEquivalentProperty ?dataPropDisjointWith
+
+                   ?individual ?individualName ?individualComment ?individualType ?individualCreator ?individualCreatedDate
+                   ?individualProperty ?individualPropertyValue ?individualPropertyType
+
+                   ?restriction ?restrictionType ?restrictionProperty ?restrictionCardinality ?restrictionValue
+                   ?restrictionOnClass ?restrictionOnProperty
+
+                   ?annotationProp ?annotationPropName ?annotationPropComment ?annotationPropDomain ?annotationPropRange
+
+                   ?note ?noteName ?noteComment ?noteType ?noteCreator ?noteCreatedDate ?noteModifiedBy ?noteModifiedDate
+                   ?noteFor ?noteForType ?noteForName ?noteForComment
+
+                   ?ontology ?ontologyLabel ?ontologyComment ?ontologyDefinition ?ontologyExample
+                   ?ontologyTitle ?ontologyDescription ?ontologyCreator ?ontologyContributor ?ontologyDate
+                   ?ontologyCreated ?ontologyModified ?ontologyVersion ?ontologyLicense ?ontologyHomepage
+
+            WHERE {{
+                GRAPH <{graph_iri}> {{
+                    # Ontology-level annotations
+                    OPTIONAL {{
+                        ?ontology a owl:Ontology .
+                        OPTIONAL {{ ?ontology rdfs:label ?ontologyLabel }}
+                        OPTIONAL {{ ?ontology rdfs:comment ?ontologyComment }}
+                        OPTIONAL {{ ?ontology skos:definition ?ontologyDefinition }}
+                        OPTIONAL {{ ?ontology skos:example ?ontologyExample }}
+                        OPTIONAL {{ ?ontology dc:title ?ontologyTitle }}
+                        OPTIONAL {{ ?ontology dc:description ?ontologyDescription }}
+                        OPTIONAL {{ ?ontology dc:creator ?ontologyCreator }}
+                        OPTIONAL {{ ?ontology dc:contributor ?ontologyContributor }}
+                        OPTIONAL {{ ?ontology dc:date ?ontologyDate }}
+                        OPTIONAL {{ ?ontology dcterms:created ?ontologyCreated }}
+                        OPTIONAL {{ ?ontology dcterms:modified ?ontologyModified }}
+                        OPTIONAL {{ ?ontology dcterms:version ?ontologyVersion }}
+                        OPTIONAL {{ ?ontology dcterms:license ?ontologyLicense }}
+                        OPTIONAL {{ ?ontology foaf:homepage ?ontologyHomepage }}
+                    }}
+                    # Classes with comprehensive attributes including disjoint classes
+                    OPTIONAL {{
+                        ?class a owl:Class .
+                        OPTIONAL {{ ?class rdfs:label ?className }}
+                        OPTIONAL {{ ?class rdfs:comment ?classComment }}
+                        OPTIONAL {{ ?class skos:definition ?classDefinition }}
+                        OPTIONAL {{ ?class skos:example ?classExample }}
+                        OPTIONAL {{ ?class dc:identifier ?classIdentifier }}
+                        OPTIONAL {{ ?class dc:creator ?classCreator }}
+                        OPTIONAL {{ ?class dc:created ?classCreatedDate }}
+                        OPTIONAL {{ ?class dc:contributor ?classModifiedBy }}
+                        OPTIONAL {{ ?class dcterms:modified ?classModifiedDate }}
+                        OPTIONAL {{ ?class ?priorityProp ?classPriority FILTER(CONTAINS(STR(?priorityProp), "priority")) }}
+                        OPTIONAL {{ ?class ?statusProp ?classStatus FILTER(CONTAINS(STR(?statusProp), "status")) }}
+                        OPTIONAL {{ ?class rdfs:subClassOf ?classSubClassOf }}
+                        OPTIONAL {{ ?class owl:equivalentClass ?classEquivalentClass }}
+                        OPTIONAL {{ ?class owl:disjointWith ?classDisjointWith }}
+                    }}
+
+                    # Object Properties with comprehensive attributes including disjoint properties
+                    OPTIONAL {{
+                        ?objProp a owl:ObjectProperty .
+                        OPTIONAL {{ ?objProp rdfs:label ?objPropName }}
+                        OPTIONAL {{ ?objProp rdfs:comment ?objPropComment }}
+                        OPTIONAL {{ ?objProp skos:definition ?objPropDefinition }}
+                        OPTIONAL {{ ?objProp skos:example ?objPropExample }}
+                        OPTIONAL {{ ?objProp rdfs:domain ?domain }}
+                        OPTIONAL {{ ?objProp rdfs:range ?range }}
+                        OPTIONAL {{ ?objProp dc:creator ?objPropCreator }}
+                        OPTIONAL {{ ?objProp dc:created ?objPropCreatedDate }}
+                        OPTIONAL {{ ?objProp dc:contributor ?objPropModifiedBy }}
+                        OPTIONAL {{ ?objProp owl:inverseOf ?objPropInverseOf }}
+                        OPTIONAL {{ ?objProp rdfs:subPropertyOf ?objPropSubPropertyOf }}
+                        OPTIONAL {{ ?objProp owl:equivalentProperty ?objPropEquivalentProperty }}
+                        OPTIONAL {{ ?objProp owl:propertyDisjointWith ?objPropDisjointWith }}
+                    }}
+
+                    # Data Properties with comprehensive attributes including disjoint properties
+                    OPTIONAL {{
+                        ?dataProp a owl:DatatypeProperty .
+                        OPTIONAL {{ ?dataProp rdfs:label ?dataPropName }}
+                        OPTIONAL {{ ?dataProp rdfs:comment ?dataPropComment }}
+                        OPTIONAL {{ ?dataProp skos:definition ?dataPropDefinition }}
+                        OPTIONAL {{ ?dataProp skos:example ?dataPropExample }}
+                        OPTIONAL {{ ?dataProp rdfs:domain ?dataDomain }}
+                        OPTIONAL {{ ?dataProp rdfs:range ?dataRange }}
+                        OPTIONAL {{ ?dataProp dc:creator ?dataPropCreator }}
+                        OPTIONAL {{ ?dataProp dc:created ?dataPropCreatedDate }}
+                        OPTIONAL {{ ?dataProp dc:contributor ?dataPropModifiedBy }}
+                        OPTIONAL {{ ?dataProp rdfs:subPropertyOf ?dataPropSubPropertyOf }}
+                        OPTIONAL {{ ?dataProp owl:equivalentProperty ?dataPropEquivalentProperty }}
+                        OPTIONAL {{ ?dataProp owl:propertyDisjointWith ?dataPropDisjointWith }}
+                    }}
+
+                    # Individuals/Instances with all their properties and values
+                    OPTIONAL {{
+                        ?individual a ?individualType .
+                        ?individualType a owl:Class .
+                        OPTIONAL {{ ?individual rdfs:label ?individualName }}
+                        OPTIONAL {{ ?individual rdfs:comment ?individualComment }}
+                        OPTIONAL {{ ?individual dc:creator ?individualCreator }}
+                        OPTIONAL {{ ?individual dc:created ?individualCreatedDate }}
+
+                        # Individual property values
+                        OPTIONAL {{
+                            ?individual ?individualProperty ?individualPropertyValue .
+                            OPTIONAL {{ ?individualProperty a ?individualPropertyType }}
+                        }}
+                    }}
+
+                    # Cardinality and value restrictions
+                    OPTIONAL {{
+                        ?restriction a owl:Restriction .
+                        OPTIONAL {{ ?restriction owl:onProperty ?restrictionProperty }}
+                        OPTIONAL {{ ?restriction owl:onClass ?restrictionOnClass }}
+                        OPTIONAL {{ ?restriction owl:cardinality ?restrictionCardinality }}
+                        OPTIONAL {{ ?restriction owl:minCardinality ?restrictionCardinality }}
+                        OPTIONAL {{ ?restriction owl:maxCardinality ?restrictionCardinality }}
+                        OPTIONAL {{ ?restriction owl:someValuesFrom ?restrictionValue }}
+                        OPTIONAL {{ ?restriction owl:allValuesFrom ?restrictionValue }}
+                        OPTIONAL {{ ?restriction owl:hasValue ?restrictionValue }}
+
+                        # Determine restriction type
+                        BIND(IF(BOUND(?restrictionCardinality), "cardinality",
+                               IF(BOUND(?restrictionValue), "value", "unknown")) AS ?restrictionType)
+                    }}
+
+                    # Annotation Properties
+                    OPTIONAL {{
+                        ?annotationProp a owl:AnnotationProperty .
+                        OPTIONAL {{ ?annotationProp rdfs:label ?annotationPropName }}
+                        OPTIONAL {{ ?annotationProp rdfs:comment ?annotationPropComment }}
+                        OPTIONAL {{ ?annotationProp rdfs:domain ?annotationPropDomain }}
+                        OPTIONAL {{ ?annotationProp rdfs:range ?annotationPropRange }}
+                    }}
+
+                    # Notes with comprehensive attributes and note_for relationships
+                    OPTIONAL {{
+                        ?note a <http://www.w3.org/2004/02/skos/core#Note> .
+                        OPTIONAL {{ ?note rdfs:label ?noteName }}
+                        OPTIONAL {{ ?note rdfs:comment ?noteComment }}
+                        OPTIONAL {{ ?note dc:type ?noteType }}
+                        OPTIONAL {{ ?note dc:creator ?noteCreator }}
+                        OPTIONAL {{ ?note dc:created ?noteCreatedDate }}
+                        OPTIONAL {{ ?note dcterms:modified ?noteModifiedDate }}
+                        OPTIONAL {{ ?note dcterms:creator ?noteModifiedBy }}
+
+                        # Note_for relationship to connect notes to other objects
+                        OPTIONAL {{
+                            ?note <http://www.w3.org/2004/02/skos/core#note_for> ?noteFor .
+                            OPTIONAL {{ ?noteFor rdf:type ?noteForType }}
+                            OPTIONAL {{ ?noteFor rdfs:label ?noteForName }}
+                            OPTIONAL {{ ?noteFor rdfs:comment ?noteForComment }}
+                        }}
+                    }}
+                }}
+            }}
+            """
+
+            async with httpx.AsyncClient(timeout=15.0) as client:
+                response = await client.post(
+                    fuseki_url,
+                    data={"query": sparql_query},
+                    headers={"Accept": "application/json"},
+                    auth=(self.settings.fuseki_user, self.settings.fuseki_password) if hasattr(self.settings, 'fuseki_user') and self.settings.fuseki_user else None
+                )
+
+                if response.status_code != 200:
+                    logger.warning(f"Failed to fetch ontology details for {graph_iri}: {response.status_code}")
+                    return {}
+
+                results = response.json()
+                bindings = results.get("results", {}).get("bindings", [])
+
+                # Organize results for main ontology with comprehensive attributes
+                ontology_metadata = {}
+                classes = {}
+                obj_properties = {}
+                data_properties = {}
+                individuals = {}
+                restrictions = {}
+                annotation_properties = {}
+                notes = {}
+
+                for binding in bindings:
+                    # Process ontology-level annotations
+                    if "ontology" in binding:
+                        ontology_uri = binding["ontology"]["value"]
+                        if ontology_uri not in ontology_metadata:
+                            ontology_metadata[ontology_uri] = {
+                                "label": binding.get("ontologyLabel", {}).get("value", ""),
+                                "comment": binding.get("ontologyComment", {}).get("value", ""),
+                                "definition": binding.get("ontologyDefinition", {}).get("value", ""),
+                                "example": binding.get("ontologyExample", {}).get("value", ""),
+                                "title": binding.get("ontologyTitle", {}).get("value", ""),
+                                "description": binding.get("ontologyDescription", {}).get("value", ""),
+                                "creator": binding.get("ontologyCreator", {}).get("value", ""),
+                                "contributor": binding.get("ontologyContributor", {}).get("value", ""),
+                                "date": binding.get("ontologyDate", {}).get("value", ""),
+                                "created": binding.get("ontologyCreated", {}).get("value", ""),
+                                "modified": binding.get("ontologyModified", {}).get("value", ""),
+                                "version": binding.get("ontologyVersion", {}).get("value", ""),
+                                "license": binding.get("ontologyLicense", {}).get("value", ""),
+                                "homepage": binding.get("ontologyHomepage", {}).get("value", "")
+                            }
+                    # Process classes with ALL attributes including disjoint classes
+                    if "class" in binding:
+                        class_uri = binding["class"]["value"]
+                        if class_uri not in classes:
+                            classes[class_uri] = {
+                                "name": binding.get("className", {}).get("value", class_uri.split("#")[-1].split("/")[-1]),
+                                "comment": binding.get("classComment", {}).get("value", ""),
+                                "definition": binding.get("classDefinition", {}).get("value", ""),
+                                "example": binding.get("classExample", {}).get("value", ""),
+                                "identifier": binding.get("classIdentifier", {}).get("value", ""),
+                                "creator": binding.get("classCreator", {}).get("value", ""),
+                                "created_date": binding.get("classCreatedDate", {}).get("value", ""),
+                                "modified_by": binding.get("classModifiedBy", {}).get("value", ""),
+                                "modified_date": binding.get("classModifiedDate", {}).get("value", ""),
+                                "priority": binding.get("classPriority", {}).get("value", ""),
+                                "status": binding.get("classStatus", {}).get("value", ""),
+                                "subclass_of": binding.get("classSubClassOf", {}).get("value", "").split("#")[-1].split("/")[-1] if "classSubClassOf" in binding else "",
+                                "equivalent_class": binding.get("classEquivalentClass", {}).get("value", "").split("#")[-1].split("/")[-1] if "classEquivalentClass" in binding else "",
+                                "disjoint_with": binding.get("classDisjointWith", {}).get("value", "").split("#")[-1].split("/")[-1] if "classDisjointWith" in binding else ""
+                            }
+
+                    # Process object properties with ALL attributes including disjoint properties
+                    # CRITICAL: Key by prop_uri + domain + range to handle multiple domain/range combos for same property
+                    if "objProp" in binding:
+                        prop_uri = binding["objProp"]["value"]
+                        domain = binding.get("domain", {}).get("value", "").split("#")[-1].split("/")[-1] if "domain" in binding else ""
+                        range_val = binding.get("range", {}).get("value", "").split("#")[-1].split("/")[-1] if "range" in binding else ""
+                        
+                        # Create unique key for each domain/range combination
+                        unique_key = f"{prop_uri}_{domain}_{range_val}"
+                        
+                        if unique_key not in obj_properties:
+                            obj_properties[unique_key] = {
+                                "name": binding.get("objPropName", {}).get("value", prop_uri.split("#")[-1].split("/")[-1]),
+                                "comment": binding.get("objPropComment", {}).get("value", ""),
+                                "definition": binding.get("objPropDefinition", {}).get("value", ""),
+                                "example": binding.get("objPropExample", {}).get("value", ""),
+                                "domain": domain,
+                                "range": range_val,
+                                "creator": binding.get("objPropCreator", {}).get("value", ""),
+                                "created_date": binding.get("objPropCreatedDate", {}).get("value", ""),
+                                "modified_by": binding.get("objPropModifiedBy", {}).get("value", ""),
+                                "inverse_of": binding.get("objPropInverseOf", {}).get("value", "").split("#")[-1].split("/")[-1] if "objPropInverseOf" in binding else "",
+                                "subproperty_of": binding.get("objPropSubPropertyOf", {}).get("value", "").split("#")[-1].split("/")[-1] if "objPropSubPropertyOf" in binding else "",
+                                "equivalent_property": binding.get("objPropEquivalentProperty", {}).get("value", "").split("#")[-1].split("/")[-1] if "objPropEquivalentProperty" in binding else "",
+                                "disjoint_with": binding.get("objPropDisjointWith", {}).get("value", "").split("#")[-1].split("/")[-1] if "objPropDisjointWith" in binding else ""
+                            }
+
+                    # Process data properties with ALL attributes including disjoint properties
+                    if "dataProp" in binding:
+                        prop_uri = binding["dataProp"]["value"]
+                        if prop_uri not in data_properties:
+                            data_properties[prop_uri] = {
+                                "name": binding.get("dataPropName", {}).get("value", prop_uri.split("#")[-1].split("/")[-1]),
+                                "comment": binding.get("dataPropComment", {}).get("value", ""),
+                                "definition": binding.get("dataPropDefinition", {}).get("value", ""),
+                                "example": binding.get("dataPropExample", {}).get("value", ""),
+                                "domain": binding.get("dataDomain", {}).get("value", "").split("#")[-1].split("/")[-1] if "dataDomain" in binding else "",
+                                "range": binding.get("dataRange", {}).get("value", "").split("#")[-1].split("/")[-1] if "dataRange" in binding else "",
+                                "creator": binding.get("dataPropCreator", {}).get("value", ""),
+                                "created_date": binding.get("dataPropCreatedDate", {}).get("value", ""),
+                                "modified_by": binding.get("dataPropModifiedBy", {}).get("value", ""),
+                                "subproperty_of": binding.get("dataPropSubPropertyOf", {}).get("value", "").split("#")[-1].split("/")[-1] if "dataPropSubPropertyOf" in binding else "",
+                                "equivalent_property": binding.get("dataPropEquivalentProperty", {}).get("value", "").split("#")[-1].split("/")[-1] if "dataPropEquivalentProperty" in binding else "",
+                                "disjoint_with": binding.get("dataPropDisjointWith", {}).get("value", "").split("#")[-1].split("/")[-1] if "dataPropDisjointWith" in binding else ""
+                            }
+
+                    # Process individuals/instances with all their properties
+                    if "individual" in binding:
+                        individual_uri = binding["individual"]["value"]
+                        if individual_uri not in individuals:
+                            individuals[individual_uri] = {
+                                "name": binding.get("individualName", {}).get("value", individual_uri.split("#")[-1].split("/")[-1]),
+                                "comment": binding.get("individualComment", {}).get("value", ""),
+                                "type": binding.get("individualType", {}).get("value", "").split("#")[-1].split("/")[-1] if "individualType" in binding else "",
+                                "creator": binding.get("individualCreator", {}).get("value", ""),
+                                "created_date": binding.get("individualCreatedDate", {}).get("value", ""),
+                                "properties": []
+                            }
+
+                        # Add property values for this individual
+                        if "individualProperty" in binding and "individualPropertyValue" in binding:
+                            prop_name = binding.get("individualProperty", {}).get("value", "").split("#")[-1].split("/")[-1]
+                            prop_value = binding.get("individualPropertyValue", {}).get("value", "")
+                            prop_type = binding.get("individualPropertyType", {}).get("value", "").split("#")[-1].split("/")[-1] if "individualPropertyType" in binding else ""
+
+                            individuals[individual_uri]["properties"].append({
+                                "property": prop_name,
+                                "value": prop_value,
+                                "type": prop_type
+                            })
+
+                    # Process cardinality and value restrictions
+                    if "restriction" in binding:
+                        restriction_uri = binding["restriction"]["value"]
+                        if restriction_uri not in restrictions:
+                            restrictions[restriction_uri] = {
+                                "type": binding.get("restrictionType", {}).get("value", ""),
+                                "property": binding.get("restrictionProperty", {}).get("value", "").split("#")[-1].split("/")[-1] if "restrictionProperty" in binding else "",
+                                "cardinality": binding.get("restrictionCardinality", {}).get("value", ""),
+                                "value": binding.get("restrictionValue", {}).get("value", "").split("#")[-1].split("/")[-1] if "restrictionValue" in binding else "",
+                                "on_class": binding.get("restrictionOnClass", {}).get("value", "").split("#")[-1].split("/")[-1] if "restrictionOnClass" in binding else "",
+                                "on_property": binding.get("restrictionOnProperty", {}).get("value", "").split("#")[-1].split("/")[-1] if "restrictionOnProperty" in binding else ""
+                            }
+
+                    # Process annotation properties
+                    if "annotationProp" in binding:
+                        annotation_uri = binding["annotationProp"]["value"]
+                        if annotation_uri not in annotation_properties:
+                            annotation_properties[annotation_uri] = {
+                                "name": binding.get("annotationPropName", {}).get("value", annotation_uri.split("#")[-1].split("/")[-1]),
+                                "comment": binding.get("annotationPropComment", {}).get("value", ""),
+                                "domain": binding.get("annotationPropDomain", {}).get("value", "").split("#")[-1].split("/")[-1] if "annotationPropDomain" in binding else "",
+                                "range": binding.get("annotationPropRange", {}).get("value", "").split("#")[-1].split("/")[-1] if "annotationPropRange" in binding else ""
+                            }
+
+                    # Process notes with comprehensive attributes and note_for relationships
+                    if "note" in binding:
+                        note_uri = binding["note"]["value"]
+                        if note_uri not in notes:
+                            notes[note_uri] = {
+                                "name": binding.get("noteName", {}).get("value", ""),
+                                "comment": binding.get("noteComment", {}).get("value", ""),
+                                "type": binding.get("noteType", {}).get("value", ""),
+                                "creator": binding.get("noteCreator", {}).get("value", ""),
+                                "created_date": binding.get("noteCreatedDate", {}).get("value", ""),
+                                "modified_by": binding.get("noteModifiedBy", {}).get("value", ""),
+                                "modified_date": binding.get("noteModifiedDate", {}).get("value", ""),
+                                "note_for": []
+                            }
+
+                        # Add note_for relationship if present
+                        if "noteFor" in binding:
+                            note_for_uri = binding["noteFor"]["value"]
+                            note_for_info = {
+                                "uri": note_for_uri,
+                                "type": binding.get("noteForType", {}).get("value", "").split("#")[-1].split("/")[-1] if "noteForType" in binding else "",
+                                "name": binding.get("noteForName", {}).get("value", ""),
+                                "comment": binding.get("noteForComment", {}).get("value", "")
+                            }
+                            # Avoid duplicates
+                            if note_for_info not in notes[note_uri]["note_for"]:
+                                notes[note_uri]["note_for"].append(note_for_info)
+
+                # Build result with comprehensive ontology content
+                result = {
+                    "ontology_metadata": list(ontology_metadata.values()),
+                    "classes": list(classes.values()),
+                    "object_properties": list(obj_properties.values()),
+                    "data_properties": list(data_properties.values()),
+                    "individuals": list(individuals.values()),
+                    "restrictions": list(restrictions.values()),
+                    "annotation_properties": list(annotation_properties.values()),
+                    "notes": list(notes.values()),
+                    "imports": []
+                }
+
+                # Recursively fetch imported ontologies
+                for import_iri in imported_ontologies:
+                    try:
+                        imported_details = await self._fetch_ontology_details(import_iri, visited_imports.copy())
+                        if imported_details:
+                            # Extract ontology name from IRI for display
+                            import_name = import_iri.split("/")[-1] or import_iri.split("#")[-1] or "Unknown Import"
+                            result["imports"].append({
+                                "iri": import_iri,
+                                "name": import_name,
+                                "details": imported_details
+                            })
+                            logger.info(f"Successfully fetched imported ontology: {import_iri}")
+                        else:
+                            logger.warning(f"No details found for imported ontology: {import_iri}")
+                    except Exception as import_error:
+                        logger.error(f"Error fetching imported ontology {import_iri}: {import_error}")
+                        # Add placeholder for failed import
+                        import_name = import_iri.split("/")[-1] or import_iri.split("#")[-1] or "Unknown Import"
+                        result["imports"].append({
+                            "iri": import_iri,
+                            "name": import_name,
+                            "error": f"Failed to load: {str(import_error)}"
+                        })
+
+                return result
+
+        except Exception as e:
+            logger.error(f"Error fetching ontology details for {graph_iri}: {e}")
+            return {}
+
+    def _add_ontology_content_to_context(self, context_sections: List[str], ontology_details: Dict[str, Any], indent: str = "  "):
+        """
+        Helper method to add ontology content (classes, properties) to context with specified indentation
+        """
+        # Add ontology-level metadata first
+        ontology_metadata = ontology_details.get('ontology_metadata', [])
+        if ontology_metadata:
+            metadata = ontology_metadata[0]
+            context_sections.append(f"{indent}Ontology Metadata:")
+            if metadata.get("label"):
+                context_sections.append(f"{indent}  • Label: {metadata['label']}")
+            if metadata.get("title"):
+                context_sections.append(f"{indent}  • Title: {metadata['title']}")
+            if metadata.get("description"):
+                context_sections.append(f"{indent}  • Description: {metadata['description']}")
+            if metadata.get("comment"):
+                context_sections.append(f"{indent}  • Comment: {metadata['comment']}")
+            if metadata.get("definition"):
+                context_sections.append(f"{indent}  • Definition: {metadata['definition']}")
+            if metadata.get("example"):
+                context_sections.append(f"{indent}  • Example: {metadata['example']}")
+            if metadata.get("creator"):
+                context_sections.append(f"{indent}  • Creator: {metadata['creator']}")
+            if metadata.get("contributor"):
+                context_sections.append(f"{indent}  • Contributor: {metadata['contributor']}")
+            if metadata.get("version"):
+                context_sections.append(f"{indent}  • Version: {metadata['version']}")
+            if metadata.get("date"):
+                context_sections.append(f"{indent}  • Date: {metadata['date']}")
+            if metadata.get("created"):
+                context_sections.append(f"{indent}  • Created: {metadata['created']}")
+            if metadata.get("modified"):
+                context_sections.append(f"{indent}  • Modified: {metadata['modified']}")
+            if metadata.get("license"):
+                context_sections.append(f"{indent}  • License: {metadata['license']}")
+            if metadata.get("homepage"):
+                context_sections.append(f"{indent}  • Homepage: {metadata['homepage']}")
+
+        # Add classes with comprehensive attributes
+        classes = ontology_details.get('classes', [])
+        if classes:
+            context_sections.append(f"{indent}Classes:")
+            for cls in classes:
+                cls_name = cls.get('name', 'Unknown')
+
+                # Build rich class description for DAS
+                class_line = f"{indent}  • {cls_name}"
+
+                # Add primary description (comment or definition)
+                primary_desc = cls.get('comment', '') or cls.get('definition', '')
+                if primary_desc:
+                    class_line += f" ({primary_desc})"
+
+                # Add metadata in a readable format
+                metadata_parts = []
+                if cls.get('priority'):
+                    metadata_parts.append(f"Priority: {cls.get('priority')}")
+                if cls.get('status'):
+                    metadata_parts.append(f"Status: {cls.get('status')}")
+                if cls.get('creator'):
+                    metadata_parts.append(f"Creator: {cls.get('creator')}")
+                if cls.get('created_date'):
+                    metadata_parts.append(f"Created: {cls.get('created_date')}")
+                if cls.get('modified_by'):
+                    metadata_parts.append(f"Modified by: {cls.get('modified_by')}")
+                if cls.get('modified_date'):
+                    metadata_parts.append(f"Modified: {cls.get('modified_date')}")
+
+                if metadata_parts:
+                    class_line += f" [{', '.join(metadata_parts)}]"
+
+                # Add structural relationships including disjoint classes
+                structural_parts = []
+                if cls.get('subclass_of'):
+                    structural_parts.append(f"Subclass of: {cls.get('subclass_of')}")
+                if cls.get('equivalent_class'):
+                    structural_parts.append(f"Equivalent to: {cls.get('equivalent_class')}")
+                if cls.get('disjoint_with'):
+                    structural_parts.append(f"Disjoint with: {cls.get('disjoint_with')}")
+
+                if structural_parts:
+                    context_sections.append(class_line)
+                    for struct in structural_parts:
+                        context_sections.append(f"{indent}    - {struct}")
+                else:
+                    context_sections.append(class_line)
+
+                # Add example if available
+                if cls.get('example'):
+                    context_sections.append(f"{indent}    Example: {cls.get('example')}")
+                # Add definition if available
+                if cls.get('definition'):
+                    context_sections.append(f"{indent}    Definition: {cls.get('definition')}")
+
+        # Add object properties (relationships) with comprehensive attributes
+        obj_props = ontology_details.get('object_properties', [])
+        if obj_props:
+            context_sections.append(f"{indent}Relationships:")
+            for prop in obj_props:
+                prop_name = prop.get('name', 'Unknown')
+                domain = prop.get('domain', '')
+                range_val = prop.get('range', '')
+
+                # Build rich relationship description for DAS
+                if domain and range_val:
+                    prop_line = f"{indent}  • {prop_name}: {domain} → {range_val}"
+                else:
+                    prop_line = f"{indent}  • {prop_name}"
+
+                # Add primary description (comment or definition)
+                primary_desc = prop.get('comment', '') or prop.get('definition', '')
+                if primary_desc:
+                    prop_line += f" ({primary_desc})"
+
+                # Add metadata
+                metadata_parts = []
+                if prop.get('creator'):
+                    metadata_parts.append(f"Creator: {prop.get('creator')}")
+                if prop.get('created_date'):
+                    metadata_parts.append(f"Created: {prop.get('created_date')}")
+
+                if metadata_parts:
+                    prop_line += f" [{', '.join(metadata_parts)}]"
+
+                context_sections.append(prop_line)
+
+                # Add structural relationships for properties including disjoint properties
+                if prop.get('inverse_of'):
+                    context_sections.append(f"{indent}    - Inverse of: {prop.get('inverse_of')}")
+                if prop.get('subproperty_of'):
+                    context_sections.append(f"{indent}    - Subproperty of: {prop.get('subproperty_of')}")
+                if prop.get('equivalent_property'):
+                    context_sections.append(f"{indent}    - Equivalent to: {prop.get('equivalent_property')}")
+                if prop.get('disjoint_with'):
+                    context_sections.append(f"{indent}    - Disjoint with: {prop.get('disjoint_with')}")
+                if prop.get('example'):
+                    context_sections.append(f"{indent}    - Example: {prop.get('example')}")
+
+        # Add data properties with comprehensive attributes
+        data_props = ontology_details.get('data_properties', [])
+        if data_props:
+            context_sections.append(f"{indent}Data Properties:")
+            for prop in data_props:
+                prop_name = prop.get('name', 'Unknown')
+                domain = prop.get('domain', '')
+                data_type = prop.get('range', '')
+
+                # Build rich data property description for DAS
+                if domain and data_type:
+                    prop_line = f"{indent}  • {prop_name} ({domain}): {data_type}"
+                elif domain:
+                    prop_line = f"{indent}  • {prop_name} ({domain})"
+                elif data_type:
+                    prop_line = f"{indent}  • {prop_name}: {data_type}"
+                else:
+                    prop_line = f"{indent}  • {prop_name}"
+
+                # Add primary description (comment or definition)
+                primary_desc = prop.get('comment', '') or prop.get('definition', '')
+                if primary_desc:
+                    prop_line += f" - {primary_desc}"
+
+                # Add metadata
+                metadata_parts = []
+                if prop.get('creator'):
+                    metadata_parts.append(f"Creator: {prop.get('creator')}")
+                if prop.get('created_date'):
+                    metadata_parts.append(f"Created: {prop.get('created_date')}")
+
+                if metadata_parts:
+                    prop_line += f" [{', '.join(metadata_parts)}]"
+
+                context_sections.append(prop_line)
+
+                # Add structural relationships for data properties including disjoint properties
+                if prop.get('subproperty_of'):
+                    context_sections.append(f"{indent}    - Subproperty of: {prop.get('subproperty_of')}")
+                if prop.get('equivalent_property'):
+                    context_sections.append(f"{indent}    - Equivalent to: {prop.get('equivalent_property')}")
+                if prop.get('disjoint_with'):
+                    context_sections.append(f"{indent}    - Disjoint with: {prop.get('disjoint_with')}")
+                if prop.get('example'):
+                    context_sections.append(f"{indent}    - Example: {prop.get('example')}")
+
+        # Add individuals/instances with all their properties
+        individuals = ontology_details.get('individuals', [])
+        if individuals:
+            context_sections.append(f"{indent}Instances:")
+            for individual in individuals:
+                individual_name = individual.get('name', 'Unknown')
+                individual_type = individual.get('type', '')
+
+                # Build individual description
+                if individual_type:
+                    individual_line = f"{indent}  • {individual_name} (instance of {individual_type})"
+                else:
+                    individual_line = f"{indent}  • {individual_name}"
+
+                # Add comment if available
+                if individual.get('comment'):
+                    individual_line += f" - {individual.get('comment')}"
+
+                context_sections.append(individual_line)
+
+                # Add metadata
+                metadata_parts = []
+                if individual.get('creator'):
+                    metadata_parts.append(f"Creator: {individual.get('creator')}")
+                if individual.get('created_date'):
+                    metadata_parts.append(f"Created: {individual.get('created_date')}")
+
+                if metadata_parts:
+                    context_sections.append(f"{indent}    [{', '.join(metadata_parts)}]")
+
+                # Add property values
+                properties = individual.get('properties', [])
+                if properties:
+                    context_sections.append(f"{indent}    Properties:")
+                    for prop in properties:
+                        prop_name = prop.get('property', 'Unknown')
+                        prop_value = prop.get('value', '')
+                        prop_type = prop.get('type', '')
+
+                        if prop_type:
+                            context_sections.append(f"{indent}      - {prop_name}: {prop_value} ({prop_type})")
+                        else:
+                            context_sections.append(f"{indent}      - {prop_name}: {prop_value}")
+
+        # Add cardinality and value restrictions
+        restrictions = ontology_details.get('restrictions', [])
+        if restrictions:
+            context_sections.append(f"{indent}Restrictions:")
+            for restriction in restrictions:
+                restriction_type = restriction.get('type', 'unknown')
+                property_name = restriction.get('property', '')
+                cardinality = restriction.get('cardinality', '')
+                value = restriction.get('value', '')
+                on_class = restriction.get('on_class', '')
+
+                # Build restriction description
+                if restriction_type == 'cardinality' and cardinality:
+                    if property_name and on_class:
+                        restriction_line = f"{indent}  • {on_class} has {cardinality} {property_name}"
+                    elif property_name:
+                        restriction_line = f"{indent}  • {property_name} cardinality: {cardinality}"
+                    else:
+                        restriction_line = f"{indent}  • Cardinality restriction: {cardinality}"
+                elif restriction_type == 'value' and value:
+                    if property_name and on_class:
+                        restriction_line = f"{indent}  • {on_class} {property_name} has value: {value}"
+                    elif property_name:
+                        restriction_line = f"{indent}  • {property_name} has value: {value}"
+                    else:
+                        restriction_line = f"{indent}  • Value restriction: {value}"
+                else:
+                    restriction_line = f"{indent}  • {restriction_type} restriction"
+
+                context_sections.append(restriction_line)
+
+        # Add annotation properties
+        annotation_props = ontology_details.get('annotation_properties', [])
+        if annotation_props:
+            context_sections.append(f"{indent}Annotation Properties:")
+            for prop in annotation_props:
+                prop_name = prop.get('name', 'Unknown')
+                domain = prop.get('domain', '')
+                range_val = prop.get('range', '')
+
+                # Build annotation property description
+                if domain and range_val:
+                    prop_line = f"{indent}  • {prop_name}: {domain} → {range_val}"
+                elif domain:
+                    prop_line = f"{indent}  • {prop_name} (domain: {domain})"
+                elif range_val:
+                    prop_line = f"{indent}  • {prop_name} (range: {range_val})"
+                else:
+                    prop_line = f"{indent}  • {prop_name}"
+
+                # Add comment if available
+                if prop.get('comment'):
+                    prop_line += f" - {prop.get('comment')}"
+
+                context_sections.append(prop_line)
+
+        # Add notes with comprehensive attributes and note_for relationships
+        notes = ontology_details.get('notes', [])
+        if notes:
+            context_sections.append(f"{indent}Notes:")
+            for note in notes:
+                note_name = note.get('name', 'Unknown Note')
+                note_comment = note.get('comment', '')
+                note_type = note.get('type', '')
+                note_creator = note.get('creator', '')
+                note_created_date = note.get('created_date', '')
+                note_modified_by = note.get('modified_by', '')
+                note_modified_date = note.get('modified_date', '')
+
+                # Build rich note description for DAS
+                note_line = f"{indent}  • {note_name}"
+
+                # Add primary description (comment) with explicit "Content:" label
+                if note_comment:
+                    note_line += f" (Content: {note_comment})"
+
+                # Add metadata
+                metadata_parts = []
+                if note_type:
+                    metadata_parts.append(f"Type: {note_type}")
+                if note_creator:
+                    metadata_parts.append(f"Creator: {note_creator}")
+                if note_created_date:
+                    metadata_parts.append(f"Created: {note_created_date}")
+                if note_modified_by:
+                    metadata_parts.append(f"Modified by: {note_modified_by}")
+                if note_modified_date:
+                    metadata_parts.append(f"Modified: {note_modified_date}")
+
+                if metadata_parts:
+                    note_line += f" [{', '.join(metadata_parts)}]"
+
+                context_sections.append(note_line)
+
+                # Add note_for relationships
+                note_for_relationships = note.get('note_for', [])
+                if note_for_relationships:
+                    context_sections.append(f"{indent}    Note for:")
+                    for note_for in note_for_relationships:
+                        note_for_name = note_for.get('name', 'Unknown')
+                        note_for_type = note_for.get('type', '')
+                        note_for_comment = note_for.get('comment', '')
+
+                        note_for_line = f"{indent}      - {note_for_name}"
+                        if note_for_type:
+                            note_for_line += f" ({note_for_type})"
+                        if note_for_comment:
+                            note_for_line += f": {note_for_comment}"
+
+                        context_sections.append(note_for_line)
+                else:
+                    # Explicitly mark model notes
+                    context_sections.append(f"{indent}    Status: Model note (no relationships)")
+
+    def _build_context_aware_query(self, message: str, conversation_history: List[Dict]) -> str:
+        """
+        Build context-aware RAG query for consistency and better results
+
+        Based on RAG best practices from:
+        - Microsoft Advanced RAG Systems
+        - RAG Advanced Techniques research
+        """
+        # Extract entities from recent conversation for context carryover
+        entities_mentioned = set()
+        recent_context = []
+
+        if conversation_history:
+            # Look at last 3 conversation pairs for context
+            for conv in conversation_history[-3:]:
+                user_msg = conv.get("user_message", "")
+                das_response = conv.get("das_response", "")
+
+                # Extract key entities (UAV names, specifications, etc.)
+                for text in [user_msg, das_response]:
+                    text_lower = text.lower()
+                    if "quadcopter" in text_lower or "t4" in text_lower:
+                        entities_mentioned.add("QuadCopter T4")
+                    if "trivector" in text_lower or "vtol" in text_lower:
+                        entities_mentioned.add("TriVector VTOL")
+                    if "aeromapper" in text_lower or "x8" in text_lower:
+                        entities_mentioned.add("AeroMapper X8")
+                    if "skyeagle" in text_lower or "x500" in text_lower:
+                        entities_mentioned.add("SkyEagle X500")
+
+                # Build recent context summary
+                if user_msg:
+                    recent_context.append(f"Previous: {user_msg[:100]}")
+
+        # Handle pronoun resolution
+        message_lower = message.lower()
+        enhanced_query = message
+
+        if any(pronoun in message_lower for pronoun in ["its", "it", "that", "this"]):
+            if entities_mentioned:
+                # Add context for pronoun resolution
+                entity_context = ", ".join(entities_mentioned)
+                enhanced_query = f"{message} (referring to: {entity_context})"
+            else:
+                # If no clear context, add clarification request
+                enhanced_query = f"{message} (context unclear - need specific entity)"
+
+        # Handle comprehensive queries (tables, lists, summaries)
+        if any(keyword in message_lower for keyword in ["table", "list", "all", "summary", "specifications"]):
+            enhanced_query = f"COMPREHENSIVE: {message} (include all relevant information, not just top matches)"
+
+        # Handle specific information requests (weight, specs, capacity, etc.)
+        elif any(keyword in message_lower for keyword in ["weight", "capacity", "speed", "wingspan", "specifications", "specs"]):
+            # Make specific queries more comprehensive to find detailed information
+            enhanced_query = f"DETAILED: {message} (find specific technical information and specifications)"
+
+        # Add recent conversation context ONLY for pronoun resolution, not general queries
+        if any(pronoun in message_lower for pronoun in ["its", "it", "that", "this"]) and recent_context:
+            context_summary = " | ".join(recent_context[-1:])  # Only last context item for pronouns
+            enhanced_query = f"{enhanced_query} | Recent context: {context_summary}"
+
+        return enhanced_query
+
+    async def process_message_stream(
         self,
         project_id: str,
         message: str,
         user_id: str,
-        context: Optional[Dict[str, Any]] = None
-    ) -> DASResponse:
+        project_thread_id: Optional[str] = None
+    ):
         """
-        Process message with simple approach: project thread context + RAG, no hard-coded intelligence
+        Process message with streaming response
+        Simple streaming implementation that stores both user and assistant messages
         """
         try:
-            print(f"DAS_DEBUG_1: Entry - project_id={project_id}, message='{message[:50]}...'")
+            import json
+            print(f"🚀 DAS_STREAM_DEBUG: Starting streaming process_message for project {project_id}")
+            logger.info(f"🚀 DAS_STREAM_DEBUG: Starting streaming process_message for project {project_id}")
 
-            if not self.project_manager:
-                raise RuntimeError("ProjectThreadManager not initialized - check Redis connection")
+            # 1. Get project context first (needed for confirm detection)
+            if self.sql_first_threads:
+                project_context = await self.project_manager.get_project_context(project_id)
+                if "error" in project_context:
+                    yield {"type": "error", "message": "DAS is not available for this project. Project threads are created when projects are created."}
+                    return
 
-            print(f"DAS_DEBUG_2: Looking for project thread...")
-            # Get existing project thread
-            project_thread = await self.project_manager.get_project_thread_by_project_id(project_id)
-            if not project_thread:
-                logger.warning(f"No project thread found for project {project_id}")
-                return DASResponse(
-                    message="DAS is not available for this project. Project threads are created when projects are created. Please create a project first to use DAS functionality.",
-                    confidence=DASConfidence.HIGH,
-                    intent=DASIntent.UNKNOWN,
-                    metadata={"error": "no_project_thread", "project_id": project_id}
+                project_thread = project_context["project_thread"]
+                conversation_history = project_context["conversation_history"]
+                recent_events = project_context["recent_events"]
+                project_metadata = project_context.get("project_metadata", {})
+                project_thread_id = project_thread.get('project_thread_id')
+
+            # DETECT ASSUMPTION CONFIRMATION
+            if message.strip().lower() == 'confirm':
+                logger.info(f"🎯 DAS_CONFIRM_DEBUG: Detected confirm message")
+                
+                # Check if the last DAS response was a pending assumption
+                if conversation_history:
+                    logger.debug(f"Checking {len(conversation_history)} conversations for pending assumption")
+                    
+                    # Check both the current conversation format (SQL-first pairs)
+                    pending_assumption_content = None
+                    
+                    # Look through the last few conversations for an assumption command
+                    for conv in conversation_history[-3:]:  # Check last 3 conversations
+                        # Check if this conversation has user_message with /assumption
+                        user_msg = conv.get("user_message", "")
+                        das_response = conv.get("das_response", "")
+                        
+                        if user_msg.strip().startswith("/assumption") and "Refined Assumption:" in das_response:
+                            # Extract refined content from DAS response text
+                            try:
+                                # Parse: "✅ **Refined Assumption:**\n\n{content}\n\nType `confirm`..."
+                                start_marker = "**Refined Assumption:**"
+                                end_marker = "\n\nType"
+                                
+                                start_idx = das_response.find(start_marker)
+                                if start_idx != -1:
+                                    start_idx += len(start_marker)
+                                    end_idx = das_response.find(end_marker, start_idx)
+                                    if end_idx != -1:
+                                        refined_content = das_response[start_idx:end_idx].strip()
+                                        pending_assumption_content = refined_content
+                                        logger.debug(f"Extracted pending assumption for confirmation")
+                                        break
+                            except Exception as e:
+                                logger.debug(f"Failed to extract assumption: {e}")
+                                continue
+                    
+                    if pending_assumption_content:
+                        refined_content = pending_assumption_content
+                        if refined_content:
+                            # Store user confirm message first
+                            if self.sql_first_threads and project_thread_id:
+                                await self.project_manager.store_conversation_message(
+                                    project_thread_id=project_thread_id,
+                                    role="user",
+                                    content=message,
+                                    metadata={"das_engine": "DAS", "timestamp": datetime.now().isoformat()}
+                                )
+                            
+                            # Save assumption to PostgreSQL via API
+                            import httpx
+                            async with httpx.AsyncClient() as client:
+                                try:
+                                    # Get auth token for API call
+                                    auth_response = await client.post(
+                                        "http://localhost:8000/api/auth/login",
+                                        json={"username": "das_service", "password": "das_service_2024!"},
+                                        timeout=10.0
+                                    )
+                                    auth_data = auth_response.json()
+                                    auth_token = auth_data.get("token")
+                                    
+                                    # Save assumption via API
+                                    save_response = await client.post(
+                                        f"http://localhost:8000/api/das/project/{project_id}/assumption",
+                                        headers={"Authorization": f"Bearer {auth_token}"},
+                                        json={
+                                            "content": refined_content,
+                                            "context": json.dumps(conversation_history[-5:])  # Last 5 conversations as context
+                                        },
+                                        timeout=15.0
+                                    )
+                                    
+                                    if save_response.status_code == 200:
+                                        save_data = save_response.json()
+                                        assumption_id = save_data.get("assumption_id")
+                                        
+                                        response_message = f"✅ **Assumption Confirmed:**\n\nThe assumption that {refined_content.lower()} has been successfully saved to the project.\n\n**Assumption ID:** {assumption_id}\n\nView it in the Assumptions section of the project tree.\n\n**Note:** Refresh the page to see the updated Assumptions node."
+                                        
+                                        # Store success response
+                                        if self.sql_first_threads and project_thread_id:
+                                            await self.project_manager.store_conversation_message(
+                                                project_thread_id=project_thread_id,
+                                                role="assistant",
+                                                content=response_message,
+                                                metadata={"das_engine": "DAS", "command": "confirm_assumption", "assumption_id": assumption_id, "timestamp": datetime.now().isoformat()}
+                                            )
+                                        
+                                        yield {"type": "content", "content": response_message}
+                                        yield {"type": "done", "metadata": {"assumption_saved": True, "assumption_id": assumption_id, "refresh_tree": True}}
+                                        return
+                                    else:
+                                        error_msg = f"Failed to save assumption: HTTP {save_response.status_code}"
+                                        yield {"type": "error", "message": error_msg}
+                                        return
+                                        
+                                except Exception as api_error:
+                                    error_msg = f"Error saving assumption: {str(api_error)}"
+                                    logger.error(f"Assumption save error: {api_error}")
+                                    yield {"type": "error", "message": error_msg}
+                                    return
+                        else:
+                            yield {"type": "error", "message": "No pending assumption found to confirm."}
+                            return
+                    else:
+                        yield {"type": "error", "message": "No pending assumption found. Use /assumption [hint] first."}
+                        return
+                else:
+                    yield {"type": "error", "message": "No conversation history available to confirm assumption."}
+                    return
+
+            # DETECT SLASH COMMANDS (DAS Actions)
+            if message.strip().startswith('/'):
+                logger.info(f"🎯 DAS_COMMAND_DEBUG: Detected slash command: {message}")
+                
+                # Store user command message first  
+                if self.sql_first_threads and project_thread_id:
+                    await self.project_manager.store_conversation_message(
+                        project_thread_id=project_thread_id,
+                        role="user",
+                        content=message,
+                        metadata={"das_engine": "DAS", "command_type": "slash_command", "timestamp": datetime.now().isoformat()}
+                    )
+                
+                async for chunk in self._handle_command(message, project_id, user_id, project_thread_id):
+                    yield chunk
+                return
+
+            # Handle non-SQL-first threads case (legacy support)
+            if not self.sql_first_threads:
+                if project_thread_id:
+                    project_thread = await self.project_manager.get_project_thread(project_thread_id)
+                else:
+                    project_thread = await self.project_manager.get_project_thread_by_project_id(project_id)
+
+                if not project_thread:
+                    yield {"type": "error", "message": "DAS is not available for this project. Project threads are created when projects are created."}
+                    return
+
+                conversation_history = getattr(project_thread, 'conversation_history', [])
+                recent_events = getattr(project_thread, 'project_events', [])
+
+            # 2. Store user message for regular conversations (not commands/confirmations)
+            if self.sql_first_threads and project_thread_id:
+                await self.project_manager.store_conversation_message(
+                    project_thread_id=project_thread_id,
+                    role="user", 
+                    content=message,
+                    metadata={"das_engine": "DAS", "timestamp": datetime.now().isoformat()}
                 )
 
-            print(f"DAS_DEBUG_3: Found project thread {project_thread.project_thread_id} with {len(project_thread.conversation_history)} conversation entries")
+            # 3. Get RAG context using current user's credentials for proper access
+            import httpx
+            async with httpx.AsyncClient() as client:
+                # Use a service account token for RAG queries to ensure consistent access
+                # TODO: This should be replaced with proper service-to-service auth
+                auth_response = await client.post(
+                    "http://localhost:8000/api/auth/login",
+                    json={"username": "das_service", "password": "das_service_2024!"},
+                    timeout=10.0
+                )
+                auth_data = auth_response.json()
+                auth_token = auth_data.get("token")
 
-            # Convert project thread to dict for RAG context (no manipulation, just raw context)
-            project_thread_dict = project_thread.to_dict() if hasattr(project_thread, 'to_dict') else {
-                'project_id': project_thread.project_id,
-                'project_thread_id': project_thread.project_thread_id,
-                'created_at': project_thread.created_at.isoformat() if hasattr(project_thread.created_at, 'isoformat') else str(project_thread.created_at),
-                'last_activity': project_thread.last_activity.isoformat() if hasattr(project_thread.last_activity, 'isoformat') else str(project_thread.last_activity),
-                'conversation_history': project_thread.conversation_history,
-                'project_events': project_thread.project_events,
-                'active_ontologies': project_thread.active_ontologies,
-                'current_workbench': project_thread.current_workbench,
-                'project_goals': project_thread.project_goals
-            }
+                rag_config_response = await client.get(
+                    "http://localhost:8000/api/rag-config",
+                    headers={"Authorization": f"Bearer {auth_token}"},
+                    timeout=10.0
+                )
+                rag_config = rag_config_response.json()
+                rag_implementation = rag_config.get("rag_implementation", "hardcoded")
 
-            # Direct RAG query with raw message and full project context (no intelligence layers)
-            rag_response = await self.rag_service.query_knowledge_base(
-                question=message,  # Raw message, no enhancement
-                project_id=project_id,
-                project_thread_context=project_thread_dict,  # Full context
-                user_id=user_id,
-                max_chunks=5,
-                similarity_threshold=0.3,
-                include_metadata=True,
-                response_style="comprehensive"
-            )
+                # Enhanced RAG query with conversation context for consistency
+                enhanced_query = self._build_context_aware_query(message, conversation_history)
 
-            # SIMPLE APPROACH: Build complete context and send ALL to LLM
-            print(f"DAS_DEBUG_4: Building complete context for LLM...")
+                if rag_implementation == "bpmn":
+                    rag_response = await client.post(
+                        "http://localhost:8000/api/knowledge/query-workflow",
+                        headers={"Authorization": f"Bearer {auth_token}"},
+                        json={
+                            "question": enhanced_query,
+                            "project_id": project_id,
+                            "response_style": "comprehensive"
+                        },
+                        timeout=30.0
+                    )
+                    rag_response = rag_response.json()
+                else:
+                    # Simple approach: Give LLM lots of context and let it decide
+                    # Modern best practice with large context window models
+                    if "DETAILED:" in enhanced_query or "COMPREHENSIVE:" in enhanced_query:
+                        # For specific or comprehensive queries, provide maximum context
+                        max_chunks = 50
+                        threshold = 0.05  # Very low threshold for maximum coverage
+                    else:
+                        # Default: Provide substantial context (increased for better UAS coverage)
+                        max_chunks = 50
+                        threshold = 0.1  # Lower threshold for better coverage
 
-            # Build comprehensive context
-            context_parts = []
+                    rag_response = await self.rag_service.query_knowledge_base(
+                        question=enhanced_query,
+                        project_id=project_id,
+                        user_id=user_id,
+                        max_chunks=max_chunks,
+                        similarity_threshold=threshold,
+                        include_metadata=True,
+                        response_style="comprehensive"
+                    )
+
+            # 3.5. Debug RAG response processing
+            print(f"🔍 RAG_DEBUG_STREAM: Processing RAG response...")
+            print(f"   Success: {rag_response.get('success', False)}")
+            print(f"   Chunks found: {rag_response.get('chunks_found', 0)}")
+            print(f"   Sources: {len(rag_response.get('sources', []))}")
+
+            if rag_response.get("success") and rag_response.get("chunks_found", 0) > 0:
+                rag_content = rag_response.get("response", "")
+                print(f"🔍 RAG_DEBUG_STREAM: RAG content length: {len(rag_content)}")
+                print(f"🔍 RAG_DEBUG_STREAM: RAG content preview: {rag_content[:300]}...")
+
+                # Debug sources
+                sources = rag_response.get("sources", [])
+                for i, source in enumerate(sources):
+                    print(f"   Source {i+1}: {source.get('title', 'Unknown')} ({source.get('document_type', 'document')}) - {source.get('relevance_score', 0):.3f}")
+
+                # Check if specific content is in RAG response
+                if "aeromapper" in rag_content.lower():
+                    print(f"✅ RAG_DEBUG_STREAM: AeroMapper mentioned in RAG content")
+                    if "20" in rag_content and "kg" in rag_content.lower():
+                        print(f"✅ RAG_DEBUG_STREAM: AeroMapper weight (20 kg) found in RAG content")
+                else:
+                    print(f"❌ RAG_DEBUG_STREAM: AeroMapper NOT mentioned in RAG content")
+            else:
+                print(f"❌ RAG_DEBUG_STREAM: No RAG content - success: {rag_response.get('success')}, chunks: {rag_response.get('chunks_found', 0)}")
+
+            # 4. Build context and call LLM with streaming
+            context_sections = []
 
             # Add conversation history
-            if project_thread.conversation_history:
-                context_parts.append("CONVERSATION HISTORY:")
-                for conv in project_thread.conversation_history[-10:]:
-                    user_msg = conv.get("user_message", "")
-                    das_resp = conv.get("das_response", "")
-                    timestamp = conv.get("timestamp", "")
-                    if user_msg and das_resp:
-                        context_parts.append(f"User: {user_msg}")
-                        context_parts.append(f"DAS: {das_resp}")
-                        context_parts.append("")
+            if conversation_history:
+                context_sections.append("CONVERSATION HISTORY:")
 
-            # Add project context (including project name)
-            context_parts.append("PROJECT CONTEXT:")
+                # Handle SQL-first formatted conversations (user_message/das_response pairs)
+                if self.sql_first_threads and conversation_history and isinstance(conversation_history[0], dict) and 'user_message' in conversation_history[0]:
+                    print(f"🔍 DAS_STREAM_CONTEXT: Processing {len(conversation_history)} SQL-first conversation pairs")
+                    for conv in conversation_history[-5:]:  # Last 5 conversation pairs
+                        user_msg = conv.get("user_message", "")
+                        das_response = conv.get("das_response", "")
+                        if user_msg:
+                            context_sections.append(f"User: {user_msg}")
+                        if das_response:
+                            context_sections.append(f"DAS: {das_response}")
+                        context_sections.append("")
+                else:
+                    # Handle legacy format (individual role/content messages)
+                    print(f"🔍 DAS_STREAM_CONTEXT: Processing {len(conversation_history)} legacy conversation messages")
+                    for conv in conversation_history[-10:]:
+                        role = conv.get("role", "")
+                        content = conv.get("content", "")
+                        if role and content:
+                            if role == "user":
+                                context_sections.append(f"User: {content}")
+                            elif role == "assistant":
+                                context_sections.append(f"DAS: {content}")
+                            context_sections.append("")
 
-            # Get project details to include project name
+            # Add project context
+            context_sections.append("PROJECT CONTEXT:")
+
+            # Get comprehensive project details (same as non-streaming method)
             project_details = None
-            try:
-                project_details = self.db_service.get_project(project_id)
-            except Exception as e:
-                logger.warning(f"Could not retrieve project details for {project_id}: {e}")
+            if hasattr(self, 'db_service') and self.db_service:
+                try:
+                    project_details = self.db_service.get_project_comprehensive(project_id)
+                    print(f"DAS_STREAM_DEBUG: Retrieved project details: {bool(project_details)}")
+                except Exception as e:
+                    print(f"DAS_STREAM_DEBUG: Failed to get project details: {e}")
+            elif hasattr(self.project_manager, 'db_service') and self.project_manager.db_service:
+                try:
+                    project_details = self.project_manager.db_service.get_project_comprehensive(project_id)
+                    print(f"DAS_STREAM_DEBUG: Retrieved project details via project_manager: {bool(project_details)}")
+                except Exception as e:
+                    print(f"DAS_STREAM_DEBUG: Failed to get project details via project_manager: {e}")
+            else:
+                print("DAS_STREAM_DEBUG: No db_service available!")
 
             if project_details:
-                context_parts.append(f"Project: {project_details.get('name', 'Unknown')} (ID: {project_id})")
+                context_sections.append(f"Project: {project_details.get('name', 'Unknown')} (ID: {project_id})")
+
                 if project_details.get('description'):
-                    context_parts.append(f"Project description: {project_details.get('description')}")
+                    context_sections.append(f"Description: {project_details.get('description')}")
+
                 if project_details.get('domain'):
-                    context_parts.append(f"Project domain: {project_details.get('domain')}")
+                    context_sections.append(f"Domain: {project_details.get('domain')}")
+
+                # Creator information
+                if project_details.get('created_by_username'):
+                    creator_name = project_details.get('created_by_username')
+                    context_sections.append(f"Created by: {creator_name}")
+
+                # Timestamps
+                if project_details.get('created_at'):
+                    context_sections.append(f"Created: {project_details.get('created_at')}")
+                if project_details.get('updated_at'):
+                    context_sections.append(f"Last updated: {project_details.get('updated_at')}")
+
+                # Namespace information
+                if project_details.get('namespace_name'):
+                    context_sections.append(f"Namespace: {project_details.get('namespace_name')} ({project_details.get('namespace_path', 'N/A')})")
+                    if project_details.get('namespace_description'):
+                        context_sections.append(f"Namespace description: {project_details.get('namespace_description')}")
+                    if project_details.get('namespace_status'):
+                        context_sections.append(f"Namespace status: {project_details.get('namespace_status')}")
+
+                # Project URI
+                if project_details.get('project_uri'):
+                    context_sections.append(f"Project URI: {project_details.get('project_uri')}")
             else:
-                context_parts.append(f"Project ID: {project_id}")
+                context_sections.append(f"Project ID: {project_id} (details unavailable)")
 
-            context_parts.append(f"Current workbench: {project_thread.current_workbench or 'unknown'}")
-            if project_thread.project_goals:
-                context_parts.append(f"Project goals: {project_thread.project_goals}")
-            if project_thread.active_ontologies:
-                context_parts.append(f"Active ontologies: {', '.join(project_thread.active_ontologies)}")
-            context_parts.append("")
+            # Add comprehensive project metadata (streaming method)
+            if project_metadata:
+                # Files in project
+                files = project_metadata.get('files', [])
+                if files:
+                    context_sections.append("PROJECT FILES:")
+                    for file_info in files:
+                        title = file_info.get('title', 'Unknown')
+                        doc_type = file_info.get('document_type', 'document')
+                        filename = file_info.get('filename', 'unknown')
+                        context_sections.append(f"• {title} ({doc_type}) - {filename}")
 
-            # Add recent project events
-            if project_thread.project_events:
-                context_parts.append("RECENT PROJECT ACTIVITY:")
-                for event in project_thread.project_events[-5:]:
+                # Ontologies in project with full details from Fuseki
+                ontologies = project_metadata.get('ontologies', [])
+                if ontologies:
+                    context_sections.append("PROJECT ONTOLOGIES:")
+                    for onto_info in ontologies:
+                        label = onto_info.get('label', 'Unknown')
+                        role = onto_info.get('role', 'unknown')
+                        is_ref = " (reference)" if onto_info.get('is_reference') else ""
+                        graph_iri = onto_info.get('graph_iri', '')
+
+                        context_sections.append(f"\n{label} ({role}){is_ref}:")
+
+                        # Fetch full ontology details from Fuseki
+                        if graph_iri:  # Include both base and reference ontologies
+                            ontology_details = await self._fetch_ontology_details(graph_iri)
+
+                            if ontology_details:
+                                # Add main ontology content
+                                self._add_ontology_content_to_context(context_sections, ontology_details, indent="  ")
+
+                                # Add imported ontologies
+                                imports = ontology_details.get('imports', [])
+                                if imports:
+                                    context_sections.append("  Imports:")
+                                    for imported in imports:
+                                        import_name = imported.get('name', 'Unknown Import')
+                                        import_iri = imported.get('iri', '')
+
+                                        if 'error' in imported:
+                                            context_sections.append(f"    • {import_name}: {imported['error']}")
+                                        else:
+                                            context_sections.append(f"    • {import_name} ({import_iri})")
+                                            import_details = imported.get('details', {})
+                                            if import_details:
+                                                self._add_ontology_content_to_context(context_sections, import_details, indent="      ")
+
+                context_sections.append("")
+
+            # Add ALL project events - no filtering, no smart logic
+            if recent_events:
+                context_sections.append("RECENT PROJECT ACTIVITY:")
+                for event in recent_events:  # ALL events
                     event_type = event.get("event_type", "")
-                    summary = event.get("summary", "")
-                    if event_type and summary:
-                        context_parts.append(f"{event_type}: {summary}")
-                context_parts.append("")
+                    semantic_summary = event.get("semantic_summary", "")
+                    if semantic_summary:
+                        context_sections.append(f"• {semantic_summary}")
+                    else:
+                        context_sections.append(f"• {event_type}")
+                context_sections.append("")
 
-            # Add RAG knowledge if found
+            # Add RAG context with detailed debugging
+            print(f"🔍 RAG_DEBUG: Processing RAG response...")
+            print(f"   Success: {rag_response.get('success', False)}")
+            print(f"   Chunks found: {rag_response.get('chunks_found', 0)}")
+            print(f"   Sources: {len(rag_response.get('sources', []))}")
+
             if rag_response.get("success") and rag_response.get("chunks_found", 0) > 0:
-                context_parts.append("KNOWLEDGE FROM DOCUMENTS:")
-                context_parts.append(rag_response.get("response", ""))
+                context_sections.append("KNOWLEDGE FROM DOCUMENTS:")
+                rag_content = rag_response.get("response", "")
+                context_sections.append(rag_content)
 
-                # Add sources
+                # Debug what content is being provided to LLM
+                print(f"🔍 RAG_DEBUG: RAG content length: {len(rag_content)}")
+                print(f"🔍 RAG_DEBUG: RAG content preview: {rag_content[:200]}...")
+
+                # Debug sources
                 sources = rag_response.get("sources", [])
-                if sources:
-                    context_parts.append("\nSources:")
-                    for i, source in enumerate(sources, 1):
-                        title = source.get("title", "Unknown Document")
-                        doc_type = source.get("document_type", "document")
-                        context_parts.append(f"{i}. {title} ({doc_type})")
-                context_parts.append("")
+                for i, source in enumerate(sources):
+                    print(f"   Source {i+1}: {source.get('title', 'Unknown')} ({source.get('document_type', 'document')}) - {source.get('relevance_score', 0):.3f}")
 
-            # Build final prompt
-            all_context = "\n".join(context_parts)
+                # Check if AeroMapper is mentioned in the RAG content
+                if "aeromapper" in rag_content.lower():
+                    print(f"✅ RAG_DEBUG: AeroMapper mentioned in RAG content")
+                else:
+                    print(f"❌ RAG_DEBUG: AeroMapper NOT mentioned in RAG content")
 
-            full_prompt = f"""You are DAS (Digital Assistant System) for this project. Answer the user's question using ALL the context provided.
+                if "20" in rag_content and "kg" in rag_content.lower():
+                    print(f"✅ RAG_DEBUG: Weight information (20 kg) found in RAG content")
+                else:
+                    print(f"❌ RAG_DEBUG: Weight information NOT found in RAG content")
+            else:
+                print(f"❌ RAG_DEBUG: No RAG content available - success: {rag_response.get('success')}, chunks: {rag_response.get('chunks_found', 0)}")
 
-{all_context}
+            full_context = "\n".join(context_sections)
+
+            # VALIDATE CONTEXT BEFORE SENDING TO LLM
+            print("🔍 CONTEXT_VALIDATION:")
+            print(f"   Total context sections: {len(context_sections)}")
+            print(f"   Total context length: {len(full_context)}")
+            print(f"   Contains 'PROJECT FILES': {'PROJECT FILES' in full_context}")
+            print(f"   Contains 'PROJECT ONTOLOGIES': {'PROJECT ONTOLOGIES' in full_context}")
+            print(f"   Contains 'ONTOLOGY CLASSES': {'ONTOLOGY CLASSES' in full_context}")
+            print(f"   Contains 'RECENT PROJECT ACTIVITY': {'RECENT PROJECT ACTIVITY' in full_context}")
+            print(f"   Contains 'file_uploaded': {'file_uploaded' in full_context}")
+            print(f"   Contains 'ontology_created': {'ontology_created' in full_context}")
+            print(f"   Contains 'Class1': {'Class1' in full_context}")
+            print(f"   Contains 'Class2': {'Class2' in full_context}")
+            print("🔍 FULL CONTEXT BEING SENT TO LLM:")
+            print("="*120)
+            print(full_context)
+            print("="*120)
+
+            prompt = f"""You are DAS, a digital assistant for this project. Answer using ALL provided context.
+
+IMPORTANT INSTRUCTIONS:
+1. ALWAYS use the provided context as the authoritative source
+2. If information is in the context, state it confidently
+3. If information is NOT in the context, clearly say "I don't have that information in the current knowledge base"
+4. For ambiguous pronouns (it, its, that) without clear context, ask for clarification: "Which [entity] are you referring to?"
+5. For comprehensive queries (tables, lists), include ALL relevant information from context
+6. For questions outside this project's domain, politely redirect: "I focus on this project's knowledge. For [topic], I'd recommend consulting relevant resources."
+7. NEVER contradict previous responses - be consistent
+8. When context is unclear or missing, ask specific clarifying questions rather than guessing
+
+CONTEXT ANALYSIS:
+- If the user asks about "it" or "its" and no clear entity was recently mentioned, ask for clarification
+- If the user asks about topics not in the project context (like general knowledge), redirect to project focus
+- If the context contains partial information, provide what's available and indicate what's missing
+
+{full_context}
 
 USER QUESTION: {message}
 
-Provide a natural, helpful response using whatever context is relevant. Reference conversation history for "what did I ask" type questions. Use knowledge from documents when relevant. Be conversational."""
+Answer naturally and consistently using the context above. Be helpful and conversational."""
 
-            print(f"DAS_DEBUG_5: Sending complete context to LLM...")
-            print("DAS_PROMPT_TO_LLM:")
-            print("="*80)
-            print(full_prompt)
-            print("="*80)
+            # 5. Stream LLM response and accumulate for storage
+            full_response_content = ""
+            async for chunk in self._call_llm_streaming(prompt):
+                full_response_content += chunk  # Accumulate chunks
+                yield {"type": "content", "content": chunk}
 
-            # Use RAG service's LLM approach but with our context
-            response_schema = {
-                "type": "object",
-                "properties": {
-                    "answer": {"type": "string", "description": "Natural response to user"},
-                    "confidence": {"type": "string", "enum": ["high", "medium", "low"]}
+            # 6. Store assistant response (using accumulated content)
+            if self.sql_first_threads and project_thread_id:
+                await self.project_manager.store_conversation_message(
+                    project_thread_id=project_thread_id,
+                    role="assistant",
+                    content=full_response_content,  # Use accumulated content
+                    metadata={
+                        "das_engine": "DAS",
+                        "timestamp": datetime.now().isoformat(),
+                        "prompt_context": full_context,  # Store the full prompt for thread manager
+                        "rag_context": {
+                            "chunks_found": rag_response.get("chunks_found", 0),
+                            "sources": rag_response.get("sources", [])
+                        },
+                        "project_context": {
+                            "project_id": project_id,
+                            "project_details": self._serialize_project_details(project_details)
+                        },
+                        "thread_metadata": {
+                            "sql_first": True,
+                            "conversation_pairs": len(conversation_history) if conversation_history else 0
+                        }
+                    }
+                )
+
+            # 7. Send completion signal with comprehensive debug metadata
+            debug_metadata = {
+                "rag_debug": {
+                    "enhanced_query": enhanced_query,
+                    "rag_success": rag_response.get("success", False),
+                    "chunks_found": rag_response.get("chunks_found", 0),
+                    "sources_count": len(rag_response.get("sources", [])),
+                    "rag_content_length": len(rag_response.get("response", "")),
+                    "rag_content_preview": rag_response.get("response", "")[:200] + "..." if len(rag_response.get("response", "")) > 200 else rag_response.get("response", ""),
+                    "contains_aeromapper": "aeromapper" in rag_response.get("response", "").lower(),
+                    "contains_weight_info": "20" in rag_response.get("response", "") and "kg" in rag_response.get("response", "").lower()
                 },
-                "required": ["answer"]
-            }
-
-            custom_personas = [{
-                "name": "DAS Assistant",
-                "system_prompt": "You are a helpful digital assistant. Provide natural conversational responses using the provided context.",
-                "is_active": True
-            }]
-
-            llm_response = await self.rag_service.llm_team.analyze_requirement(
-                requirement_text=full_prompt,
-                ontology_json_schema=response_schema,
-                custom_personas=custom_personas
-            )
-
-            print(f"DAS_LLM_RESPONSE: {json.dumps(llm_response, indent=2, default=str)}")
-
-            # Extract response
-            response_message = "I couldn't generate a response."
-            if isinstance(llm_response, dict) and 'personas' in llm_response:
-                personas = llm_response.get('personas', [])
-                if personas and len(personas) > 0:
-                    first_persona = personas[0]
-                    response_json = first_persona.get('response', {})
-                    response_message = response_json.get('answer', response_message)
-
-            print(f"DAS_DEBUG_6: Final response: {response_message[:100]}...")
-
-            # Extract sources/chunks for display (this is what was missing!)
-            sources = rag_response.get("sources", [])
-            chunks_found = rag_response.get("chunks_found", 0)
-
-            # Simple conversation history (no intent analysis, no contextual refs)
-            conversation_entry = {
-                "timestamp": datetime.now().isoformat(),
-                "user_message": message,
-                "das_response": response_message,
-                "project_context": context,
-                "sources": sources,  # Include sources in conversation history
-                "chunks_found": chunks_found
-            }
-
-            project_thread.conversation_history.append(conversation_entry)
-
-            # Persist the updated project thread
-            await self.project_manager._persist_project_thread(project_thread)
-            logger.info(f"Persisted conversation to project thread {project_thread.project_thread_id}")
-
-            # Simple project event capture
-            await self.project_manager.capture_project_event(
-                project_id=project_id,
-                project_thread_id=project_thread.project_thread_id,
-                user_id=user_id,
-                event_type=ProjectEventType.DAS_QUESTION,
-                event_data={
-                    "message": message,
-                    "response": response_message,
-                    "sources_count": len(sources),
-                    "chunks_found": chunks_found,
-                    "timestamp": datetime.now().isoformat()
+                "context_debug": {
+                    "conversation_pairs": len(conversation_history) if conversation_history else 0,
+                    "project_details_available": project_details is not None,
+                    "context_sections_count": len(context_sections),
+                    "total_context_length": len(full_context)
                 }
-            )
-
-            # Build proper metadata with sources for frontend display
-            response_metadata = {
-                "sources": sources,
-                "chunks_found": chunks_found,
-                "confidence": rag_response.get("confidence", "medium"),
-                "query": message,
-                "generated_at": rag_response.get("generated_at"),
-                "model_used": rag_response.get("model_used"),
-                "provider": rag_response.get("provider")
             }
 
-            return DASResponse(
-                message=response_message,
-                confidence=DASConfidence.MEDIUM,
-                intent=DASIntent.QUESTION,  # Simple default
-                metadata=response_metadata  # Now includes proper sources for frontend
-            )
+            yield {
+                "type": "done",
+                "metadata": {
+                    "sources": rag_response.get("sources", []),
+                    "chunks_found": rag_response.get("chunks_found", 0),
+                    "debug": debug_metadata  # Add comprehensive debug info
+                }
+            }
 
         except Exception as e:
-            logger.error(f"Error in simple DAS processing: {e}")
-            return DASResponse(
-                message=f"Sorry, I encountered an error processing your message: {str(e)}",
-                confidence=DASConfidence.LOW,
-                intent=DASIntent.UNKNOWN,
-                metadata={"error": str(e)}
-            )
+            logger.error(f"DAS stream error: {e}")
+            yield {"type": "error", "message": str(e)}
 
+    async def _call_llm_streaming(self, prompt: str):
+        """Call LLM with streaming response"""
+        try:
+            import httpx
 
-    async def process_message_with_intelligence(
+            # Determine LLM URL based on provider
+            if self.settings.llm_provider == "ollama":
+                base_url = self.settings.ollama_url.rstrip("/")
+                llm_url = f"{base_url}/v1/chat/completions"
+            else:  # openai
+                llm_url = "https://api.openai.com/v1/chat/completions"
+
+            payload = {
+                "model": self.settings.llm_model,
+                "messages": [
+                    {"role": "system", "content": "You are DAS, a helpful digital assistant."},
+                    {"role": "user", "content": prompt}
+                ],
+                "temperature": 0.7,
+                "max_tokens": 1000,
+                "stream": True
+            }
+
+            headers = {"Content-Type": "application/json"}
+            if hasattr(self.settings, 'openai_api_key') and self.settings.openai_api_key:
+                headers["Authorization"] = f"Bearer {self.settings.openai_api_key}"
+
+            async with httpx.AsyncClient(timeout=120) as client:  # Increased timeout for OpenAI API
+                async with client.stream("POST", llm_url, json=payload, headers=headers) as response:
+                    if response.status_code == 200:
+                        async for line in response.aiter_lines():
+                            if line.startswith("data: "):
+                                try:
+                                    data = json.loads(line[6:])
+                                    if "choices" in data and len(data["choices"]) > 0:
+                                        delta = data["choices"][0].get("delta", {})
+                                        if "content" in delta:
+                                            yield delta["content"]
+                                except json.JSONDecodeError:
+                                    continue
+                    else:
+                        yield f"Error: LLM call failed with status {response.status_code}"
+
+        except Exception as e:
+            logger.error(f"LLM streaming call failed: {e}")
+            yield f"Error: {str(e)}"
+    
+    # ========================================
+    # DAS ACTIONS - SLASH COMMAND HANDLERS
+    # ========================================
+    
+    async def _handle_command(
+        self,
+        message: str,
+        project_id: str,
+        user_id: str,
+        project_thread_id: Optional[str] = None
+    ):
+        """Handle slash commands (DAS Actions)"""
+        parts = message.strip().split(maxsplit=1)
+        command = parts[0].lower()
+        arg = parts[1] if len(parts) > 1 else ""
+        
+        logger.info(f"🎯 Handling command: {command} with arg: {arg}")
+        
+        try:
+            if command == '/assumption':
+                async for chunk in self._handle_assumption_command(arg, project_id, user_id, project_thread_id):
+                    yield chunk
+            elif command == '/white_paper':
+                async for chunk in self._handle_whitepaper_command(project_id, user_id, project_thread_id):
+                    yield chunk
+            elif command == '/diagram':
+                async for chunk in self._handle_diagram_command(arg, project_id, user_id, project_thread_id):
+                    yield chunk
+            elif command == '/help':
+                async for chunk in self._handle_help_command(project_id, user_id, project_thread_id):
+                    yield chunk
+            elif command == '/summary':
+                async for chunk in self._handle_summary_command(project_id, user_id, project_thread_id):
+                    yield chunk
+            else:
+                yield {"type": "error", "message": f"Unknown command: {command}. Type /help for available commands."}
+        except Exception as e:
+            logger.error(f"Error handling command {command}: {e}")
+            yield {"type": "error", "message": f"Error executing command: {str(e)}"}
+    
+    async def _handle_assumption_command(
+        self,
+        hint: str,
+        project_id: str,
+        user_id: str,
+        project_thread_id: Optional[str] = None
+    ):
+        """Handle /assumption command - Option B flow with refinement"""
+        if not hint:
+            yield {"type": "error", "message": "Please provide an assumption hint.\n\nUsage: /assumption [your assumption text]"}
+            return
+        
+        yield {"type": "content", "content": "🔍 Analyzing your assumption hint with conversation context..."}
+        
+        try:
+            # Get conversation history
+            project_context = await self.project_manager.get_project_context(project_id)
+            if "error" in project_context:
+                yield {"type": "error", "message": "Could not access conversation history."}
+                return
+            
+            conversation_history = project_context.get("conversation_history", [])
+            
+            # Generate refined assumption
+            from backend.services.artifact_generator import ArtifactGenerator
+            generator = ArtifactGenerator(self.settings)
+            refined = await generator.refine_assumption(hint, conversation_history)
+            
+            full_response = f"\n\n✅ **Refined Assumption:**\n\n{refined}\n\nType `confirm` to save this assumption, or continue the conversation."
+            
+            # Store the response in conversation history
+            if self.sql_first_threads and project_thread_id:
+                await self.project_manager.store_conversation_message(
+                    project_thread_id=project_thread_id,
+                    role="assistant",
+                    content=full_response,
+                    metadata={"das_engine": "DAS", "command": "assumption", "refined_content": refined, "timestamp": datetime.now().isoformat()}
+                )
+            
+            yield {"type": "content", "content": full_response}
+            yield {"type": "done", "metadata": {
+                "pending_assumption": True,
+                "content": refined,
+                "project_id": project_id
+            }}
+            
+        except Exception as e:
+            logger.error(f"Error in assumption command: {e}")
+            yield {"type": "error", "message": f"Error refining assumption: {str(e)}"}
+    
+    async def _handle_whitepaper_command(
         self,
         project_id: str,
-        message: str,
         user_id: str,
-        context: Optional[Dict[str, Any]] = None
-    ) -> DASResponse:
-        """
-        Process message with full project intelligence and contextual understanding
-        """
-        try:
-            if not self.project_manager:
-                raise RuntimeError("ProjectThreadManager not initialized - check Redis connection")
-
-            if not self.project_intelligence:
-                raise RuntimeError("ProjectIntelligenceService not initialized - check Redis/Qdrant connection")
-
-            # Get existing project thread using new system
-            project_thread = await self.project_manager.get_project_thread_by_project_id(project_id)
-            if not project_thread:
-                logger.warning(f"No project thread found for project {project_id}")
-                return DASResponse(
-                    message="DAS is not available for this project. Project threads are created when projects are created. Please create a project first to use DAS functionality.",
-                    confidence=DASConfidence.HIGH,
-                    intent=DASIntent.UNKNOWN,
-                    metadata={"error": "no_project_thread", "project_id": project_id}
-                )
-
-            # Resolve contextual references ("that class", "this ontology")
-            contextual_ref = None
-            if any(term in message.lower() for term in ["that ", "this ", "the "]):
-                contextual_ref = await self.project_intelligence.resolve_contextual_reference(
-                    project_thread, message
-                )
-                if contextual_ref:
-                    logger.info(f"Resolved contextual reference: {contextual_ref}")
-
-            # Enhance query with project context and resolved references
-            enhanced_query = await self.project_intelligence.enhance_query_with_context(
-                project_thread, message
-            )
-
-            if contextual_ref:
-                enhanced_query += f" | Referring to: {contextual_ref.get('name', '')} ({contextual_ref.get('type', '')})"
-
-            # Analyze intent
-            intent = self._analyze_intent(message)
-
-            # Handle conversation memory queries with LLM + context
-            if intent == DASIntent.CONVERSATION_MEMORY:
-                return await self._handle_conversation_memory_with_llm(
-                    message, project_thread, user_id, intent, enhanced_query
-                )
-
-            # Query RAG with enhanced context for knowledge questions
-            # Convert project thread to dict for context
-            project_thread_dict = project_thread.to_dict() if hasattr(project_thread, 'to_dict') else {
-                'project_id': project_thread.project_id,
-                'project_thread_id': project_thread.project_thread_id,
-                'created_at': project_thread.created_at.isoformat() if hasattr(project_thread.created_at, 'isoformat') else str(project_thread.created_at),
-                'last_activity': project_thread.last_activity.isoformat() if hasattr(project_thread.last_activity, 'isoformat') else str(project_thread.last_activity),
-                'thread_data': project_thread.context
-            }
-
-            rag_response = await self.rag_service.query_knowledge_base(
-                question=enhanced_query,
-                project_id=project_id,
-                project_thread_context=project_thread_dict,
-                user_id=user_id,
-                max_chunks=3,  # Fewer chunks for more focused responses
-                similarity_threshold=0.5,  # Higher threshold for precision
-                include_metadata=True,
-                response_style="comprehensive"
-            )
-
-            # Generate intelligent response with contextual awareness
-            response_message = await self._generate_contextual_response(
-                message=message,
-                rag_response=rag_response,
-                project_thread=project_thread,
-                intent=intent,
-                contextual_ref=contextual_ref
-            )
-
-            # Generate project-aware suggestions
-            suggestions = await self.project_intelligence.get_project_suggestions(
-                project_thread, message
-            )
-
-            # Update conversation history
-            conversation_entry = {
-                "timestamp": datetime.now().isoformat(),
-                "user_message": message,
-                "das_response": response_message,
-                "intent": intent.value,
-                "contextual_reference": contextual_ref,
-                "project_context": context
-            }
-
-            project_thread.conversation_history.append(conversation_entry)
-
-            # CRITICAL: Persist the updated project thread to vector store
-            await self.project_manager._persist_project_thread(project_thread)
-            logger.info(f"Persisted conversation to project thread {project_thread.project_thread_id}")
-
-            # Update contextual references for future use
-            await self.project_intelligence.update_contextual_references(
-                project_thread, message, response_message
-            )
-
-            # Capture project event for learning
-            await self.project_manager.capture_project_event(
-                project_id=project_id,
-                project_thread_id=project_thread.project_thread_id,
-                user_id=user_id,
-                event_type=ProjectEventType.DAS_QUESTION,
-                event_data={
-                    "user_message": message,
-                    "das_response": response_message,
-                    "intent": intent.value,
-                    "contextual_reference": contextual_ref,
-                    "rag_sources": rag_response.get("sources", [])
-                }
-            )
-
-            # Calculate confidence
-            confidence = self._calculate_confidence(rag_response, intent)
-
-            # Convert suggestions to strings for compatibility
-            suggestion_strings = [s.get("title", s.get("description", "")) for s in suggestions]
-
-            return DASResponse(
-                message=response_message,
-                confidence=confidence,
-                intent=intent,
-                suggestions=suggestion_strings,
-                session_id=project_thread.project_thread_id,
-                metadata={
-                    "rag_chunks_used": rag_response.get("chunks_found", 0),
-                    "sources": rag_response.get("sources", []),
-                    "contextual_reference": contextual_ref,
-                    "project_intelligence": True,
-                    "processing_time": datetime.now().isoformat()
-                }
-            )
-
-        except Exception as e:
-            logger.error(f"Error processing message with intelligence: {e}")
-            # NO FALLBACK - expose the actual error
-            raise RuntimeError(f"Project intelligence processing failed: {e}") from e
-
-    async def process_message(
-        self,
-        project_thread_id: str,
-        message: str,
-        user_id: str,
-        context: Optional[Dict[str, Any]] = None
-    ) -> DASResponse:
-        """
-        Process a message with advanced DAS capabilities and RAG integration
-        """
-        try:
-            project_thread = await self.get_project_thread(project_thread_id)
-            if not project_thread:
-                raise ValueError(f"Project thread {project_thread_id} not found")
-
-            # Analyze message intent
-            intent = self._analyze_intent(message)
-
-            # Get project thread context and history for enhanced RAG
-            project_context = await self._get_enhanced_context(project_thread, context)
-
-            # Process with RAG integration
-            rag_response = await self._process_with_rag(
-                message=message,
-                project_thread=project_thread,
-                context=project_context,
-                user_id=user_id
-            )
-
-            # Generate intelligent response
-            response_message = await self._generate_intelligent_response(
-                message=message,
-                rag_response=rag_response,
-                project_thread=project_thread,
-                intent=intent
-            )
-
-            # Generate contextual suggestions
-            suggestions = await self._generate_suggestions(project_thread, message, rag_response)
-
-            # Update project thread history
-            project_thread.context["conversation_history"].append({
-                "timestamp": datetime.now().isoformat(),
-                "user_message": message,
-                "das_response": response_message,
-                "intent": intent.value,
-                "context": project_context
-            })
-
-            # Capture learning data
-            await self._capture_learning_data(project_thread, message, response_message, context)
-
-            # Determine confidence
-            confidence = self._calculate_confidence(rag_response, intent)
-
-            return DASResponse(
-                message=response_message,
-                confidence=confidence,
-                intent=intent,
-                suggestions=suggestions,
-                session_id=project_thread_id,
-                metadata={
-                    "rag_chunks_used": rag_response.get("chunks_found", 0),
-                    "sources": rag_response.get("sources", []),
-                    "project_context": project_context,
-                    "processing_time": datetime.now().isoformat()
-                }
-            )
-
-        except Exception as e:
-            logger.error(f"Error processing message in project thread {project_thread_id}: {e}")
-            return DASResponse(
-                message="I encountered an error processing your request. Please try again.",
-                confidence=DASConfidence.LOW,
-                intent=DASIntent.UNKNOWN,
-                session_id=project_thread_id
-            )
-
-    async def _get_enhanced_context(
-        self,
-        project_thread: DASProjectThread,
-        additional_context: Optional[Dict[str, Any]] = None
-    ) -> Dict[str, Any]:
-        """Get enhanced context including project thread history and learned patterns"""
-        context = {
-            "project_id": project_thread.project_id,
-            "thread_duration": (datetime.now() - project_thread.started_at).total_seconds() / 60,
-            "conversation_turns": len(project_thread.context.get("conversation_history", [])),
-            "user_preferences": project_thread.context.get("learned_preferences", {}),
-            "recent_activity": project_thread.context.get("conversation_history", [])[-3:],  # Last 3 interactions
-        }
-
-        if additional_context:
-            context.update(additional_context)
-
-        return context
-
-    async def _process_with_rag(
-        self,
-        message: str,
-        project_thread: DASProjectThread,
-        context: Dict[str, Any],
-        user_id: str
-    ) -> Dict[str, Any]:
-        """Process message with advanced RAG integration"""
-        if not self.rag_service:
-            return {"response": "RAG service not available", "chunks": [], "confidence": "low"}
-
-        try:
-            # Enhanced RAG query with project thread context
-            enhanced_query = await self._enhance_query_with_context(message, project_thread, context)
-
-            rag_response = await self.rag_service.query_knowledge_base(
-                question=enhanced_query,
-                project_id=project_thread.project_id,
-                user_id=user_id,
-                max_chunks=5,   # Fewer, more relevant chunks
-                similarity_threshold=0.5,  # Higher threshold for more precise matching
-                include_metadata=True,
-                response_style="comprehensive"
-            )
-
-            return rag_response
-
-        except Exception as e:
-            logger.error(f"Error in RAG processing: {e}")
-            return {"response": f"RAG processing error: {str(e)}", "chunks": [], "confidence": "low"}
-
-    async def _enhance_query_with_context(
-        self,
-        message: str,
-        project_thread: DASProjectThread,
-        context: Dict[str, Any]
-    ) -> str:
-        """Enhance the user query with project thread context for better RAG results"""
-        enhanced_parts = [message]
-
-        # Add project context
-        if project_thread.project_id:
-            enhanced_parts.append(f"Project context: {project_thread.project_id}")
-
-        # Add recent conversation context
-        recent_history = context.get("recent_activity", [])
-        if recent_history:
-            recent_topics = []
-            for interaction in recent_history:
-                if "user_message" in interaction:
-                    recent_topics.append(interaction["user_message"][:50])
-            if recent_topics:
-                enhanced_parts.append(f"Recent discussion topics: {'; '.join(recent_topics)}")
-
-        return " | ".join(enhanced_parts)
-
-    async def _generate_intelligent_response(
-        self,
-        message: str,
-        rag_response: Dict[str, Any],
-        project_thread: DASProjectThread,
-        intent: DASIntent
-    ) -> str:
-        """Generate intelligent response combining RAG results with project thread awareness"""
-        base_response = rag_response.get("response", "I don't have enough information to help with that.")
-
-        # Enhance response based on intent and project thread context
-        if intent == DASIntent.GREETING:
-            if project_thread.context.get("conversation_history"):
-                return f"Welcome back! I see we've been working together on project {project_thread.project_id}. {base_response}"
-            else:
-                return f"Hello! I'm DAS, your digital assistant for project {project_thread.project_id}. {base_response}"
-
-        elif intent == DASIntent.QUESTION:
-            chunks_count = rag_response.get("chunks_found", 0)
-            if chunks_count > 0:
-                confidence_note = f"Based on {chunks_count} relevant sources from your project knowledge base: {base_response}"
-                return confidence_note
-            else:
-                return f"I don't have specific information about that in your current project knowledge. {base_response}"
-
-        elif intent == DASIntent.COMMAND:
-            return f"I understand you want to execute a command. {base_response} Would you like me to help you with the implementation?"
-
-        else:
-            return base_response
-
-    async def _generate_suggestions(
-        self,
-        project_thread: DASProjectThread,
-        message: str,
-        rag_response: Dict[str, Any]
-    ) -> List[str]:
-        """Generate contextual suggestions based on current interaction"""
-        suggestions = []
-
-        # RAG-based suggestions
-        chunks = rag_response.get("chunks", [])
-        if chunks:
-            # Suggest related topics from RAG chunks
-            for chunk in chunks[:2]:  # Top 2 chunks
-                metadata = chunk.get("metadata", {})
-                if "filename" in metadata:
-                    suggestions.append(f"Explore more about {metadata['filename']}")
-
-        # Project thread-based suggestions
-        history = project_thread.context.get("conversation_history", [])
-        if len(history) > 2:
-            suggestions.append("Review our previous discussion")
-            suggestions.append("Summarize what we've covered so far")
-
-        # Intent-based suggestions
-        if "ontology" in message.lower():
-            suggestions.extend([
-                "Show me the ontology structure",
-                "Help me create ontology classes",
-                "Analyze ontology relationships"
-            ])
-
-        if "document" in message.lower() or "file" in message.lower():
-            suggestions.extend([
-                "Upload a new document for analysis",
-                "Search through existing documents",
-                "Extract requirements from documents"
-            ])
-
-        return suggestions[:5]  # Limit to 5 suggestions
-
-    async def _capture_learning_data(
-        self,
-        project_thread: DASProjectThread,
-        user_message: str,
-        das_response: str,
-        context: Optional[Dict[str, Any]] = None
+        project_thread_id: Optional[str] = None
     ):
-        """Capture interaction data for learning and improvement"""
+        """Handle /white_paper command"""
+        yield {"type": "content", "content": "📝 Generating white paper from conversation history...\n\nThis may take 30-60 seconds..."}
+        
         try:
-            # Add interaction to project thread conversation history
-            conversation_entry = {
-                "timestamp": datetime.now().isoformat(),
-                "user_message": user_message,
-                "das_response": das_response,
-                "context": context or {},
-                "project_id": project_thread.project_id,
-                "interaction_quality": "pending_feedback"
-            }
-
-            if "conversation_history" not in project_thread.context:
-                project_thread.context["conversation_history"] = []
-
-            project_thread.context["conversation_history"].append(conversation_entry)
-            project_thread.last_activity = datetime.now()
-
-            # Persist updated project thread
-            if self.redis:
-                await self._persist_project_thread(project_thread)
-
-            logger.debug(f"Captured learning data for project thread {project_thread.project_thread_id}")
-        except Exception as e:
-            logger.warning(f"Could not capture learning data: {e}")
-
-    async def _persist_project_thread(self, project_thread: DASProjectThread):
-        """Persist project thread to Redis"""
-        try:
-            if not self.redis:
+            # Get full conversation history
+            project_context = await self.project_manager.get_project_context(project_id)
+            if "error" in project_context:
+                yield {"type": "error", "message": "Could not access conversation history."}
                 return
-
-            thread_data = {
-                "project_thread_id": project_thread.project_thread_id,
-                "user_id": project_thread.user_id,
-                "project_id": project_thread.project_id,
-                "started_at": project_thread.started_at.isoformat(),
-                "last_activity": project_thread.last_activity.isoformat(),
-                "context": project_thread.context
-            }
-
-            await self.redis.set(
-                f"das_project_thread:{project_thread.project_thread_id}",
-                json.dumps(thread_data),
-                ex=86400 * 7  # 7 days expiration
+            
+            conversation = project_context.get("conversation_history", [])
+            project_metadata = project_context.get("project_metadata", {})
+            
+            if not conversation or len(conversation) < 2:
+                yield {"type": "content", "content": "\n\n⚠️ Not enough conversation history to generate a white paper. Have a longer discussion first."}
+                yield {"type": "done", "metadata": {}}
+                return
+            
+            # Generate white paper
+            from backend.services.artifact_generator import ArtifactGenerator
+            generator = ArtifactGenerator(self.settings)
+            markdown_content = await generator.generate_white_paper(conversation, project_metadata)
+            
+            # Store in MinIO + PostgreSQL
+            from datetime import datetime
+            filename = f"whitepaper_{datetime.now().strftime('%Y%m%d_%H%M%S')}.md"
+            file_id = await self._store_artifact(
+                content=markdown_content.encode('utf-8'),
+                filename=filename,
+                project_id=project_id,
+                user_id=user_id,
+                artifact_type='whitepaper'
             )
-
+            
+            full_response = f"\n\n✅ **White paper created:** {filename}\n\nView it in the Artifacts section of the project tree."
+            
+            # Store the response in conversation history
+            if self.sql_first_threads and project_thread_id:
+                await self.project_manager.store_conversation_message(
+                    project_thread_id=project_thread_id,
+                    role="assistant",
+                    content=full_response,
+                    metadata={"das_engine": "DAS", "command": "white_paper", "artifact_id": file_id, "filename": filename, "timestamp": datetime.now().isoformat()}
+                )
+            
+            yield {"type": "content", "content": full_response}
+            yield {"type": "done", "metadata": {"artifact_id": file_id, "filename": filename, "type": "whitepaper", "refresh_tree": True}}
+            
         except Exception as e:
-            logger.warning(f"Failed to persist project thread {project_thread.project_thread_id}: {e}")
-
-    async def _load_project_thread(self, project_thread_id: str) -> Optional[DASProjectThread]:
-        """Load project thread from Redis"""
-        try:
-            if not self.redis:
-                return None
-
-            thread_json = await self.redis.get(f"das_project_thread:{project_thread_id}")
-            if not thread_json:
-                return None
-
-            thread_data = json.loads(thread_json)
-
-            return DASProjectThread(
-                project_thread_id=thread_data["project_thread_id"],
-                user_id=thread_data["user_id"],
-                project_id=thread_data["project_id"],
-                started_at=datetime.fromisoformat(thread_data["started_at"]),
-                last_activity=datetime.fromisoformat(thread_data["last_activity"]),
-                context=thread_data["context"]
-            )
-
-        except Exception as e:
-            logger.warning(f"Failed to load project thread {project_thread_id}: {e}")
-            return None
-
-    async def _find_project_thread_by_project_id(self, project_id: str) -> Optional[DASProjectThread]:
-        """Find existing project thread for a project ID"""
-        try:
-            if not self.redis:
-                # Check memory cache only
-                for thread in self.project_threads.values():
-                    if thread.project_id == project_id:
-                        return thread
-                return None
-
-            # Check Redis index
-            project_thread_id = await self.redis.get(f"das_project_index:{project_id}")
-            if project_thread_id:
-                project_thread_id = project_thread_id.decode('utf-8') if isinstance(project_thread_id, bytes) else project_thread_id
-                return await self.get_project_thread(project_thread_id)
-
-            return None
-
-        except Exception as e:
-            logger.warning(f"Failed to find project thread for project {project_id}: {e}")
-            return None
-
-    async def _generate_contextual_response(
+            logger.error(f"Error in whitepaper command: {e}")
+            yield {"type": "error", "message": f"Error generating white paper: {str(e)}"}
+    
+    async def _handle_diagram_command(
         self,
-        message: str,
-        rag_response: Dict[str, Any],
-        project_thread: ProjectThreadContext,
-        intent: DASIntent,
-        contextual_ref: Optional[Dict[str, Any]] = None
-    ) -> str:
-        """
-        Generate response with full contextual awareness
-        """
-        try:
-            base_response = rag_response.get("response", "I don't have information about that.")
-
-            # If we resolved a contextual reference, enhance the response
-            if contextual_ref:
-                ref_name = contextual_ref.get("name", "")
-                ref_type = contextual_ref.get("type", "")
-
-                if ref_type == "ontology_class":
-                    base_response = f"Regarding the {ref_name} class: {base_response}"
-                elif ref_type == "ontology":
-                    base_response = f"For the {ref_name} ontology: {base_response}"
-                elif ref_type == "document":
-                    base_response = f"About the {ref_name} document: {base_response}"
-
-            # Add project context if relevant
-            if intent == DASIntent.QUESTION and project_thread.project_goals:
-                if any(term in message.lower() for term in ["goal", "objective", "purpose"]):
-                    base_response += f"\n\nNote: Your project goals are: {project_thread.project_goals}"
-
-            return base_response
-
-        except Exception as e:
-            logger.error(f"Failed to generate contextual response: {e}")
-            return rag_response.get("response", "I encountered an error generating the response.")
-
-    async def _handle_conversation_memory_with_llm(
-        self,
-        message: str,
-        project_thread: ProjectThreadContext,
+        description: str,
+        project_id: str,
         user_id: str,
-        intent: DASIntent,
-        enhanced_query: str
-    ) -> DASResponse:
-        """
-        Handle conversation memory queries by sending conversation context to LLM
-        """
+        project_thread_id: Optional[str] = None
+    ):
+        """Handle /diagram command"""
+        if not description:
+            yield {"type": "error", "message": "Please provide a diagram description.\n\nUsage: /diagram [description]"}
+            return
+        
+        yield {"type": "content", "content": f"🎨 Generating Mermaid diagram: {description}...\n\nThis may take 20-30 seconds..."}
+        
         try:
-            # Get FULL conversation context from both conversation_history AND project_events
-            all_conversations = []
-
-            # Add conversations from project_events (where most conversations are stored)
-            for event in project_thread.project_events:
-                if event.get("event_type") == "das_question":
-                    event_data = event.get("key_data", {})
-                    user_msg = event_data.get("user_message")
-                    das_response = event_data.get("das_response")
-                    timestamp = event.get("timestamp")
-
-                    if user_msg and das_response:
-                        all_conversations.append({
-                            "timestamp": timestamp,
-                            "user_message": user_msg,
-                            "das_response": das_response,
-                            "source": "project_event"
-                        })
-
-            # Add conversations from conversation_history
-            for conv in project_thread.conversation_history:
-                all_conversations.append(conv)
-
-            # Sort by timestamp
-            all_conversations.sort(key=lambda x: x.get("timestamp", ""))
-
-            if not all_conversations:
-                # No conversation history - send to LLM with context
-                llm_query = f"""
-                User asks: "{message}"
-
-                Conversation context: This is the first interaction in this project thread.
-
-                Please respond naturally to the user's question about conversation history.
-                """
-            else:
-                # Build conversation context for LLM using FULL conversation data
-                recent_conversations = all_conversations[-5:]  # Last 5 exchanges
-                context_lines = []
-
-                for conv in recent_conversations:
-                    user_msg = conv.get("user_message", "")
-                    das_msg = conv.get("das_response", "")
-                    timestamp = conv.get("timestamp", "")
-
-                    context_lines.append(f"User: {user_msg}")
-                    context_lines.append(f"DAS: {das_msg}")
-
-                conversation_context = "\n".join(context_lines)
-
-                llm_query = f"""
-                User asks: "{message}"
-
-                Recent conversation history:
-                {conversation_context}
-
-                Please respond to the user's question about our conversation history. Be specific and helpful.
-                """
-
-            # Send to LLM team for intelligent response
-            logger.info(f"Sending conversation memory query to LLM: {llm_query[:200]}...")
-
-            llm_response = await self.rag_service.llm_team.analyze_requirement(
-                requirement_text=llm_query,
-                ontology_json_schema={"type": "object"},  # Minimal schema
-                custom_personas=[{
-                    "name": "Conversation Assistant",
-                    "system_prompt": "You are a helpful assistant that can recall and discuss conversation history. Be natural and conversational. Answer the user's question about the conversation directly.",
-                    "is_active": True
-                }]
+            # Get conversation context
+            project_context = await self.project_manager.get_project_context(project_id)
+            if "error" in project_context:
+                yield {"type": "error", "message": "Could not access conversation history."}
+                return
+            
+            conversation = project_context.get("conversation_history", [])
+            
+            # Generate Mermaid diagram
+            from backend.services.artifact_generator import ArtifactGenerator
+            generator = ArtifactGenerator(self.settings)
+            mermaid_content = await generator.generate_mermaid_diagram(description, conversation)
+            
+            # Store as .mmd file
+            from datetime import datetime
+            filename = f"diagram_{datetime.now().strftime('%Y%m%d_%H%M%S')}.mmd"
+            file_id = await self._store_artifact(
+                content=mermaid_content.encode('utf-8'),
+                filename=filename,
+                project_id=project_id,
+                user_id=user_id,
+                artifact_type='diagram'
             )
-
-            logger.info(f"LLM response for conversation memory: {llm_response}")
-
-            # Extract response with better error handling
-            if llm_response and "analysis" in llm_response:
-                response_message = llm_response["analysis"]
-            elif llm_response and isinstance(llm_response, str):
-                response_message = llm_response
-            else:
-                # If LLM fails, provide a helpful response based on conversation history
-                if all_conversations:
-                    last_interaction = all_conversations[-1]
-                    last_question = last_interaction.get("user_message", "")
-                    response_message = f'You just asked: "{last_question}"'
-                else:
-                    response_message = "This is our first interaction in this project."
-
-            # Update conversation history
-            conversation_entry = {
-                "timestamp": datetime.now().isoformat(),
-                "user_message": message,
-                "das_response": response_message,
-                "intent": intent.value,
-                "source": "conversation_memory_llm"
-            }
-
-            project_thread.conversation_history.append(conversation_entry)
-
-            # CRITICAL: Persist the updated project thread to vector store
-            await self.project_manager._persist_project_thread(project_thread)
-            logger.info(f"Persisted conversation memory to project thread {project_thread.project_thread_id}")
-
-            return DASResponse(
-                message=response_message,
-                confidence=DASConfidence.HIGH,  # High confidence for conversation memory
-                intent=intent,
-                suggestions=["Continue our previous discussion", "Ask me something new"],
-                session_id=project_thread.project_thread_id,
-                metadata={
-                    "source": "conversation_memory_llm",
-                    "conversation_length": len(all_conversations),
-                    "processing_time": datetime.now().isoformat()
-                }
-            )
-
+            
+            full_response = f"\n\n✅ **Diagram created:** {filename}\n\nView it in the Artifacts section of the project tree."
+            
+            # Store the response in conversation history
+            if self.sql_first_threads and project_thread_id:
+                await self.project_manager.store_conversation_message(
+                    project_thread_id=project_thread_id,
+                    role="assistant",
+                    content=full_response,
+                    metadata={"das_engine": "DAS", "command": "diagram", "artifact_id": file_id, "filename": filename, "timestamp": datetime.now().isoformat()}
+                )
+            
+            yield {"type": "content", "content": full_response}
+            yield {"type": "done", "metadata": {"artifact_id": file_id, "filename": filename, "type": "diagram", "refresh_tree": True}}
+            
         except Exception as e:
-            logger.error(f"Failed to handle conversation memory with LLM: {e}")
-            raise RuntimeError(f"Conversation memory LLM processing failed: {e}") from e
+            logger.error(f"Error in diagram command: {e}")
+            yield {"type": "error", "message": f"Error generating diagram: {str(e)}"}
+    
+    async def _handle_help_command(self, project_id: str, user_id: str, project_thread_id: Optional[str] = None):
+        """Handle /help command"""
+        help_text = """**Available DAS Actions:**
 
-    def _analyze_intent(self, message: str) -> DASIntent:
-        """Analyze message intent using simple heuristics"""
-        message_lower = message.lower().strip()
+• `/assumption [hint]` - Capture and refine an assumption from the discussion
+  Example: `/assumption OAuth2 providers will be reliable`
 
-        # Conversation memory patterns - check FIRST
-        if any(memory in message_lower for memory in [
-            "what did i", "what was i", "what were we", "what did we",
-            "just ask", "just said", "just discuss", "previous",
-            "before", "earlier", "last question", "my last"
-        ]):
-            return DASIntent.CONVERSATION_MEMORY
+• `/white_paper` - Generate a professional white paper from the conversation
+  Example: `/white_paper`
 
-        # Greeting patterns
-        if any(greeting in message_lower for greeting in ["hello", "hi", "hey", "good morning", "good afternoon"]):
-            return DASIntent.GREETING
+• `/diagram [description]` - Create a Mermaid diagram based on the discussion
+  Example: `/diagram authentication flow`
 
-        # Command patterns
-        if any(command in message_lower for command in ["create", "generate", "build", "make", "execute", "run", "start"]):
-            return DASIntent.COMMAND
+• `/summary` - Get a quick summary of recent messages
+  Example: `/summary`
 
-        # Question patterns
-        if any(question in message_lower for question in ["what", "how", "why", "when", "where", "which", "can you", "could you", "?"]):
-            return DASIntent.QUESTION
+• `/help` - Show this help message
 
-        # Clarification patterns
-        if any(clarify in message_lower for clarify in ["explain", "clarify", "elaborate", "more details", "tell me more"]):
-            return DASIntent.CLARIFICATION
-
-        return DASIntent.UNKNOWN
-
-    def _calculate_confidence(self, rag_response: Dict[str, Any], intent: DASIntent) -> DASConfidence:
-        """Calculate confidence based on RAG results and intent"""
-        chunks_count = rag_response.get("chunks_found", 0)
-        rag_confidence = rag_response.get("confidence", "low")
-        sources = rag_response.get("sources", [])
-
-        # Check for high-quality matches (high similarity scores)
-        high_quality_match = False
-        very_high_quality_match = False
-        if sources:
-            max_relevance = 0
-            for source in sources:
-                relevance_score = source.get("relevance_score", 0)
-                max_relevance = max(max_relevance, relevance_score)
-
-            # Very high quality: >60% relevance
-            if max_relevance > 0.6:
-                very_high_quality_match = True
-                high_quality_match = True
-            # High quality: >50% relevance
-            elif max_relevance > 0.5:
-                high_quality_match = True
-
-        # High confidence conditions
-        if very_high_quality_match and rag_confidence in ["high", "medium"]:
-            return DASConfidence.HIGH
-
-        if high_quality_match and rag_confidence == "high" and chunks_count == 1:
-            return DASConfidence.HIGH  # Perfect single match
-
-        if chunks_count >= 3 and rag_confidence == "high":
-            return DASConfidence.HIGH
-
-        # Medium confidence conditions
-        if high_quality_match and rag_confidence in ["medium"]:
-            return DASConfidence.MEDIUM
-
-        if chunks_count >= 1 and rag_confidence != "low":
-            return DASConfidence.MEDIUM
-
-        if intent in [DASIntent.GREETING, DASIntent.CLARIFICATION, DASIntent.CONVERSATION_MEMORY]:
-            return DASConfidence.HIGH
-
-        # Default to low confidence
-        return DASConfidence.LOW
-
-    async def get_project_thread_suggestions(self, project_thread_id: str) -> List[str]:
-        """Get suggestions for a specific project thread"""
-        project_thread = await self.get_project_thread(project_thread_id)
-        if not project_thread:
-            return []
-
-        suggestions = []
-        history = project_thread.context.get("conversation_history", [])
-
-        if not history:
-            suggestions = [
-                "Ask me about your project requirements",
-                "Upload documents for analysis",
-                "Create or modify ontologies",
-                "Search your knowledge base"
-            ]
-        else:
-            # Context-aware suggestions based on recent activity
-            recent_topics = set()
-            for interaction in history[-3:]:
-                user_msg = interaction.get("user_message", "").lower()
-                if "ontology" in user_msg:
-                    recent_topics.add("ontology")
-                if "document" in user_msg:
-                    recent_topics.add("document")
-                if "requirement" in user_msg:
-                    recent_topics.add("requirement")
-
-            if "ontology" in recent_topics:
-                suggestions.extend([
-                    "Visualize the ontology structure",
-                    "Validate ontology consistency",
-                    "Export ontology to different formats"
-                ])
-
-            if "document" in recent_topics:
-                suggestions.extend([
-                    "Extract more requirements from documents",
-                    "Compare documents for consistency",
-                    "Generate document summaries"
-                ])
-
-        return suggestions[:5]
-
-    async def execute_command(
-        self,
-        project_thread_id: str,
-        command: str,
-        parameters: Dict[str, Any] = None
-    ) -> DASResponse:
-        """Execute a DAS command with project thread context"""
-        project_thread = await self.get_project_thread(project_thread_id)
-        if not project_thread:
-            return DASResponse(
-                message="Project thread not found. Please start a new project thread.",
-                confidence=DASConfidence.LOW,
-                intent=DASIntent.COMMAND
+**Tips:**
+- Use DAS Actions after having a substantial conversation
+- White papers work best with 10+ message exchanges
+- Diagrams use the last 10 messages for context
+- Type `/help` anytime to see this message again"""
+        
+        # Store the response in conversation history
+        if self.sql_first_threads and project_thread_id:
+            await self.project_manager.store_conversation_message(
+                project_thread_id=project_thread_id,
+                role="assistant",
+                content=help_text,
+                metadata={"das_engine": "DAS", "command": "help", "timestamp": datetime.now().isoformat()}
             )
-
-        # Command execution logic would go here
-        # For now, return a placeholder response
-        return DASResponse(
-            message=f"Command '{command}' execution is not yet implemented.",
-            confidence=DASConfidence.MEDIUM,
-            intent=DASIntent.COMMAND,
-            session_id=project_thread_id,
-            suggestions=["Try asking a question instead", "Upload a document for analysis"]
+        
+        yield {"type": "content", "content": help_text}
+        yield {"type": "done", "metadata": {}}
+    
+    async def _handle_summary_command(
+        self,
+        project_id: str,
+        user_id: str,
+        project_thread_id: Optional[str] = None
+    ):
+        """Handle /summary command - Quick summary of recent messages"""
+        yield {"type": "content", "content": "📊 Summarizing recent discussion..."}
+        
+        try:
+            # Get last 10 messages
+            project_context = await self.project_manager.get_project_context(project_id)
+            if "error" in project_context:
+                yield {"type": "error", "message": "Could not access conversation history."}
+                return
+            
+            conversation = project_context.get("conversation_history", [])
+            
+            if not conversation or len(conversation) < 2:
+                yield {"type": "content", "content": "\n\n⚠️ Not enough conversation history to summarize."}
+                yield {"type": "done", "metadata": {}}
+                return
+            
+            # Generate quick summary
+            from backend.services.artifact_generator import ArtifactGenerator
+            generator = ArtifactGenerator(self.settings)
+            summary = await generator.generate_summary(conversation, max_messages=10)
+            
+            full_response = f"\n\n**Summary:** {summary}"
+            
+            # Store the response in conversation history
+            if self.sql_first_threads and project_thread_id:
+                await self.project_manager.store_conversation_message(
+                    project_thread_id=project_thread_id,
+                    role="assistant",
+                    content=full_response,
+                    metadata={"das_engine": "DAS", "command": "summary", "timestamp": datetime.now().isoformat()}
+                )
+            
+            yield {"type": "content", "content": full_response}
+            yield {"type": "done", "metadata": {"summary": summary}}
+            
+        except Exception as e:
+            logger.error(f"Error in summary command: {e}")
+            yield {"type": "error", "message": f"Error generating summary: {str(e)}"}
+    
+    async def _store_artifact(
+        self,
+        content: bytes,
+        filename: str,
+        project_id: str,
+        user_id: str,
+        artifact_type: str
+    ) -> str:
+        """Store artifact in MinIO and PostgreSQL"""
+        from backend.services.file_storage import FileStorageService
+        
+        storage = FileStorageService(self.settings)
+        result = await storage.store_file(
+            content=content,
+            filename=filename,
+            content_type='text/markdown' if filename.endswith('.md') else 'text/plain',
+            project_id=project_id,
+            tags={'artifact_type': artifact_type, 'generated_by': 'das'},
+            created_by=user_id
         )
+        
+        if result.get('success'):
+            logger.info(f"✅ Artifact stored: {filename} (ID: {result['file_id']})")
+            return result['file_id']
+        else:
+            raise Exception(f"Failed to store artifact: {result.get('error', 'Unknown error')}")

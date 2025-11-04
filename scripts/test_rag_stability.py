@@ -47,7 +47,7 @@ def test_rag_query(token: str, question: str, project_id: str) -> Dict[str, Any]
     """Test a RAG query and return detailed results."""
     headers = {"Authorization": f"Bearer {token}"}
 
-    response = requests.post(f"{BASE_URL}/api/das2/chat", json={
+    response = requests.post(f"{BASE_URL}/api/das/chat", json={
         "message": question,
         "project_id": project_id
     }, headers=headers)

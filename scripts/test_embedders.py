@@ -115,7 +115,7 @@ class EmbedderTester:
                 
                 try:
                     response = await client.post(
-                        f"{self.base_url}/api/das2/chat",
+                        f"{self.base_url}/api/das/chat",
                         json={"message": query, "project_id": project_id},
                         headers=self.get_headers(),
                         timeout=45.0

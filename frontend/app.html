@@ -19364,8 +19364,8 @@ ${insertParts.join('\\n')}
 
           updateDASStatus('Connecting...');
 
-          // Use DAS2 server-side project thread discovery (no localStorage dependency)
-          const response = await fetch(`/api/das2/project/${projectId}/thread`, {
+          // Use DAS server-side project thread discovery (no localStorage dependency)
+          const response = await fetch(`/api/das/project/${projectId}/thread`, {
             method: 'GET',
             headers: { ...authHeader() }
           });
@@ -19385,7 +19385,7 @@ ${insertParts.join('\\n')}
             }, 200);
 
             // Determine if this is a new or existing thread
-            const historyResponse = await fetch(`/api/das2/project/${projectId}/history`, {
+            const historyResponse = await fetch(`/api/das/project/${projectId}/history`, {
               method: 'GET',
               headers: { ...authHeader() }
             });
@@ -19780,7 +19780,7 @@ ${insertParts.join('\\n')}
           const controller = new AbortController();
           const timeoutId = setTimeout(() => controller.abort(), 60000); // 60 second timeout
 
-          const response = await fetch('/api/das2/chat/stream', {
+          const response = await fetch('/api/das/chat/stream', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json', ...authHeader() },
             body: JSON.stringify({
@@ -26414,10 +26414,61 @@ def hello_world():
     </div>
   </div>
 
+  <!-- Load Requirements Workbench Module -->
+  <script type="module">
+    import { initializeRequirementsWorkbench } from '/static/js/workbenches/requirements/requirements-ui.js';
+    
+    // Initialize requirements workbench when DOM is ready
+    if (document.readyState === 'loading') {
+      document.addEventListener('DOMContentLoaded', () => {
+        // Wait for workbench to be activated
+        setTimeout(() => {
+          const requirementsTab = document.getElementById('requirementsTab');
+          if (requirementsTab) {
+            requirementsTab.addEventListener('click', () => {
+              initializeRequirementsWorkbench();
+            }, { once: true });
+          }
+        }, 100);
+      });
+    } else {
+      // DOM already loaded
+      setTimeout(() => {
+        const requirementsTab = document.getElementById('requirementsTab');
+        if (requirementsTab) {
+          requirementsTab.addEventListener('click', () => {
+            initializeRequirementsWorkbench();
+          }, { once: true });
+        }
+      }, 100);
+    }
+  </script>
+
+  <!-- Load DAS UI Module -->
+  <script type="module">
+    import { initializeDAS } from '/static/js/das/das-ui.js';
+    
+    // Initialize DAS when DOM is ready
+    if (document.readyState === 'loading') {
+      document.addEventListener('DOMContentLoaded', () => {
+        setTimeout(() => {
+          initializeDAS();
+        }, 100);
+      });
+    } else {
+      setTimeout(() => {
+        initializeDAS();
+      }, 100);
+    }
+  </script>
+
   <script>
     // =====================================
-    // REQUIREMENTS WORKBENCH JAVASCRIPT
+    // REQUIREMENTS WORKBENCH JAVASCRIPT (DEPRECATED - Use module instead)
     // =====================================
+    // NOTE: This code is kept temporarily for backwards compatibility
+    // It will be removed once the module is fully tested and integrated
+    // TODO: Remove this entire block after confirming module works correctly
 
     // Requirements workbench state
     window.requirementsState = window.requirementsState || {
@@ -29133,7 +29184,7 @@ def hello_world():
       console.log('=== END DEBUG ===');
     };
 
-    // End of Requirements Workbench JavaScript
+    // End of Requirements Workbench JavaScript (DEPRECATED - Use module instead)
 
     // =====================================
     // INDIVIDUAL TABLES SYSTEM
