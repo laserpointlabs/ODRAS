@@ -121,17 +121,57 @@ jobs:
           # Verify COMPLETE system
           echo "🔍 Verifying COMPLETE ODRAS system..."
 
-          # API Health
-          for i in {1..30}; do
-            if curl -s http://localhost:8000/api/health > /dev/null; then
-              health_data=$(curl -s http://localhost:8000/api/health)
-              echo "✅ ODRAS API responding"
-              echo "📊 Health status: $health_data"
-              break
+          # Check if uvicorn process is running
+          echo "Checking if uvicorn process is running..."
+          if ! pgrep -f "uvicorn.*main" > /dev/null && ! pgrep -f "python.*main" > /dev/null; then
+            echo "❌ ERROR: Application process not found!"
+            echo "Checking logs..."
+            tail -50 /tmp/odras_app.log 2>/dev/null || echo "No logs found"
+            exit 1
+          fi
+          echo "✅ Application process is running"
+
+          # API Health - wait longer and check more carefully
+          echo "Waiting for API to be ready..."
+          api_ready=false
+          for i in {1..60}; do
+            # Check if port is listening
+            if ! nc -z localhost 8000 2>/dev/null; then
+              echo "Port 8000 not listening yet... ($i/60)"
+              sleep 2
+              continue
             fi
-            echo "API not ready... ($i/30)"
-            sleep 3
+            
+            # Try health endpoint
+            health_response=$(curl -s -w "\n%{http_code}" http://localhost:8000/api/health 2>/dev/null || echo -e "\n000")
+            http_code=$(echo "$health_response" | tail -1)
+            
+            if [ "$http_code" = "200" ]; then
+              health_data=$(echo "$health_response" | head -n -1)
+              echo "✅ ODRAS API responding (HTTP $http_code)"
+              echo "📊 Health status: $health_data"
+              api_ready=true
+              break
+            elif [ "$http_code" = "000" ]; then
+              echo "API connection failed... ($i/60)"
+            else
+              echo "API returned HTTP $http_code... ($i/60)"
+            fi
+            sleep 2
           done
+
+          if [ "$api_ready" = "false" ]; then
+            echo "❌ ERROR: API health check failed after 120 seconds"
+            echo "Application logs (last 100 lines):"
+            tail -100 /tmp/odras_app.log 2>/dev/null || echo "No logs found"
+            echo ""
+            echo "Checking process status:"
+            ps aux | grep -E "uvicorn|python.*main" | grep -v grep || echo "No process found"
+            echo ""
+            echo "Checking port 8000:"
+            netstat -tuln | grep 8000 || ss -tuln | grep 8000 || echo "Port 8000 not listening"
+            exit 1
+          fi
 
           # Service status
           service_status=$(curl -s http://localhost:8000/api/service-status || echo "Service status not available")
