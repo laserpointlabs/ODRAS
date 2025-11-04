@@ -93,6 +93,9 @@ python tests/test_das_integration_comprehensive.py
 echo "🧪 Step 4: RAG System Stability Test..."
 python tests/test_rag_system_stability.py
 
+echo "🧪 Step 4.5: RAG Modularization Test..."
+python -m pytest tests/test_rag_modular.py -v --tb=short -m "not integration"
+
 echo "🧪 Step 5: Ontology Inheritance System Test..."
 python -m pytest tests/test_inheritance_system.py -v --tb=short
 

@@ -193,6 +193,9 @@ jobs:
           echo "🧪 Step 4: RAG System Stability Test..."
           python tests/test_rag_system_stability.py
 
+          echo "🧪 Step 4.5: RAG Modularization Test..."
+          python -m pytest tests/test_rag_modular.py -v --tb=short -m "not integration"
+
           echo "🧪 Step 5: Ontology Inheritance System Test..."
           python -m pytest tests/test_inheritance_system.py -v --tb=short
 
@@ -230,6 +233,9 @@ jobs:
             --cov-report=term \
             --cov-report=xml \
             --cov-fail-under=80 || echo "⚠️ Coverage below 80% or tests failed"
+          echo ""
+          echo "🧪 Running RAG Modularization Integration Tests..."
+          python -m pytest tests/test_rag_modular.py -v --tb=short -m integration || echo "⚠️ RAG integration tests failed (may require running services)"
         env:
           PYTHONPATH: ${{ github.workspace }}
 
