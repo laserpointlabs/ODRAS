@@ -6,7 +6,7 @@ Refactored RAG service using modular components for better testability and exten
 
 import logging
 from typing import Any, Dict, List, Optional, Tuple
-from datetime import datetime
+from datetime import datetime, timezone
 
 from ...services.config import Settings
 from ...services.db import DatabaseService
@@ -105,7 +105,7 @@ class ModularRAGService:
                     "sources": [],
                     "query": question,
                     "chunks_found": 0,
-                    "generated_at": datetime.utcnow().isoformat(),
+                    "generated_at": datetime.now(timezone.utc).isoformat(),
                 }
 
             # 2. Generate response using LLM with retrieved context
@@ -125,7 +125,7 @@ class ModularRAGService:
                 "query": question,
                 "chunks_found": len(relevant_chunks),
                 "response_style": response_style,
-                "generated_at": datetime.utcnow().isoformat(),
+                    "generated_at": datetime.now(timezone.utc).isoformat(),
                 "model_used": self.settings.llm_model,
                 "provider": self.settings.llm_provider,
             }
@@ -139,7 +139,7 @@ class ModularRAGService:
                 "success": False,
                 "error": f"Failed to process query: {str(e)}",
                 "query": question,
-                "generated_at": datetime.utcnow().isoformat(),
+                    "generated_at": datetime.now(timezone.utc).isoformat(),
             }
 
     async def _retrieve_relevant_chunks(
