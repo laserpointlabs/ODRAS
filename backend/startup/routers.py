@@ -34,6 +34,9 @@ from ..api.federated_access import router as federated_router
 from ..api.events import router as events_router
 from ..api.users import router as users_router
 from ..api.core import router as core_router
+from ..api.ui import router as ui_router
+from ..api.system import router as system_router
+from ..api.admin import router as admin_router
 from ..test_review_endpoint import router as test_router
 
 
@@ -44,8 +47,15 @@ def register_routers(app: FastAPI) -> None:
     Args:
         app: FastAPI application instance
     """
+    # UI routes (must be registered early to avoid conflicts)
+    app.include_router(ui_router)
+    
     # Core routers (auth, health, sync, projects)
     app.include_router(core_router)
+    
+    # System and admin routers
+    app.include_router(system_router)
+    app.include_router(admin_router)
     
     # Test router
     app.include_router(test_router)
