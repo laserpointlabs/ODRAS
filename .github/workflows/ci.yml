@@ -135,15 +135,8 @@ jobs:
           echo "Waiting for API to be ready..."
           api_ready=false
           for i in {1..60}; do
-            # Check if port is listening
-            if ! nc -z localhost 8000 2>/dev/null; then
-              echo "Port 8000 not listening yet... ($i/60)"
-              sleep 2
-              continue
-            fi
-            
-            # Try health endpoint
-            health_response=$(curl -s -w "\n%{http_code}" http://localhost:8000/api/health 2>/dev/null || echo -e "\n000")
+            # Try health endpoint (curl will handle connection errors)
+            health_response=$(curl -s -w "\n%{http_code}" --connect-timeout 5 --max-time 10 http://localhost:8000/api/health 2>/dev/null || echo -e "\n000")
             http_code=$(echo "$health_response" | tail -1)
             
             if [ "$http_code" = "200" ]; then
@@ -156,6 +149,10 @@ jobs:
               echo "API connection failed... ($i/60)"
             else
               echo "API returned HTTP $http_code... ($i/60)"
+              # Log response for debugging
+              if [ "$http_code" != "000" ]; then
+                echo "$health_response" | head -n -1 | head -5
+              fi
             fi
             sleep 2
           done
