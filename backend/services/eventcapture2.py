@@ -797,13 +797,13 @@ class EventCapture2:
     async def _route_to_das2(self, event: EnhancedEvent) -> bool:
         """Route event to DAS2 system"""
         try:
-            from backend.api.das2 import das2_engine
+            from backend.api.das import das_engine
 
-            if not das2_engine or not das2_engine.project_manager:
+            if not das_engine or not das_engine.project_manager:
                 return False
 
             # Check if project thread exists (don't create one)
-            project_thread = await das2_engine.project_manager.get_project_thread_by_project_id(event.project_id)
+            project_thread = await das_engine.project_manager.get_project_thread_by_project_id(event.project_id)
             if not project_thread:
                 return False  # No project thread, can't route event
 
@@ -822,7 +822,7 @@ class EventCapture2:
             project_event_type = event_type_map.get(event.event_type, ProjectEventType.DAS_COMMAND)
 
             # Capture in project thread with rich summary
-            await das2_engine.project_manager.capture_project_event(
+            await das_engine.project_manager.capture_project_event(
                 project_id=event.project_id,
                 project_thread_id=project_thread.project_thread_id,
                 user_id=event.user_id,
