@@ -619,19 +619,21 @@ class TestDocumentManagement:
             f"/api/files/{file_id}/metadata",
             headers=auth_headers
         )
-        assert meta_resp.status_code == 200
+        assert meta_resp.status_code == 200, f"Failed to get metadata: {meta_resp.text}"
         metadata = meta_resp.json()
+        assert metadata["file_id"] == file_id
+        assert metadata["filename"] == "test_doc.txt"
 
         # Update document metadata
         update_resp = await client.put(
             f"/api/files/{file_id}/metadata",
             json={
-                "tags": ["test", "management"],
+                "tags": {"test": "management"},
                 "description": "Updated document description"
             },
             headers=auth_headers
         )
-        assert update_resp.status_code in [200, 404]
+        assert update_resp.status_code == 200, f"Failed to update metadata: {update_resp.text}"
 
         # List documents with filters
         list_resp = await client.get(
