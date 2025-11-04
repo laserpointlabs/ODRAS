@@ -203,7 +203,7 @@ class TestOntologyAttributesDASIntegration:
         """Test that DAS can see the basic ontology structure"""
         async with httpx.AsyncClient(timeout=30.0) as client:
             response = await client.post(
-                "http://localhost:8000/api/das2/chat",
+                "http://localhost:8000/api/das/chat",
                 headers={"Authorization": f"Bearer {auth_token}"},
                 json={
                     "project_id": test_project_id,
@@ -229,7 +229,7 @@ class TestOntologyAttributesDASIntegration:
         """Test that DAS can see rich class attributes"""
         async with httpx.AsyncClient(timeout=30.0) as client:
             response = await client.post(
-                "http://localhost:8000/api/das2/chat",
+                "http://localhost:8000/api/das/chat",
                 headers={"Authorization": f"Bearer {auth_token}"},
                 json={
                     "project_id": test_project_id,
@@ -256,7 +256,7 @@ class TestOntologyAttributesDASIntegration:
         """Test that DAS can see property attributes and metadata"""
         async with httpx.AsyncClient(timeout=30.0) as client:
             response = await client.post(
-                "http://localhost:8000/api/das2/chat",
+                "http://localhost:8000/api/das/chat",
                 headers={"Authorization": f"Bearer {auth_token}"},
                 json={
                     "project_id": test_project_id,
@@ -282,7 +282,7 @@ class TestOntologyAttributesDASIntegration:
         """Test that DAS understands class relationships and hierarchy"""
         async with httpx.AsyncClient(timeout=30.0) as client:
             response = await client.post(
-                "http://localhost:8000/api/das2/chat",
+                "http://localhost:8000/api/das/chat",
                 headers={"Authorization": f"Bearer {auth_token}"},
                 json={
                     "project_id": test_project_id,
@@ -307,7 +307,7 @@ class TestOntologyAttributesDASIntegration:
         """Test DAS can analyze metadata across ontology elements"""
         async with httpx.AsyncClient(timeout=30.0) as client:
             response = await client.post(
-                "http://localhost:8000/api/das2/chat",
+                "http://localhost:8000/api/das/chat",
                 headers={"Authorization": f"Bearer {auth_token}"},
                 json={
                     "project_id": test_project_id,
@@ -369,7 +369,7 @@ class TestOntologyAttributesDASIntegration:
 
             # Test DAS integration with both ontology and document context
             response = await client.post(
-                "http://localhost:8000/api/das2/chat",
+                "http://localhost:8000/api/das/chat",
                 headers={"Authorization": f"Bearer {auth_token}"},
                 json={
                     "project_id": test_project_id,
@@ -416,7 +416,7 @@ class TestOntologyAttributesDASIntegration:
                 print(f"Q: {test_case['question']}")
 
                 response = await client.post(
-                    "http://localhost:8000/api/das2/chat",
+                    "http://localhost:8000/api/das/chat",
                     headers={"Authorization": f"Bearer {auth_token}"},
                     json={
                         "project_id": test_project_id,
@@ -460,7 +460,7 @@ class TestOntologyAttributesDASIntegration:
             start_time = time.time()
 
             response = await client.post(
-                "http://localhost:8000/api/das2/chat",
+                "http://localhost:8000/api/das/chat",
                 headers={"Authorization": f"Bearer {auth_token}"},
                 json={
                     "project_id": test_project_id,

@@ -199,7 +199,7 @@ class DASComprehensiveTester:
             # Validate project thread was created (same as UI does)
             self.log("Validating project thread...")
             thread_response = await client.get(
-                f"{self.base_url}/api/das2/project/{self.project_id}/thread",
+                f"{self.base_url}/api/das/project/{self.project_id}/thread",
                 headers=self.auth_headers()
             )
 
@@ -213,7 +213,7 @@ class DASComprehensiveTester:
                 # Try to create thread if it doesn't exist (same as UI)
                 self.log("Creating project thread...")
                 create_thread_response = await client.post(
-                    f"{self.base_url}/api/das2/project/{self.project_id}/thread",
+                    f"{self.base_url}/api/das/project/{self.project_id}/thread",
                     headers=self.auth_headers(),
                     json={"create_if_not_exists": True}
                 )
@@ -435,7 +435,7 @@ The TriVector VTOL (Vertical Takeoff and Landing) platform represents next-gener
                 self.log(f"Testing Q{i}: {test_case['question']}", "TEST")
 
                 response = await client.post(
-                    f"{self.base_url}/api/das2/chat",
+                    f"{self.base_url}/api/das/chat",
                     headers=self.auth_headers(),
                     json={
                         "message": test_case["question"],

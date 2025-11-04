@@ -193,7 +193,7 @@ class TestEventCapture:
         for message in das_messages:
             # Try DAS2 message endpoint
             das_resp = await client.post(
-                f"/api/das2/message",
+                f"/api/das/message",
                 json={
                     "project_id": project_id,
                     "message": message

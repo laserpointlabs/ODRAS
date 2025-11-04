@@ -147,7 +147,7 @@ class TestCoreFunctionality:
 
             print("    Testing DAS2 chat with OpenAI...")
             das_resp = await client.post(
-                "/api/das2/chat",
+                "/api/das/chat",
                 json=das_message,
                 headers=auth_headers
             )

@@ -488,7 +488,7 @@ Score from 0-100 where:
                 print(f"\n🔍 Testing Question {i}/{len(test_questions)}: {test_case['question'][:60]}...")
 
                 response = await client.post(
-                    "http://localhost:8000/api/das2/chat",
+                    "http://localhost:8000/api/das/chat",
                     headers={"Authorization": f"Bearer {auth_token}"},
                     json={
                         "project_id": test_project_id,
@@ -567,7 +567,7 @@ Score from 0-100 where:
         """Test that DAS can analyze rich attributes across all elements"""
         async with httpx.AsyncClient(timeout=30.0) as client:
             response = await client.post(
-                "http://localhost:8000/api/das2/chat",
+                "http://localhost:8000/api/das/chat",
                 headers={"Authorization": f"Bearer {auth_token}"},
                 json={
                     "project_id": test_project_id,
@@ -597,7 +597,7 @@ Score from 0-100 where:
         """Test DAS understanding across multiple ontologies"""
         async with httpx.AsyncClient(timeout=30.0) as client:
             response = await client.post(
-                "http://localhost:8000/api/das2/chat",
+                "http://localhost:8000/api/das/chat",
                 headers={"Authorization": f"Bearer {auth_token}"},
                 json={
                     "project_id": test_project_id,
@@ -624,7 +624,7 @@ Score from 0-100 where:
             start_time = time.time()
 
             response = await client.post(
-                "http://localhost:8000/api/das2/chat",
+                "http://localhost:8000/api/das/chat",
                 headers={"Authorization": f"Bearer {auth_token}"},
                 json={
                     "project_id": test_project_id,

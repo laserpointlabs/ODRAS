@@ -346,7 +346,7 @@ class TestSQLFirstEventSystem:
         print(f"🤖 Asking DAS about project activities...")
 
         response = requests.post(
-            f"{self.base_url}/api/das2/chat",
+            f"{self.base_url}/api/das/chat",
             headers=self.auth_headers,
             json=das_query
         )

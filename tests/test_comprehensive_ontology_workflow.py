@@ -622,7 +622,7 @@ class TestComprehensiveOntologyWorkflow:
                 print(f"Testing Q&A {i}/{len(test_cases)}: {test_case['question'][:50]}...")
 
                 response = await client.post(
-                    "http://localhost:8000/api/das2/chat",
+                    "http://localhost:8000/api/das/chat",
                     headers={"Authorization": f"Bearer {auth_token}"},
                     json={
                         "project_id": test_project_id,
@@ -688,7 +688,7 @@ class TestComprehensiveOntologyWorkflow:
         """Verify DAS can see imported ontology structure"""
         async with httpx.AsyncClient(timeout=30.0) as client:
             response = await client.post(
-                "http://localhost:8000/api/das2/chat",
+                "http://localhost:8000/api/das/chat",
                 headers={"Authorization": f"Bearer {auth_token}"},
                 json={
                     "project_id": test_project_id,
@@ -731,7 +731,7 @@ class TestComprehensiveOntologyWorkflow:
 
             for question in questions:
                 response = await client.post(
-                    "http://localhost:8000/api/das2/chat",
+                    "http://localhost:8000/api/das/chat",
                     headers={"Authorization": f"Bearer {auth_token}"},
                     json={
                         "project_id": test_project_id,
@@ -759,7 +759,7 @@ class TestComprehensiveOntologyWorkflow:
             start_time = time.time()
 
             response = await client.post(
-                "http://localhost:8000/api/das2/chat",
+                "http://localhost:8000/api/das/chat",
                 headers={"Authorization": f"Bearer {auth_token}"},
                 json={
                     "project_id": test_project_id,

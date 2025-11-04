@@ -121,7 +121,7 @@ def test_rag_query(token, question, project_id, max_wait=30):
     headers = {"Authorization": f"Bearer {token}"}
 
     # Send DAS2 chat message
-    response = requests.post(f"{BASE_URL}/api/das2/chat", json={
+    response = requests.post(f"{BASE_URL}/api/das/chat", json={
         "message": question,
         "project_id": project_id
     }, headers=headers)

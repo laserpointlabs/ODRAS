@@ -294,7 +294,7 @@ class TestDASComprehensiveContextAwareness:
                 print(f"\n🔍 Project Awareness {i}/{len(project_questions)}: {test_case['question'][:50]}...")
 
                 response = await client.post(
-                    "http://localhost:8000/api/das2/chat",
+                    "http://localhost:8000/api/das/chat",
                     headers={"Authorization": f"Bearer {auth_token}"},
                     json={
                         "project_id": project_id,
@@ -355,7 +355,7 @@ class TestDASComprehensiveContextAwareness:
                 print(f"\n🔍 Ontology Awareness {i}/{len(ontology_questions)}: {test_case['question'][:50]}...")
 
                 response = await client.post(
-                    "http://localhost:8000/api/das2/chat",
+                    "http://localhost:8000/api/das/chat",
                     headers={"Authorization": f"Bearer {auth_token}"},
                     json={
                         "project_id": project_id,
@@ -413,7 +413,7 @@ class TestDASComprehensiveContextAwareness:
                 print(f"\n🔍 Knowledge Asset Awareness {i}/{len(file_questions)}: {test_case['question'][:50]}...")
 
                 response = await client.post(
-                    "http://localhost:8000/api/das2/chat",
+                    "http://localhost:8000/api/das/chat",
                     headers={"Authorization": f"Bearer {auth_token}"},
                     json={
                         "project_id": project_id,
@@ -486,7 +486,7 @@ class TestDASComprehensiveContextAwareness:
                 print(f"\n💬 Conversation Turn {i}/{len(conversation_sequence)}: {turn['question']}")
 
                 response = await client.post(
-                    "http://localhost:8000/api/das2/chat",
+                    "http://localhost:8000/api/das/chat",
                     headers={"Authorization": f"Bearer {auth_token}"},
                     json={
                         "project_id": project_id,
@@ -574,7 +574,7 @@ class TestDASComprehensiveContextAwareness:
                 print(f"\n🔍 Edge Case {i}/{len(edge_case_questions)}: {question_display[:50]}...")
 
                 response = await client.post(
-                    "http://localhost:8000/api/das2/chat",
+                    "http://localhost:8000/api/das/chat",
                     headers={"Authorization": f"Bearer {auth_token}"},
                     json={
                         "project_id": project_id,
@@ -652,7 +652,7 @@ class TestDASComprehensiveContextAwareness:
                     print(f"   {j}. {question}")
 
                     response = await client.post(
-                        "http://localhost:8000/api/das2/chat",
+                        "http://localhost:8000/api/das/chat",
                         headers={"Authorization": f"Bearer {auth_token}"},
                         json={
                             "project_id": project_id,
@@ -724,7 +724,7 @@ class TestDASComprehensiveContextAwareness:
                 print(f"\n🔗 Cross-Context Integration {i}/{len(integration_questions)}: {test_case['question'][:50]}...")
 
                 response = await client.post(
-                    "http://localhost:8000/api/das2/chat",
+                    "http://localhost:8000/api/das/chat",
                     headers={"Authorization": f"Bearer {auth_token}"},
                     json={
                         "project_id": project_id,
@@ -773,7 +773,7 @@ class TestDASComprehensiveContextAwareness:
             start_time = time.time()
 
             response = await client.post(
-                "http://localhost:8000/api/das2/chat",
+                "http://localhost:8000/api/das/chat",
                 headers={"Authorization": f"Bearer {auth_token}"},
                 json={
                     "project_id": project_id,
@@ -818,7 +818,7 @@ class TestDASComprehensiveContextAwareness:
             final_question = "Can you validate that you understand this project completely? Tell me what you know about the project, its ontologies, uploaded files, and our conversation history."
 
             response = await client.post(
-                "http://localhost:8000/api/das2/chat",
+                "http://localhost:8000/api/das/chat",
                 headers={"Authorization": f"Bearer {auth_token}"},
                 json={
                     "project_id": project_id,

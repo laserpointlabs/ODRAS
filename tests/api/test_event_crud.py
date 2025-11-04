@@ -333,7 +333,7 @@ class TestEventCRUD:
 
         for msg_data in das_messages:
             das_resp = await client.post(
-                f"/api/das2/message",
+                f"/api/das/message",
                 json={
                     "project_id": test_project,
                     "message": msg_data["message"]
@@ -349,7 +349,7 @@ class TestEventCRUD:
         """Test DAS conversation history as events"""
         # Get DAS conversation history
         history_resp = await client.get(
-            f"/api/das2/project/{test_project}/history",
+            f"/api/das/project/{test_project}/history",
             headers=auth_headers
         )
 

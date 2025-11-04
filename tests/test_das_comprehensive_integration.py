@@ -336,7 +336,7 @@ These UAV platforms demonstrate key systems engineering principles:
 
             async with httpx.AsyncClient() as client:
                 response = await client.post(
-                    f"{self.base_url}/api/das2/chat",
+                    f"{self.base_url}/api/das/chat",
                     headers=self.auth_headers(),
                     json={
                         "message": test_case["question"],
