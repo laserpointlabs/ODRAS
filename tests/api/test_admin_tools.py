@@ -585,7 +585,13 @@ class TestDocumentManagement:
             json={"name": f"Doc Mgmt Test {int(time.time())}"},
             headers=auth_headers
         )
-        project_id = resp.json()["project_id"]
+        assert resp.status_code == 200, f"Project creation failed: {resp.text}"
+        project_data = resp.json()
+        # Handle both response formats: {"project": {...}} or {"project_id": ...}
+        if "project" in project_data:
+            project_id = project_data["project"]["project_id"]
+        else:
+            project_id = project_data["project_id"]
         yield project_id
         await client.delete(f"/api/projects/{project_id}", headers=auth_headers)
 
@@ -597,13 +603,16 @@ class TestDocumentManagement:
         files = {"file": ("test_doc.txt", doc_content, "text/plain")}
 
         upload_resp = await client.post(
-            f"/api/files/upload/{test_project}",
+            "/api/files/upload",
             files=files,
+            data={"project_id": test_project},
             headers=auth_headers
         )
-        assert upload_resp.status_code == 200
+        assert upload_resp.status_code == 200, f"Upload failed: {upload_resp.text}"
         file_info = upload_resp.json()
-        file_id = file_info["file_id"]
+        # Handle response format: {"file_id": ...} or {"success": True, "file_id": ...}
+        file_id = file_info.get("file_id")
+        assert file_id is not None, f"File ID not found in response: {file_info}"
 
         # Get document metadata
         meta_resp = await client.get(
@@ -663,8 +672,9 @@ class TestDocumentManagement:
         for filename, content, mime_type in docs:
             files = {"file": (filename, content, mime_type)}
             resp = await client.post(
-                f"/api/files/upload/{test_project}",
+                "/api/files/upload",
                 files=files,
+                data={"project_id": test_project},
                 headers=auth_headers
             )
             if resp.status_code == 200:
@@ -705,12 +715,15 @@ class TestDocumentManagement:
         # Upload a document
         files = {"file": ("private.txt", b"Private content", "text/plain")}
         upload_resp = await client.post(
-            f"/api/files/upload/{test_project}",
+            "/api/files/upload",
             files=files,
+            data={"project_id": test_project},
             headers=auth_headers
         )
-        assert upload_resp.status_code == 200
-        file_id = upload_resp.json()["file_id"]
+        assert upload_resp.status_code == 200, f"Upload failed: {upload_resp.text}"
+        file_info = upload_resp.json()
+        file_id = file_info.get("file_id")
+        assert file_id is not None, f"File ID not found in response: {file_info}"
 
         # Try to access without auth (should fail)
         unauth_resp = await client.get(f"/api/files/{file_id}/download")
