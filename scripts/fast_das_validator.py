@@ -97,7 +97,7 @@ class FastDASValidator:
 
         try:
             response = requests.post(
-                f"{self.base_url}/api/das2/chat",
+                f"{self.base_url}/api/das/chat",
                 headers={"Authorization": f"Bearer {self.auth_token}"},
                 json={
                     "project_id": self.project_id,
@@ -186,7 +186,7 @@ class FastDASValidator:
 
         try:
             response = requests.post(
-                f"{self.base_url}/api/das2/chat",
+                f"{self.base_url}/api/das/chat",
                 headers={"Authorization": f"Bearer {self.auth_token}"},
                 json={
                     "project_id": self.project_id,
@@ -221,7 +221,7 @@ class FastDASValidator:
 
         try:
             response = requests.post(
-                f"{self.base_url}/api/das2/chat",
+                f"{self.base_url}/api/das/chat",
                 headers={"Authorization": f"Bearer {self.auth_token}"},
                 json={
                     "project_id": self.project_id,

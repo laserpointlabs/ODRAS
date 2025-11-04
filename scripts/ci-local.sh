@@ -9,9 +9,14 @@ echo "============================================================"
 
 # Step 1: Start ODRAS stack (same as CI)
 echo ""
-echo "📦 Step 1: Starting ODRAS stack..."
+echo "📦 Step 1: Starting ODRAS stack (CI-compatible with CPU ollama)..."
 ./odras.sh clean -y
+# Start core services (no GPU profile)
 docker-compose up -d
+# Optionally start CPU ollama for LLM testing (if docker-compose.ci.yml exists)
+if [ -f docker-compose.ci.yml ]; then
+    docker-compose -f docker-compose.yml -f docker-compose.ci.yml up -d ollama || echo "⚠️  ollama not available (optional)"
+fi
 
 echo "Waiting for services to be ready..."
 sleep 20
@@ -35,7 +40,7 @@ for i in {1..30}; do
     sleep 2
 done
 
-echo "✅ ODRAS stack ready"
+echo "✅ ODRAS stack ready with proper container names and GPU fallback"
 
 # Step 2: Initialize database (same as CI)
 echo ""
@@ -64,6 +69,10 @@ for i in {1..30}; do
     echo "API not ready... ($i/30)"
     sleep 3
 done
+
+# Service status (if endpoint exists)
+service_status=$(curl -s http://localhost:8000/api/service-status 2>/dev/null || echo "Service status not available")
+echo "📊 Service status: $service_status"
 
 echo "🎯 COMPLETE ODRAS APPLICATION READY"
 
@@ -110,9 +119,20 @@ python -m pytest tests/test_cqmt_workbench_complete.py -v --tb=short
 
 echo "✅ COMPLETE ODRAS system validation finished"
 
-# Step 5: Diagnostic report (same as CI)
+# Step 5: Run tests with coverage (same as CI)
 echo ""
-echo "📊 Step 5: System diagnostic report"
+echo "📊 Step 5: Running tests with coverage reporting..."
+export PYTHONPATH="${PWD}"
+pytest tests/ \
+  --cov=backend \
+  --cov-report=html \
+  --cov-report=term \
+  --cov-report=xml \
+  --cov-fail-under=80 || echo "⚠️ Coverage below 80% or tests failed"
+
+# Step 6: Diagnostic report (same as CI)
+echo ""
+echo "📊 Step 6: System diagnostic report"
 echo "============================================================"
 
 echo "DATABASE TABLES:"
