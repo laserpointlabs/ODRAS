@@ -43,25 +43,15 @@ async def initialize_application(app: FastAPI) -> None:
         print("✅ Settings loaded")
         
         # Step 2: Initialize database
-        await initialize_database(settings)
-        
-        print("🔥 Step 3: Starting DAS initialization...")
-        logger.info("🚀 Starting DAS initialization...")
-        
-        print("🔥 Step 4: Importing services...")
-        from ..services.rag_service import RAGService
-        import redis.asyncio as redis
-        print("✅ Services imported")
-        
-        print("🔥 Step 5: Creating service instances...")
-        logger.info("📦 Creating service instances...")
-        print("✅ Settings instance created")
+        from ..api.core import set_db_instance
+        db = await initialize_database(settings)
+        set_db_instance(db)  # Set the global db instance for core API
         
         # Step 6-7: Initialize services
-        rag_service, redis_client = await initialize_services(settings)
+        rag_service, redis_client = await initialize_services(settings, db)
         
         # Step 8: Initialize DAS
-        await initialize_das()
+        await initialize_das(settings, (rag_service, redis_client), db)
         
         # Step 9: Configure middleware
         configure_middleware(redis_client)
