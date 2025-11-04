@@ -125,9 +125,9 @@ class ModularRAGService:
                 "query": question,
                 "chunks_found": len(relevant_chunks),
                 "response_style": response_style,
-                    "generated_at": datetime.now(timezone.utc).isoformat(),
-                "model_used": self.settings.llm_model,
-                "provider": self.settings.llm_provider,
+                "generated_at": datetime.now(timezone.utc).isoformat(),
+                "model_used": response_data.get("model_used", self.settings.llm_model),
+                "provider": response_data.get("provider_used", self.settings.llm_provider),
             }
 
             logger.info(f"Successfully generated RAG response with {len(relevant_chunks)} chunks")
