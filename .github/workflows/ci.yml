@@ -166,7 +166,7 @@ jobs:
             ps aux | grep -E "uvicorn|python.*main" | grep -v grep || echo "No process found"
             echo ""
             echo "Checking port 8000:"
-            netstat -tuln | grep 8000 || ss -tuln | grep 8000 || echo "Port 8000 not listening"
+            (netstat -tuln 2>/dev/null | grep 8000 || ss -tuln 2>/dev/null | grep 8000 || curl -s --connect-timeout 2 http://localhost:8000/api/health >/dev/null 2>&1 && echo "Port 8000 is accessible via curl" || echo "Port 8000 not accessible")
             exit 1
           fi
 
