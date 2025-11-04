@@ -159,7 +159,9 @@ if (document.readyState === 'loading') {
   toolbarManager.initialize();
 }
 
-// Export for use in other modules
-if (typeof module !== 'undefined' && module.exports) {
-  module.exports = { ToolbarManager, toolbarManager };
+// Export for use in other modules (ES6 module format)
+export function initializeToolbar() {
+  return toolbarManager.initialize();
 }
+
+export { ToolbarManager, toolbarManager };

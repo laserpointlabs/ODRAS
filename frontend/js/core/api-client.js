@@ -188,6 +188,9 @@ class APIClient {
 const apiClient = new APIClient();
 
 // Export for use in other modules
-if (typeof module !== 'undefined' && module.exports) {
-  module.exports = { APIClient, apiClient };
+export { APIClient, apiClient };
+
+// Make available globally for backwards compatibility
+if (typeof window !== 'undefined') {
+  window.ApiClient = apiClient;
 }

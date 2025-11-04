@@ -91,18 +91,29 @@ export function showToast(message, isError = false) {
 
 // Get current project ID from state or localStorage
 export function getCurrentProjectId() {
-  // Try to get from state manager if available
-  try {
-    const { getAppState } = require('./state-manager.js');
-    const state = getAppState();
-    if (state.activeProject?.projectId) {
-      return state.activeProject.projectId;
+  // Try to get from state manager if available (import dynamically)
+  if (typeof window !== 'undefined' && window.getAppState) {
+    try {
+      const state = window.getAppState();
+      if (state?.currentProject?.project_id) {
+        return state.currentProject.project_id;
+      }
+      // Also check activeProject for compatibility
+      if (state?.activeProject?.projectId) {
+        return state.activeProject.projectId;
+      }
+    } catch (e) {
+      // Fall through to localStorage
     }
-  } catch (e) {
-    // State manager not available, fall back to localStorage
   }
   
-  // Fallback to localStorage
+  // Fallback to localStorage (backwards compatible)
   return localStorage.getItem('active_project_id') || null;
 }
 
+// Make available globally for backwards compatibility
+if (typeof window !== 'undefined') {
+  window.getCurrentProjectId = getCurrentProjectId;
+  window.parseMarkdown = parseMarkdown;
+  window.showToast = showToast;
+}

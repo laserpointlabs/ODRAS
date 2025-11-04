@@ -127,7 +127,21 @@ class EventBus {
 // Create singleton instance
 const eventBus = new EventBus();
 
+// Export functions for compatibility with requirements workbench
+export function subscribeToEvent(event, callback) {
+  return eventBus.on(event, callback);
+}
+
+export function emitEvent(event, data) {
+  eventBus.emit(event, data);
+}
+
 // Export for use in other modules
-if (typeof module !== 'undefined' && module.exports) {
-  module.exports = { EventBus, eventBus };
+export { EventBus, eventBus };
+
+// Make available globally for backwards compatibility
+if (typeof window !== 'undefined') {
+  window.subscribeToEvent = subscribeToEvent;
+  window.emitEvent = emitEvent;
+  window.eventBus = eventBus;
 }

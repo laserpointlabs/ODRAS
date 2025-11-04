@@ -174,23 +174,23 @@ addopts =
 
 1. **Remove DAS1 references**:
 
-                                                                                                - Archive `backend/api/das.py` (keep as reference only)
-                                                                                                - Remove `backend/services/das_core_engine.py` (or archive)
-                                                                                                - Remove DAS1 initialization from startup
+                                                                                                                                                                                                                                                                                                                                                                                                - Archive `backend/api/das.py` (keep as reference only)
+                                                                                                                                                                                                                                                                                                                                                                                                - Remove `backend/services/das_core_engine.py` (or archive)
+                                                                                                                                                                                                                                                                                                                                                                                                - Remove DAS1 initialization from startup
 
 2. **Rename DAS2 to DAS**:
 
-                                                                                                - Rename `backend/api/das2.py` → `backend/api/das.py`
-                                                                                                - Rename `backend/services/das2_core_engine.py` → `backend/services/das_core_engine.py`
-                                                                                                - Update all imports from `das2` to `das`
-                                                                                                - Update API prefix from `/api/das2/` to `/api/das/`
-                                                                                                - Update frontend to use `/api/das/` endpoints
+                                                                                                                                                                                                                                                                                                                                                                                                - Rename `backend/api/das2.py` → `backend/api/das.py`
+                                                                                                                                                                                                                                                                                                                                                                                                - Rename `backend/services/das2_core_engine.py` → `backend/services/das_core_engine.py`
+                                                                                                                                                                                                                                                                                                                                                                                                - Update all imports from `das2` to `das`
+                                                                                                                                                                                                                                                                                                                                                                                                - Update API prefix from `/api/das2/` to `/api/das/`
+                                                                                                                                                                                                                                                                                                                                                                                                - Update frontend to use `/api/das/` endpoints
 
 3. **Update startup initialization**:
 
-                                                                                                - Remove `initialize_das_engine()` call (DAS1)
-                                                                                                - Keep only `initialize_das2_engine()` (renamed to `initialize_das_engine()`)
-                                                                                                - Update event routing to use single DAS system
+                                                                                                                                                                                                                                                                                                                                                                                                - Remove `initialize_das_engine()` call (DAS1)
+                                                                                                                                                                                                                                                                                                                                                                                                - Keep only `initialize_das2_engine()` (renamed to `initialize_das_engine()`)
+                                                                                                                                                                                                                                                                                                                                                                                                - Update event routing to use single DAS system
 
 ### 1.2 Ontology API Consolidation (CRITICAL FIX)
 
@@ -202,20 +202,20 @@ addopts =
 
 1. **Registry endpoints** (`/api/ontologies`):
 
-                                                                                                - `GET /api/ontologies` (line 934)
-                                                                                                - `POST /api/ontologies` (line 1024)
-                                                                                                - `GET /api/ontologies/reference` (line 1151)
-                                                                                                - `PUT /api/ontologies/reference` (line 1521)
-                                                                                                - `POST /api/ontologies/import-url` (line 1545)
-                                                                                                - `DELETE /api/ontologies` (line 1669)
-                                                                                                - `PUT /api/ontologies/label` (line 1710)
+                                                                                                                                                                                                                                                                                                                                                                                                - `GET /api/ontologies` (line 934)
+                                                                                                                                                                                                                                                                                                                                                                                                - `POST /api/ontologies` (line 1024)
+                                                                                                                                                                                                                                                                                                                                                                                                - `GET /api/ontologies/reference` (line 1151)
+                                                                                                                                                                                                                                                                                                                                                                                                - `PUT /api/ontologies/reference` (line 1521)
+                                                                                                                                                                                                                                                                                                                                                                                                - `POST /api/ontologies/import-url` (line 1545)
+                                                                                                                                                                                                                                                                                                                                                                                                - `DELETE /api/ontologies` (line 1669)
+                                                                                                                                                                                                                                                                                                                                                                                                - `PUT /api/ontologies/label` (line 1710)
 
 2. **Operation endpoints** (`/api/ontology/`):
 
-                                                                                                - `POST /api/ontology/push-turtle` (line 893) → Move to router
-                                                                                                - `POST /api/ontology/save` (line 1744) → Keep in router (consolidate)
-                                                                                                - `GET /api/ontology/summary` (line 1877) → Move to router
-                                                                                                - `POST /api/ontology/sparql` (line 1910) → Move to router
+                                                                                                                                                                                                                                                                                                                                                                                                - `POST /api/ontology/push-turtle` (line 893) → Move to router
+                                                                                                                                                                                                                                                                                                                                                                                                - `POST /api/ontology/save` (line 1744) → Keep in router (consolidate)
+                                                                                                                                                                                                                                                                                                                                                                                                - `GET /api/ontology/summary` (line 1877) → Move to router
+                                                                                                                                                                                                                                                                                                                                                                                                - `POST /api/ontology/sparql` (line 1910) → Move to router
 
 **Implementation**: Add all endpoints to `backend/api/ontology.py` router, remove from `main.py`.
 
@@ -438,33 +438,33 @@ def create_vector_store(settings: Settings) -> VectorStore:
 
 1. **Testing Infrastructure First** (Phase 0):
 
-                                                                                                - Create `scripts/ci-local.sh`
-                                                                                                - Set up pre-commit hooks
-                                                                                                - Add test coverage reporting
-                                                                                                - Create quality check scripts
+                                                                                                                                                                                                                                                                                                                                                                                                - Create `scripts/ci-local.sh`
+                                                                                                                                                                                                                                                                                                                                                                                                - Set up pre-commit hooks
+                                                                                                                                                                                                                                                                                                                                                                                                - Add test coverage reporting
+                                                                                                                                                                                                                                                                                                                                                                                                - Create quality check scripts
 
 2. **Backend Refactoring** (Phase 1):
 
-                                                                                                - DAS consolidation
-                                                                                                - Ontology API consolidation
-                                                                                                - Extract startup modules
-                                                                                                - Slim down main.py
+                                                                                                                                                                                                                                                                                                                                                                                                - DAS consolidation
+                                                                                                                                                                                                                                                                                                                                                                                                - Ontology API consolidation
+                                                                                                                                                                                                                                                                                                                                                                                                - Extract startup modules
+                                                                                                                                                                                                                                                                                                                                                                                                - Slim down main.py
 
 3. **RAG Modularization** (Phase 2):
 
-                                                                                                - Create modular structure
-                                                                                                - Implement abstract interfaces
-                                                                                                - Refactor RAGService
+                                                                                                                                                                                                                                                                                                                                                                                                - Create modular structure
+                                                                                                                                                                                                                                                                                                                                                                                                - Implement abstract interfaces
+                                                                                                                                                                                                                                                                                                                                                                                                - Refactor RAGService
 
 4. **Frontend Refactoring** (Phase 3):
 
-                                                                                                - Extract core modules
-                                                                                                - Extract workbenches
+                                                                                                                                                                                                                                                                                                                                                                                                - Extract core modules
+                                                                                                                                                                                                                                                                                                                                                                                                - Extract workbenches
 
 5. **Data Management** (Phase 4):
 
-                                                                                                - Create DataManager
-                                                                                                - Define data contracts
+                                                                                                                                                                                                                                                                                                                                                                                                - Create DataManager
+                                                                                                                                                                                                                                                                                                                                                                                                - Define data contracts
 
 ## Database Schema Management
 

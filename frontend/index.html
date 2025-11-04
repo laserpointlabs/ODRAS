@@ -1,0 +1,483 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="utf-8" />
+  <title>ODRAS — UI Restart</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <link rel="icon" type="image/x-icon" href="/static/favicon.ico" />
+  <link rel="icon" type="image/png" href="/static/avian-link-black.png" />
+
+  <!-- External Dependencies -->
+  <script src="https://cdn.jsdelivr.net/npm/marked@9.1.6/marked.min.js"></script>
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/highlight.js@11.9.0/styles/github.min.css">
+  <script src="https://cdn.jsdelivr.net/npm/highlight.js@11.9.0/highlight.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/mermaid@10.6.1/dist/mermaid.min.js"></script>
+
+  <!-- Main Stylesheet (extracted from app.html) -->
+  <link rel="stylesheet" href="/static/css/main.css">
+</head>
+
+<body>
+  <div id="app" class="layout">
+    <!-- Top Toolbar -->
+    <div class="topbar">
+      <div class="brand">
+        <img src="/static/avian-link-black.png" alt="Avian" class="brand-icon" />
+        AVIAN-ODRAS
+      </div>
+      <div class="spacer"></div>
+      <span id="llmStatusDot" class="status-dot" style="background: #f59e0b;" title="LLM Status: Checking..."></span>
+      <div id="installationInfo" class="installation-info">
+        <div id="installOrg" class="install-org"></div>
+        <div id="installType" class="install-type"></div>
+        <div id="installOffice" class="install-office"></div>
+      </div>
+      <div class="spacer"></div>
+      <div id="userMenu" class="muted"></div>
+      <button class="btn" id="logoutBtn">Logout</button>
+    </div>
+
+    <!-- Authentication View -->
+    <div id="authView" class="login" style="display:none;">
+      <div class="card">
+        <h3 style="margin:0 0 8px 0; display: flex; justify-content: space-between; align-items: center;">
+          Sign in
+          <img src="/static/avian-logo-white.png" alt="AVIAN" style="height: 24px; width: auto;" />
+        </h3>
+        <div class="row"><label>Username</label><input id="u" type="text" /></div>
+        <div class="row"><label>Password</label><input id="p" type="password" /></div>
+        <button class="btn" id="loginBtn">Login</button>
+        <div id="loginMsg" class="muted" style="margin-top:8px;"></div>
+      </div>
+    </div>
+
+    <!-- Main Application View -->
+    <div id="mainView" class="content" style="display:none;">
+      <!-- Workbench Navigation Sidebar -->
+      <nav class="iconbar" aria-label="Workbench">
+        <div class="icon" data-wb="project" title="Project Info" aria-label="Project Information">
+          <svg viewBox="0 0 24 24" fill="none" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" />
+            <polyline points="14,2 14,8 20,8" />
+            <line x1="16" y1="13" x2="8" y2="13" />
+            <line x1="16" y1="17" x2="8" y2="17" />
+            <polyline points="10,9 9,9 8,9" />
+          </svg>
+        </div>
+        <div class="icon active" data-wb="ontology" title="Ontology" aria-label="Ontology">
+          <svg viewBox="0 0 24 24" fill="none" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round">
+            <circle cx="6" cy="6" r="2" />
+            <circle cx="18" cy="6" r="2" />
+            <circle cx="6" cy="18" r="2" />
+            <circle cx="18" cy="18" r="2" />
+            <path d="M8 6h8M6 8v8M18 8v8M8 18h8" />
+          </svg>
+        </div>
+        <div class="icon" data-wb="conceptualizer" title="Conceptualizer" aria-label="Conceptualizer">
+          <svg viewBox="0 0 24 24" fill="none" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round">
+            <circle cx="12" cy="12" r="4" />
+            <circle cx="5" cy="5" r="2" />
+            <circle cx="19" cy="5" r="2" />
+            <circle cx="5" cy="19" r="2" />
+            <circle cx="19" cy="19" r="2" />
+            <line x1="6.5" y1="6.5" x2="8.5" y2="8.5" />
+            <line x1="15.5" y1="8.5" x2="17.5" y2="6.5" />
+            <line x1="6.5" y1="17.5" x2="8.5" y2="15.5" />
+            <line x1="15.5" y1="15.5" x2="17.5" y2="17.5" />
+          </svg>
+        </div>
+        <div class="icon" data-wb="files" title="Files" aria-label="Files">
+          <svg viewBox="0 0 24 24" fill="none" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M3 7h5l2 2h11v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V7z" />
+          </svg>
+        </div>
+        <div class="icon" data-wb="knowledge" title="Knowledge Management" aria-label="Knowledge Management">
+          <svg viewBox="0 0 24 24" fill="none" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round">
+            <circle cx="12" cy="12" r="3" />
+            <path d="M12 1v6" />
+            <path d="M12 17v6" />
+            <path d="m4.2 4.2 4.2 4.2" />
+            <path d="m15.6 15.6 4.2 4.2" />
+            <path d="M1 12h6" />
+            <path d="M17 12h6" />
+            <path d="m4.2 19.8 4.2-4.2" />
+            <path d="m15.6 8.4 4.2-4.2" />
+          </svg>
+        </div>
+        <div class="icon" data-wb="requirements" title="Requirements" aria-label="Requirements">
+          <svg viewBox="0 0 24 24" fill="none" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M9 7h11M9 12h11M9 17h11" />
+            <path d="M4 7l1 1 2-2M4 12l1 1 2-2M4 17l1 1 2-2" />
+          </svg>
+        </div>
+        <div class="icon" data-wb="graph" title="GraphDB" aria-label="GraphDB">
+          <svg viewBox="0 0 24 24" fill="none" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round">
+            <ellipse cx="12" cy="5" rx="8" ry="3" />
+            <path d="M4 5v10c0 1.7 3.6 3 8 3s8-1.3 8-3V5" />
+            <path d="M4 12c0 1.7 3.6 3 8 3s8-1.3 8-3" />
+          </svg>
+        </div>
+        <div class="icon" data-wb="rag" title="RAG" aria-label="RAG">
+          <svg viewBox="0 0 24 24" fill="none" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round">
+            <circle cx="11" cy="11" r="6" />
+            <path d="M20 20l-4-4" />
+          </svg>
+        </div>
+        <div class="icon" data-wb="process" title="Process" aria-label="Process">
+          <svg viewBox="0 0 24 24" fill="none" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round">
+            <rect x="4" y="4" width="8" height="6" rx="1" />
+            <rect x="12" y="14" width="8" height="6" rx="1" />
+            <path d="M8 10v4M8 14h8M16 14v-4" />
+          </svg>
+        </div>
+        <div class="icon" data-wb="thread" title="Thread" aria-label="Thread">
+          <svg viewBox="0 0 24 24" fill="none" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round">
+            <rect x="4" y="4" width="16" height="12" rx="2" />
+            <path d="M8 16l-4 4v-4" />
+            <path d="M8 8h8M8 12h6" />
+          </svg>
+        </div>
+        <div class="icon" data-wb="playground" title="Playground" aria-label="Playground">
+          <svg viewBox="0 0 24 24" fill="none" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M9 3h6" />
+            <path d="M10 3v4l-5 9a3 3 0 0 0 3 5h8a3 3 0 0 0 3-5l-5-9V3" />
+            <path d="M8 15h8" />
+          </svg>
+        </div>
+        <div class="icon" data-wb="analysis" title="Analysis" aria-label="Analysis">
+          <svg viewBox="0 0 24 24" fill="none" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M3 3v18h18" />
+            <path d="M18.7 8l-5.1 5.2-2.8-2.7L7 14.3" />
+          </svg>
+        </div>
+        <div class="icon" data-wb="settings" title="Settings" aria-label="Settings">
+          <svg viewBox="0 0 24 24" fill="none" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round">
+            <circle cx="12" cy="12" r="3" />
+            <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1 1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z" />
+          </svg>
+        </div>
+        <div class="icon" data-wb="admin" title="Admin" aria-label="Admin">
+          <svg viewBox="0 0 24 24" fill="none" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M12 3l8 4v6c0 5-5 8-8 8s-8-3-8-8V7l8-4z" />
+          </svg>
+        </div>
+      </nav>
+
+      <!-- Project Tree Sidebar -->
+      <aside class="tree" id="treePanel" aria-label="Project Tree">
+        <div class="tree-header">
+          <div class="tree-header-left">
+            <select id="projectSelect2" title="Active project"></select>
+            <button class="btn" id="addNodeBtn" title="New Project">＋</button>
+          </div>
+          <button id="treeToggle" class="btn tree-toggle" title="Toggle Tree Dock" aria-label="Toggle Tree Dock">
+            <svg viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M15 18l-6-6 6-6" />
+            </svg>
+          </button>
+        </div>
+        <div class="tree-scroll">
+          <nav class="treeview" aria-label="Project">
+            <ul role="tree" id="treeRoot" aria-label="Project tree"></ul>
+          </nav>
+        </div>
+      </aside>
+
+      <!-- Main Workbench Area -->
+      <main class="main">
+        <!-- Project Workbench -->
+        <section id="wb-project" class="workbench">
+          <h2>Project Information</h2>
+          <div class="muted">Current project details and metadata.</div>
+          
+          <!-- Project Details Card -->
+          <div style="margin-top: 20px;">
+            <div id="projectInfoCard" style="background: var(--panel); border: 1px solid var(--border); border-radius: 8px; padding: 20px;">
+              <div style="text-align: center; color: var(--muted);">No project selected</div>
+            </div>
+          </div>
+        </section>
+        
+        <!-- Ontology Workbench -->
+        <section id="wb-ontology" class="workbench active">
+          <div style="padding: 20px;">
+            <h2>Ontology Workbench</h2>
+            <p>Ontology workbench content will be loaded here...</p>
+          </div>
+        </section>
+        
+        <!-- Conceptualizer Workbench -->
+        <section id="wb-conceptualizer" class="workbench">
+          <div style="padding: 20px;">
+            <h2>Conceptualizer Workbench</h2>
+            <p>Conceptualizer workbench content will be loaded here...</p>
+          </div>
+        </section>
+        
+        <!-- Files Workbench -->
+        <section id="wb-files" class="workbench">
+          <div style="padding: 20px;">
+            <h2>Files Workbench</h2>
+            <p>Files workbench content will be loaded here...</p>
+          </div>
+        </section>
+        
+        <!-- Knowledge Workbench -->
+        <section id="wb-knowledge" class="workbench">
+          <div style="padding: 20px;">
+            <h2>Knowledge Management</h2>
+            <p>Knowledge workbench content will be loaded here...</p>
+          </div>
+        </section>
+        
+        <!-- Requirements Workbench -->
+        <section id="wb-requirements" class="workbench">
+          <!-- Requirements workbench content will be populated by requirements-ui.js -->
+        </section>
+        
+        <!-- Graph Workbench -->
+        <section id="wb-graph" class="workbench">
+          <div style="padding: 20px;">
+            <h2>GraphDB Workbench</h2>
+            <p>GraphDB workbench content will be loaded here...</p>
+          </div>
+        </section>
+        
+        <!-- RAG Workbench -->
+        <section id="wb-rag" class="workbench">
+          <div style="padding: 20px;">
+            <h2>RAG Workbench</h2>
+            <p>RAG workbench content will be loaded here...</p>
+          </div>
+        </section>
+        
+        <!-- Process Workbench -->
+        <section id="wb-process" class="workbench">
+          <div style="padding: 20px;">
+            <h2>Process Workbench</h2>
+            <p>Process workbench content will be loaded here...</p>
+          </div>
+        </section>
+        
+        <!-- Thread Workbench -->
+        <section id="wb-thread" class="workbench">
+          <div style="padding: 20px;">
+            <h2>Thread Manager</h2>
+            <p>Thread Manager workbench content will be loaded here...</p>
+          </div>
+        </section>
+        
+        <!-- Playground Workbench -->
+        <section id="wb-playground" class="workbench">
+          <div style="padding: 20px;">
+            <h2>LLM Playground</h2>
+            <p>Playground workbench content will be loaded here...</p>
+          </div>
+        </section>
+        
+        <!-- Analysis Workbench -->
+        <section id="wb-analysis" class="workbench">
+          <div style="padding: 20px;">
+            <h2>Analysis Lab</h2>
+            <p>Analysis workbench content will be loaded here...</p>
+          </div>
+        </section>
+        
+        <!-- Settings Workbench -->
+        <section id="wb-settings" class="workbench">
+          <div style="padding: 20px;">
+            <h2>Settings</h2>
+            <p>Settings workbench content will be loaded here...</p>
+          </div>
+        </section>
+        
+        <!-- Admin Workbench -->
+        <section id="wb-admin" class="workbench">
+          <div style="padding: 20px;">
+            <h2>Admin Workbench</h2>
+            <p>Admin functionality coming soon...</p>
+          </div>
+        </section>
+        
+        <!-- Events Workbench -->
+        <section id="wb-events" class="workbench">
+          <div style="padding: 20px;">
+            <h2>Event Manager</h2>
+            <p>Event Manager workbench content will be loaded here...</p>
+          </div>
+        </section>
+      </main>
+
+      <!-- DAS Panel (Digital Assistant System) -->
+      <section id="dasPanel" class="das-panel das-dock-right" aria-label="Digital Assistant">
+        <div class="das-toolbar">
+          <strong>DAS</strong>
+          <span id="dasStatus">Connecting...</span>
+          <span id="llmStatusDockDot" class="status-dot" style="background: #f59e0b;" title="LLM Status: Checking..."></span>
+          <span class="das-help">Ctrl+Alt+D (or Alt+Shift+D) to toggle; <br>Alt+Shift+←/→/↓ to dock</span>
+        </div>
+        <div class="das-body" id="dasBody">
+          <div class="das-transcript-container">
+            <div id="dasTranscript" style="display:grid; gap:8px;"></div>
+          </div>
+          <div class="das-input-container">
+            <div class="card" style="margin:0;">
+              <div class="row" style="grid-template-columns: 1fr auto; align-items:flex-end; gap:8px;">
+                <textarea id="dasPrompt" placeholder="Type a prompt..." rows="1"
+                  style="resize:none; overflow:hidden; min-height:32px; max-height:120px; background:#0b1220; color:var(--text); border:1px solid var(--border); padding:8px; border-radius:6px; font-family:inherit; font-size:inherit; line-height:1.4;"></textarea>
+                <button id="dasSendBtn" type="button"
+                  style="width:36px; height:36px; border-radius:50%; background:var(--accent); border:1px solid var(--accent); color:white; display:flex; align-items:center; justify-content:center; cursor:pointer; transition:all 0.2s ease; flex-shrink:0;">
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"
+                    stroke-linejoin="round" width="16" height="16">
+                    <path d="m18 15-6-6-6 6" />
+                    <path d="M12 3v12" />
+                  </svg>
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+        <div class="das-resizer-x" id="dasResizerX" aria-hidden="true"></div>
+        <div class="das-resizer-y" id="dasResizerY" aria-hidden="true"></div>
+      </section>
+    </div>
+
+    <!-- Bottom Status Bar -->
+    <div class="bottombar">
+      <span>Camunda</span>
+      <span>Fuseki</span>
+      <span>Vector</span>
+      <span id="projectNamespace"></span>
+      <span>UI Restart Prototype</span>
+    </div>
+  </div>
+
+  <!-- Core JavaScript Modules (load in order) -->
+  <script type="module">
+    // Core utilities and infrastructure
+    import { initializeApplication } from '/static/js/core/app-init.js';
+    import { initializeToolbar } from '/static/js/components/toolbar.js';
+    import { initializePanelManager } from '/static/js/components/panel-manager.js';
+    import { initializeWorkbenchManager } from '/static/js/core/workbench-manager.js';
+    import { initializeProjectManager } from '/static/js/core/project-manager.js';
+    import { initializeProjectInfoLoader } from '/static/js/core/project-info-loader.js';
+    
+    // DAS (Digital Assistant System)
+    import { initializeDAS } from '/static/js/das/das-ui.js';
+    
+    // Workbench modules
+    import { initializeRequirementsWorkbench } from '/static/js/workbenches/requirements/requirements-ui.js';
+
+    // Initialize application when DOM is ready
+    async function initializeAll() {
+      await initializeApplication();
+      initializeToolbar();
+      initializePanelManager();
+      initializeWorkbenchManager();
+      await initializeProjectManager();
+      initializeProjectInfoLoader();
+      initializeDAS();
+      console.log('✅ ODRAS Application Initialized');
+    }
+
+    if (document.readyState === 'loading') {
+      document.addEventListener('DOMContentLoaded', initializeAll);
+    } else {
+      // DOM already loaded
+      initializeAll();
+    }
+
+    // Initialize requirements workbench when activated
+    document.addEventListener('DOMContentLoaded', () => {
+      const requirementsTab = document.querySelector('[data-wb="requirements"]');
+      if (requirementsTab) {
+        requirementsTab.addEventListener('click', () => {
+          initializeRequirementsWorkbench();
+        }, { once: true });
+      }
+    });
+  </script>
+
+  <!-- Legacy app.html compatibility layer (temporary, to be removed after full migration) -->
+  <script type="module">
+    // Authentication handlers
+    import { apiClient } from '/static/js/core/api-client.js';
+    import { updateAppState } from '/static/js/core/state-manager.js';
+    import { emitEvent } from '/static/js/core/event-bus.js';
+
+    // Login button handler
+    const loginBtn = document.getElementById('loginBtn');
+    const usernameInput = document.getElementById('u');
+    const passwordInput = document.getElementById('p');
+    const loginMsg = document.getElementById('loginMsg');
+
+    if (loginBtn) {
+      loginBtn.addEventListener('click', async () => {
+        const username = usernameInput?.value.trim();
+        const password = passwordInput?.value || '';
+
+        if (!username) {
+          if (loginMsg) loginMsg.textContent = 'Username required';
+          return;
+        }
+
+        try {
+          loginMsg.textContent = 'Logging in...';
+          const response = await apiClient.login(username, password);
+          
+          if (response.token) {
+            // Update state with user info
+            updateAppState({ token: response.token, user: response.user || { username, user_id: response.user_id } }, true);
+            emitEvent('auth:loggedIn', response.user || { username, user_id: response.user_id });
+            if (loginMsg) loginMsg.textContent = '';
+            if (usernameInput) usernameInput.value = '';
+            if (passwordInput) passwordInput.value = '';
+          } else {
+            if (loginMsg) loginMsg.textContent = 'Login failed - no token received';
+          }
+        } catch (error) {
+          console.error('Login error:', error);
+          if (loginMsg) loginMsg.textContent = error.message || 'Login failed';
+        }
+      });
+
+      // Allow Enter key to submit
+      if (passwordInput) {
+        passwordInput.addEventListener('keypress', (e) => {
+          if (e.key === 'Enter') {
+            loginBtn.click();
+          }
+        });
+      }
+      if (usernameInput) {
+        usernameInput.addEventListener('keypress', (e) => {
+          if (e.key === 'Enter') {
+            passwordInput?.focus();
+          }
+        });
+      }
+    }
+
+    // Logout button handler
+    const logoutBtn = document.getElementById('logoutBtn');
+    if (logoutBtn) {
+      logoutBtn.addEventListener('click', async () => {
+        try {
+          await apiClient.logout();
+          updateAppState({ token: null, user: null }, true);
+          emitEvent('auth:loggedOut');
+        } catch (error) {
+          console.error('Logout error:', error);
+          // Still clear local state even if API call fails
+          updateAppState({ token: null, user: null }, true);
+          emitEvent('auth:loggedOut');
+        }
+      });
+    }
+
+    console.log('📋 Loading legacy compatibility layer...');
+  </script>
+</body>
+
+</html>

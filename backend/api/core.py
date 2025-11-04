@@ -31,6 +31,14 @@ def set_db_instance(database_service: DatabaseService):
     db = database_service
 
 
+def get_db_service() -> DatabaseService:
+    """Get the global database instance"""
+    global db
+    if not db:
+        raise HTTPException(status_code=503, detail="Database not initialized")
+    return db
+
+
 # Use auth_get_user directly as dependency
 get_user = auth_get_user
 

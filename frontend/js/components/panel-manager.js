@@ -320,7 +320,9 @@ if (document.readyState === 'loading') {
   panelManager.initialize();
 }
 
-// Export for use in other modules
-if (typeof module !== 'undefined' && module.exports) {
-  module.exports = { PanelManager, panelManager };
+// Export for use in other modules (ES6 module format)
+export function initializePanelManager() {
+  return panelManager.initialize();
 }
+
+export { PanelManager, panelManager };

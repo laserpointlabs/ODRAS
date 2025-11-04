@@ -191,7 +191,30 @@ class StateManager {
 // Create singleton instance
 const stateManager = new StateManager();
 
+// Export functions for compatibility with requirements workbench
+export function getAppState() {
+  return stateManager.state;
+}
+
+export function updateAppState(newValues, shouldPersist = true) {
+  Object.keys(newValues).forEach(key => {
+    stateManager.set(key, newValues[key]);
+  });
+  if (shouldPersist) {
+    stateManager.saveState();
+  }
+}
+
+export function persistState() {
+  stateManager.saveState();
+}
+
 // Export for use in other modules
-if (typeof module !== 'undefined' && module.exports) {
-  module.exports = { StateManager, stateManager };
+export { StateManager, stateManager };
+
+// Make available globally for backwards compatibility
+if (typeof window !== 'undefined') {
+  window.getAppState = getAppState;
+  window.updateAppState = updateAppState;
+  window.stateManager = stateManager;
 }
