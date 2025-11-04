@@ -11,7 +11,7 @@ from typing import Any, Dict, List, Optional
 from fastapi import APIRouter, Depends, HTTPException, Query
 from pydantic import BaseModel
 
-from ..services.das2_core_engine import DAS2CoreEngine
+from ..services.das_core_engine import DASCoreEngine
 from ..services.project_thread_manager import ProjectThreadManager
 from ..services.config import Settings
 from ..services.rag_service import RAGService
@@ -52,25 +52,25 @@ class PromptTestRequest(BaseModel):
     simulate_only: bool = True
 
 # Global engine instance - reuse DAS2 engine
-das2_engine: Optional[DAS2CoreEngine] = None
+das_engine: Optional[DASCoreEngine] = None
 
-async def get_das2_engine() -> DAS2CoreEngine:
-    """Get DAS2 engine dependency"""
-    global das2_engine
-    if not das2_engine:
+async def get_das_engine() -> DASCoreEngine:
+    """Get DAS engine dependency"""
+    global das_engine
+    if not das_engine:
         # Initialize if needed
-        from ..api.das2 import das2_engine as shared_engine
-        das2_engine = shared_engine
-        if not das2_engine:
-            raise HTTPException(status_code=503, detail="DAS2 engine not initialized")
-    return das2_engine
+        from ..api.das import das_engine as shared_engine
+        das_engine = shared_engine
+        if not das_engine:
+            raise HTTPException(status_code=503, detail="DAS engine not initialized")
+    return das_engine
 
 
 @router.get("/threads", response_model=List[ThreadOverview])
 async def list_project_threads(
     project_id: Optional[str] = Query(None, description="Filter by project ID"),
     user: dict = Depends(get_user),
-    engine: DAS2CoreEngine = Depends(get_das2_engine)
+    engine: DASCoreEngine = Depends(get_das_engine)
 ):
     """
     List all project threads for debugging.
@@ -127,7 +127,7 @@ async def list_project_threads(
 async def get_project_thread_details(
     project_thread_id: str,
     user: dict = Depends(get_user),
-    engine: DAS2CoreEngine = Depends(get_das2_engine)
+    engine: DASCoreEngine = Depends(get_das_engine)
 ):
     """
     Get complete project thread details including full conversation history.
@@ -171,7 +171,7 @@ async def get_conversation_entry(
     project_thread_id: str,
     entry_index: int,
     user: dict = Depends(get_user),
-    engine: DAS2CoreEngine = Depends(get_das2_engine)
+    engine: DASCoreEngine = Depends(get_das_engine)
 ):
     """
     Get specific conversation entry with full prompt context for debugging.
@@ -216,7 +216,7 @@ async def update_conversation_entry(
     entry_index: int,
     update_data: ConversationUpdate,
     user: dict = Depends(get_user),
-    engine: DAS2CoreEngine = Depends(get_das2_engine)
+    engine: DASCoreEngine = Depends(get_das_engine)
 ):
     """
     Update a conversation entry for debugging/testing purposes.
@@ -267,7 +267,7 @@ async def delete_conversation_entry(
     project_thread_id: str,
     entry_index: int,
     user: dict = Depends(get_user),
-    engine: DAS2CoreEngine = Depends(get_das2_engine)
+    engine: DASCoreEngine = Depends(get_das_engine)
 ):
     """
     Delete a conversation entry for cleaning up test data.
@@ -310,7 +310,7 @@ async def test_custom_prompt(
     project_thread_id: str,
     request: PromptTestRequest,
     user: dict = Depends(get_user),
-    engine: DAS2CoreEngine = Depends(get_das2_engine)
+    engine: DASCoreEngine = Depends(get_das_engine)
 ):
     """
     Test a custom prompt with current project context.

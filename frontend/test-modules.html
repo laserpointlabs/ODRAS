@@ -1,0 +1,304 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <title>ODRAS Module Test</title>
+  <style>
+    body {
+      font-family: system-ui, sans-serif;
+      padding: 20px;
+      background: #0f172a;
+      color: #e5e7eb;
+    }
+    .test-section {
+      margin: 20px 0;
+      padding: 15px;
+      background: #111827;
+      border: 1px solid #1f2937;
+      border-radius: 6px;
+    }
+    .test-result {
+      margin: 10px 0;
+      padding: 10px;
+      border-radius: 4px;
+    }
+    .pass { background: #10b981; color: white; }
+    .fail { background: #ef4444; color: white; }
+    .info { background: #60a5fa; color: white; }
+    button {
+      padding: 8px 16px;
+      margin: 5px;
+      background: #60a5fa;
+      color: white;
+      border: none;
+      border-radius: 4px;
+      cursor: pointer;
+    }
+    button:hover { background: #3b82f6; }
+  </style>
+</head>
+<body>
+  <h1>ODRAS Module Test</h1>
+  
+  <div class="test-section">
+    <h2>Core Modules</h2>
+    <div id="core-results"></div>
+    <button onclick="testCoreModules()">Test Core Modules</button>
+  </div>
+
+  <div class="test-section">
+    <h2>Component Modules</h2>
+    <div id="component-results"></div>
+    <button onclick="testComponentModules()">Test Component Modules</button>
+  </div>
+
+  <div class="test-section">
+    <h2>API Client</h2>
+    <div id="api-results"></div>
+    <button onclick="testAPIClient()">Test API Client</button>
+  </div>
+
+  <div class="test-section">
+    <h2>State Manager</h2>
+    <div id="state-results"></div>
+    <button onclick="testStateManager()">Test State Manager</button>
+  </div>
+
+  <div class="test-section">
+    <h2>Event Bus</h2>
+    <div id="event-results"></div>
+    <button onclick="testEventBus()">Test Event Bus</button>
+  </div>
+
+  <div class="test-section">
+    <h2>Modal Manager</h2>
+    <div id="modal-results"></div>
+    <button onclick="testModalManager()">Test Modal Manager</button>
+  </div>
+
+  <!-- Load modules -->
+  <script src="/static/js/core/event-bus.js"></script>
+  <script src="/static/js/core/state-manager.js"></script>
+  <script src="/static/js/core/api-client.js"></script>
+  <script src="/static/js/core/app-init.js"></script>
+  <script src="/static/js/components/toolbar.js"></script>
+  <script src="/static/js/components/panel-manager.js"></script>
+  <script src="/static/js/components/modal-dialogs.js"></script>
+
+  <script>
+    function addResult(containerId, message, type = 'info') {
+      const container = document.getElementById(containerId);
+      const div = document.createElement('div');
+      div.className = `test-result ${type}`;
+      div.textContent = message;
+      container.appendChild(div);
+    }
+
+    function clearResults(containerId) {
+      document.getElementById(containerId).innerHTML = '';
+    }
+
+    function testCoreModules() {
+      clearResults('core-results');
+      
+      try {
+        // Test EventBus
+        if (typeof eventBus !== 'undefined') {
+          addResult('core-results', '✅ eventBus loaded', 'pass');
+        } else {
+          addResult('core-results', '❌ eventBus not found', 'fail');
+          return;
+        }
+
+        // Test StateManager
+        if (typeof stateManager !== 'undefined') {
+          addResult('core-results', '✅ stateManager loaded', 'pass');
+        } else {
+          addResult('core-results', '❌ stateManager not found', 'fail');
+          return;
+        }
+
+        // Test APIClient
+        if (typeof apiClient !== 'undefined') {
+          addResult('core-results', '✅ apiClient loaded', 'pass');
+        } else {
+          addResult('core-results', '❌ apiClient not found', 'fail');
+          return;
+        }
+
+        // Test AppInitializer
+        if (typeof appInitializer !== 'undefined') {
+          addResult('core-results', '✅ appInitializer loaded', 'pass');
+        } else {
+          addResult('core-results', '❌ appInitializer not found', 'fail');
+          return;
+        }
+
+        addResult('core-results', '✅ All core modules loaded successfully!', 'pass');
+      } catch (error) {
+        addResult('core-results', `❌ Error: ${error.message}`, 'fail');
+      }
+    }
+
+    function testComponentModules() {
+      clearResults('component-results');
+      
+      try {
+        // Test ToolbarManager
+        if (typeof toolbarManager !== 'undefined') {
+          addResult('component-results', '✅ toolbarManager loaded', 'pass');
+        } else {
+          addResult('component-results', '❌ toolbarManager not found', 'fail');
+        }
+
+        // Test PanelManager
+        if (typeof panelManager !== 'undefined') {
+          addResult('component-results', '✅ panelManager loaded', 'pass');
+        } else {
+          addResult('component-results', '❌ panelManager not found', 'fail');
+        }
+
+        // Test ModalManager
+        if (typeof modalManager !== 'undefined') {
+          addResult('component-results', '✅ modalManager loaded', 'pass');
+        } else {
+          addResult('component-results', '❌ modalManager not found', 'fail');
+        }
+
+        addResult('component-results', '✅ All component modules loaded!', 'pass');
+      } catch (error) {
+        addResult('component-results', `❌ Error: ${error.message}`, 'fail');
+      }
+    }
+
+    function testAPIClient() {
+      clearResults('api-results');
+      
+      if (typeof apiClient === 'undefined') {
+        addResult('api-results', '❌ apiClient not loaded', 'fail');
+        return;
+      }
+
+      addResult('api-results', '✅ API Client instance created', 'pass');
+      addResult('api-results', `Token stored: ${apiClient.token ? 'Yes' : 'No'}`, 'info');
+      
+      // Test health endpoint
+      apiClient.get('/api/health')
+        .then(data => {
+          addResult('api-results', `✅ Health check: ${data.status}`, 'pass');
+        })
+        .catch(error => {
+          addResult('api-results', `❌ Health check failed: ${error.message}`, 'fail');
+        });
+    }
+
+    function testStateManager() {
+      clearResults('state-results');
+      
+      if (typeof stateManager === 'undefined') {
+        addResult('state-results', '❌ stateManager not loaded', 'fail');
+        return;
+      }
+
+      addResult('state-results', '✅ State Manager instance created', 'pass');
+      
+      // Test set/get
+      stateManager.set('test.value', 'test123');
+      const value = stateManager.get('test.value');
+      if (value === 'test123') {
+        addResult('state-results', '✅ State set/get works', 'pass');
+      } else {
+        addResult('state-results', `❌ State set/get failed: expected 'test123', got '${value}'`, 'fail');
+      }
+
+      // Test subscription
+      let subscriptionFired = false;
+      stateManager.subscribe('test.value', () => {
+        subscriptionFired = true;
+      });
+      stateManager.set('test.value', 'test456');
+      setTimeout(() => {
+        if (subscriptionFired) {
+          addResult('state-results', '✅ State subscription works', 'pass');
+        } else {
+          addResult('state-results', '❌ State subscription did not fire', 'fail');
+        }
+      }, 100);
+    }
+
+    function testEventBus() {
+      clearResults('event-results');
+      
+      if (typeof eventBus === 'undefined') {
+        addResult('event-results', '❌ eventBus not loaded', 'fail');
+        return;
+      }
+
+      addResult('event-results', '✅ Event Bus instance created', 'pass');
+      
+      // Test event emission
+      let eventReceived = false;
+      eventBus.on('test:event', (data) => {
+        eventReceived = true;
+        if (data.value === 'test123') {
+          addResult('event-results', '✅ Event emission/reception works', 'pass');
+        } else {
+          addResult('event-results', '❌ Event data incorrect', 'fail');
+        }
+      });
+      
+      eventBus.emit('test:event', { value: 'test123' });
+      
+      setTimeout(() => {
+        if (!eventReceived) {
+          addResult('event-results', '❌ Event was not received', 'fail');
+        }
+      }, 100);
+    }
+
+    function testModalManager() {
+      clearResults('modal-results');
+      
+      if (typeof modalManager === 'undefined') {
+        addResult('modal-results', '❌ modalManager not loaded', 'fail');
+        return;
+      }
+
+      addResult('modal-results', '✅ Modal Manager instance created', 'pass');
+      
+      // Test modal creation
+      try {
+        modalManager.create('test-modal', {
+          title: 'Test Modal',
+          content: '<p>This is a test modal</p>',
+          buttons: [
+            { label: 'Close', action: 'close', className: 'btn-primary' }
+          ]
+        });
+        addResult('modal-results', '✅ Modal creation works', 'pass');
+        
+        // Test modal show
+        modalManager.show('test-modal');
+        addResult('modal-results', '✅ Modal show works', 'pass');
+        
+        // Close after 2 seconds
+        setTimeout(() => {
+          modalManager.close('test-modal');
+          addResult('modal-results', '✅ Modal close works', 'pass');
+        }, 2000);
+      } catch (error) {
+        addResult('modal-results', `❌ Error: ${error.message}`, 'fail');
+      }
+    }
+
+    // Auto-run tests after page load
+    window.addEventListener('load', () => {
+      setTimeout(() => {
+        testCoreModules();
+        testComponentModules();
+      }, 500);
+    });
+  </script>
+</body>
+</html>
+

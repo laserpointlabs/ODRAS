@@ -823,7 +823,7 @@ Generate the SPARQL query now:"""
                     
                     # Call DAS to generate the query
                     try:
-                        from ..services.das2_core_engine import DAS2CoreEngine
+                        from ..services.das_core_engine import DASCoreEngine
                         from ..services.rag_service import RAGService
                         from ..services.qdrant_service import QdrantService
                         from ..services.sql_first_thread_manager import SqlFirstThreadManager
@@ -834,7 +834,7 @@ Generate the SPARQL query now:"""
                         db_service = DatabaseService(Settings())
                         project_manager = SqlFirstThreadManager(Settings(), qdrant_service)
                         
-                        das_engine = DAS2CoreEngine(Settings(), rag_service, project_manager, db_service)
+                        das_engine = DASCoreEngine(Settings(), rag_service, project_manager, db_service)
                         
                         full_response = ""
                         async for chunk in das_engine.process_message_stream(

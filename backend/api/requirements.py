@@ -29,9 +29,9 @@ from backend.services.requirements_extraction import (
 )
 from backend.services.db import DatabaseService
 from backend.services.config import Settings
-from backend.services.das2_core_engine import DAS2CoreEngine
+from backend.services.das_core_engine import DASCoreEngine
 from backend.services.file_storage import FileStorageService
-from backend.api.das2 import get_das2_engine
+from backend.api.das import get_das_engine
 from backend.services.auth import get_user as get_current_user
 import psycopg2
 from psycopg2.extras import RealDictCursor
@@ -936,7 +936,7 @@ async def request_das_review(
     requirement_id: str,
     review_request: DASReviewRequest,
     current_user: dict = Depends(get_current_user),
-    das_engine: DAS2CoreEngine = Depends(get_das2_engine)
+    das_engine: DASCoreEngine = Depends(get_das_engine)
 ):
     """Request DAS AI review of a requirement with improvement suggestions."""
     

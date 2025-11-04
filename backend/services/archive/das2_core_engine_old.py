@@ -1,5 +1,5 @@
 """
-DAS Core Engine - Simple Digital Assistant ✅ CURRENT ACTIVE VERSION
+DAS2 Core Engine - Simple Digital Assistant ✅ CURRENT ACTIVE VERSION
 
 This is the CURRENT and RECOMMENDED DAS Core Engine implementation.
 Use this for all new development and projects.
@@ -33,8 +33,8 @@ logger = logging.getLogger(__name__)
 
 
 @dataclass
-class DASResponse:
-    """Simple DAS response"""
+class DAS2Response:
+    """Simple DAS2 response"""
     message: str
     sources: List[Dict[str, Any]] = None
     metadata: Dict[str, Any] = None
@@ -46,9 +46,9 @@ class DASResponse:
             self.metadata = {}
 
 
-class DASCoreEngine:
+class DAS2CoreEngine:
     """
-    DAS - Dead Simple Digital Assistant
+    DAS2 - Dead Simple Digital Assistant
 
     Does exactly what you want:
     - Collects ALL context (project thread, RAG, conversation)
@@ -68,11 +68,11 @@ class DASCoreEngine:
         # Check if we're using SQL-first thread manager
         self.sql_first_threads = hasattr(project_manager, 'get_project_context')
         if self.sql_first_threads:
-            logger.info("DAS initialized with SQL-first thread manager")
+            logger.info("DAS2 initialized with SQL-first thread manager")
         else:
-            logger.warning("DAS using legacy thread manager - consider upgrading")
+            logger.warning("DAS2 using legacy thread manager - consider upgrading")
 
-        logger.info("DAS Core Engine initialized - SIMPLE APPROACH")
+        logger.info("DAS2 Core Engine initialized - SIMPLE APPROACH")
 
     def _serialize_project_details(self, project_details):
         """Convert project details to JSON-serializable format"""
@@ -966,14 +966,14 @@ class DASCoreEngine:
         """
         try:
             import json
-            print(f"🚀 DAS_STREAM_DEBUG: Starting streaming process_message for project {project_id}")
-            logger.info(f"🚀 DAS_STREAM_DEBUG: Starting streaming process_message for project {project_id}")
+            print(f"🚀 DAS2_STREAM_DEBUG: Starting streaming process_message for project {project_id}")
+            logger.info(f"🚀 DAS2_STREAM_DEBUG: Starting streaming process_message for project {project_id}")
 
             # 1. Get project context first (needed for confirm detection)
             if self.sql_first_threads:
                 project_context = await self.project_manager.get_project_context(project_id)
                 if "error" in project_context:
-                    yield {"type": "error", "message": "DAS is not available for this project. Project threads are created when projects are created."}
+                    yield {"type": "error", "message": "DAS2 is not available for this project. Project threads are created when projects are created."}
                     return
 
                 project_thread = project_context["project_thread"]
@@ -984,7 +984,7 @@ class DASCoreEngine:
 
             # DETECT ASSUMPTION CONFIRMATION
             if message.strip().lower() == 'confirm':
-                logger.info(f"🎯 DAS_CONFIRM_DEBUG: Detected confirm message")
+                logger.info(f"🎯 DAS2_CONFIRM_DEBUG: Detected confirm message")
                 
                 # Check if the last DAS response was a pending assumption
                 if conversation_history:
@@ -1028,7 +1028,7 @@ class DASCoreEngine:
                                     project_thread_id=project_thread_id,
                                     role="user",
                                     content=message,
-                                    metadata={"das_engine": "DAS", "timestamp": datetime.now().isoformat()}
+                                    metadata={"das_engine": "DAS2", "timestamp": datetime.now().isoformat()}
                                 )
                             
                             # Save assumption to PostgreSQL via API
@@ -1046,7 +1046,7 @@ class DASCoreEngine:
                                     
                                     # Save assumption via API
                                     save_response = await client.post(
-                                        f"http://localhost:8000/api/das/project/{project_id}/assumption",
+                                        f"http://localhost:8000/api/das2/project/{project_id}/assumption",
                                         headers={"Authorization": f"Bearer {auth_token}"},
                                         json={
                                             "content": refined_content,
@@ -1067,7 +1067,7 @@ class DASCoreEngine:
                                                 project_thread_id=project_thread_id,
                                                 role="assistant",
                                                 content=response_message,
-                                                metadata={"das_engine": "DAS", "command": "confirm_assumption", "assumption_id": assumption_id, "timestamp": datetime.now().isoformat()}
+                                                metadata={"das_engine": "DAS2", "command": "confirm_assumption", "assumption_id": assumption_id, "timestamp": datetime.now().isoformat()}
                                             )
                                         
                                         yield {"type": "content", "content": response_message}
@@ -1095,7 +1095,7 @@ class DASCoreEngine:
 
             # DETECT SLASH COMMANDS (DAS Actions)
             if message.strip().startswith('/'):
-                logger.info(f"🎯 DAS_COMMAND_DEBUG: Detected slash command: {message}")
+                logger.info(f"🎯 DAS2_COMMAND_DEBUG: Detected slash command: {message}")
                 
                 # Store user command message first  
                 if self.sql_first_threads and project_thread_id:
@@ -1103,7 +1103,7 @@ class DASCoreEngine:
                         project_thread_id=project_thread_id,
                         role="user",
                         content=message,
-                        metadata={"das_engine": "DAS", "command_type": "slash_command", "timestamp": datetime.now().isoformat()}
+                        metadata={"das_engine": "DAS2", "command_type": "slash_command", "timestamp": datetime.now().isoformat()}
                     )
                 
                 async for chunk in self._handle_command(message, project_id, user_id, project_thread_id):
@@ -1118,7 +1118,7 @@ class DASCoreEngine:
                     project_thread = await self.project_manager.get_project_thread_by_project_id(project_id)
 
                 if not project_thread:
-                    yield {"type": "error", "message": "DAS is not available for this project. Project threads are created when projects are created."}
+                    yield {"type": "error", "message": "DAS2 is not available for this project. Project threads are created when projects are created."}
                     return
 
                 conversation_history = getattr(project_thread, 'conversation_history', [])
@@ -1130,7 +1130,7 @@ class DASCoreEngine:
                     project_thread_id=project_thread_id,
                     role="user", 
                     content=message,
-                    metadata={"das_engine": "DAS", "timestamp": datetime.now().isoformat()}
+                    metadata={"das_engine": "DAS2", "timestamp": datetime.now().isoformat()}
                 )
 
             # 3. Get RAG context using current user's credentials for proper access
@@ -1226,7 +1226,7 @@ class DASCoreEngine:
 
                 # Handle SQL-first formatted conversations (user_message/das_response pairs)
                 if self.sql_first_threads and conversation_history and isinstance(conversation_history[0], dict) and 'user_message' in conversation_history[0]:
-                    print(f"🔍 DAS_STREAM_CONTEXT: Processing {len(conversation_history)} SQL-first conversation pairs")
+                    print(f"🔍 DAS2_STREAM_CONTEXT: Processing {len(conversation_history)} SQL-first conversation pairs")
                     for conv in conversation_history[-5:]:  # Last 5 conversation pairs
                         user_msg = conv.get("user_message", "")
                         das_response = conv.get("das_response", "")
@@ -1237,7 +1237,7 @@ class DASCoreEngine:
                         context_sections.append("")
                 else:
                     # Handle legacy format (individual role/content messages)
-                    print(f"🔍 DAS_STREAM_CONTEXT: Processing {len(conversation_history)} legacy conversation messages")
+                    print(f"🔍 DAS2_STREAM_CONTEXT: Processing {len(conversation_history)} legacy conversation messages")
                     for conv in conversation_history[-10:]:
                         role = conv.get("role", "")
                         content = conv.get("content", "")
@@ -1256,17 +1256,17 @@ class DASCoreEngine:
             if hasattr(self, 'db_service') and self.db_service:
                 try:
                     project_details = self.db_service.get_project_comprehensive(project_id)
-                    print(f"DAS_STREAM_DEBUG: Retrieved project details: {bool(project_details)}")
+                    print(f"DAS2_STREAM_DEBUG: Retrieved project details: {bool(project_details)}")
                 except Exception as e:
-                    print(f"DAS_STREAM_DEBUG: Failed to get project details: {e}")
+                    print(f"DAS2_STREAM_DEBUG: Failed to get project details: {e}")
             elif hasattr(self.project_manager, 'db_service') and self.project_manager.db_service:
                 try:
                     project_details = self.project_manager.db_service.get_project_comprehensive(project_id)
-                    print(f"DAS_STREAM_DEBUG: Retrieved project details via project_manager: {bool(project_details)}")
+                    print(f"DAS2_STREAM_DEBUG: Retrieved project details via project_manager: {bool(project_details)}")
                 except Exception as e:
-                    print(f"DAS_STREAM_DEBUG: Failed to get project details via project_manager: {e}")
+                    print(f"DAS2_STREAM_DEBUG: Failed to get project details via project_manager: {e}")
             else:
-                print("DAS_STREAM_DEBUG: No db_service available!")
+                print("DAS2_STREAM_DEBUG: No db_service available!")
 
             if project_details:
                 context_sections.append(f"Project: {project_details.get('name', 'Unknown')} (ID: {project_id})")
@@ -1452,7 +1452,7 @@ Answer naturally and consistently using the context above. Be helpful and conver
                     role="assistant",
                     content=full_response_content,  # Use accumulated content
                     metadata={
-                        "das_engine": "DAS",
+                        "das_engine": "DAS2",
                         "timestamp": datetime.now().isoformat(),
                         "prompt_context": full_context,  # Store the full prompt for thread manager
                         "rag_context": {
@@ -1500,7 +1500,7 @@ Answer naturally and consistently using the context above. Be helpful and conver
             }
 
         except Exception as e:
-            logger.error(f"DAS stream error: {e}")
+            logger.error(f"DAS2 stream error: {e}")
             yield {"type": "error", "message": str(e)}
 
     async def _call_llm_streaming(self, prompt: str):
@@ -1626,7 +1626,7 @@ Answer naturally and consistently using the context above. Be helpful and conver
                     project_thread_id=project_thread_id,
                     role="assistant",
                     content=full_response,
-                    metadata={"das_engine": "DAS", "command": "assumption", "refined_content": refined, "timestamp": datetime.now().isoformat()}
+                    metadata={"das_engine": "DAS2", "command": "assumption", "refined_content": refined, "timestamp": datetime.now().isoformat()}
                 )
             
             yield {"type": "content", "content": full_response}
@@ -1688,7 +1688,7 @@ Answer naturally and consistently using the context above. Be helpful and conver
                     project_thread_id=project_thread_id,
                     role="assistant",
                     content=full_response,
-                    metadata={"das_engine": "DAS", "command": "white_paper", "artifact_id": file_id, "filename": filename, "timestamp": datetime.now().isoformat()}
+                    metadata={"das_engine": "DAS2", "command": "white_paper", "artifact_id": file_id, "filename": filename, "timestamp": datetime.now().isoformat()}
                 )
             
             yield {"type": "content", "content": full_response}
@@ -1745,7 +1745,7 @@ Answer naturally and consistently using the context above. Be helpful and conver
                     project_thread_id=project_thread_id,
                     role="assistant",
                     content=full_response,
-                    metadata={"das_engine": "DAS", "command": "diagram", "artifact_id": file_id, "filename": filename, "timestamp": datetime.now().isoformat()}
+                    metadata={"das_engine": "DAS2", "command": "diagram", "artifact_id": file_id, "filename": filename, "timestamp": datetime.now().isoformat()}
                 )
             
             yield {"type": "content", "content": full_response}
@@ -1785,7 +1785,7 @@ Answer naturally and consistently using the context above. Be helpful and conver
                 project_thread_id=project_thread_id,
                 role="assistant",
                 content=help_text,
-                metadata={"das_engine": "DAS", "command": "help", "timestamp": datetime.now().isoformat()}
+                metadata={"das_engine": "DAS2", "command": "help", "timestamp": datetime.now().isoformat()}
             )
         
         yield {"type": "content", "content": help_text}
@@ -1827,7 +1827,7 @@ Answer naturally and consistently using the context above. Be helpful and conver
                     project_thread_id=project_thread_id,
                     role="assistant",
                     content=full_response,
-                    metadata={"das_engine": "DAS", "command": "summary", "timestamp": datetime.now().isoformat()}
+                    metadata={"das_engine": "DAS2", "command": "summary", "timestamp": datetime.now().isoformat()}
                 )
             
             yield {"type": "content", "content": full_response}

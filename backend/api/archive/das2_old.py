@@ -1,5 +1,5 @@
 """
-DAS API - Simple Digital Assistant API ✅ CURRENT ACTIVE VERSION
+DAS2 API - Simple Digital Assistant API ✅ CURRENT ACTIVE VERSION
 
 This is the CURRENT and RECOMMENDED DAS implementation.
 Use this for all new development and projects.
@@ -7,12 +7,15 @@ Use this for all new development and projects.
 ✅ Simple, clean architecture
 ✅ Direct context + LLM approach
 ✅ Easy to debug and maintain
+✅ Better performance than DAS1
 ✅ NO complex intelligence layers, just context + LLM
 
 API Endpoints:
-- POST /api/das/chat - Send message to DAS
-- GET /api/das/project/{project_id}/thread - Get project thread
-- GET /api/das/project/{project_id}/history - Get conversation history
+- POST /api/das2/chat - Send message to DAS
+- GET /api/das2/project/{project_id}/thread - Get project thread
+- GET /api/das2/project/{project_id}/history - Get conversation history
+
+⚠️ DO NOT USE DAS1 (/api/das/*) - it's deprecated
 """
 
 import logging
@@ -21,7 +24,7 @@ from typing import Any, Dict, List, Optional
 from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel
 
-from ..services.das_core_engine import DASCoreEngine, DASResponse
+from ..services.das2_core_engine import DAS2CoreEngine, DAS2Response
 from ..services.config import Settings
 from ..services.rag_service import RAGService
 from ..services.project_thread_manager import ProjectThreadManager
@@ -31,39 +34,39 @@ from ..services.db import DatabaseService
 logger = logging.getLogger(__name__)
 
 # Simple request models
-class DASChatRequest(BaseModel):
+class DAS2ChatRequest(BaseModel):
     message: str
     project_id: str
     project_thread_id: Optional[str] = None
 
-class DASChatResponse(BaseModel):
+class DAS2ChatResponse(BaseModel):
     message: str
     sources: List[Dict[str, Any]] = []
     metadata: Dict[str, Any] = {}
 
 # Router
-router = APIRouter(prefix="/api/das", tags=["DAS"])
+router = APIRouter(prefix="/api/das2", tags=["DAS2"])
 
 # Global engine instance
-das_engine: Optional[DASCoreEngine] = None
+das2_engine: Optional[DAS2CoreEngine] = None
 
 
-async def get_das_engine() -> DASCoreEngine:
-    """Get DAS engine dependency"""
-    global das_engine
-    if not das_engine:
-        raise HTTPException(status_code=503, detail="DAS not initialized")
-    return das_engine
+async def get_das2_engine() -> DAS2CoreEngine:
+    """Get DAS2 engine dependency"""
+    global das2_engine
+    if not das2_engine:
+        raise HTTPException(status_code=503, detail="DAS2 not initialized")
+    return das2_engine
 
 
-@router.post("/chat", response_model=DASChatResponse)
-async def das_chat(
-    request: DASChatRequest,
+@router.post("/chat", response_model=DAS2ChatResponse)
+async def das2_chat(
+    request: DAS2ChatRequest,
     user: dict = Depends(get_user),
-    engine: DASCoreEngine = Depends(get_das_engine)
+    engine: DAS2CoreEngine = Depends(get_das2_engine)
 ):
     """
-    DAS Chat - Simple approach
+    DAS2 Chat - Simple approach
     Sends ALL context to LLM and returns response with sources
     """
     try:
@@ -71,7 +74,7 @@ async def das_chat(
         if not user_id:
             raise HTTPException(status_code=401, detail="User not authenticated")
 
-        print(f"DAS_API: Processing message='{request.message}' for project={request.project_id}")
+        print(f"DAS2_API: Processing message='{request.message}' for project={request.project_id}")
 
         # Use unified streaming method and collect all chunks for non-streaming response
         full_response = ""
@@ -92,25 +95,25 @@ async def das_chat(
             elif chunk.get("type") == "error":
                 raise HTTPException(status_code=500, detail=chunk.get("message", "Unknown error"))
 
-        return DASChatResponse(
+        return DAS2ChatResponse(
             message=full_response,
             sources=sources,
             metadata=final_metadata
         )
 
     except Exception as e:
-        logger.error(f"DAS chat error: {e}")
-        raise HTTPException(status_code=500, detail=f"DAS error: {str(e)}")
+        logger.error(f"DAS2 chat error: {e}")
+        raise HTTPException(status_code=500, detail=f"DAS2 error: {str(e)}")
 
 
 @router.post("/chat/stream")
-async def das_chat_stream(
-    request: DASChatRequest,
+async def das2_chat_stream(
+    request: DAS2ChatRequest,
     user: dict = Depends(get_user),
-    engine: DASCoreEngine = Depends(get_das_engine)
+    engine: DAS2CoreEngine = Depends(get_das2_engine)
 ):
     """
-    DAS Chat Streaming - Streams response as it's generated
+    DAS2 Chat Streaming - Streams response as it's generated
     """
     from fastapi.responses import StreamingResponse
     import json
@@ -123,21 +126,21 @@ async def das_chat_stream(
                 yield f"data: {json.dumps({'type': 'error', 'message': 'User not authenticated'})}\n\n"
                 return
 
-            print(f"DAS_API_STREAM: Processing message='{request.message}' for project={request.project_id}")
+            print(f"DAS2_API_STREAM: Processing message='{request.message}' for project={request.project_id}")
             
             # Monitor connection pool before processing
             try:
                 settings = Settings()
                 db_service = DatabaseService(settings)
                 pool_status = db_service.get_pool_status()
-                logger.info(f"🔍 DAS_STREAM: Pool status before - In use: {pool_status.get('connections_in_use', 0)}/{pool_status.get('maxconn', 40)}")
+                logger.info(f"🔍 DAS2_STREAM: Pool status before - In use: {pool_status.get('connections_in_use', 0)}/{pool_status.get('maxconn', 40)}")
                 
                 if pool_status.get('leaked_connections', 0) > 0:
-                    logger.warning(f"⚠️ DAS_STREAM: {pool_status['leaked_connections']} potentially leaked connections detected")
+                    logger.warning(f"⚠️ DAS2_STREAM: {pool_status['leaked_connections']} potentially leaked connections detected")
             except Exception as e:
                 logger.warning(f"Failed to check pool status: {e}")
 
-            # Process with DAS engine and stream the response
+            # Process with DAS2 engine and stream the response
             response_stream = engine.process_message_stream(
                 project_id=request.project_id,
                 message=request.message,
@@ -152,18 +155,18 @@ async def das_chat_stream(
             # Monitor connection pool after processing
             try:
                 post_pool_status = db_service.get_pool_status()
-                logger.info(f"🔍 DAS_STREAM: Pool status after - In use: {post_pool_status.get('connections_in_use', 0)}/{post_pool_status.get('maxconn', 40)}")
+                logger.info(f"🔍 DAS2_STREAM: Pool status after - In use: {post_pool_status.get('connections_in_use', 0)}/{post_pool_status.get('maxconn', 40)}")
                 
                 # Detect connection leaks (increase in connections during request)
                 pre_connections = pool_status.get('connections_in_use', 0)
                 post_connections = post_pool_status.get('connections_in_use', 0)
                 if post_connections > pre_connections:
-                    logger.warning(f"🚨 DAS_STREAM: Possible connection leak - increased from {pre_connections} to {post_connections}")
+                    logger.warning(f"🚨 DAS2_STREAM: Possible connection leak - increased from {pre_connections} to {post_connections}")
             except Exception as e:
                 logger.warning(f"Failed to check pool status after processing: {e}")
 
         except Exception as e:
-            logger.error(f"DAS stream error: {e}")
+            logger.error(f"DAS2 stream error: {e}")
             yield f"data: {json.dumps({'type': 'error', 'message': str(e)})}\n\n"
 
     return StreamingResponse(
@@ -180,12 +183,12 @@ async def das_chat_stream(
 
 
 @router.get("/project/{project_id}/thread")
-async def get_das_project_thread(
+async def get_das2_project_thread(
     project_id: str,
     user: dict = Depends(get_user),
-    engine: DASCoreEngine = Depends(get_das_engine)
+    engine: DAS2CoreEngine = Depends(get_das2_engine)
 ):
-    """Get project thread info for DAS (SQL-first compatible)"""
+    """Get project thread info for DAS2 (SQL-first compatible)"""
     try:
         # Get project context using SQL-first approach
         project_context = await engine.project_manager.get_project_thread_by_project_id(project_id)
@@ -220,15 +223,15 @@ async def get_das_project_thread(
     except HTTPException:
         raise
     except Exception as e:
-        logger.error(f"Error getting DAS thread: {e}")
+        logger.error(f"Error getting DAS2 thread: {e}")
         raise HTTPException(status_code=500, detail=str(e))
 
 
 @router.get("/project/{project_id}/history")
-async def get_das_conversation_history(
+async def get_das2_conversation_history(
     project_id: str,
     user: dict = Depends(get_user),
-    engine: DASCoreEngine = Depends(get_das_engine)
+    engine: DAS2CoreEngine = Depends(get_das2_engine)
 ):
     """Get conversation history for project (SQL-first compatible)"""
     try:
@@ -243,13 +246,13 @@ async def get_das_conversation_history(
         # Handle SQL-first format (debug what we're getting)
         if "project_thread" in project_context:
             # SQL-first format
-            print(f"🔍 DAS_HISTORY_DEBUG: Found project_thread in context")
+            print(f"🔍 DAS2_HISTORY_DEBUG: Found project_thread in context")
             print(f"   Context keys: {list(project_context.keys())}")
 
             conversation_history = project_context.get("conversation_history", [])
             project_thread_id = project_context["project_thread"]["project_thread_id"]
 
-            print(f"🔍 DAS_HISTORY_DEBUG: SQL-first conversation data")
+            print(f"🔍 DAS2_HISTORY_DEBUG: SQL-first conversation data")
             print(f"   Raw conversations from context: {len(conversation_history)}")
             print(f"   Thread ID: {project_thread_id}")
 
@@ -259,7 +262,7 @@ async def get_das_conversation_history(
                 print(f"   ❌ No conversation_history in project_context")
 
             # The conversation_history is ALREADY formatted by SQL-first manager
-            print(f"🔍 DAS_HISTORY_DEBUG: Processing formatted conversations")
+            print(f"🔍 DAS2_HISTORY_DEBUG: Processing formatted conversations")
             print(f"   Formatted conversations count: {len(conversation_history)}")
 
             if conversation_history:
@@ -292,7 +295,7 @@ async def get_das_conversation_history(
                             "processing_time": conv.get("processing_time", 0)
                         }
 
-                        print(f"🔍 DAS_HISTORY_DEBUG: Assistant response metadata")
+                        print(f"🔍 DAS2_HISTORY_DEBUG: Assistant response metadata")
                         print(f"   Sources count: {len(metadata['sources'])}")
                         print(f"   Chunks found: {metadata['chunks_found']}")
 
@@ -304,7 +307,7 @@ async def get_das_conversation_history(
                             "sql_first": True
                         })
 
-            print(f"🔍 DAS_HISTORY_DEBUG: Created {len(history)} history entries for DAS dock")
+            print(f"🔍 DAS2_HISTORY_DEBUG: Created {len(history)} history entries for DAS dock")
         else:
             # Legacy format fallback
             conversation_history = getattr(project_context, 'conversation_history', [])
@@ -321,7 +324,7 @@ async def get_das_conversation_history(
     except HTTPException:
         raise
     except Exception as e:
-        logger.error(f"Error getting DAS history: {e}")
+        logger.error(f"Error getting DAS2 history: {e}")
         import traceback
         traceback.print_exc()
         raise HTTPException(status_code=500, detail=str(e))
@@ -331,7 +334,7 @@ async def get_das_conversation_history(
 async def delete_last_conversation(
     project_id: str,
     user: dict = Depends(get_user),
-    engine: DASCoreEngine = Depends(get_das_engine)
+    engine: DAS2CoreEngine = Depends(get_das2_engine)
 ):
     """Delete the last conversation entry (user message + DAS response) from project thread"""
     try:
@@ -339,7 +342,7 @@ async def delete_last_conversation(
         if not user_id:
             raise HTTPException(status_code=401, detail="User not authenticated")
 
-        print(f"DAS_DELETE: Deleting last conversation for project {project_id}")
+        print(f"DAS2_DELETE: Deleting last conversation for project {project_id}")
 
         # Get project thread
         project_context = await engine.project_manager.get_project_thread_by_project_id(project_id)
@@ -380,7 +383,7 @@ async def delete_last_conversation(
 async def get_prompt_context(
     project_id: str,
     user: dict = Depends(get_user),
-    engine: DASCoreEngine = Depends(get_das_engine)
+    engine: DAS2CoreEngine = Depends(get_das2_engine)
 ):
     """
     Get the DAS prompt context for a project without running LLMs.
@@ -391,7 +394,7 @@ async def get_prompt_context(
         if not user_id:
             raise HTTPException(status_code=401, detail="User not authenticated")
 
-        print(f"DAS_PROMPT_CONTEXT: Getting prompt context for project {project_id}")
+        print(f"DAS2_PROMPT_CONTEXT: Getting prompt context for project {project_id}")
 
         # Get project thread context (same as streaming method)
         project_context = await engine.project_manager.get_project_context(project_id)
@@ -446,12 +449,12 @@ async def get_prompt_context(
             try:
                 project_details = engine.db_service.get_project_comprehensive(project_id)
             except Exception as e:
-                print(f"DAS_PROMPT_CONTEXT: Failed to get project details: {e}")
+                print(f"DAS2_PROMPT_CONTEXT: Failed to get project details: {e}")
         elif hasattr(engine.project_manager, 'db_service') and engine.project_manager.db_service:
             try:
                 project_details = engine.project_manager.db_service.get_project_comprehensive(project_id)
             except Exception as e:
-                print(f"DAS_PROMPT_CONTEXT: Failed to get project details via project_manager: {e}")
+                print(f"DAS2_PROMPT_CONTEXT: Failed to get project details via project_manager: {e}")
 
         if project_details:
             context_sections.append(f"Project: {project_details.get('name', 'Unknown')} (ID: {project_id})")
@@ -512,7 +515,7 @@ async def get_prompt_context(
                             if ontology_details:
                                 engine._add_ontology_content_to_context(context_sections, ontology_details, "    ")
                         except Exception as e:
-                            print(f"DAS_PROMPT_CONTEXT: Failed to fetch ontology details for {graph_iri}: {e}")
+                            print(f"DAS2_PROMPT_CONTEXT: Failed to fetch ontology details for {graph_iri}: {e}")
                             context_sections.append("    [Ontology details unavailable]")
 
         # Add recent project activity
@@ -761,10 +764,10 @@ async def update_assumption(
         raise HTTPException(status_code=500, detail=f"Failed to update assumption: {str(e)}")
 
 
-# Initialize DAS engine
-async def initialize_das_engine():
-    """Initialize DAS engine with required services"""
-    global das_engine
+# Initialize DAS2 engine
+async def initialize_das2_engine():
+    """Initialize DAS2 engine with required services"""
+    global das2_engine
 
     try:
         # Import here to avoid circular imports
@@ -784,19 +787,19 @@ async def initialize_das_engine():
         try:
             redis_client = redis.from_url(settings.redis_url)
             await redis_client.ping()
-            logger.info("DAS: Redis connected")
+            logger.info("DAS2: Redis connected")
         except Exception as e:
-            logger.warning(f"DAS: Redis not available: {e}")
+            logger.warning(f"DAS2: Redis not available: {e}")
 
         # Project manager (SQL-first implementation)
         from ..services.sql_first_thread_manager import SqlFirstThreadManager
         project_manager = SqlFirstThreadManager(settings, qdrant_service)
 
-        # Create DAS engine
-        das_engine = DASCoreEngine(settings, rag_service, project_manager, db_service)
+        # Create DAS2 engine
+        das2_engine = DAS2CoreEngine(settings, rag_service, project_manager, db_service)
 
-        logger.info("DAS Engine initialized successfully - SIMPLE APPROACH")
+        logger.info("DAS2 Engine initialized successfully - SIMPLE APPROACH")
 
     except Exception as e:
-        logger.error(f"Failed to initialize DAS engine: {e}")
+        logger.error(f"Failed to initialize DAS2 engine: {e}")
         raise

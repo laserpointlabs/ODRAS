@@ -331,7 +331,7 @@ async def get_das_conversation_history(
 async def delete_last_conversation(
     project_id: str,
     user: dict = Depends(get_user),
-    engine: DASCoreEngine = Depends(get_das_engine)
+    engine: DASCoreEngine = Depends(get_das2_engine)
 ):
     """Delete the last conversation entry (user message + DAS response) from project thread"""
     try:
@@ -380,7 +380,7 @@ async def delete_last_conversation(
 async def get_prompt_context(
     project_id: str,
     user: dict = Depends(get_user),
-    engine: DASCoreEngine = Depends(get_das_engine)
+    engine: DASCoreEngine = Depends(get_das2_engine)
 ):
     """
     Get the DAS prompt context for a project without running LLMs.
@@ -762,9 +762,9 @@ async def update_assumption(
 
 
 # Initialize DAS engine
-async def initialize_das_engine():
+async def initialize_das2_engine():
     """Initialize DAS engine with required services"""
-    global das_engine
+    global das2_engine
 
     try:
         # Import here to avoid circular imports
@@ -793,7 +793,7 @@ async def initialize_das_engine():
         project_manager = SqlFirstThreadManager(settings, qdrant_service)
 
         # Create DAS engine
-        das_engine = DASCoreEngine(settings, rag_service, project_manager, db_service)
+        das2_engine = DASCoreEngine(settings, rag_service, project_manager, db_service)
 
         logger.info("DAS Engine initialized successfully - SIMPLE APPROACH")
 

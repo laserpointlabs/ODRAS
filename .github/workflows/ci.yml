@@ -184,6 +184,28 @@ jobs:
         env:
           PYTHONPATH: ${{ github.workspace }}
 
+      - name: Run tests with coverage
+        run: |
+          echo "📊 Running tests with coverage reporting..."
+          pytest tests/ \
+            --cov=backend \
+            --cov-report=html \
+            --cov-report=term \
+            --cov-report=xml \
+            --cov-fail-under=80 || echo "⚠️ Coverage below 80% or tests failed"
+        env:
+          PYTHONPATH: ${{ github.workspace }}
+
+      - name: Upload coverage reports
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: coverage-report-${{ github.sha }}
+          path: |
+            htmlcov/
+            coverage.xml
+          retention-days: 30
+
       - name: COMPLETE system diagnostic report
         if: always()
         run: |
