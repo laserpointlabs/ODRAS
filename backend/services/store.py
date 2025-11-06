@@ -5,19 +5,24 @@ Dual-write wrapper functions for RAG SQL-first storage
 These functions implement the dual-write pattern:
 1. Store data in SQL (source of truth)
 2. Mirror to vectors with IDs-only payloads
+3. Mirror to OpenSearch for keyword search (if enabled)
 
 Vector payloads contain only metadata/IDs, never full text content.
 Full text is retrieved from SQL using the chunk/message IDs.
+OpenSearch is synced from Postgres for reliable keyword search.
 """
 
 import logging
 from typing import Optional, List, Dict, Any
 from datetime import datetime
+import asyncio
+import threading
 
 from backend.db.queries import insert_chunk, insert_chat, now_utc
 from backend.services.embedding_service import EmbeddingService
 from backend.services.qdrant_service import QdrantService
 from backend.services.config import Settings
+from backend.rag.storage.text_search_factory import create_text_search_store
 
 logger = logging.getLogger(__name__)
 
@@ -36,6 +41,19 @@ class RAGStoreService:
         self.settings = settings or Settings()
         self.embedding_service = EmbeddingService(settings)
         self.qdrant_service = QdrantService(settings)
+
+        # Initialize OpenSearch text search store if enabled
+        self.text_search_store = None
+        opensearch_enabled = getattr(self.settings, "opensearch_enabled", "false").lower() == "true"
+        if opensearch_enabled:
+            try:
+                self.text_search_store = create_text_search_store(self.settings)
+                if self.text_search_store:
+                    logger.info("OpenSearch text search store initialized for keyword search")
+                else:
+                    logger.warning("OpenSearch enabled but store creation failed")
+            except Exception as e:
+                logger.warning(f"Failed to initialize OpenSearch store: {e}")
 
         # Default embedding model (matches ODRAS standard)
         self.default_embedding_model = "all-MiniLM-L6-v2"
@@ -137,6 +155,19 @@ class RAGStoreService:
             collection_name = self._get_collection_for_model(model)
             stored_ids = self.qdrant_service.store_vectors(collection_name, vector_data)
             logger.debug(f"Stored vector for chunk {chunk_id} in collection {collection_name}")
+
+            # Step 4: Index in OpenSearch for keyword search (async, non-blocking)
+            self._index_chunk_in_opensearch_async(
+                chunk_id=chunk_id,
+                text=text,
+                project_id=project_id,
+                doc_id=doc_id,
+                idx=idx,
+                version=version,
+                page=page,
+                start=start,
+                end=end,
+            )
 
             return chunk_id
 
@@ -304,29 +335,205 @@ class RAGStoreService:
             stored_ids = self.qdrant_service.store_vectors(collection_name, vectors_data)
             logger.info(f"Stored {len(stored_ids)} vectors for document {doc_id}")
 
+            # Step 5: Index chunks in OpenSearch for keyword search (async, non-blocking)
+            self._bulk_index_chunks_in_opensearch_async(
+                chunk_ids=chunk_ids,
+                chunks_data=chunks_data,
+                project_id=project_id,
+                doc_id=doc_id,
+                version=version,
+            )
+
             return chunk_ids
 
         except Exception as e:
             logger.error(f"Failed to bulk store chunks and vectors: {e}")
             raise
 
+    def _index_chunk_in_opensearch_async(
+        self,
+        chunk_id: str,
+        text: str,
+        project_id: str,
+        doc_id: str,
+        idx: int,
+        version: int,
+        page: Optional[int] = None,
+        start: Optional[int] = None,
+        end: Optional[int] = None,
+    ):
+        """
+        Asynchronously index a chunk in OpenSearch (fire-and-forget).
+        
+        This is called after successful Postgres write to keep OpenSearch in sync.
+        Non-blocking: failures are logged but don't affect the transaction.
+        """
+        if not self.text_search_store:
+            return
+        
+        # Create async task (fire-and-forget)
+        try:
+            # Create a coroutine for the async indexing
+            async def _index_async():
+                try:
+                    # Ensure index exists
+                    await self.text_search_store.ensure_index("knowledge_chunks")
+                    
+                    # Prepare document for OpenSearch
+                    document = {
+                        "chunk_id": chunk_id,
+                        "original_chunk_id": chunk_id,  # For matching with Qdrant results
+                        "content": text,  # Full text for keyword search
+                        "text": text,  # Alias for content
+                        "title": "",  # Can be extracted from document metadata if available
+                        "project_id": project_id,
+                        "asset_id": doc_id,
+                        "doc_id": doc_id,
+                        "chunk_index": idx,
+                        "version": version,
+                        "page": page,
+                        "start_char": start,
+                        "end_char": end,
+                        "document_type": "document",
+                        "created_at": now_utc().isoformat(),
+                    }
+                    
+                    # Index document
+                    success = await self.text_search_store.index_document(
+                        index="knowledge_chunks",
+                        document_id=chunk_id,
+                        document=document,
+                    )
+                    
+                    if success:
+                        logger.debug(f"Indexed chunk {chunk_id} in OpenSearch")
+                    else:
+                        logger.warning(f"Failed to index chunk {chunk_id} in OpenSearch")
+                        
+                except Exception as e:
+                    logger.error(f"Error indexing chunk {chunk_id} in OpenSearch: {e}", exc_info=True)
+            
+            # Schedule the async task in a background thread (fire-and-forget)
+            def run_in_thread():
+                try:
+                    # Create new event loop for this thread
+                    new_loop = asyncio.new_event_loop()
+                    asyncio.set_event_loop(new_loop)
+                    try:
+                        new_loop.run_until_complete(_index_async())
+                    finally:
+                        new_loop.close()
+                except Exception as e:
+                    logger.error(f"Error in OpenSearch indexing thread: {e}")
+            
+            thread = threading.Thread(target=run_in_thread, daemon=True)
+            thread.start()
+                
+        except Exception as e:
+            logger.warning(f"Failed to schedule OpenSearch indexing for chunk {chunk_id}: {e}")
+
+    def _bulk_index_chunks_in_opensearch_async(
+        self,
+        chunk_ids: List[str],
+        chunks_data: List[Dict[str, Any]],
+        project_id: str,
+        doc_id: str,
+        version: int,
+    ):
+        """
+        Asynchronously bulk index chunks in OpenSearch (fire-and-forget).
+        
+        This is called after successful bulk Postgres write to keep OpenSearch in sync.
+        Non-blocking: failures are logged but don't affect the transaction.
+        """
+        if not self.text_search_store:
+            return
+        
+        if not chunk_ids or not chunks_data:
+            return
+        
+        # Create async task (fire-and-forget)
+        try:
+            async def _bulk_index_async():
+                try:
+                    # Ensure index exists
+                    await self.text_search_store.ensure_index("knowledge_chunks")
+                    
+                    # Prepare documents for bulk indexing
+                    documents = []
+                    for chunk_id, chunk_data in zip(chunk_ids, chunks_data):
+                        document = {
+                            "chunk_id": chunk_id,
+                            "original_chunk_id": chunk_id,  # For matching with Qdrant results
+                            "content": chunk_data.get("text", ""),  # Full text for keyword search
+                            "text": chunk_data.get("text", ""),  # Alias for content
+                            "title": "",  # Can be extracted from document metadata if available
+                            "project_id": project_id,
+                            "asset_id": doc_id,
+                            "doc_id": doc_id,
+                            "chunk_index": chunk_data.get("index", 0),
+                            "version": version,
+                            "page": chunk_data.get("page"),
+                            "start_char": chunk_data.get("start"),
+                            "end_char": chunk_data.get("end"),
+                            "document_type": "document",
+                            "created_at": now_utc().isoformat(),
+                        }
+                        documents.append(document)
+                    
+                    # Bulk index documents
+                    success = await self.text_search_store.bulk_index(
+                        index="knowledge_chunks",
+                        documents=documents,
+                    )
+                    
+                    if success:
+                        logger.info(f"Bulk indexed {len(documents)} chunks in OpenSearch")
+                    else:
+                        logger.warning(f"Failed to bulk index {len(documents)} chunks in OpenSearch")
+                        
+                except Exception as e:
+                    logger.error(f"Error bulk indexing chunks in OpenSearch: {e}", exc_info=True)
+            
+            # Schedule the async task in a background thread (fire-and-forget)
+            def run_in_thread():
+                try:
+                    # Create new event loop for this thread
+                    new_loop = asyncio.new_event_loop()
+                    asyncio.set_event_loop(new_loop)
+                    try:
+                        new_loop.run_until_complete(_bulk_index_async())
+                    finally:
+                        new_loop.close()
+                except Exception as e:
+                    logger.error(f"Error in OpenSearch bulk indexing thread: {e}")
+            
+            thread = threading.Thread(target=run_in_thread, daemon=True)
+            thread.start()
+                
+        except Exception as e:
+            logger.warning(f"Failed to schedule OpenSearch bulk indexing: {e}")
+
     def get_service_info(self) -> Dict[str, Any]:
         """Get information about the RAG store service configuration."""
         dual_write = getattr(self.settings, 'rag_dual_write', 'true').lower() == 'true'
         sql_read_through = getattr(self.settings, 'rag_sql_read_through', 'true').lower() == 'true'
+        opensearch_enabled = self.text_search_store is not None
 
         return {
             "service": "RAGStoreService",
             "sql_first_storage": True,
             "dual_write_enabled": dual_write,
             "sql_read_through_enabled": sql_read_through,
+            "opensearch_sync_enabled": opensearch_enabled,
             "embedding_model": self.default_embedding_model,
             "collections": {
                 "docs": self.docs_collection,
                 "threads": self.threads_collection
             },
             "vector_payload_contains_content": False,  # This is the key difference!
-            "text_source_of_truth": "PostgreSQL"
+            "text_source_of_truth": "PostgreSQL",
+            "opensearch_synced_from": "PostgreSQL"
         }
 
 

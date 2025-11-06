@@ -5,6 +5,13 @@ from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
 class Settings(BaseSettings):
+    model_config = SettingsConfigDict(
+        env_file=".env",
+        env_file_encoding="utf-8",
+        case_sensitive=False,
+        extra="ignore"
+    )
+    
     qdrant_url: str = "http://localhost:6333"
     neo4j_url: str = "bolt://localhost:7687"
     neo4j_user: str = "neo4j"
@@ -36,6 +43,33 @@ class Settings(BaseSettings):
     # RAG SQL-first Configuration
     rag_dual_write: str = "true"  # Enable dual-write (SQL + vectors)
     rag_sql_read_through: str = "true"  # Enable SQL read-through for chunk content
+
+    # Hybrid Search Configuration
+    rag_hybrid_search: str = "false"  # Enable hybrid search (vector + keyword)
+    rag_reranker: str = "rrf"  # Reranker type: rrf, cross_encoder, hybrid, none
+    vector_store_backend: str = "qdrant"  # Vector store: qdrant (opensearch for vectors not supported)
+
+    # OpenSearch/Elasticsearch Configuration (for keyword search)
+    opensearch_url: str = Field(
+        default="http://localhost:9200",
+        alias="OPENSEARCH_URL",
+        description="OpenSearch/Elasticsearch URL"
+    )
+    opensearch_user: Optional[str] = Field(
+        default=None,
+        alias="OPENSEARCH_USER",
+        description="OpenSearch username (optional, not needed if security disabled)"
+    )
+    opensearch_password: Optional[str] = Field(
+        default=None,
+        alias="OPENSEARCH_PASSWORD",
+        description="OpenSearch password (optional, not needed if security disabled)"
+    )
+    opensearch_enabled: str = Field(
+        default="false",
+        alias="OPENSEARCH_ENABLED",
+        description="Enable OpenSearch for keyword search (true/false)"
+    )
 
     # File Storage Configuration
     storage_backend: str = "minio"  # local | minio | postgresql

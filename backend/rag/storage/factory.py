@@ -9,6 +9,8 @@ from typing import Optional
 
 from .vector_store import VectorStore
 from .qdrant_store import QdrantVectorStore
+from .text_search_store import TextSearchStore
+from .opensearch_store import OpenSearchTextStore
 from ...services.config import Settings
 
 logger = logging.getLogger(__name__)
@@ -42,4 +44,3 @@ def create_vector_store(settings: Optional[Settings] = None) -> VectorStore:
         raise NotImplementedError("OpenSearch backend not yet implemented")
     else:
         raise ValueError(f"Unknown vector store backend: {backend}")
-

@@ -13,7 +13,17 @@ from ...services.db import DatabaseService
 from ...services.llm_team import LLMTeam
 from ..storage.factory import create_vector_store
 from ..storage.vector_store import VectorStore
+from ..storage.text_search_store import TextSearchStore
+from ..storage.opensearch_store import OpenSearchTextStore
+from ..storage.text_search_factory import create_text_search_store
 from ..retrieval.vector_retriever import VectorRetriever
+from ..retrieval.hybrid_retriever import HybridRetriever
+from ..retrieval.reranker import (
+    Reranker,
+    ReciprocalRankFusionReranker,
+    CrossEncoderReranker,
+    HybridReranker,
+)
 from ..retrieval.retriever import Retriever
 
 logger = logging.getLogger(__name__)
@@ -31,7 +41,9 @@ class ModularRAGService:
         self,
         settings: Settings,
         vector_store: Optional[VectorStore] = None,
+        text_search_store: Optional[TextSearchStore] = None,
         retriever: Optional[Retriever] = None,
+        reranker: Optional[Reranker] = None,
         db_service: Optional[DatabaseService] = None,
         llm_team: Optional[LLMTeam] = None,
     ):
@@ -41,7 +53,9 @@ class ModularRAGService:
         Args:
             settings: Application settings
             vector_store: Optional vector store (creates from factory if not provided)
-            retriever: Optional retriever (creates VectorRetriever if not provided)
+            text_search_store: Optional text search store for keyword search
+            retriever: Optional retriever (creates based on config if not provided)
+            reranker: Optional reranker (creates based on config if not provided)
             db_service: Optional database service (creates if not provided)
             llm_team: Optional LLM team (creates if not provided)
         """
@@ -49,7 +63,53 @@ class ModularRAGService:
 
         # Initialize components (allow dependency injection for testing)
         self.vector_store = vector_store or create_vector_store(settings)
-        self.retriever = retriever or VectorRetriever(self.vector_store)
+        
+        # Initialize text search store if enabled
+        self.hybrid_search_enabled = getattr(settings, "rag_hybrid_search", "false").lower() == "true"
+        self.opensearch_enabled = getattr(settings, "opensearch_enabled", "false").lower() == "true"
+        
+        if self.hybrid_search_enabled and self.opensearch_enabled and not text_search_store:
+            try:
+                self.text_search_store = create_text_search_store(settings)
+                if self.text_search_store:
+                    logger.info("OpenSearch text search store initialized")
+                else:
+                    logger.warning("OpenSearch not available or disabled. Continuing with vector-only search.")
+                    self.hybrid_search_enabled = False
+            except Exception as e:
+                logger.warning(f"Failed to initialize OpenSearch: {e}. Continuing with vector-only search.")
+                self.text_search_store = None
+                self.hybrid_search_enabled = False
+        else:
+            self.text_search_store = text_search_store
+
+        # Initialize reranker based on config
+        if not reranker:
+            reranker_type = getattr(settings, "rag_reranker", "rrf").lower()
+            if reranker_type == "cross_encoder":
+                reranker = CrossEncoderReranker()
+            elif reranker_type == "hybrid":
+                reranker = HybridReranker(use_cross_encoder=True)
+            elif reranker_type == "rrf":
+                reranker = ReciprocalRankFusionReranker()
+            else:
+                reranker = None  # No reranking
+
+        # Initialize retriever (hybrid if text search available, otherwise vector-only)
+        if not retriever:
+            if self.hybrid_search_enabled and self.text_search_store:
+                self.retriever = HybridRetriever(
+                    vector_store=self.vector_store,
+                    text_search_store=self.text_search_store,
+                    reranker=reranker,
+                )
+                logger.info("Using HybridRetriever (vector + keyword search)")
+            else:
+                self.retriever = VectorRetriever(self.vector_store)
+                logger.info("Using VectorRetriever (vector-only search)")
+        else:
+            self.retriever = retriever
+
         self.db_service = db_service or DatabaseService(settings)
         self.llm_team = llm_team or LLMTeam(settings)
 
@@ -368,4 +428,3 @@ Include specific technical details, specifications, and implementation notes."""
                 "score": chunk.get("score", 0),
             })
         return sources
-

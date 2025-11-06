@@ -199,6 +199,15 @@ jobs:
           echo "🧪 Step 4.6: RAG LLM Configuration Test..."
           python -m pytest tests/test_rag_llm_config.py -v --tb=short -m "not integration"
 
+          echo "🧪 Step 4.7: RAG Hybrid Search and Reranker Test..."
+          python -m pytest tests/test_rag_hybrid_search.py -v --tb=short -m "not integration"
+
+          echo "🧪 Step 4.8: RAG Hybrid Search Evaluation Test..."
+          python -m pytest tests/test_rag_hybrid_search_evaluation.py -v --tb=short -m "not integration"
+
+          echo "🧪 Step 4.9: RAG Real-World Performance Evaluation..."
+          python -m pytest tests/test_rag_real_world_evaluation.py -v --tb=short -s || echo "⚠️ Real-world evaluation requires running services"
+
           echo "🧪 Step 5: Ontology Inheritance System Test..."
           python -m pytest tests/test_inheritance_system.py -v --tb=short
 

@@ -16,6 +16,7 @@ neo4j>=5.8.0
 redis>=4.5.0
 psycopg2-binary>=2.9.0
 minio>=7.1.0
+opensearch-py>=2.4.0  # Optional: for hybrid search (keyword + vector)
 
 # ML/AI Libraries
 sentence-transformers>=2.2.0

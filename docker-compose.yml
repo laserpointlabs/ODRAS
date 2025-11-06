@@ -120,6 +120,32 @@ services:
       timeout: 5s
       retries: 3
 
+  # OpenSearch for full-text/keyword search (complements Qdrant vector search)
+  # Optional: Enable via RAG_HYBRID_SEARCH=true and OPENSEARCH_ENABLED=true
+  opensearch:
+    image: opensearchproject/opensearch:2.11.0
+    container_name: odras_opensearch
+    restart: unless-stopped
+    environment:
+      - discovery.type=single-node
+      - OPENSEARCH_INITIAL_ADMIN_PASSWORD=admin
+      - OPENSEARCH_INITIAL_ADMIN_USER=admin
+      - OPENSEARCH_JAVA_OPTS=-Xms512m -Xmx512m # Reduce memory for development
+      - DISABLE_SECURITY_PLUGIN=true # Disable security for development (no auth needed)
+      - DISABLE_INSTALL_DEMO_CONFIG=true
+    ports:
+      - "9200:9200" # HTTP API
+      - "9600:9600" # Performance Analyzer
+    volumes:
+      - opensearch_data:/usr/share/opensearch/data
+    healthcheck:
+      test:
+        ["CMD-SHELL", "curl -f http://localhost:9200/_cluster/health || exit 1"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+      start_period: 60s
+
   # pgAdmin for PostgreSQL database management
   pgadmin:
     image: dpage/pgadmin4:latest
@@ -148,3 +174,4 @@ volumes:
   postgres_data:
   redis_data:
   pgadmin_data:
+  opensearch_data:
