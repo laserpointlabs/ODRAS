@@ -1,0 +1,41 @@
+Ontology Development Fundamentals
+
+An ontology is a formal specification of a shared conceptualization. It provides a structured way to represent knowledge about a domain, including concepts, relationships, and constraints.
+
+Key Components of Ontologies:
+
+1. Classes (Concepts)
+   - Classes represent categories or types of entities in a domain
+   - Example: Person, Organization, Document
+   - Classes can have subclasses (inheritance hierarchy)
+
+2. Properties (Relationships)
+   - Properties define relationships between classes
+   - Object properties link instances of classes
+   - Data properties link instances to literal values
+   - Example: hasAuthor, createdBy, hasTitle
+
+3. Individuals (Instances)
+   - Individuals are specific instances of classes
+   - Example: JohnDoe (instance of Person), ODRAS (instance of System)
+
+4. Axioms (Constraints)
+   - Axioms define constraints and rules
+   - Domain and range restrictions
+   - Cardinality constraints
+   - Disjointness and equivalence
+
+Best Practices for Ontology Development:
+
+- Start with competency questions to define scope
+- Use clear, descriptive names for classes and properties
+- Follow naming conventions (PascalCase for classes, camelCase for properties)
+- Document your ontology with rdfs:comment
+- Reuse existing ontologies when possible
+- Version your ontologies
+- Test your ontology with SPARQL queries
+
+Common Ontology Languages:
+- OWL (Web Ontology Language) - most expressive
+- RDFS (RDF Schema) - simpler, less expressive
+- SKOS (Simple Knowledge Organization System) - for taxonomies

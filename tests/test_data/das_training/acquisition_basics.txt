@@ -1,0 +1,84 @@
+Acquisition Program Management
+
+Acquisition programs involve the process of obtaining systems, products, or services to meet organizational needs. Effective acquisition management ensures successful delivery within cost, schedule, and performance constraints.
+
+Key Phases:
+
+1. Pre-Acquisition
+   - Identify need and requirements
+   - Conduct market research
+   - Develop acquisition strategy
+   - Prepare acquisition plan
+   - Obtain funding approval
+
+2. Solicitation
+   - Prepare solicitation documents
+   - Issue Request for Proposal (RFP)
+   - Conduct industry day
+   - Answer vendor questions
+   - Receive proposals
+
+3. Source Selection
+   - Evaluate proposals
+   - Conduct technical evaluation
+   - Perform cost analysis
+   - Check past performance
+   - Select winning vendor
+
+4. Contract Award
+   - Negotiate contract terms
+   - Award contract
+   - Establish contract management
+   - Set up performance metrics
+   - Begin contract execution
+
+5. Contract Management
+   - Monitor contractor performance
+   - Review deliverables
+   - Process payments
+   - Manage changes
+   - Ensure compliance
+
+6. Contract Closeout
+   - Verify final deliverables
+   - Complete financial reconciliation
+   - Archive contract documents
+   - Conduct lessons learned
+   - Close contract
+
+Acquisition Strategies:
+
+- Competitive bidding: Multiple vendors compete
+- Sole source: Single vendor justification required
+- Best value: Balance of technical and cost factors
+- Lowest price technically acceptable: Cost-focused
+- Performance-based: Outcomes over specifications
+
+Key Documents:
+
+- Acquisition Plan: Overall strategy and approach
+- Statement of Work (SOW): What contractor must deliver
+- Performance Work Statement (PWS): Outcomes-based requirements
+- Contract Data Requirements List (CDRL): Deliverables
+- Quality Assurance Plan: How quality is ensured
+
+Best Practices:
+
+- Start with clear requirements
+- Engage stakeholders early
+- Use appropriate contract type
+- Establish clear metrics
+- Maintain good communication
+- Document decisions
+- Manage risks proactively
+- Monitor performance continuously
+
+Common Challenges:
+
+- Requirements changes
+- Cost overruns
+- Schedule delays
+- Performance issues
+- Vendor management
+- Regulatory compliance
+- Technology obsolescence

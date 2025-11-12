@@ -413,5 +413,3 @@ class TestHybridSearchIntegration:
 
 
 pytest_plugins = ["pytest_asyncio"]
-
-

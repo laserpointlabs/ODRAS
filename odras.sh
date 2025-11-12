@@ -1277,7 +1277,28 @@ init_databases() {
              -H "Content-Type: application/json" \
              -d '{"vectors": {"size": 384, "distance": "Cosine"}}' >/dev/null 2>&1
 
-        print_success "✓ Created Qdrant collections: knowledge_chunks, knowledge_chunks_768, knowledge_large, odras_requirements, das_instructions, project_threads"
+        # Create DAS training collections (global, not project-scoped)
+        curl -s -X PUT "http://localhost:6333/collections/das_training_ontology" \
+             -H "Content-Type: application/json" \
+             -d '{"vectors": {"size": 384, "distance": "Cosine"}}' >/dev/null 2>&1
+
+        curl -s -X PUT "http://localhost:6333/collections/das_training_requirements" \
+             -H "Content-Type: application/json" \
+             -d '{"vectors": {"size": 384, "distance": "Cosine"}}' >/dev/null 2>&1
+
+        curl -s -X PUT "http://localhost:6333/collections/das_training_acquisition" \
+             -H "Content-Type: application/json" \
+             -d '{"vectors": {"size": 384, "distance": "Cosine"}}' >/dev/null 2>&1
+
+        curl -s -X PUT "http://localhost:6333/collections/das_training_odras_usage" \
+             -H "Content-Type: application/json" \
+             -d '{"vectors": {"size": 384, "distance": "Cosine"}}' >/dev/null 2>&1
+
+        curl -s -X PUT "http://localhost:6333/collections/das_training_systems_engineering" \
+             -H "Content-Type: application/json" \
+             -d '{"vectors": {"size": 384, "distance": "Cosine"}}' >/dev/null 2>&1
+
+        print_success "✓ Created Qdrant collections: knowledge_chunks, knowledge_chunks_768, knowledge_large, odras_requirements, das_instructions, project_threads, das_training_ontology, das_training_requirements, das_training_acquisition, das_training_odras_usage, das_training_systems_engineering"
     else
         print_warning "⚠ Could not connect to Qdrant to create collections"
     fi

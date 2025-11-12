@@ -26,7 +26,7 @@ from typing import Any, Dict, List, Optional
 from dataclasses import dataclass
 
 from .config import Settings
-from .rag_service import RAGService
+from ..rag.core.modular_rag_service import ModularRAGService
 from .project_thread_manager import ProjectThreadManager, ProjectEventType
 
 logger = logging.getLogger(__name__)
@@ -59,7 +59,7 @@ class DASCoreEngine:
     NO intelligence layers, NO complex logic, NO bullshit.
     """
 
-    def __init__(self, settings: Settings, rag_service: RAGService, project_manager, db_service=None):
+    def __init__(self, settings: Settings, rag_service: ModularRAGService, project_manager, db_service=None):
         self.settings = settings
         self.rag_service = rag_service
         self.project_manager = project_manager  # Now SqlFirstThreadManager

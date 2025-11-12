@@ -17,7 +17,19 @@ from pydantic import BaseModel, Field
 from ..services.auth import get_user, get_admin_user, is_user_admin
 from ..services.config import Settings
 from ..services.db import DatabaseService
-from ..services.rag_service import get_rag_service
+from ..rag.core.modular_rag_service import ModularRAGService
+
+# Global RAG service instance (initialized on first use)
+_rag_service_instance = None
+
+def get_rag_service() -> ModularRAGService:
+    """Get or create ModularRAGService instance."""
+    global _rag_service_instance
+    if _rag_service_instance is None:
+        settings = Settings()
+        db = DatabaseService(settings)
+        _rag_service_instance = ModularRAGService(settings, db_service=db)
+    return _rag_service_instance
 
 logger = logging.getLogger(__name__)
 router = APIRouter(prefix="/api/knowledge", tags=["knowledge"])

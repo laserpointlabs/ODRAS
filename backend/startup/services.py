@@ -9,12 +9,12 @@ import redis.asyncio as redis
 from typing import Tuple
 
 from ..services.config import Settings
-from ..services.rag_service import RAGService
+from ..rag.core.modular_rag_service import ModularRAGService
 
 logger = logging.getLogger(__name__)
 
 
-async def initialize_services(settings: Settings, db) -> Tuple[RAGService, redis.Redis]:
+async def initialize_services(settings: Settings, db) -> Tuple[ModularRAGService, redis.Redis]:
     """
     Initialize core application services.
     
@@ -23,14 +23,14 @@ async def initialize_services(settings: Settings, db) -> Tuple[RAGService, redis
         db: Initialized DatabaseService instance.
         
     Returns:
-        A tuple containing the RAGService instance and the Redis client.
+        A tuple containing the ModularRAGService instance and the Redis client.
     """
     print("🔥 Step 5: Creating service instances...")
     logger.info("📦 Creating service instances...")
     
-    print("🔥 Step 6: Creating RAG service...")
-    rag_service = RAGService(settings)
-    print("✅ RAG service created")
+    print("🔥 Step 6: Creating modular RAG service...")
+    rag_service = ModularRAGService(settings, db_service=db)
+    print("✅ Modular RAG service created")
     
     print("🔥 Step 7: Connecting to Redis...")
     logger.info("🔗 Connecting to Redis...")
