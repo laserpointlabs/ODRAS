@@ -2,7 +2,7 @@ name: ODRAS Complete System CI
 
 on:
   push:
-    branches: [main, develop, feature/*, fix/*]
+    branches: [main, develop, feature/*, fix/*, phase*/*]
   pull_request:
     branches: [main, develop]
   workflow_dispatch:
@@ -207,6 +207,12 @@ jobs:
 
           echo "🧪 Step 4.9: RAG Real-World Performance Evaluation..."
           python -m pytest tests/test_rag_real_world_evaluation.py -v --tb=short -s || echo "⚠️ Real-world evaluation requires running services"
+
+          echo "🧪 Step 4.10: RAG CI Verification Test..."
+          python -m pytest tests/test_rag_ci_verification.py -v --tb=short -m integration
+
+          echo "🧪 Step 4.11: DAS Training Data Initialization Test..."
+          python -m pytest tests/test_training_data_initialization.py -v --tb=short -m integration
 
           echo "🧪 Step 5: Ontology Inheritance System Test..."
           python -m pytest tests/test_inheritance_system.py -v --tb=short

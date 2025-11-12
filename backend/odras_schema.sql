@@ -288,6 +288,42 @@ CREATE TABLE IF NOT EXISTS knowledge_processing_jobs (
 );
 
 -- =====================================
+-- DAS TRAINING KNOWLEDGE MANAGEMENT
+-- =====================================
+
+-- DAS Training Collections Table (for global training knowledge collections)
+CREATE TABLE IF NOT EXISTS das_training_collections (
+    collection_id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    collection_name VARCHAR(255) UNIQUE NOT NULL, -- Qdrant collection name (e.g., das_training_ontology)
+    display_name VARCHAR(255) NOT NULL, -- Human-readable name
+    description TEXT, -- Collection purpose/description
+    domain VARCHAR(100) NOT NULL, -- Domain category (ontology, requirements, acquisition, odras_usage, etc.)
+    vector_size INTEGER NOT NULL DEFAULT 384, -- Embedding dimension (384 or 1536)
+    embedding_model VARCHAR(100) NOT NULL DEFAULT 'all-MiniLM-L6-v2', -- Model used
+    created_by UUID REFERENCES public.users(user_id) ON DELETE SET NULL,
+    created_at TIMESTAMPTZ DEFAULT NOW(),
+    updated_at TIMESTAMPTZ DEFAULT NOW(),
+    is_active BOOLEAN DEFAULT TRUE, -- Enable/disable collection
+    metadata JSONB DEFAULT '{}'::jsonb -- Additional metadata (tags, source info, etc.)
+);
+
+-- DAS Training Assets Table (for training documents/assets)
+CREATE TABLE IF NOT EXISTS das_training_assets (
+    asset_id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    collection_id UUID NOT NULL REFERENCES das_training_collections(collection_id) ON DELETE CASCADE,
+    source_file_id UUID REFERENCES files(id) ON DELETE SET NULL, -- Original uploaded file
+    title VARCHAR(512) NOT NULL,
+    description TEXT,
+    source_type VARCHAR(50) NOT NULL, -- youtube_transcript, pdf, doc, markdown, etc.
+    source_url TEXT, -- Original source URL (e.g., YouTube video URL)
+    created_by UUID REFERENCES public.users(user_id) ON DELETE SET NULL,
+    created_at TIMESTAMPTZ DEFAULT NOW(),
+    processing_status VARCHAR(20) DEFAULT 'pending', -- pending, processing, completed, failed
+    chunk_count INTEGER DEFAULT 0, -- Number of chunks created
+    metadata JSONB DEFAULT '{}'::jsonb -- Additional metadata
+);
+
+-- =====================================
 -- INDEXES FOR PERFORMANCE
 -- =====================================
 
@@ -375,6 +411,27 @@ CREATE INDEX IF NOT EXISTS idx_processing_jobs_asset ON knowledge_processing_job
 CREATE INDEX IF NOT EXISTS idx_processing_jobs_status ON knowledge_processing_jobs(status);
 CREATE INDEX IF NOT EXISTS idx_processing_jobs_type ON knowledge_processing_jobs(job_type);
 CREATE INDEX IF NOT EXISTS idx_processing_jobs_created ON knowledge_processing_jobs(created_at);
+
+-- DAS Training Collections indexes
+CREATE INDEX IF NOT EXISTS idx_das_training_collections_name ON das_training_collections(collection_name);
+CREATE INDEX IF NOT EXISTS idx_das_training_collections_domain ON das_training_collections(domain);
+CREATE INDEX IF NOT EXISTS idx_das_training_collections_active ON das_training_collections(is_active);
+CREATE INDEX IF NOT EXISTS idx_das_training_collections_created_by ON das_training_collections(created_by);
+CREATE INDEX IF NOT EXISTS idx_das_training_collections_metadata ON das_training_collections USING GIN(metadata);
+
+-- DAS Training Assets indexes
+CREATE INDEX IF NOT EXISTS idx_das_training_assets_collection ON das_training_assets(collection_id);
+CREATE INDEX IF NOT EXISTS idx_das_training_assets_file ON das_training_assets(source_file_id);
+CREATE INDEX IF NOT EXISTS idx_das_training_assets_status ON das_training_assets(processing_status);
+CREATE INDEX IF NOT EXISTS idx_das_training_assets_type ON das_training_assets(source_type);
+CREATE INDEX IF NOT EXISTS idx_das_training_assets_created_by ON das_training_assets(created_by);
+CREATE INDEX IF NOT EXISTS idx_das_training_assets_metadata ON das_training_assets USING GIN(metadata);
+
+-- DAS Training Chunks indexes
+CREATE INDEX IF NOT EXISTS idx_das_training_chunks_asset ON das_training_chunks(asset_id);
+CREATE INDEX IF NOT EXISTS idx_das_training_chunks_collection ON das_training_chunks(collection_id);
+CREATE INDEX IF NOT EXISTS idx_das_training_chunks_qdrant_point ON das_training_chunks(qdrant_point_id);
+CREATE INDEX IF NOT EXISTS idx_das_training_chunks_metadata ON das_training_chunks USING GIN(metadata);
 
 -- =====================================
 -- TRIGGERS AND FUNCTIONS
@@ -554,6 +611,11 @@ CREATE TRIGGER update_knowledge_assets_updated_at
     BEFORE UPDATE ON knowledge_assets
     FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
 
+-- Trigger for das_training_collections updated_at
+CREATE TRIGGER update_das_training_collections_updated_at
+    BEFORE UPDATE ON das_training_collections
+    FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
+
 -- Trigger for users updated_at
 CREATE TRIGGER update_users_updated_at
     BEFORE UPDATE ON public.users
@@ -666,6 +728,8 @@ COMMENT ON TABLE knowledge_assets IS 'Core knowledge assets derived from uploade
 COMMENT ON TABLE knowledge_chunks IS 'Text chunks with embeddings and metadata for semantic search';
 COMMENT ON TABLE knowledge_relationships IS 'Relationships between knowledge assets and chunks for graph queries';
 COMMENT ON TABLE knowledge_processing_jobs IS 'Async processing job tracking for knowledge pipeline';
+COMMENT ON TABLE das_training_collections IS 'Global DAS training knowledge collections (not project-scoped)';
+COMMENT ON TABLE das_training_assets IS 'Training documents/assets stored in global DAS training collections';
 
 -- Column comments
 COMMENT ON COLUMN public.users.is_admin IS 'Whether the user has administrative privileges';
