@@ -212,7 +212,18 @@ jobs:
           python -m pytest tests/test_rag_ci_verification.py -v --tb=short -m integration
 
           echo "🧪 Step 4.11: DAS Training Data Initialization Test..."
-          python -m pytest tests/test_training_data_initialization.py -v --tb=short -m integration
+          python -m pytest tests/test_training_data_initialization.py -v --tb=short -m integration || {
+            echo "❌ Training data tests failed!"
+            echo "Checking API status..."
+            curl -s http://localhost:8000/api/health || echo "API not responding"
+            echo "Checking training collections endpoint..."
+            curl -s -H "Authorization: Bearer $(python3 -c "
+import httpx
+r = httpx.post('http://localhost:8000/api/auth/login', json={'username': 'das_service', 'password': 'das_service_2024!'}, timeout=5)
+print(r.json()['token'] if r.status_code == 200 else 'FAILED')
+")" http://localhost:8000/api/das-training/collections || echo "Collections endpoint failed"
+            exit 1
+          }
 
           echo "🧪 Step 5: Ontology Inheritance System Test..."
           python -m pytest tests/test_inheritance_system.py -v --tb=short
