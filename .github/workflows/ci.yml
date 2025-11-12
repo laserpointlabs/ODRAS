@@ -217,11 +217,8 @@ jobs:
             echo "Checking API status..."
             curl -s http://localhost:8000/api/health || echo "API not responding"
             echo "Checking training collections endpoint..."
-            curl -s -H "Authorization: Bearer $(python3 -c "
-import httpx
-r = httpx.post('http://localhost:8000/api/auth/login', json={'username': 'das_service', 'password': 'das_service_2024!'}, timeout=5)
-print(r.json()['token'] if r.status_code == 200 else 'FAILED')
-")" http://localhost:8000/api/das-training/collections || echo "Collections endpoint failed"
+            TOKEN=$(python3 -c "import httpx; r = httpx.post('http://localhost:8000/api/auth/login', json={'username': 'das_service', 'password': 'das_service_2024!'}, timeout=5); print(r.json()['token'] if r.status_code == 200 else 'FAILED')")
+            curl -s -H "Authorization: Bearer $TOKEN" http://localhost:8000/api/das-training/collections || echo "Collections endpoint failed"
             exit 1
           }
 
