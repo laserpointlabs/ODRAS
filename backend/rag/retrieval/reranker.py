@@ -116,11 +116,9 @@ class ReciprocalRankFusionReranker(Reranker):
         # Sort by RRF score (descending)
         reranked.sort(key=lambda x: x["rrf_score"], reverse=True)
 
-        # Don't limit too aggressively - let caller handle final deduplication
-        # This ensures we have enough results when multiple sources return same chunks
+        # Apply top_k limit (deduplication already handled by grouping)
         if top_k:
-            # Return more results to account for deduplication (multiple sources may return same chunks)
-            reranked = reranked[:min(top_k * 2, len(reranked))]
+            reranked = reranked[:top_k]
 
         logger.debug(f"RRF reranked {len(results)} results to {len(reranked)} reranked results")
         return reranked

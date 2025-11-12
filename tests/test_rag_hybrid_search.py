@@ -106,7 +106,8 @@ class TestOpenSearchTextStore:
         )
 
         assert len(results) == 1
-        assert results[0]["id"] == "doc1"
+        # OpenSearchTextStore returns chunk_id as id (from _source.chunk_id or _id)
+        assert results[0]["id"] == "chunk1"  # chunk_id from _source takes precedence
         assert results[0]["search_type"] == "keyword"
         mock_opensearch_client.search.assert_called_once()
 
