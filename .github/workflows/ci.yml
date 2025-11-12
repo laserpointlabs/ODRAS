@@ -212,8 +212,12 @@ jobs:
           python -m pytest tests/test_rag_ci_verification.py -v --tb=short -m integration
 
           echo "🧪 Step 4.11: DAS Training Data Initialization Test..."
-          python -m pytest tests/test_training_data_initialization.py -v --tb=short -m integration || {
+          echo "Checking if test file exists..."
+          ls -la tests/test_training_data_initialization.py || echo "Test file not found!"
+          echo "Running pytest with explicit output..."
+          python -m pytest tests/test_training_data_initialization.py -v --tb=short -m integration -s 2>&1 || {
             echo "❌ Training data tests failed!"
+            echo "Pytest exit code: $?"
             echo "Checking API status..."
             curl -s http://localhost:8000/api/health || echo "API not responding"
             echo "Checking training collections endpoint..."
