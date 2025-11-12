@@ -323,6 +323,21 @@ CREATE TABLE IF NOT EXISTS das_training_assets (
     metadata JSONB DEFAULT '{}'::jsonb -- Additional metadata
 );
 
+-- DAS Training Chunks Table (SQL-first storage for training chunks)
+CREATE TABLE IF NOT EXISTS das_training_chunks (
+    chunk_id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    asset_id UUID NOT NULL REFERENCES das_training_assets(asset_id) ON DELETE CASCADE,
+    collection_id UUID NOT NULL REFERENCES das_training_collections(collection_id) ON DELETE CASCADE,
+    sequence_number INTEGER NOT NULL,
+    content TEXT NOT NULL, -- Full text content - source of truth
+    token_count INTEGER DEFAULT 0,
+    metadata JSONB DEFAULT '{}'::jsonb,
+    embedding_model VARCHAR(100),
+    qdrant_point_id UUID, -- Reference to Qdrant vector point ID
+    created_at TIMESTAMPTZ DEFAULT NOW(),
+    UNIQUE(asset_id, sequence_number)
+);
+
 -- =====================================
 -- INDEXES FOR PERFORMANCE
 -- =====================================
