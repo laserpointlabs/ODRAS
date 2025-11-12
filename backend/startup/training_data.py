@@ -98,10 +98,21 @@ async def setup_base_training_data(settings: Settings, db: DatabaseService) -> d
         from ..services.das_training_processor import DASTrainingProcessor
         from ..services.file_storage import get_file_storage_service
         
-        test_data_dir = Path(__file__).parent.parent.parent / "tests" / "test_data" / "das_training"
+        # Calculate test data directory path (works from both repo root and backend/startup/)
+        # Path from backend/startup/training_data.py -> backend -> repo root -> tests/test_data/das_training
+        current_file = Path(__file__).resolve()
+        repo_root = current_file.parent.parent.parent
+        test_data_dir = repo_root / "tests" / "test_data" / "das_training"
         
+        # Also try alternative path in case we're running from different location
         if not test_data_dir.exists():
-            return {"success": False, "error": f"Test data directory not found: {test_data_dir}"}
+            # Try from workspace root
+            alt_path = Path("tests/test_data/das_training")
+            if alt_path.exists():
+                test_data_dir = alt_path
+            else:
+                logger.warning(f"Test data directory not found at {test_data_dir} or {alt_path}")
+                return {"success": False, "error": f"Test data directory not found: {test_data_dir}"}
         
         # Training data mapping
         training_data = [
