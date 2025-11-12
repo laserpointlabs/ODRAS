@@ -39,10 +39,50 @@ async def initialize_training_data(settings: Settings, db: DatabaseService) -> N
             print("ℹ️  Auto-load training data disabled")
             return
         
-        # Check if base training data already exists
+        # First, ensure training collections exist in database (not just Qdrant)
         conn = db._conn()
         try:
             with conn.cursor() as cur:
+                # Check if collections exist in database
+                cur.execute("SELECT COUNT(*) FROM das_training_collections")
+                collection_count = cur.fetchone()[0]
+                
+                if collection_count == 0:
+                    # Create database records for training collections
+                    logger.info("Creating training collection records in database...")
+                    print("  Creating training collection records...")
+                    
+                    # Get admin user ID
+                    cur.execute("SELECT user_id FROM public.users WHERE username = 'admin' LIMIT 1")
+                    admin_row = cur.fetchone()
+                    admin_user_id = str(admin_row[0]) if admin_row else None
+                    
+                    if not admin_user_id:
+                        logger.error("Admin user not found - cannot create training collections")
+                        print("⚠️  Admin user not found")
+                        return
+                    
+                    # Training collections mapping
+                    training_collections = [
+                        ("das_training_ontology", "Ontology Development", "ontology", "Knowledge about creating and managing ontologies"),
+                        ("das_training_requirements", "Requirements Writing", "requirements", "Knowledge about writing and managing requirements"),
+                        ("das_training_acquisition", "Acquisition Programs", "acquisition", "Knowledge about running acquisition programs"),
+                        ("das_training_odras_usage", "ODRAS Usage", "odras_usage", "Knowledge about using and operating ODRAS"),
+                        ("das_training_systems_engineering", "Systems Engineering", "systems_engineering", "Knowledge about systems engineering practices"),
+                    ]
+                    
+                    for collection_name, display_name, domain, description in training_collections:
+                        cur.execute("""
+                            INSERT INTO das_training_collections
+                            (collection_name, display_name, description, domain, vector_size, embedding_model, created_by, is_active)
+                            VALUES (%s, %s, %s, %s, 384, 'all-MiniLM-L6-v2', %s, TRUE)
+                            ON CONFLICT (collection_name) DO NOTHING
+                        """, (collection_name, display_name, description, domain, admin_user_id))
+                    
+                    conn.commit()
+                    logger.info(f"Created {len(training_collections)} training collection records")
+                    print(f"✅ Created {len(training_collections)} training collection records")
+                
                 # Check if we have completed assets in any training collection
                 cur.execute("""
                     SELECT COUNT(*) 
