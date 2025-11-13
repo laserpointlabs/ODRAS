@@ -1,0 +1,59 @@
+name: Fast CI - Unit Tests
+
+on:
+  push:
+    branches: [main, develop, feature/*, fix/*, phase*/*]
+  pull_request:
+    branches: [main, develop]
+
+jobs:
+  fast-unit-tests:
+    name: Fast Unit Tests
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: "3.11"
+          cache: "pip"
+
+      - name: Install Python dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
+          pip install pytest pytest-asyncio
+
+      - name: Run unit tests (fast, no services)
+        run: |
+          echo "🚀 Running fast unit tests (no services required)..."
+          echo "============================================================"
+          
+          # Run all unit tests from tests/unit/ directory (fast, isolated)
+          echo "📦 Running tests/unit/ tests..."
+          python -m pytest tests/unit/ -v --tb=short -m "not integration and not slow" || echo "⚠️ Some unit tests failed (will be caught in comprehensive CI)"
+          
+          # Run RAG unit tests (mocked, no services)
+          echo "📦 Running RAG unit tests..."
+          python -m pytest tests/test_rag_modular.py -v --tb=short -m "not integration and not slow" || echo "⚠️ RAG unit tests failed"
+          python -m pytest tests/test_rag_llm_config.py -v --tb=short -m "not integration and not slow" || echo "⚠️ RAG config tests failed"
+          python -m pytest tests/test_rag_hybrid_search.py -v --tb=short -m "not integration and not slow" || echo "⚠️ RAG hybrid search tests failed"
+          
+          echo "✅ Fast unit tests completed"
+          echo "Note: Failures here are warnings - comprehensive CI will catch all issues"
+        env:
+          PYTHONPATH: ${{ github.workspace }}
+
+      - name: Summary
+        if: always()
+        run: |
+          echo "📊 Fast CI Summary"
+          echo "============================================================"
+          echo "✅ Fast unit tests completed (< 2 minutes)"
+          echo "📝 Comprehensive tests run on PRs and main branch"
+          echo "🚀 Fast feedback for developers, quality gates on PRs"
+

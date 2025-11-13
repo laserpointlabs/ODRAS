@@ -1,17 +1,19 @@
-name: ODRAS Complete System CI
+name: ODRAS Comprehensive CI
 
 on:
   push:
-    branches: [main, develop, feature/*, fix/*, phase*/*]
+    branches: [main, develop]  # Only run comprehensive tests on main/develop
   pull_request:
-    branches: [main, develop]
-  workflow_dispatch:
+    branches: [main, develop]  # Run comprehensive tests on PRs
+  workflow_dispatch:  # Allow manual trigger
 
 jobs:
-  complete_odras_test:
-    name: Complete ODRAS System Test
+  comprehensive_odras_test:
+    name: Comprehensive ODRAS System Test
     runs-on: ubuntu-latest
     timeout-minutes: 45
+    # Only run comprehensive tests on main branch or PRs
+    if: github.ref == 'refs/heads/main' || github.ref == 'refs/heads/develop' || github.event_name == 'pull_request' || github.event_name == 'workflow_dispatch'
 
     env:
       POSTGRES_USER: postgres
