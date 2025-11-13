@@ -232,4 +232,3 @@ class TestLLMIntegration:
                     pytest.skip("Ollama not running")
         except Exception:
             pytest.skip("Ollama not available")
-
