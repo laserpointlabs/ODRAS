@@ -292,6 +292,8 @@ class TestModularRAGService:
         )
         
         assert result["success"] is True
+
+    @pytest.mark.asyncio
     async def test_query_no_results(self, rag_service, mock_retriever):
         """Test query when no results found."""
         mock_retriever.retrieve_multiple_collections.return_value = {
