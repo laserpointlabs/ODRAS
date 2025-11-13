@@ -271,7 +271,7 @@ class TestModularRAGService:
     @pytest.mark.asyncio
     async def test_query_knowledge_base(self, rag_service):
         """Test basic query functionality."""
-        result = await rag_service.query_knowledge_base(
+        result = await rag_service.query_knowledge_base_legacy(
             question="What is an aircraft?",
             user_id=str(uuid4()),
             max_chunks=5,
@@ -285,7 +285,7 @@ class TestModularRAGService:
     async def test_query_with_project_filter(self, rag_service, mock_retriever):
         """Test query with project filtering."""
         project_id = str(uuid4())
-        result = await rag_service.query_knowledge_base(
+        result = await rag_service.query_knowledge_base_legacy(
             question="Test question",
             project_id=project_id,
             user_id=str(uuid4()),
@@ -304,7 +304,7 @@ class TestModularRAGService:
             "knowledge_chunks_768": [],
         }
 
-        result = await rag_service.query_knowledge_base(
+        result = await rag_service.query_knowledge_base_legacy(
             question="Nonexistent topic",
             user_id=str(uuid4()),
         )
@@ -317,7 +317,7 @@ class TestModularRAGService:
     async def test_response_styles(self, rag_service):
         """Test different response styles."""
         for style in ["comprehensive", "concise", "technical"]:
-            result = await rag_service.query_knowledge_base(
+            result = await rag_service.query_knowledge_base_legacy(
                 question="Test question",
                 user_id=str(uuid4()),
                 response_style=style,
@@ -346,7 +346,7 @@ class TestModularRAGService:
         ])
 
         try:
-            result = await rag_service.query_knowledge_base(
+            result = await rag_service.query_knowledge_base_legacy(
                 question="Test question",
                 user_id=str(uuid4()),
             )
