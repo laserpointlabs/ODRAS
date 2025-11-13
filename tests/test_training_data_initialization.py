@@ -135,43 +135,53 @@ async def test_training_data_sql_first_storage(auth_headers):
     finally:
         conn.close()
     
-    # Check Qdrant - verify no text in payloads
+    # Check Qdrant - verify no text in payloads (using unified das_knowledge collection)
     import urllib.request
     import json
     
-    collections = [
-        "das_training_ontology",
-        "das_training_requirements",
-        "das_training_systems_engineering",
-        "das_training_odras_usage",
-        "das_training_acquisition",
-    ]
-    
+    # Check unified collection for training chunks
+    unified_collection = "das_knowledge"
     violations = []
-    for col in collections:
-        url = f"http://localhost:6333/collections/{col}/points/scroll"
-        data = json.dumps({"limit": 5, "with_payload": True}).encode()
-        req = urllib.request.Request(url, data=data, headers={"Content-Type": "application/json"})
+    
+    # Scroll through points with filter for training type
+    url = f"http://localhost:6333/collections/{unified_collection}/points/scroll"
+    scroll_data = {
+        "limit": 50,  # Check more points to find training chunks
+        "with_payload": True,
+        "filter": {
+            "must": [
+                {
+                    "key": "knowledge_type",
+                    "match": {"value": "training"}
+                }
+            ]
+        }
+    }
+    data = json.dumps(scroll_data).encode()
+    req = urllib.request.Request(url, data=data, headers={"Content-Type": "application/json"})
+    
+    try:
+        response = urllib.request.urlopen(req, timeout=10)
+        result = json.loads(response.read())
+        points = result.get('result', {}).get('points', [])
         
-        try:
-            response = urllib.request.urlopen(req, timeout=5)
-            result = json.loads(response.read())
-            points = result.get('result', {}).get('points', [])
-            
-            for point in points:
-                payload = point.get('payload', {})
-                if 'text' in payload or 'content' in payload:
-                    violations.append({
-                        'collection': col,
-                        'point_id': point.get('id'),
-                        'has_text': 'text' in payload,
-                        'has_content': 'content' in payload,
-                    })
-        except Exception as e:
-            print(f"⚠️  Could not check Qdrant collection {col}: {e}")
+        for point in points:
+            payload = point.get('payload', {})
+            # Check for text/content fields (SQL-first violation)
+            if 'text' in payload or 'content' in payload:
+                violations.append({
+                    'collection': unified_collection,
+                    'point_id': point.get('id'),
+                    'knowledge_type': payload.get('knowledge_type'),
+                    'has_text': 'text' in payload,
+                    'has_content': 'content' in payload,
+                })
+    except Exception as e:
+        print(f"⚠️  Could not check Qdrant collection {unified_collection}: {e}")
+        # Don't fail if we can't check Qdrant - SQL check is primary
     
     assert len(violations) == 0, f"SQL-first violation: Found text/content in Qdrant payloads: {violations}"
-    print(f"✅ Qdrant payloads verified: No text/content fields found (SQL-first pattern)")
+    print(f"✅ Qdrant payloads verified: No text/content fields found in {unified_collection} (SQL-first pattern)")
 
 
 @pytest.mark.asyncio
