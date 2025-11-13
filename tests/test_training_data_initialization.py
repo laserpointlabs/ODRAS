@@ -120,18 +120,18 @@ async def test_training_data_sql_first_storage(auth_headers):
     
     try:
         with conn.cursor() as cur:
-            # Check that training chunks exist in SQL
-            cur.execute("SELECT COUNT(*) FROM das_training_chunks")
+            # Check that training chunks exist in SQL (using unified das_knowledge_chunks table)
+            cur.execute("SELECT COUNT(*) FROM das_knowledge_chunks WHERE knowledge_type = 'training'")
             sql_chunk_count = cur.fetchone()[0]
             
             # Check that chunks have content (text stored in SQL)
-            cur.execute("SELECT COUNT(*) FROM das_training_chunks WHERE LENGTH(content) > 0")
+            cur.execute("SELECT COUNT(*) FROM das_knowledge_chunks WHERE knowledge_type = 'training' AND LENGTH(content) > 0")
             chunks_with_content = cur.fetchone()[0]
             
-            assert sql_chunk_count > 0, "No training chunks found in SQL database"
+            assert sql_chunk_count > 0, "No training chunks found in SQL database (das_knowledge_chunks)"
             assert chunks_with_content == sql_chunk_count, "Some training chunks missing content in SQL"
             
-            print(f"✅ SQL-first storage verified: {sql_chunk_count} chunks with content in SQL")
+            print(f"✅ SQL-first storage verified: {sql_chunk_count} training chunks with content in SQL (das_knowledge_chunks)")
     finally:
         conn.close()
     
