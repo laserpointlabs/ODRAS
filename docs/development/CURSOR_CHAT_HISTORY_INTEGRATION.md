@@ -128,9 +128,3 @@ python scripts/cursor_chat_importer.py \
 3. **Context Recovery**: Understand why decisions were made
 4. **Future Development**: Learn from past experiences
 5. **Onboarding**: Help new developers understand system evolution
-
-
-
-
-
-
