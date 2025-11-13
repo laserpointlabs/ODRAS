@@ -165,7 +165,7 @@ class TestLLMConfiguration:
         # Disable SQL read-through for this test to avoid connection issues
         rag_service.sql_read_through = False
         
-        result = await rag_service.query_knowledge_base(
+        result = await rag_service.query_knowledge_base_legacy(
             question="Test question",
             project_id=test_project_id,  # Pass project_id to match chunks
             user_id=test_user_id,
