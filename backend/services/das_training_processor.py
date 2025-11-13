@@ -153,52 +153,88 @@ class DASTrainingProcessor:
                 if not chunks:
                     raise ValueError("No chunks could be generated from content")
 
-                # Step 3: Store chunks in SQL first (SQL-first pattern)
-                logger.info(f"Storing {len(chunks)} chunks in SQL database")
+                # Step 3: Store chunks in unified collection SQL table (Phase 3)
+                logger.info(f"Storing {len(chunks)} chunks in unified das_knowledge_chunks table")
                 chunk_ids = []
                 chunk_texts = []
+                
+                # Get collection domain for unified storage
+                conn = self.db_service._conn()
+                try:
+                    with conn.cursor() as cur:
+                        cur.execute(
+                            "SELECT domain FROM das_training_collections WHERE collection_id = %s",
+                            (collection_id,)
+                        )
+                        domain_row = cur.fetchone()
+                        domain = domain_row[0] if domain_row else "general"
+                finally:
+                    self.db_service._return(conn)
                 
                 conn = self.db_service._conn()
                 try:
                     with conn.cursor() as cur:
                         for idx, chunk in enumerate(chunks):
                             # Extract text from chunk
-                            if hasattr(chunk, 'text'):
+                            if hasattr(chunk, 'content'):
+                                chunk_text = chunk.content
+                                chunk_metadata_obj = getattr(chunk, 'metadata', None)
+                                if chunk_metadata_obj:
+                                    if hasattr(chunk_metadata_obj, '__dict__'):
+                                        chunk_metadata = chunk_metadata_obj.__dict__
+                                    elif isinstance(chunk_metadata_obj, dict):
+                                        chunk_metadata = chunk_metadata_obj
+                                    else:
+                                        chunk_metadata = {}
+                                else:
+                                    chunk_metadata = {}
+                            elif hasattr(chunk, 'text'):
                                 chunk_text = chunk.text
                                 chunk_metadata_obj = getattr(chunk, 'metadata', {})
+                                if hasattr(chunk_metadata_obj, '__dict__'):
+                                    chunk_metadata = chunk_metadata_obj.__dict__
+                                elif isinstance(chunk_metadata_obj, dict):
+                                    chunk_metadata = chunk_metadata_obj
+                                else:
+                                    chunk_metadata = {}
                             elif isinstance(chunk, tuple):
                                 chunk_text = chunk[0]
                                 chunk_metadata_obj = chunk[1] if len(chunk) > 1 else {}
+                                chunk_metadata = chunk_metadata_obj if isinstance(chunk_metadata_obj, dict) else {}
                             else:
                                 chunk_text = str(chunk)
-                                chunk_metadata_obj = {}
-                            
-                            # Convert metadata to dict if it's an object
-                            if hasattr(chunk_metadata_obj, '__dict__'):
-                                chunk_metadata = chunk_metadata_obj.__dict__
-                            elif isinstance(chunk_metadata_obj, dict):
-                                chunk_metadata = chunk_metadata_obj
-                            else:
                                 chunk_metadata = {}
                             
-                            # Store chunk in SQL (source of truth)
+                            # Store chunk in unified collection table (Phase 3)
                             chunk_id = uuid4()
+                            unified_metadata = {
+                                **chunk_metadata,
+                                "source_table": "das_training_chunks",  # Track source
+                                "asset_id": str(asset_id),
+                                "collection_id": collection_id,
+                                "title": asset_title,
+                                "source_type": source_type,
+                            }
+                            
                             cur.execute(
                                 """
-                                INSERT INTO das_training_chunks
-                                (chunk_id, asset_id, collection_id, sequence_number, content, 
-                                 token_count, metadata, embedding_model, created_at)
-                                VALUES (%s, %s, %s, %s, %s, %s, %s, %s, NOW())
+                                INSERT INTO das_knowledge_chunks
+                                (chunk_id, content, knowledge_type, domain, project_id, tags, metadata,
+                                 token_count, embedding_model, qdrant_collection, sequence_number, created_at)
+                                VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, NOW())
                                 """,
                                 (
                                     str(chunk_id),
-                                    str(asset_id),
-                                    collection_id,
-                                    idx,
                                     chunk_text,
+                                    "training",  # knowledge_type
+                                    domain,
+                                    None,  # project_id (training is global)
+                                    [],  # tags
+                                    json.dumps(unified_metadata),
                                     len(chunk_text.split()),  # Approximate token count
-                                    json.dumps(chunk_metadata),
                                     embedding_model,
+                                    "das_knowledge",  # Unified collection name
+                                    idx,
                                 ),
                             )
                             chunk_ids.append(str(chunk_id))
@@ -219,33 +255,37 @@ class DASTrainingProcessor:
                     batch_size=batch_size
                 )
 
-                # Step 5: Store vectors in Qdrant with IDs-only payload (NO text content)
-                logger.info(f"Storing {len(chunks)} vectors in Qdrant collection {collection_name}")
+                # Step 5: Store vectors in unified Qdrant collection (Phase 3)
+                unified_collection_name = "das_knowledge"
+                logger.info(f"Storing {len(chunks)} vectors in unified Qdrant collection {unified_collection_name}")
                 vectors_data = []
                 for idx, (chunk_id, embedding) in enumerate(zip(chunk_ids, embeddings)):
-                    # Get metadata from SQL (already stored as JSONB)
+                    # Get metadata from unified SQL table (already stored as JSONB)
                     chunk_metadata_dict = {}
                     try:
                         conn = self.db_service._conn()
                         try:
                             with conn.cursor() as cur:
                                 cur.execute(
-                                    "SELECT metadata FROM das_training_chunks WHERE chunk_id = %s",
+                                    "SELECT metadata, domain FROM das_knowledge_chunks WHERE chunk_id = %s",
                                     (chunk_id,)
                                 )
                                 row = cur.fetchone()
                                 if row and row[0]:
                                     # Metadata is already JSONB dict in database
                                     chunk_metadata_dict = row[0] if isinstance(row[0], dict) else {}
+                                    domain = row[1] if len(row) > 1 else domain
                         finally:
                             self.db_service._return(conn)
                     except Exception as e:
                         logger.warning(f"Could not retrieve metadata for chunk {chunk_id}: {e}")
                     
                     # Create payload WITHOUT text content - SQL is source of truth
-                    # Payload contains only IDs and metadata
+                    # Payload contains only IDs and metadata for unified collection
                     payload = {
                         "chunk_id": chunk_id,  # Reference to SQL chunk
+                        "knowledge_type": "training",  # Phase 3: unified collection tag
+                        "domain": domain,
                         "asset_id": str(asset_id),
                         "file_id": file_id,
                         "collection_id": collection_id,
@@ -270,13 +310,13 @@ class DASTrainingProcessor:
                         "payload": payload,
                     })
                     
-                    # Update chunk with Qdrant point ID reference
+                    # Update unified chunk with Qdrant point ID reference
                     conn = self.db_service._conn()
                     try:
                         with conn.cursor() as cur:
                             cur.execute(
                                 """
-                                UPDATE das_training_chunks
+                                UPDATE das_knowledge_chunks
                                 SET qdrant_point_id = %s
                                 WHERE chunk_id = %s
                                 """,
@@ -286,9 +326,9 @@ class DASTrainingProcessor:
                     finally:
                         self.db_service._return(conn)
 
-                # Store vectors in Qdrant
-                self.qdrant_service.store_vectors(collection_name, vectors_data)
-                logger.info(f"Stored {len(vectors_data)} vectors in Qdrant")
+                # Store vectors in unified Qdrant collection
+                self.qdrant_service.store_vectors(unified_collection_name, vectors_data)
+                logger.info(f"Stored {len(vectors_data)} vectors in unified Qdrant collection {unified_collection_name}")
 
                 # Update asset with chunk count and completed status
                 conn = self.db_service._conn()

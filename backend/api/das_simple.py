@@ -144,7 +144,7 @@ async def chat_with_das(
 
         # Use existing RAG service (no complex DAS engine)
         if rag_service:
-            rag_response = await rag_service.query_knowledge_base(
+            rag_response = await rag_service.query_knowledge_base_legacy(
                 question=request.message,
                 project_id=request.project_id,
                 user_id=user_id,
@@ -271,4 +271,3 @@ async def initialize_simple_das(settings: Settings, rag_svc: RAGService, redis_c
     session_thread_service = SessionThreadService(settings, redis_client_instance)
 
     logger.info("Simple DAS initialized successfully")
-

@@ -6,10 +6,12 @@ Handles initialization of core services like RAG, Redis, etc.
 
 import logging
 import redis.asyncio as redis
-from typing import Tuple
+from typing import Tuple, Optional
 
 from ..services.config import Settings
 from ..rag.core.modular_rag_service import ModularRAGService
+from ..services.system_indexer import SystemIndexer
+from ..services.indexing_service_interface import IndexingServiceInterface
 
 logger = logging.getLogger(__name__)
 
@@ -28,8 +30,23 @@ async def initialize_services(settings: Settings, db) -> Tuple[ModularRAGService
     print("🔥 Step 5: Creating service instances...")
     logger.info("📦 Creating service instances...")
     
+    # Initialize indexing service if enabled
+    indexing_service: Optional[IndexingServiceInterface] = None
+    indexing_enabled = getattr(settings, 'system_indexing_enabled', 'true').lower() == 'true'
+    
+    if indexing_enabled:
+        try:
+            print("🔥 Step 5.1: Creating system indexer...")
+            indexing_service = SystemIndexer(settings)
+            logger.info("System indexer initialized")
+            print("✅ System indexer created")
+        except Exception as e:
+            logger.warning(f"Failed to initialize system indexer: {e}")
+            print(f"⚠️  System indexer initialization failed: {e}")
+            indexing_service = None
+    
     print("🔥 Step 6: Creating modular RAG service...")
-    rag_service = ModularRAGService(settings, db_service=db)
+    rag_service = ModularRAGService(settings, db_service=db, indexing_service=indexing_service)
     print("✅ Modular RAG service created")
     
     print("🔥 Step 7: Connecting to Redis...")

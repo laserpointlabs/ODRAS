@@ -449,6 +449,341 @@ CREATE INDEX IF NOT EXISTS idx_das_training_chunks_qdrant_point ON das_training_
 CREATE INDEX IF NOT EXISTS idx_das_training_chunks_metadata ON das_training_chunks USING GIN(metadata);
 
 -- =====================================
+-- SYSTEM INDEXING (Phase 2)
+-- =====================================
+
+-- System Index Table (unified index for all system entities)
+-- This table stores metadata about indexed entities (files, events, ontologies, requirements, etc.)
+CREATE TABLE IF NOT EXISTS system_index (
+    index_id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    entity_type VARCHAR(50) NOT NULL, -- file, event, ontology, requirement, conversation, etc.
+    entity_id VARCHAR(255) NOT NULL, -- ID of the entity in its source table
+    entity_uri TEXT, -- URI/IRI of the entity if applicable
+    content_summary TEXT, -- Extracted summary/content for indexing
+    project_id UUID REFERENCES projects(project_id) ON DELETE CASCADE,
+    metadata JSONB DEFAULT '{}'::jsonb, -- Additional entity metadata
+    tags TEXT[] DEFAULT '{}', -- Array of tags for filtering
+    domain VARCHAR(100), -- Domain category (ontology, requirements, acquisition, etc.)
+    indexed_at TIMESTAMPTZ DEFAULT NOW(),
+    updated_at TIMESTAMPTZ DEFAULT NOW(),
+    -- Unique constraint: one index entry per entity
+    UNIQUE(entity_type, entity_id)
+);
+
+-- System Index Vectors Table (SQL-first pattern for vector storage)
+-- Stores vector embeddings with references to system_index entries
+CREATE TABLE IF NOT EXISTS system_index_vectors (
+    vector_id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    index_id UUID NOT NULL REFERENCES system_index(index_id) ON DELETE CASCADE,
+    sequence_number INTEGER DEFAULT 0, -- For multi-chunk entities
+    content TEXT NOT NULL, -- Full text content - source of truth
+    token_count INTEGER DEFAULT 0,
+    metadata JSONB DEFAULT '{}'::jsonb,
+    embedding_model VARCHAR(100) NOT NULL DEFAULT 'all-MiniLM-L6-v2',
+    qdrant_point_id UUID, -- Reference to Qdrant vector point ID
+    qdrant_collection VARCHAR(255) DEFAULT 'system_index', -- Qdrant collection name
+    created_at TIMESTAMPTZ DEFAULT NOW(),
+    UNIQUE(index_id, sequence_number)
+);
+
+-- Indexes for system_index table
+CREATE INDEX IF NOT EXISTS idx_system_index_entity_type ON system_index(entity_type);
+CREATE INDEX IF NOT EXISTS idx_system_index_entity_id ON system_index(entity_id);
+CREATE INDEX IF NOT EXISTS idx_system_index_project_id ON system_index(project_id);
+CREATE INDEX IF NOT EXISTS idx_system_index_domain ON system_index(domain);
+CREATE INDEX IF NOT EXISTS idx_system_index_tags ON system_index USING GIN(tags);
+CREATE INDEX IF NOT EXISTS idx_system_index_metadata ON system_index USING GIN(metadata);
+CREATE INDEX IF NOT EXISTS idx_system_index_indexed_at ON system_index(indexed_at DESC);
+CREATE INDEX IF NOT EXISTS idx_system_index_updated_at ON system_index(updated_at DESC);
+
+-- Indexes for system_index_vectors table
+CREATE INDEX IF NOT EXISTS idx_system_index_vectors_index_id ON system_index_vectors(index_id);
+CREATE INDEX IF NOT EXISTS idx_system_index_vectors_qdrant_point ON system_index_vectors(qdrant_point_id);
+CREATE INDEX IF NOT EXISTS idx_system_index_vectors_collection ON system_index_vectors(qdrant_collection);
+CREATE INDEX IF NOT EXISTS idx_system_index_vectors_metadata ON system_index_vectors USING GIN(metadata);
+
+-- Trigger for system_index updated_at
+CREATE TRIGGER update_system_index_updated_at
+    BEFORE UPDATE ON system_index
+    FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
+
+-- =====================================
+-- DAS PERSONAS AND TEAMS (Phase 6)
+-- =====================================
+
+-- DAS Personas Table
+-- Stores custom personas that can be created by admins/SMEs
+CREATE TABLE IF NOT EXISTS das_personas (
+    persona_id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    name VARCHAR(255) NOT NULL UNIQUE,
+    description TEXT,
+    role VARCHAR(50) NOT NULL, -- researcher, analyst, writer, moderator, specialist
+    system_prompt TEXT NOT NULL, -- Custom system prompt for this persona
+    capabilities TEXT[] DEFAULT '{}', -- Array of capabilities
+    temperature FLOAT DEFAULT 0.7, -- LLM temperature (0.0-1.0)
+    domain VARCHAR(100), -- Optional domain specialization (ontology, acquisition, etc.)
+    tags TEXT[] DEFAULT '{}', -- Array of tags for categorization
+    metadata JSONB DEFAULT '{}'::jsonb, -- Additional metadata
+    created_by VARCHAR(255) NOT NULL,
+    created_at TIMESTAMPTZ DEFAULT NOW(),
+    updated_at TIMESTAMPTZ DEFAULT NOW(),
+    is_active BOOLEAN DEFAULT TRUE,
+    is_system BOOLEAN DEFAULT FALSE, -- True for built-in personas (Researcher, Analyst, etc.)
+    -- Constraints
+    CONSTRAINT valid_persona_role CHECK (role IN (
+        'researcher', 'analyst', 'writer', 'moderator', 'specialist'
+    )),
+    CONSTRAINT valid_temperature CHECK (temperature >= 0.0 AND temperature <= 1.0)
+);
+
+-- Indexes for das_personas table
+CREATE INDEX IF NOT EXISTS idx_das_personas_name ON das_personas(name);
+CREATE INDEX IF NOT EXISTS idx_das_personas_role ON das_personas(role);
+CREATE INDEX IF NOT EXISTS idx_das_personas_domain ON das_personas(domain);
+CREATE INDEX IF NOT EXISTS idx_das_personas_capabilities ON das_personas USING GIN(capabilities);
+CREATE INDEX IF NOT EXISTS idx_das_personas_tags ON das_personas USING GIN(tags);
+CREATE INDEX IF NOT EXISTS idx_das_personas_active ON das_personas(is_active) WHERE is_active = TRUE;
+CREATE INDEX IF NOT EXISTS idx_das_personas_system ON das_personas(is_system);
+
+-- Trigger for das_personas updated_at
+CREATE TRIGGER update_das_personas_updated_at
+    BEFORE UPDATE ON das_personas
+    FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
+
+-- DAS Teams Table
+-- Stores team configurations that can be created by admins/SMEs
+CREATE TABLE IF NOT EXISTS das_teams (
+    team_id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    name VARCHAR(255) NOT NULL UNIQUE,
+    description TEXT,
+    domain VARCHAR(100), -- Optional domain specialization (acquisition, ontology, etc.)
+    persona_ids UUID[] DEFAULT '{}', -- Array of persona IDs in this team
+    workflow_config JSONB DEFAULT '{}'::jsonb, -- Team workflow configuration
+    coordination_strategy VARCHAR(50) DEFAULT 'moderator', -- moderator, parallel, sequential
+    tags TEXT[] DEFAULT '{}', -- Array of tags for categorization
+    metadata JSONB DEFAULT '{}'::jsonb, -- Additional metadata
+    created_by VARCHAR(255) NOT NULL,
+    created_at TIMESTAMPTZ DEFAULT NOW(),
+    updated_at TIMESTAMPTZ DEFAULT NOW(),
+    is_active BOOLEAN DEFAULT TRUE,
+    is_system BOOLEAN DEFAULT FALSE, -- True for built-in teams
+    -- Constraints
+    CONSTRAINT valid_coordination_strategy CHECK (coordination_strategy IN (
+        'moderator', 'parallel', 'sequential', 'custom'
+    ))
+);
+
+-- Indexes for das_teams table
+CREATE INDEX IF NOT EXISTS idx_das_teams_name ON das_teams(name);
+CREATE INDEX IF NOT EXISTS idx_das_teams_domain ON das_teams(domain);
+CREATE INDEX IF NOT EXISTS idx_das_teams_persona_ids ON das_teams USING GIN(persona_ids);
+CREATE INDEX IF NOT EXISTS idx_das_teams_tags ON das_teams USING GIN(tags);
+CREATE INDEX IF NOT EXISTS idx_das_teams_active ON das_teams(is_active) WHERE is_active = TRUE;
+CREATE INDEX IF NOT EXISTS idx_das_teams_system ON das_teams(is_system);
+
+-- Trigger for das_teams updated_at
+CREATE TRIGGER update_das_teams_updated_at
+    BEFORE UPDATE ON das_teams
+    FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
+
+-- DAS MCP Servers Registry Table
+-- Stores registered MCP servers that can be discovered and used by DAS
+CREATE TABLE IF NOT EXISTS das_mcp_servers (
+    server_id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    name VARCHAR(255) NOT NULL UNIQUE,
+    description TEXT,
+    endpoint VARCHAR(500) NOT NULL, -- MCP server endpoint URL
+    server_type VARCHAR(100), -- ontology, events, knowledge, requirements, custom, etc.
+    capabilities TEXT[] DEFAULT '{}', -- Array of server capabilities
+    tools_cache JSONB DEFAULT '{}'::jsonb, -- Cached tool definitions
+    status VARCHAR(50) DEFAULT 'unknown', -- available, unavailable, error, unknown
+    last_discovered_at TIMESTAMPTZ,
+    last_health_check_at TIMESTAMPTZ,
+    metadata JSONB DEFAULT '{}'::jsonb, -- Additional metadata (auth, config, etc.)
+    tags TEXT[] DEFAULT '{}', -- Array of tags for categorization
+    created_by VARCHAR(255) NOT NULL,
+    created_at TIMESTAMPTZ DEFAULT NOW(),
+    updated_at TIMESTAMPTZ DEFAULT NOW(),
+    is_active BOOLEAN DEFAULT TRUE,
+    -- Constraints
+    CONSTRAINT valid_status CHECK (status IN (
+        'available', 'unavailable', 'error', 'unknown'
+    ))
+);
+
+-- Indexes for das_mcp_servers table
+CREATE INDEX IF NOT EXISTS idx_das_mcp_servers_name ON das_mcp_servers(name);
+CREATE INDEX IF NOT EXISTS idx_das_mcp_servers_type ON das_mcp_servers(server_type);
+CREATE INDEX IF NOT EXISTS idx_das_mcp_servers_capabilities ON das_mcp_servers USING GIN(capabilities);
+CREATE INDEX IF NOT EXISTS idx_das_mcp_servers_tags ON das_mcp_servers USING GIN(tags);
+CREATE INDEX IF NOT EXISTS idx_das_mcp_servers_active ON das_mcp_servers(is_active) WHERE is_active = TRUE;
+CREATE INDEX IF NOT EXISTS idx_das_mcp_servers_status ON das_mcp_servers(status);
+
+-- Trigger for das_mcp_servers updated_at
+CREATE TRIGGER update_das_mcp_servers_updated_at
+    BEFORE UPDATE ON das_mcp_servers
+    FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
+
+-- DAS Learning System Tables (Phase 6.8)
+-- Stores interactions and learning insights for DAS improvement
+
+-- DAS Interactions Table
+-- Stores all interactions for learning and analysis
+CREATE TABLE IF NOT EXISTS das_interactions (
+    interaction_id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    interaction_type VARCHAR(50) NOT NULL, -- query, feedback, correction, task_completion, error
+    user_id VARCHAR(255) NOT NULL,
+    project_id UUID,
+    query TEXT NOT NULL,
+    response TEXT NOT NULL,
+    context JSONB DEFAULT '{}'::jsonb, -- Personas used, tools called, etc.
+    feedback VARCHAR(50), -- positive, negative, correction, clarification
+    correction TEXT, -- User correction text
+    corrected_response TEXT, -- Corrected response if applicable
+    metadata JSONB DEFAULT '{}'::jsonb, -- Additional metadata
+    created_at TIMESTAMPTZ DEFAULT NOW(),
+    -- Constraints
+    CONSTRAINT valid_interaction_type CHECK (interaction_type IN (
+        'query', 'feedback', 'correction', 'task_completion', 'error'
+    )),
+    CONSTRAINT valid_feedback CHECK (feedback IN (
+        'positive', 'negative', 'correction', 'clarification'
+    ) OR feedback IS NULL)
+);
+
+-- Indexes for das_interactions table
+CREATE INDEX IF NOT EXISTS idx_das_interactions_user_id ON das_interactions(user_id);
+CREATE INDEX IF NOT EXISTS idx_das_interactions_project_id ON das_interactions(project_id);
+CREATE INDEX IF NOT EXISTS idx_das_interactions_type ON das_interactions(interaction_type);
+CREATE INDEX IF NOT EXISTS idx_das_interactions_feedback ON das_interactions(feedback);
+CREATE INDEX IF NOT EXISTS idx_das_interactions_created_at ON das_interactions(created_at DESC);
+CREATE INDEX IF NOT EXISTS idx_das_interactions_context ON das_interactions USING GIN(context);
+
+-- DAS Learning Insights Table
+-- Stores learning insights and improvements derived from interactions
+CREATE TABLE IF NOT EXISTS das_learning_insights (
+    insight_id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    insight_type VARCHAR(100) NOT NULL, -- pattern, improvement, correction, optimization
+    description TEXT NOT NULL,
+    confidence FLOAT DEFAULT 0.5, -- 0.0-1.0
+    recommendations TEXT[] DEFAULT '{}', -- Array of recommended actions
+    persona_name VARCHAR(255), -- Optional persona this insight applies to
+    domain VARCHAR(100), -- Optional domain this insight applies to
+    source_interaction_ids UUID[] DEFAULT '{}', -- Interactions that led to this insight
+    applied_at TIMESTAMPTZ, -- When this insight was applied
+    metadata JSONB DEFAULT '{}'::jsonb, -- Additional metadata
+    created_at TIMESTAMPTZ DEFAULT NOW(),
+    updated_at TIMESTAMPTZ DEFAULT NOW(),
+    is_active BOOLEAN DEFAULT TRUE,
+    -- Constraints
+    CONSTRAINT valid_confidence CHECK (confidence >= 0.0 AND confidence <= 1.0)
+);
+
+-- Indexes for das_learning_insights table
+CREATE INDEX IF NOT EXISTS idx_das_learning_insights_type ON das_learning_insights(insight_type);
+CREATE INDEX IF NOT EXISTS idx_das_learning_insights_persona ON das_learning_insights(persona_name);
+CREATE INDEX IF NOT EXISTS idx_das_learning_insights_domain ON das_learning_insights(domain);
+CREATE INDEX IF NOT EXISTS idx_das_learning_insights_confidence ON das_learning_insights(confidence DESC);
+CREATE INDEX IF NOT EXISTS idx_das_learning_insights_active ON das_learning_insights(is_active) WHERE is_active = TRUE;
+CREATE INDEX IF NOT EXISTS idx_das_learning_insights_applied ON das_learning_insights(applied_at) WHERE applied_at IS NOT NULL;
+
+-- Trigger for das_learning_insights updated_at
+CREATE TRIGGER update_das_learning_insights_updated_at
+    BEFORE UPDATE ON das_learning_insights
+    FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
+
+-- =====================================
+-- DAS RUNTIME TOOLS REGISTRY (Phase 5)
+-- =====================================
+
+-- DAS Runtime Tools Table
+-- Stores dynamically generated tools/code for reuse
+CREATE TABLE IF NOT EXISTS das_runtime_tools (
+    tool_id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    name VARCHAR(255) NOT NULL,
+    description TEXT,
+    tool_type VARCHAR(50) NOT NULL, -- data_fetcher, calculator, transformer, workflow, knowledge_creator, custom
+    code TEXT NOT NULL, -- Generated Python code
+    capabilities TEXT[] DEFAULT '{}', -- Array of capabilities this tool provides
+    created_by VARCHAR(255) NOT NULL,
+    created_at TIMESTAMPTZ DEFAULT NOW(),
+    updated_at TIMESTAMPTZ DEFAULT NOW(),
+    usage_count INTEGER DEFAULT 0,
+    last_used_at TIMESTAMPTZ,
+    tags TEXT[] DEFAULT '{}', -- Array of tags for categorization
+    metadata JSONB DEFAULT '{}'::jsonb, -- Additional metadata (inputs, outputs, examples, etc.)
+    is_active BOOLEAN DEFAULT TRUE,
+    -- Constraints
+    CONSTRAINT valid_tool_type CHECK (tool_type IN (
+        'data_fetcher', 'calculator', 'transformer', 'workflow', 
+        'knowledge_creator', 'custom'
+    ))
+);
+
+-- Indexes for das_runtime_tools table
+CREATE INDEX IF NOT EXISTS idx_das_runtime_tools_name ON das_runtime_tools(name);
+CREATE INDEX IF NOT EXISTS idx_das_runtime_tools_type ON das_runtime_tools(tool_type);
+CREATE INDEX IF NOT EXISTS idx_das_runtime_tools_capabilities ON das_runtime_tools USING GIN(capabilities);
+CREATE INDEX IF NOT EXISTS idx_das_runtime_tools_tags ON das_runtime_tools USING GIN(tags);
+CREATE INDEX IF NOT EXISTS idx_das_runtime_tools_created_by ON das_runtime_tools(created_by);
+CREATE INDEX IF NOT EXISTS idx_das_runtime_tools_usage_count ON das_runtime_tools(usage_count DESC);
+CREATE INDEX IF NOT EXISTS idx_das_runtime_tools_last_used ON das_runtime_tools(last_used_at DESC);
+CREATE INDEX IF NOT EXISTS idx_das_runtime_tools_active ON das_runtime_tools(is_active) WHERE is_active = TRUE;
+
+-- Trigger for das_runtime_tools updated_at
+CREATE TRIGGER update_das_runtime_tools_updated_at
+    BEFORE UPDATE ON das_runtime_tools
+    FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
+
+-- =====================================
+-- UNIFIED KNOWLEDGE COLLECTION (Phase 3)
+-- =====================================
+
+-- Unified Knowledge Chunks Table (SQL-first pattern)
+-- Consolidates knowledge_chunks, das_training_chunks, and system_index_vectors
+-- Uses knowledge_type and domain tags to distinguish between different sources
+CREATE TABLE IF NOT EXISTS das_knowledge_chunks (
+    chunk_id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    content TEXT NOT NULL, -- Full text content - source of truth (SQL-first)
+    knowledge_type VARCHAR(50) NOT NULL, -- project, training, system
+    domain VARCHAR(100), -- ontology, requirements, acquisition, odras_usage, systems_engineering, etc.
+    project_id UUID REFERENCES projects(project_id) ON DELETE CASCADE, -- NULL for global knowledge
+    tags TEXT[] DEFAULT '{}', -- Array of tags for filtering
+    metadata JSONB DEFAULT '{}'::jsonb, -- Additional metadata (source_id, asset_id, etc.)
+    token_count INTEGER DEFAULT 0,
+    embedding_model VARCHAR(100) NOT NULL DEFAULT 'all-MiniLM-L6-v2',
+    qdrant_point_id UUID, -- Reference to Qdrant vector point ID
+    qdrant_collection VARCHAR(255) DEFAULT 'das_knowledge', -- Unified collection name
+    sequence_number INTEGER DEFAULT 0, -- For multi-chunk documents
+    created_at TIMESTAMPTZ DEFAULT NOW(),
+    updated_at TIMESTAMPTZ DEFAULT NOW(),
+    -- Constraints
+    CONSTRAINT valid_knowledge_type CHECK (knowledge_type IN ('project', 'training', 'system')),
+    CONSTRAINT valid_domain CHECK (
+        domain IS NULL OR domain IN (
+            'ontology', 'requirements', 'acquisition', 'odras_usage', 
+            'systems_engineering', 'general', 'testing', 'files', 'events', 
+            'conversation', 'knowledge'
+        )
+    )
+);
+
+-- Indexes for unified knowledge chunks table
+CREATE INDEX IF NOT EXISTS idx_das_knowledge_chunks_type ON das_knowledge_chunks(knowledge_type);
+CREATE INDEX IF NOT EXISTS idx_das_knowledge_chunks_domain ON das_knowledge_chunks(domain);
+CREATE INDEX IF NOT EXISTS idx_das_knowledge_chunks_project_id ON das_knowledge_chunks(project_id);
+CREATE INDEX IF NOT EXISTS idx_das_knowledge_chunks_tags ON das_knowledge_chunks USING GIN(tags);
+CREATE INDEX IF NOT EXISTS idx_das_knowledge_chunks_metadata ON das_knowledge_chunks USING GIN(metadata);
+CREATE INDEX IF NOT EXISTS idx_das_knowledge_chunks_qdrant_point ON das_knowledge_chunks(qdrant_point_id);
+CREATE INDEX IF NOT EXISTS idx_das_knowledge_chunks_collection ON das_knowledge_chunks(qdrant_collection);
+CREATE INDEX IF NOT EXISTS idx_das_knowledge_chunks_created_at ON das_knowledge_chunks(created_at DESC);
+
+-- Trigger for unified knowledge chunks updated_at
+CREATE TRIGGER update_das_knowledge_chunks_updated_at
+    BEFORE UPDATE ON das_knowledge_chunks
+    FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
+
+-- =====================================
 -- TRIGGERS AND FUNCTIONS
 -- =====================================
 

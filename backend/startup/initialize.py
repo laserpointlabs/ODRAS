@@ -54,6 +54,19 @@ async def initialize_application(app: FastAPI) -> None:
         # Step 7: Initialize base training data (before DAS so it can use the knowledge)
         await initialize_training_data(settings, db)
         
+        # Step 7.5: Initialize indexing worker (if enabled)
+        indexing_worker_enabled = getattr(settings, 'indexing_worker_enabled', 'true').lower() == 'true'
+        if indexing_worker_enabled and hasattr(rag_service, 'indexing_service') and rag_service.indexing_service:
+            try:
+                from ..services.indexing_worker import IndexingWorker
+                indexing_worker = IndexingWorker(settings, rag_service.indexing_service, db)
+                await indexing_worker.start()
+                logger.info("Indexing worker started")
+                print("✅ Indexing worker started")
+            except Exception as e:
+                logger.warning(f"Failed to start indexing worker: {e}")
+                print(f"⚠️  Indexing worker failed to start: {e}")
+        
         # Step 8: Initialize DAS
         await initialize_das(settings, (rag_service, redis_client), db)
         

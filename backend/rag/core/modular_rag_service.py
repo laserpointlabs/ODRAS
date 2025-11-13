@@ -2,6 +2,7 @@
 Modular RAG Service
 
 Refactored RAG service using modular components for better testability and extensibility.
+Implements RAGServiceInterface for decoupling from DAS.
 """
 
 import logging
@@ -25,11 +26,14 @@ from ..retrieval.reranker import (
     HybridReranker,
 )
 from ..retrieval.retriever import Retriever
+from .rag_service_interface import RAGServiceInterface
+from .context_models import RAGContext, RAGChunk, RAGSource
+from ...services.indexing_service_interface import IndexingServiceInterface
 
 logger = logging.getLogger(__name__)
 
 
-class ModularRAGService:
+class ModularRAGService(RAGServiceInterface):
     """
     Modular RAG service using abstract interfaces for all components.
 
@@ -46,6 +50,7 @@ class ModularRAGService:
         reranker: Optional[Reranker] = None,
         db_service: Optional[DatabaseService] = None,
         llm_team: Optional[LLMTeam] = None,
+        indexing_service: Optional[IndexingServiceInterface] = None,
     ):
         """
         Initialize modular RAG service.
@@ -112,12 +117,136 @@ class ModularRAGService:
 
         self.db_service = db_service or DatabaseService(settings)
         self.llm_team = llm_team or LLMTeam(settings)
+        self.indexing_service = indexing_service  # Optional indexing service for system index
 
         # Feature flags
         self.sql_read_through = getattr(settings, "rag_sql_read_through", "true").lower() == "true"
-        logger.info("ModularRAGService initialized with modular components")
+        if self.indexing_service:
+            logger.info("ModularRAGService initialized with system indexing enabled")
+        else:
+            logger.info("ModularRAGService initialized with modular components")
 
     async def query_knowledge_base(
+        self,
+        query: str,
+        context: Dict[str, Any],
+    ) -> RAGContext:
+        """
+        Query the knowledge base and return structured context (interface implementation).
+        
+        This implements RAGServiceInterface.query_knowledge_base.
+        Returns RAGContext without generating LLM responses (decoupled from DAS).
+        
+        Args:
+            query: User's query/question
+            context: Context dictionary containing:
+                - project_id: Optional project ID for project-scoped queries
+                - user_id: Optional user ID for access control
+                - max_chunks: Maximum number of chunks to return (default: 5)
+                - similarity_threshold: Minimum similarity score (default: 0.3)
+        
+        Returns:
+            RAGContext containing retrieved chunks and metadata
+        """
+        # Extract parameters from context dict
+        project_id = context.get("project_id")
+        user_id = context.get("user_id")
+        max_chunks = context.get("max_chunks", 5)
+        similarity_threshold = context.get("similarity_threshold", 0.3)
+        
+        try:
+            # Retrieve chunks using existing method
+            chunk_dicts = await self._retrieve_relevant_chunks(
+                question=query,
+                project_id=project_id,
+                user_id=user_id,
+                max_chunks=max_chunks,
+                similarity_threshold=similarity_threshold,
+            )
+            
+            # Convert chunk dicts to RAGChunk objects
+            rag_chunks = []
+            for chunk_dict in chunk_dicts:
+                payload = chunk_dict.get("payload", {})
+                score = chunk_dict.get("score", chunk_dict.get("relevance_score", 0.0))
+                
+                # Extract source information
+                source_type = chunk_dict.get("source_type") or payload.get("source_type", "project")
+                collection_name = chunk_dict.get("collection_name") or payload.get("collection_name")
+                domain = payload.get("collection_domain") or payload.get("domain")
+                
+                # For system chunks, get entity info from unified collection metadata
+                entity_type = None
+                entity_id = None
+                if source_type == "system":
+                    # System chunks are in unified collection, metadata contains entity info
+                    entity_type = payload.get("entity_type", "system")
+                    entity_id = payload.get("entity_id") or payload.get("index_id")
+                    domain = payload.get("domain") or entity_type
+                
+                source = RAGSource(
+                    source_id=payload.get("asset_id") or payload.get("chunk_id") or payload.get("entity_id", "unknown"),
+                    source_type=source_type,
+                    title=payload.get("title") or payload.get("source_asset") or (f"{entity_type}:{entity_id}" if entity_type else None),
+                    file_id=payload.get("file_id"),
+                    collection_id=payload.get("collection_id") or payload.get("index_id"),
+                    collection_name=collection_name or "das_knowledge",
+                    project_id=payload.get("project_id") or project_id,
+                    domain=domain,
+                    metadata={
+                        k: v for k, v in payload.items()
+                        if k not in ["content", "text", "chunk_id", "asset_id", "title", "file_id", 
+                                    "collection_id", "collection_name", "project_id", "domain", "vector_id"]
+                    }
+                )
+                
+                # Get content from SQL-first storage
+                content = payload.get("content") or payload.get("text", "")
+                
+                # Unified collection: use chunk_id from payload or Qdrant point ID
+                chunk_id = payload.get("chunk_id") or str(chunk_dict.get("id", "unknown"))
+                
+                rag_chunk = RAGChunk(
+                    chunk_id=chunk_id,
+                    content=content,
+                    relevance_score=float(score),
+                    source=source,
+                    sequence_number=payload.get("chunk_index") or payload.get("sequence_number"),
+                    token_count=payload.get("token_count"),
+                    metadata={
+                        k: v for k, v in chunk_dict.items()
+                        if k not in ["payload", "score", "relevance_score", "id", "source_type", "collection_type"]
+                    }
+                )
+                rag_chunks.append(rag_chunk)
+            
+            # Create RAGContext
+            rag_context = RAGContext(
+                query=query,
+                chunks=rag_chunks,
+                total_chunks_found=len(rag_chunks),
+                query_metadata={
+                    "project_id": project_id,
+                    "user_id": user_id,
+                    "max_chunks": max_chunks,
+                    "similarity_threshold": similarity_threshold,
+                    "collections_searched": list(set(c.source.collection_name for c in rag_chunks if c.source.collection_name)),
+                }
+            )
+            
+            return rag_context
+            
+        except Exception as e:
+            logger.error(f"RAG query failed: {str(e)}")
+            # Return empty context on error
+            return RAGContext(
+                query=query,
+                chunks=[],
+                total_chunks_found=0,
+                query_metadata={"error": str(e)}
+            )
+
+    async def query_knowledge_base_legacy(
         self,
         question: str,
         project_id: Optional[str] = None,
@@ -129,10 +258,11 @@ class ModularRAGService:
         project_thread_context: Optional[Dict[str, Any]] = None,
     ) -> Dict[str, Any]:
         """
-        Query the knowledge base and generate a contextual response.
-
-        Uses modular components for retrieval and generation.
-
+        Legacy query method for backward compatibility.
+        
+        This method maintains the old API signature and return format.
+        It includes LLM response generation (not part of the interface).
+        
         Args:
             question: The user's question
             project_id: Optional project scope
@@ -147,7 +277,7 @@ class ModularRAGService:
             Dict containing generated response, sources, and metadata
         """
         try:
-            logger.info(f"Processing RAG query: '{question}' for user {user_id}")
+            logger.info(f"Processing RAG query (legacy): '{question}' for user {user_id}")
 
             # 1. Retrieve relevant knowledge chunks using modular retriever
             relevant_chunks = await self._retrieve_relevant_chunks(
@@ -199,7 +329,7 @@ class ModularRAGService:
                 "success": False,
                 "error": f"Failed to process query: {str(e)}",
                 "query": question,
-                    "generated_at": datetime.now(timezone.utc).isoformat(),
+                "generated_at": datetime.now(timezone.utc).isoformat(),
             }
 
     async def _retrieve_relevant_chunks(
@@ -260,32 +390,58 @@ class ModularRAGService:
                     logger.debug(f"Could not enhance query with project context: {e}")
                     # Continue with original query
 
-            # Get active training collections (global, not project-scoped)
-            training_collections = await self._get_active_training_collections()
-            training_collection_names = [c["collection_name"] for c in training_collections]
-
-            # Search project collections (with project_id filter)
-            project_collections = ["knowledge_chunks", "knowledge_chunks_768"]
-            project_results = await self.retriever.retrieve_multiple_collections(
+            # Use unified das_knowledge collection (Phase 3)
+            logger.debug("Querying unified das_knowledge collection")
+            
+            # Query unified collection without filters (we'll filter results in Python)
+            # Get more results since we're combining multiple knowledge types
+            unified_results = await self.retriever.retrieve_multiple_collections(
                 query=enhanced_query,
-                collections=project_collections,
-                limit_per_collection=max_chunks * 2,
+                collections=["das_knowledge"],
+                limit_per_collection=max_chunks * 3,  # More chunks since we're combining types
                 score_threshold=effective_threshold,
-                metadata_filter=metadata_filter,  # Project-scoped filter
+                metadata_filter=None,  # No filter - we'll filter in Python
             )
-
-            # Search training collections (NO project_id filter - global)
+            
+            # Process unified results and filter by knowledge_type and project_id
+            project_results = {}
             training_results = {}
-            if training_collection_names:
-                training_results = await self.retriever.retrieve_multiple_collections(
-                    query=enhanced_query,
-                    collections=training_collection_names,
-                    limit_per_collection=max_chunks,  # Fewer from training collections
-                    score_threshold=effective_threshold,
-                    metadata_filter=None,  # Global collections - no project filter
-                )
+            system_index_results = {}
+            
+            for collection_name, results in unified_results.items():
+                for result in results:
+                    payload = result.get("payload", {})
+                    knowledge_type = payload.get("knowledge_type", "project")
+                    result_project_id = payload.get("project_id")
+                    
+                    # Filter project chunks by project_id if specified
+                    if knowledge_type == "project":
+                        if project_id and result_project_id != project_id:
+                            continue  # Skip chunks from other projects
+                        result["source_type"] = "project"
+                        result["collection_type"] = "project"
+                        if collection_name not in project_results:
+                            project_results[collection_name] = []
+                        project_results[collection_name].append(result)
+                    elif knowledge_type == "training":
+                        # Training chunks are always global (no project filter)
+                        result["source_type"] = "training"
+                        result["collection_type"] = "training"
+                        result["collection_domain"] = payload.get("domain", "general")
+                        if collection_name not in training_results:
+                            training_results[collection_name] = []
+                        training_results[collection_name].append(result)
+                    elif knowledge_type == "system":
+                        # System chunks: include if no project filter OR if project matches
+                        if project_id and result_project_id and result_project_id != project_id:
+                            continue  # Skip system chunks from other projects
+                        result["source_type"] = "system"
+                        result["collection_type"] = "system"
+                        if collection_name not in system_index_results:
+                            system_index_results[collection_name] = []
+                        system_index_results[collection_name].append(result)
 
-            # Combine results from both project and training collections
+            # Combine results from project, training, and system index collections
             all_results = []
             for collection_name, results in project_results.items():
                 # Mark as project knowledge
@@ -307,6 +463,13 @@ class ModularRAGService:
                     if collection_info:
                         result["collection_domain"] = collection_info.get("domain", "general")
                 all_results.extend(results)
+            
+            for collection_name, results in system_index_results.items():
+                # Mark as system knowledge
+                for result in results:
+                    result["source_type"] = "system"
+                    result["collection_type"] = "system"
+                all_results.extend(results)
 
             # Deduplicate by chunk_id
             seen_chunks = set()
@@ -325,8 +488,8 @@ class ModularRAGService:
                 if await self._has_chunk_access(chunk, project_id, user_id):
                     accessible_chunks.append(chunk)
 
-            # SQL read-through for SQL-first storage (always enabled for training chunks)
-            # Training chunks always need SQL enrichment since they don't store text in Qdrant
+            # SQL read-through for SQL-first storage
+            # Training and system chunks always need SQL enrichment since they don't store text in Qdrant
             accessible_chunks = await self._enrich_chunks_with_sql_content(accessible_chunks)
 
             # Deduplicate sources and limit to max_chunks
@@ -338,96 +501,55 @@ class ModularRAGService:
             logger.error(f"Failed to retrieve relevant chunks: {str(e)}")
             return []
 
-    async def _get_active_training_collections(self) -> List[Dict[str, Any]]:
-        """
-        Get list of active training collections from database.
-        
-        Returns:
-            List of collection metadata dicts with collection_name and domain
-        """
-        try:
-            if not self.db_service:
-                logger.warning("Database service not available, skipping training collections")
-                return []
-
-            conn = self.db_service._conn()
-            try:
-                with conn.cursor() as cur:
-                    cur.execute(
-                        """
-                        SELECT collection_name, domain, display_name
-                        FROM das_training_collections
-                        WHERE is_active = TRUE
-                        ORDER BY domain, display_name
-                        """
-                    )
-                    rows = cur.fetchall()
-                    
-                    return [
-                        {
-                            "collection_name": row[0],
-                            "domain": row[1],
-                            "display_name": row[2],
-                        }
-                        for row in rows
-                    ]
-            finally:
-                self.db_service._return(conn)
-
-        except Exception as e:
-            logger.warning(f"Failed to get active training collections: {e}")
-            return []  # Return empty list on error, don't fail the query
 
     async def _enrich_chunks_with_sql_content(self, chunks: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
         """Enrich vector chunks with SQL text content (SQL-first approach)."""
         try:
             chunk_ids = []
             chunk_id_to_vector_chunk = {}
-            training_chunk_ids = []
-            project_chunk_ids = []
 
-            # Separate training and project chunks
+            # All chunks come from unified collection (Phase 3)
+            unified_chunk_ids = []
             for chunk in chunks:
                 payload = chunk.get("payload", {})
-                chunk_id = payload.get("chunk_id")
-                source_type = chunk.get("source_type") or payload.get("source_type")
+                chunk_id = payload.get("chunk_id") or chunk.get("id")
                 
                 if chunk_id:
                     chunk_ids.append(chunk_id)
                     chunk_id_to_vector_chunk[chunk_id] = chunk
-                    
-                    if source_type == "training":
-                        training_chunk_ids.append(chunk_id)
-                    else:
-                        project_chunk_ids.append(chunk_id)
+                    unified_chunk_ids.append(chunk_id)
+                else:
+                    # Use Qdrant point ID if no chunk_id
+                    qdrant_id = chunk.get("id")
+                    if qdrant_id:
+                        chunk_ids.append(str(qdrant_id))
+                        chunk_id_to_vector_chunk[str(qdrant_id)] = chunk
+                        unified_chunk_ids.append(str(qdrant_id))
 
             if not chunk_ids:
                 return chunks
 
-            # Fetch from SQL - handle both project and training chunks
+            # Fetch from unified SQL table (Phase 3)
             conn = self.db_service._conn()
             try:
                 chunk_id_to_sql_text = {}
                 
-                # Fetch project chunks from doc_chunk table
-                if project_chunk_ids:
-                    from backend.db.queries import get_chunks_by_ids
-                    sql_chunks = get_chunks_by_ids(conn, project_chunk_ids)
-                    chunk_id_to_sql_text.update({chunk["chunk_id"]: chunk["text"] for chunk in sql_chunks})
-                
-                # Fetch training chunks from das_training_chunks table
-                if training_chunk_ids:
+                # Fetch all chunks from unified das_knowledge_chunks table
+                if unified_chunk_ids:
                     with conn.cursor() as cur:
+                        # Convert to list of strings for PostgreSQL ANY()
+                        unified_chunk_ids_list = [str(cid) for cid in unified_chunk_ids]
                         cur.execute(
                             """
-                            SELECT chunk_id, content
-                            FROM das_training_chunks
-                            WHERE chunk_id = ANY(%s)
+                            SELECT chunk_id, content, knowledge_type, domain, project_id
+                            FROM das_knowledge_chunks
+                            WHERE chunk_id::text = ANY(%s)
                             """,
-                            (training_chunk_ids,)
+                            (unified_chunk_ids_list,)
                         )
-                        training_rows = cur.fetchall()
-                        chunk_id_to_sql_text.update({str(row[0]): row[1] for row in training_rows})
+                        unified_rows = cur.fetchall()
+                        chunk_id_to_sql_text.update({str(row[0]): row[1] for row in unified_rows})
+                        logger.debug(f"Fetched {len(unified_rows)} chunks from unified SQL table for {len(unified_chunk_ids)} chunk IDs")
 
                 # Enrich chunks
                 enriched_chunks = []
@@ -472,6 +594,15 @@ class ModularRAGService:
             source_type = chunk.get("source_type") or chunk_metadata.get("source_type")
             if source_type == "training":
                 return True  # Training knowledge is global and accessible to all
+            
+            # System index chunks are accessible if project matches or no project filter
+            if source_type == "system":
+                chunk_project_id = chunk_metadata.get("project_id")
+                if not project_id:
+                    return True  # No project filter, allow all system chunks
+                if chunk_project_id:
+                    return chunk_project_id == project_id  # Match project
+                return True  # System chunks without project_id are global
             
             # Project chunks require project membership check
             chunk_project_id = chunk_metadata.get("project_id")
@@ -601,74 +732,81 @@ Include specific technical details, specifications, and implementation notes."""
     
     async def store_conversation_messages(
         self,
-        project_id: str,
-        session_id: str,
-        user_message: str,
-        assistant_message: str
-    ) -> Tuple[str, str]:
+        thread_id: str,
+        messages: List[Dict[str, Any]],
+        project_id: Optional[str] = None,
+    ) -> None:
         """
-        Store conversation messages using SQL-first approach.
+        Store conversation messages in SQL-first storage (interface implementation).
 
         Args:
-            project_id: Project identifier
-            session_id: Session identifier
-            user_message: User's question/message
-            assistant_message: Assistant's response
-
-        Returns:
-            Tuple of (user_message_id, assistant_message_id)
+            thread_id: Thread identifier
+            messages: List of message dictionaries with 'role' and 'content'
+            project_id: Optional project ID
         """
         try:
             # Check if dual-write is enabled
             dual_write = getattr(self.settings, 'rag_dual_write', 'true').lower() == 'true'
 
-            if dual_write:
-                # Use SQL-first storage service
-                from ...services.store import create_rag_store_service
-                rag_store = create_rag_store_service(self.settings)
-
-                conn = self.db_service._conn()
-                try:
-                    # Store user message
-                    user_msg_id = rag_store.store_message_and_vector(
-                        conn=conn,
-                        project_id=project_id,
-                        session_id=session_id,
-                        role="user",
-                        content=user_message
-                    )
-
-                    # Store assistant message
-                    assistant_msg_id = rag_store.store_message_and_vector(
-                        conn=conn,
-                        project_id=project_id,
-                        session_id=session_id,
-                        role="assistant",
-                        content=assistant_message
-                    )
-
-                    logger.debug(f"Stored conversation messages: user={user_msg_id}, assistant={assistant_msg_id}")
-                    return user_msg_id, assistant_msg_id
-
-                finally:
-                    self.db_service._return(conn)
-            else:
+            if not dual_write:
                 logger.debug("Dual-write disabled, skipping conversation message storage")
-                return "disabled", "disabled"
+                return
+
+            if not project_id:
+                logger.warning("No project_id provided, cannot store conversation messages")
+                return
+
+            # Use SQL-first storage service
+            from ...services.store import create_rag_store_service
+            rag_store = create_rag_store_service(self.settings)
+
+            conn = self.db_service._conn()
+            try:
+                for message in messages:
+                    role = message.get("role")
+                    content = message.get("content")
+                    
+                    if not role or not content:
+                        logger.warning(f"Skipping invalid message: {message}")
+                        continue
+                    
+                    rag_store.store_message_and_vector(
+                        conn=conn,
+                        project_id=project_id,
+                        session_id=thread_id,
+                        role=role,
+                        content=content
+                    )
+
+                logger.debug(f"Stored {len(messages)} conversation messages for thread {thread_id}")
+
+            finally:
+                self.db_service._return(conn)
 
         except Exception as e:
             logger.error(f"Failed to store conversation messages: {e}")
-            return "error", "error"
+            # Don't raise - interface doesn't specify exceptions
     
     async def get_query_suggestions(
         self,
-        project_id: Optional[str] = None,
-        user_id: Optional[str] = None,
-        limit: int = 5,
+        context: Dict[str, Any],
     ) -> List[str]:
         """
-        Generate suggested queries based on the available knowledge assets.
+        Get query suggestions based on available knowledge (interface implementation).
+        
+        Args:
+            context: Context dictionary containing:
+                - project_id: Optional project ID
+                - user_id: Optional user ID
+                - limit: Optional limit for suggestions (default: 5)
+        
+        Returns:
+            List of suggested query strings
         """
+        project_id = context.get("project_id")
+        user_id = context.get("user_id")
+        limit = context.get("limit", 5)
+        
         try:
             # Get asset types and topics from the knowledge base
             conn = self.db_service._conn()
@@ -687,18 +825,22 @@ Include specific technical details, specifications, and implementation notes."""
                         )
                     else:
                         # Get user's projects + public assets
-                        user_projects = self.db_service.list_projects_for_user(
-                            user_id=user_id, active=True
-                        )
-                        if not user_projects:
-                            return []
+                        if user_id:
+                            user_projects = self.db_service.list_projects_for_user(
+                                user_id=user_id, active=True
+                            )
+                            if not user_projects:
+                                return []
 
-                        project_ids = [str(p["project_id"]) for p in user_projects]
-                        placeholders = ",".join(["%s"] * len(project_ids))
-                        cur.execute(
-                            f"{base_query} WHERE (ka.project_id IN ({placeholders}) OR ka.is_public = true) LIMIT %s",
-                            project_ids + [limit * 2],
-                        )
+                            project_ids = [str(p["project_id"]) for p in user_projects]
+                            placeholders = ",".join(["%s"] * len(project_ids))
+                            cur.execute(
+                                f"{base_query} WHERE (ka.project_id IN ({placeholders}) OR ka.is_public = true) LIMIT %s",
+                                project_ids + [limit * 2],
+                            )
+                        else:
+                            # No user_id, return empty
+                            return []
 
                     assets = cur.fetchall()
 
@@ -749,3 +891,43 @@ Include specific technical details, specifications, and implementation notes."""
                 "What safety considerations are mentioned?",
                 "What are the technical specifications?",
             ]
+    
+    # Legacy method wrappers for backward compatibility
+    # These methods maintain the old API signatures for existing callers
+    async def get_query_suggestions_legacy(
+        self,
+        project_id: Optional[str] = None,
+        user_id: Optional[str] = None,
+        limit: int = 5,
+    ) -> List[str]:
+        """
+        Legacy wrapper for get_query_suggestions.
+        
+        Maintains old API signature for backward compatibility.
+        """
+        context = {
+            "project_id": project_id,
+            "user_id": user_id,
+            "limit": limit,
+        }
+        return await self.get_query_suggestions(context)
+    
+    async def store_conversation_messages_legacy(
+        self,
+        project_id: str,
+        session_id: str,
+        user_message: str,
+        assistant_message: str
+    ) -> Tuple[str, str]:
+        """
+        Legacy wrapper for store_conversation_messages.
+        
+        Maintains old API signature for backward compatibility.
+        """
+        messages = [
+            {"role": "user", "content": user_message},
+            {"role": "assistant", "content": assistant_message}
+        ]
+        await self.store_conversation_messages(session_id, messages, project_id)
+        # Return placeholder IDs (legacy API expected this)
+        return "stored", "stored"

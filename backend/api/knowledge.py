@@ -1567,8 +1567,8 @@ async def query_knowledge_base(request: RAGQueryRequest, user: Dict = Depends(ge
         # Get RAG service
         rag_service = get_rag_service()
 
-        # Execute RAG query
-        result = await rag_service.query_knowledge_base(
+        # Execute RAG query (using legacy method for backward compatibility)
+        result = await rag_service.query_knowledge_base_legacy(
             question=request.question,
             project_id=request.project_id,
             user_id=user["user_id"],
@@ -1809,8 +1809,8 @@ async def get_query_suggestions(
         # Get RAG service
         rag_service = get_rag_service()
 
-        # Get suggestions
-        suggestions = await rag_service.get_query_suggestions(
+        # Get suggestions (using legacy method for backward compatibility)
+        suggestions = await rag_service.get_query_suggestions_legacy(
             project_id=project_id, user_id=user["user_id"], limit=limit
         )
 

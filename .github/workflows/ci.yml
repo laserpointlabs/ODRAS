@@ -266,6 +266,9 @@ jobs:
           echo ""
           echo "🧪 Running RAG Modularization Integration Tests..."
           python -m pytest tests/test_rag_modular.py -v --tb=short -m integration || echo "⚠️ RAG integration tests failed (may require running services)"
+          echo ""
+          echo "🧪 Running Phase 6: DAS Personas, Teams, MCP, and Learning Unit Tests..."
+          python -m pytest tests/unit/test_persona_interface.py tests/unit/test_das_personas.py tests/unit/test_team_orchestrator_interface.py tests/unit/test_das_team_orchestrator.py tests/unit/test_mcp_client_interface.py tests/unit/test_das_mcp_client.py tests/unit/test_learning_interface.py tests/unit/test_das_learning.py -v --tb=short || echo "⚠️ Phase 6 unit tests failed"
         env:
           PYTHONPATH: ${{ github.workspace }}
 

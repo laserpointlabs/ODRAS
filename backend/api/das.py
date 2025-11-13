@@ -24,6 +24,7 @@ from pydantic import BaseModel
 from ..services.das_core_engine import DASCoreEngine, DASResponse
 from ..services.config import Settings
 from ..rag.core.modular_rag_service import ModularRAGService
+from ..rag.core.rag_service_interface import RAGServiceInterface
 from ..services.project_thread_manager import ProjectThreadManager
 from ..services.auth import get_user
 from ..services.db import DatabaseService
