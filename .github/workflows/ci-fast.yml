@@ -56,4 +56,3 @@ jobs:
           echo "✅ Fast unit tests completed (< 2 minutes)"
           echo "📝 Comprehensive tests run on PRs and main branch"
           echo "🚀 Fast feedback for developers, quality gates on PRs"
-
