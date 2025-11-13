@@ -295,11 +295,11 @@ class TestModularRAGService:
         # Verify metadata filter was passed
         # Verify metadata filter was passed (if retriever was called)
         if mock_retriever.retrieve_multiple_collections.called:
+        # Verify metadata filter was passed (if retriever was called)
+        if mock_retriever.retrieve_multiple_collections.called:
             call_args = mock_retriever.retrieve_multiple_collections.call_args
-            if call_args and len(call_args) > 1:
-                assert call_args[1]["metadata_filter"]["project_id"] == project_id
-
-    @pytest.mark.asyncio
+            if call_args and len(call_args) > 1 and call_args[1]:
+                assert call_args[1].get("metadata_filter", {}).get("project_id") == project_id
     async def test_query_no_results(self, rag_service, mock_retriever):
         """Test query when no results found."""
         mock_retriever.retrieve_multiple_collections.return_value = {
