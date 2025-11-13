@@ -1,0 +1,13 @@
+id: das_training_workbench
+name: DAS Training Workbench
+version: 1.0.0
+description: Workbench for managing global DAS training knowledge collections
+type: workbench
+author: ODRAS Team
+license: MIT
+
+dependencies: []
+
+permissions:
+  - das_training.view
+  - das_training.manage  # Admin only

@@ -219,8 +219,8 @@ class VectorSQLSyncMonitor:
 
             rag_service = RAGService(self.settings)
 
-            # Simple test query
-            test_result = await rag_service.query_knowledge_base(
+            # Simple test query (using legacy method)
+            test_result = await rag_service.query_knowledge_base_legacy(
                 question="specifications",
                 project_id=project_id,
                 max_chunks=3,
@@ -501,6 +501,3 @@ async def get_sync_status_report() -> Dict[str, Any]:
     """Get comprehensive sync status report"""
     monitor = get_sync_monitor()
     return await monitor.automated_health_check()
-
-
-

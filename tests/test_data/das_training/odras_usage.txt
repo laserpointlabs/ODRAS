@@ -1,0 +1,80 @@
+ODRAS Usage Guide
+
+ODRAS (Ontology-Driven Requirements Analysis System) is a comprehensive platform for managing requirements, ontologies, and knowledge in complex engineering projects.
+
+Getting Started:
+
+1. Project Setup
+   - Create a new project or select existing project
+   - Configure project settings and metadata
+   - Add team members with appropriate roles
+   - Set up project domains and namespaces
+
+2. Ontology Management
+   - Import existing ontologies or create new ones
+   - Define classes, properties, and relationships
+   - Use the Ontology Workbench for visual editing
+   - Validate ontology consistency
+   - Export ontologies in various formats
+
+3. Requirements Management
+   - Upload requirement documents
+   - Extract requirements using DAS
+   - Organize requirements by category
+   - Create traceability links
+   - Review and approve requirements
+   - Generate requirements reports
+
+4. Knowledge Management
+   - Upload documents and files
+   - Process documents for knowledge extraction
+   - Search knowledge base using semantic search
+   - Organize knowledge assets by project
+   - Share knowledge across projects
+
+5. DAS (Digital Assistant System)
+   - Ask questions about your project
+   - Get answers from project knowledge
+   - Request requirement reviews
+   - Generate documentation
+   - Use natural language queries
+
+Key Features:
+
+- Multi-project support
+- Role-based access control
+- Version control for ontologies
+- Requirements traceability matrix
+- Semantic search capabilities
+- Integration with external tools
+- RESTful API for automation
+- BPMN workflow support
+
+Workbenches:
+
+- Requirements Workbench: Manage and analyze requirements
+- Ontology Workbench: Create and edit ontologies
+- Knowledge Workbench: Organize project knowledge
+- DAS Workbench: Interact with AI assistant
+- CQMT Workbench: Test-driven ontology development
+
+Tips for Effective Use:
+
+- Use consistent naming conventions
+- Document your work with comments
+- Leverage DAS for common tasks
+- Keep ontologies synchronized with requirements
+- Regularly review and update knowledge assets
+- Use version control for important changes
+- Export data regularly for backup
+
+Common Workflows:
+
+1. New Project Setup:
+   Create project → Import ontologies → Upload requirements → Process knowledge → Start development
+
+2. Requirements Analysis:
+   Upload document → Extract requirements → Review with DAS → Organize → Approve → Trace to design
+
+3. Ontology Development:
+   Define competency questions → Create classes → Add properties → Test with SPARQL → Refine → Publish

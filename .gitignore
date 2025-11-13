@@ -34,6 +34,7 @@ api_validation_results*.json
 test_*.html
 # test_*.py  # Commented out - we WANT to track test files!
 test_*.txt
+RAG_TEST_REPORT*.txt
 
 # Temporary files
 *.tmp

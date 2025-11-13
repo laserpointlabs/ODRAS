@@ -23,7 +23,8 @@ from pydantic import BaseModel
 
 from ..services.das_core_engine import DASCoreEngine, DASResponse
 from ..services.config import Settings
-from ..services.rag_service import RAGService
+from ..rag.core.modular_rag_service import ModularRAGService
+from ..rag.core.rag_service_interface import RAGServiceInterface
 from ..services.project_thread_manager import ProjectThreadManager
 from ..services.auth import get_user
 from ..services.db import DatabaseService
@@ -777,7 +778,7 @@ async def initialize_das_engine():
         # Initialize services
         qdrant_service = QdrantService(settings)
         db_service = DatabaseService(settings)
-        rag_service = RAGService(settings)
+        rag_service = ModularRAGService(settings, db_service=db_service)
 
         # Redis (optional)
         redis_client = None

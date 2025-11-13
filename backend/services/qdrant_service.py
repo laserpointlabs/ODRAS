@@ -483,3 +483,35 @@ def ensure_knowledge_collections(qdrant_service: QdrantService) -> bool:
     except Exception as e:
         logger.error(f"Failed to ensure knowledge collections: {str(e)}")
         return False
+
+
+def ensure_training_collections(qdrant_service: QdrantService) -> bool:
+    """
+    Ensure DAS training collections exist (global, not project-scoped).
+
+    Args:
+        qdrant_service: Configured Qdrant service
+
+    Returns:
+        True if all collections were created/verified
+    """
+    try:
+        # Default DAS training collections
+        training_collections = [
+            ("das_training_ontology", 384),
+            ("das_training_requirements", 384),
+            ("das_training_acquisition", 384),
+            ("das_training_odras_usage", 384),
+            ("das_training_systems_engineering", 384),
+        ]
+
+        success = True
+        for collection_name, vector_size in training_collections:
+            if not qdrant_service.ensure_collection(collection_name, vector_size):
+                success = False
+
+        return success
+
+    except Exception as e:
+        logger.error(f"Failed to ensure training collections: {str(e)}")
+        return False

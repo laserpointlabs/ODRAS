@@ -13,6 +13,7 @@ from ..api.workflows import router as workflows_router
 from ..api.embedding_models import router as embedding_models_router
 from ..api.knowledge import router as knowledge_router
 from ..api.das import router as das_router
+from ..api.das_training import router as das_training_router
 from ..api.cqmt import router as cqmt_router
 from ..api.thread_manager import router as thread_manager_router
 from ..api.project_threads import router as project_threads_router
@@ -76,6 +77,9 @@ def register_routers(app: FastAPI) -> None:
     
     # DAS implementation (consolidated from DAS2)
     app.include_router(das_router)
+    
+    # DAS Training Workbench
+    app.include_router(das_training_router)
     
     # Thread and project management
     app.include_router(thread_manager_router)  # THREAD MANAGER FOR DEBUGGING

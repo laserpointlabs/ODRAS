@@ -1,0 +1,60 @@
+Requirements Writing Best Practices
+
+A requirement is a statement that describes what a system must do or a quality it must possess. Well-written requirements are essential for successful system development.
+
+Characteristics of Good Requirements:
+
+1. Clear and Unambiguous
+   - Use precise language
+   - Avoid vague terms like "user-friendly" or "fast"
+   - Define technical terms
+
+2. Verifiable
+   - Requirements must be testable
+   - Include measurable criteria
+   - Example: "The system shall process 1000 transactions per second"
+
+3. Complete
+   - Include all necessary information
+   - Specify inputs, outputs, and conditions
+   - Cover normal and exceptional cases
+
+4. Consistent
+   - No contradictions between requirements
+   - Use consistent terminology
+   - Align with system architecture
+
+5. Traceable
+   - Each requirement should have a unique identifier
+   - Link to source documents (stakeholder needs, regulations)
+   - Track changes through version control
+
+Types of Requirements:
+
+- Functional Requirements: What the system must do
+  Example: "The system shall authenticate users using username and password"
+
+- Non-Functional Requirements: Quality attributes
+  Example: "The system shall respond to user queries within 2 seconds"
+
+- Performance Requirements: Speed, throughput, capacity
+- Security Requirements: Access control, data protection
+- Usability Requirements: User interface, ease of use
+- Reliability Requirements: Availability, fault tolerance
+
+Requirements Writing Template:
+
+REQ-001: [Requirement ID]
+Title: [Brief title]
+Description: [Detailed description]
+Priority: [High/Medium/Low]
+Source: [Stakeholder or document]
+Verification: [How to test this requirement]
+
+Common Mistakes to Avoid:
+
+- Mixing requirements with design solutions
+- Including implementation details
+- Writing requirements that are too broad or too narrow
+- Using passive voice instead of active voice
+- Missing acceptance criteria

@@ -26,8 +26,13 @@ from typing import Any, Dict, List, Optional
 from dataclasses import dataclass
 
 from .config import Settings
-from .rag_service import RAGService
+from ..rag.core.rag_service_interface import RAGServiceInterface
+from ..rag.core.context_models import RAGContext
+from .das_prompt_builder import DASPromptBuilder
 from .project_thread_manager import ProjectThreadManager, ProjectEventType
+from .code_generator_interface import CodeGeneratorInterface, CodeGenerationRequest, CodeGenerationCapability
+from .code_executor_interface import CodeExecutorInterface, ExecutionStatus
+from .tool_registry_interface import ToolRegistryInterface, ToolType
 
 logger = logging.getLogger(__name__)
 
@@ -59,11 +64,38 @@ class DASCoreEngine:
     NO intelligence layers, NO complex logic, NO bullshit.
     """
 
-    def __init__(self, settings: Settings, rag_service: RAGService, project_manager, db_service=None):
+    def __init__(
+        self,
+        settings: Settings,
+        rag_service: RAGServiceInterface,
+        project_manager,
+        db_service=None,
+        code_generator: Optional[CodeGeneratorInterface] = None,
+        code_executor: Optional[CodeExecutorInterface] = None,
+        tool_registry: Optional[ToolRegistryInterface] = None,
+    ):
+        """
+        Initialize DAS Core Engine.
+        
+        Args:
+            settings: Application settings
+            rag_service: RAG service implementing RAGServiceInterface (decoupled)
+            project_manager: Project thread manager
+            db_service: Optional database service
+            code_generator: Optional code generator for runtime code generation
+            code_executor: Optional code executor for safe code execution
+            tool_registry: Optional tool registry for storing/reusing generated tools
+        """
         self.settings = settings
-        self.rag_service = rag_service
+        self.rag_service = rag_service  # Now accepts interface, not concrete implementation
         self.project_manager = project_manager  # Now SqlFirstThreadManager
         self.db_service = db_service
+        self.prompt_builder = DASPromptBuilder()  # Prompt builder for formatting RAG context
+        
+        # Code generation and execution (optional, decoupled)
+        self.code_generator = code_generator
+        self.code_executor = code_executor
+        self.tool_registry = tool_registry
 
         # Check if we're using SQL-first thread manager
         self.sql_first_threads = hasattr(project_manager, 'get_project_context')
@@ -71,8 +103,13 @@ class DASCoreEngine:
             logger.info("DAS initialized with SQL-first thread manager")
         else:
             logger.warning("DAS using legacy thread manager - consider upgrading")
+        
+        if code_generator and code_executor:
+            logger.info("DAS initialized with code generation and execution capabilities")
+        elif code_generator or code_executor:
+            logger.warning("DAS has partial code generation setup - both generator and executor should be provided")
 
-        logger.info("DAS Core Engine initialized - SIMPLE APPROACH")
+        logger.info("DAS Core Engine initialized - DECOUPLED RAG INTERFACE")
 
     def _serialize_project_details(self, project_details):
         """Convert project details to JSON-serializable format"""
@@ -952,6 +989,134 @@ class DASCoreEngine:
             enhanced_query = f"{enhanced_query} | Recent context: {context_summary}"
 
         return enhanced_query
+    
+    async def _detect_and_handle_code_generation(
+        self,
+        message: str,
+        project_id: str,
+        user_id: str,
+        project_thread_id: Optional[str] = None
+    ):
+        """
+        Detect if user needs code generation and handle it.
+        
+        Returns:
+            Async generator yielding response chunks, or None if code generation not needed
+        """
+        # Simple detection: look for keywords that suggest code generation needs
+        code_generation_keywords = [
+            "write code", "generate code", "create a script", "build a tool",
+            "calculate", "fetch data", "transform data", "automate",
+            "run code", "execute", "compute", "process data",
+        ]
+        
+        message_lower = message.lower()
+        needs_code = any(keyword in message_lower for keyword in code_generation_keywords)
+        
+        if not needs_code:
+            return  # Async generator - return without value
+        
+        try:
+            yield {"type": "content", "content": "🔧 Detected code generation request. Generating code...\n\n"}
+            
+            # Determine capabilities needed
+            capabilities = []
+            if any(kw in message_lower for kw in ["fetch", "get data", "retrieve", "api"]):
+                capabilities.append(CodeGenerationCapability.DATA_FETCHING)
+            if any(kw in message_lower for kw in ["calculate", "compute", "math"]):
+                capabilities.append(CodeGenerationCapability.CALCULATIONS)
+            if any(kw in message_lower for kw in ["transform", "convert", "process"]):
+                capabilities.append(CodeGenerationCapability.DATA_TRANSFORMATION)
+            if any(kw in message_lower for kw in ["workflow", "automate", "process"]):
+                capabilities.append(CodeGenerationCapability.WORKFLOW_AUTOMATION)
+            
+            if not capabilities:
+                # Default to CALCULATIONS if no specific capability detected
+                capabilities = [CodeGenerationCapability.CALCULATIONS]
+            
+            # Check tool registry first
+            if self.tool_registry:
+                matching_tools = await self.tool_registry.find_tool(
+                    capability=capabilities[0].value if capabilities else None
+                )
+                if matching_tools:
+                    # Use existing tool
+                    tool = matching_tools[0]
+                    yield {"type": "content", "content": f"📦 Found existing tool: {tool.name}\n\n"}
+                    
+                    # Update usage
+                    await self.tool_registry.update_usage(tool.tool_id)
+                    
+                    # Execute tool
+                    execution_result = await self.code_executor.execute(
+                        tool.code,
+                        timeout_seconds=30,
+                        context={"project_id": project_id, "user_id": user_id}
+                    )
+                    
+                    if execution_result.status == ExecutionStatus.COMPLETED:
+                        yield {"type": "content", "content": f"✅ Execution successful:\n\n```\n{execution_result.output or 'No output'}\n```\n\n"}
+                        if execution_result.return_value:
+                            yield {"type": "content", "content": f"Result: {execution_result.return_value}\n\n"}
+                        yield {"type": "done", "metadata": {"tool_used": tool.tool_id, "execution_time": execution_result.execution_time_seconds}}
+                        return
+            
+            # Generate new code
+            request = CodeGenerationRequest(
+                intent=message,
+                context={"project_id": project_id, "user_id": user_id},
+                capabilities=capabilities,
+                user_id=user_id,
+                project_id=project_id,
+            )
+            
+            generation_result = await self.code_generator.generate_code(request)
+            
+            if not generation_result.validation_passed:
+                yield {"type": "content", "content": f"⚠️ Generated code failed validation:\n{', '.join(generation_result.validation_errors)}\n\n"}
+                yield {"type": "done", "metadata": {"code_generation": "failed_validation"}}
+                return
+            
+            yield {"type": "content", "content": f"📝 Generated code:\n\n```python\n{generation_result.code}\n```\n\n"}
+            
+            # Execute generated code
+            execution_result = await self.code_executor.execute(
+                generation_result.code,
+                timeout_seconds=30,
+                context={"project_id": project_id, "user_id": user_id}
+            )
+            
+            if execution_result.status == ExecutionStatus.COMPLETED:
+                yield {"type": "content", "content": f"✅ Execution successful:\n\n```\n{execution_result.output or 'No output'}\n```\n\n"}
+                if execution_result.return_value:
+                    yield {"type": "content", "content": f"Result: {execution_result.return_value}\n\n"}
+                
+                # Store successful tool in registry
+                tool_id = None
+                if self.tool_registry:
+                    tool_id = await self.tool_registry.store_tool(
+                        name=f"Generated: {message[:50]}",
+                        description=generation_result.description or message,
+                        tool_type=ToolType.CUSTOM,
+                        code=generation_result.code,
+                        capabilities=[cap.value for cap in capabilities],
+                        created_by=user_id,
+                        metadata={"generated_from": message, "execution_time": execution_result.execution_time_seconds},
+                    )
+                    yield {"type": "content", "content": f"💾 Tool saved to registry (ID: {tool_id[:8]}...)\n\n"}
+                
+                yield {"type": "done", "metadata": {
+                    "code_generated": True,
+                    "execution_time": execution_result.execution_time_seconds,
+                    "tool_stored": tool_id,
+                }}
+            else:
+                yield {"type": "content", "content": f"❌ Execution failed:\n{execution_result.error}\n\n"}
+                yield {"type": "done", "metadata": {"code_generation": "execution_failed"}}
+            
+        except Exception as e:
+            logger.error(f"Code generation error: {e}", exc_info=True)
+            yield {"type": "error", "message": f"Code generation failed: {str(e)}"}
 
     async def process_message_stream(
         self,
@@ -1093,6 +1258,16 @@ class DASCoreEngine:
                     yield {"type": "error", "message": "No conversation history available to confirm assumption."}
                     return
 
+            # DETECT CODE GENERATION NEEDS (before slash commands)
+            if self.code_generator and self.code_executor:
+                code_generation_result = await self._detect_and_handle_code_generation(
+                    message, project_id, user_id, project_thread_id
+                )
+                if code_generation_result:
+                    async for chunk in code_generation_result:
+                        yield chunk
+                    return
+            
             # DETECT SLASH COMMANDS (DAS Actions)
             if message.strip().startswith('/'):
                 logger.info(f"🎯 DAS_COMMAND_DEBUG: Detected slash command: {message}")
@@ -1181,41 +1356,39 @@ class DASCoreEngine:
                         max_chunks = 50
                         threshold = 0.1  # Lower threshold for better coverage
 
-                    rag_response = await self.rag_service.query_knowledge_base(
-                        question=enhanced_query,
-                        project_id=project_id,
-                        user_id=user_id,
-                        max_chunks=max_chunks,
-                        similarity_threshold=threshold,
-                        include_metadata=True,
-                        response_style="comprehensive"
+                    # Use new interface method (decoupled from RAG implementation)
+                    rag_context = await self.rag_service.query_knowledge_base(
+                        query=enhanced_query,
+                        context={
+                            "project_id": project_id,
+                            "user_id": user_id,
+                            "max_chunks": max_chunks,
+                            "similarity_threshold": threshold,
+                        }
                     )
 
-            # 3.5. Debug RAG response processing
-            print(f"🔍 RAG_DEBUG_STREAM: Processing RAG response...")
-            print(f"   Success: {rag_response.get('success', False)}")
-            print(f"   Chunks found: {rag_response.get('chunks_found', 0)}")
-            print(f"   Sources: {len(rag_response.get('sources', []))}")
+            # 3.5. Debug RAG context processing
+            print(f"🔍 RAG_DEBUG_STREAM: Processing RAG context...")
+            print(f"   Query: {rag_context.query}")
+            print(f"   Chunks found: {len(rag_context.chunks)}")
+            print(f"   Total chunks: {rag_context.total_chunks_found}")
 
-            if rag_response.get("success") and rag_response.get("chunks_found", 0) > 0:
-                rag_content = rag_response.get("response", "")
-                print(f"🔍 RAG_DEBUG_STREAM: RAG content length: {len(rag_content)}")
-                print(f"🔍 RAG_DEBUG_STREAM: RAG content preview: {rag_content[:300]}...")
-
-                # Debug sources
-                sources = rag_response.get("sources", [])
-                for i, source in enumerate(sources):
-                    print(f"   Source {i+1}: {source.get('title', 'Unknown')} ({source.get('document_type', 'document')}) - {source.get('relevance_score', 0):.3f}")
-
-                # Check if specific content is in RAG response
-                if "aeromapper" in rag_content.lower():
-                    print(f"✅ RAG_DEBUG_STREAM: AeroMapper mentioned in RAG content")
-                    if "20" in rag_content and "kg" in rag_content.lower():
-                        print(f"✅ RAG_DEBUG_STREAM: AeroMapper weight (20 kg) found in RAG content")
+            if rag_context.chunks:
+                # Debug chunks
+                for i, chunk in enumerate(rag_context.chunks[:5]):  # Show first 5
+                    print(f"   Chunk {i+1}: {chunk.source.title or 'Unknown'} - score: {chunk.relevance_score:.3f}")
+                    print(f"      Type: {chunk.source.source_type}, Domain: {chunk.source.domain}")
+                
+                # Check if specific content is in RAG context
+                all_content = rag_context.get_all_content().lower()
+                if "aeromapper" in all_content:
+                    print(f"✅ RAG_DEBUG_STREAM: AeroMapper mentioned in RAG context")
+                    if "20" in all_content and "kg" in all_content:
+                        print(f"✅ RAG_DEBUG_STREAM: AeroMapper weight (20 kg) found in RAG context")
                 else:
-                    print(f"❌ RAG_DEBUG_STREAM: AeroMapper NOT mentioned in RAG content")
+                    print(f"❌ RAG_DEBUG_STREAM: AeroMapper NOT mentioned in RAG context")
             else:
-                print(f"❌ RAG_DEBUG_STREAM: No RAG content - success: {rag_response.get('success')}, chunks: {rag_response.get('chunks_found', 0)}")
+                print(f"❌ RAG_DEBUG_STREAM: No RAG chunks found")
 
             # 4. Build context and call LLM with streaming
             context_sections = []
@@ -1364,38 +1537,43 @@ class DASCoreEngine:
                         context_sections.append(f"• {event_type}")
                 context_sections.append("")
 
-            # Add RAG context with detailed debugging
-            print(f"🔍 RAG_DEBUG: Processing RAG response...")
-            print(f"   Success: {rag_response.get('success', False)}")
-            print(f"   Chunks found: {rag_response.get('chunks_found', 0)}")
-            print(f"   Sources: {len(rag_response.get('sources', []))}")
-
-            if rag_response.get("success") and rag_response.get("chunks_found", 0) > 0:
+            # Add RAG context using prompt builder (decoupled approach)
+            print(f"🔍 RAG_DEBUG: Processing RAG context...")
+            print(f"   Query: {rag_context.query}")
+            print(f"   Chunks found: {len(rag_context.chunks)}")
+            
+            if rag_context.chunks:
+                # Use prompt builder to format RAG context into prompt section
+                # We'll extract just the context part (without system prompt) to add to our context
+                rag_prompt_section = self.prompt_builder._build_context_section(
+                    rag_context.chunks,
+                    include_sources=True
+                )
                 context_sections.append("KNOWLEDGE FROM DOCUMENTS:")
-                rag_content = rag_response.get("response", "")
-                context_sections.append(rag_content)
+                context_sections.append(rag_prompt_section)
 
                 # Debug what content is being provided to LLM
-                print(f"🔍 RAG_DEBUG: RAG content length: {len(rag_content)}")
-                print(f"🔍 RAG_DEBUG: RAG content preview: {rag_content[:200]}...")
+                rag_content_text = rag_context.get_all_content()
+                print(f"🔍 RAG_DEBUG: RAG content length: {len(rag_content_text)}")
+                print(f"🔍 RAG_DEBUG: RAG content preview: {rag_content_text[:200]}...")
 
-                # Debug sources
-                sources = rag_response.get("sources", [])
-                for i, source in enumerate(sources):
-                    print(f"   Source {i+1}: {source.get('title', 'Unknown')} ({source.get('document_type', 'document')}) - {source.get('relevance_score', 0):.3f}")
+                # Debug sources from RAG context
+                for i, chunk in enumerate(rag_context.chunks[:5]):
+                    print(f"   Source {i+1}: {chunk.source.title or 'Unknown'} ({chunk.source.domain or 'N/A'}) - score: {chunk.relevance_score:.3f}")
 
-                # Check if AeroMapper is mentioned in the RAG content
-                if "aeromapper" in rag_content.lower():
-                    print(f"✅ RAG_DEBUG: AeroMapper mentioned in RAG content")
+                # Check if AeroMapper is mentioned in the RAG context
+                rag_content_lower = rag_content_text.lower()
+                if "aeromapper" in rag_content_lower:
+                    print(f"✅ RAG_DEBUG: AeroMapper mentioned in RAG context")
                 else:
-                    print(f"❌ RAG_DEBUG: AeroMapper NOT mentioned in RAG content")
+                    print(f"❌ RAG_DEBUG: AeroMapper NOT mentioned in RAG context")
 
-                if "20" in rag_content and "kg" in rag_content.lower():
-                    print(f"✅ RAG_DEBUG: Weight information (20 kg) found in RAG content")
+                if "20" in rag_content_text and "kg" in rag_content_lower:
+                    print(f"✅ RAG_DEBUG: Weight information (20 kg) found in RAG context")
                 else:
-                    print(f"❌ RAG_DEBUG: Weight information NOT found in RAG content")
+                    print(f"❌ RAG_DEBUG: Weight information NOT found in RAG context")
             else:
-                print(f"❌ RAG_DEBUG: No RAG content available - success: {rag_response.get('success')}, chunks: {rag_response.get('chunks_found', 0)}")
+                print(f"❌ RAG_DEBUG: No RAG chunks available - chunks found: {rag_context.total_chunks_found}")
 
             full_context = "\n".join(context_sections)
 
@@ -1456,8 +1634,18 @@ Answer naturally and consistently using the context above. Be helpful and conver
                         "timestamp": datetime.now().isoformat(),
                         "prompt_context": full_context,  # Store the full prompt for thread manager
                         "rag_context": {
-                            "chunks_found": rag_response.get("chunks_found", 0),
-                            "sources": rag_response.get("sources", [])
+                            "chunks_found": len(rag_context.chunks),
+                            "total_chunks_found": rag_context.total_chunks_found,
+                            "sources": [
+                                {
+                                    "chunk_id": chunk.chunk_id,
+                                    "title": chunk.source.title,
+                                    "source_type": chunk.source.source_type,
+                                    "domain": chunk.source.domain,
+                                    "relevance_score": chunk.relevance_score,
+                                }
+                                for chunk in rag_context.chunks
+                            ]
                         },
                         "project_context": {
                             "project_id": project_id,
@@ -1471,16 +1659,18 @@ Answer naturally and consistently using the context above. Be helpful and conver
                 )
 
             # 7. Send completion signal with comprehensive debug metadata
+            rag_content_text = rag_context.get_all_content()
             debug_metadata = {
                 "rag_debug": {
                     "enhanced_query": enhanced_query,
-                    "rag_success": rag_response.get("success", False),
-                    "chunks_found": rag_response.get("chunks_found", 0),
-                    "sources_count": len(rag_response.get("sources", [])),
-                    "rag_content_length": len(rag_response.get("response", "")),
-                    "rag_content_preview": rag_response.get("response", "")[:200] + "..." if len(rag_response.get("response", "")) > 200 else rag_response.get("response", ""),
-                    "contains_aeromapper": "aeromapper" in rag_response.get("response", "").lower(),
-                    "contains_weight_info": "20" in rag_response.get("response", "") and "kg" in rag_response.get("response", "").lower()
+                    "rag_success": len(rag_context.chunks) > 0,
+                    "chunks_found": len(rag_context.chunks),
+                    "total_chunks_found": rag_context.total_chunks_found,
+                    "sources_count": len(rag_context.chunks),
+                    "rag_content_length": len(rag_content_text),
+                    "rag_content_preview": rag_content_text[:200] + "..." if len(rag_content_text) > 200 else rag_content_text,
+                    "contains_aeromapper": "aeromapper" in rag_content_text.lower(),
+                    "contains_weight_info": "20" in rag_content_text and "kg" in rag_content_text.lower()
                 },
                 "context_debug": {
                     "conversation_pairs": len(conversation_history) if conversation_history else 0,
@@ -1493,8 +1683,17 @@ Answer naturally and consistently using the context above. Be helpful and conver
             yield {
                 "type": "done",
                 "metadata": {
-                    "sources": rag_response.get("sources", []),
-                    "chunks_found": rag_response.get("chunks_found", 0),
+                    "sources": [
+                        {
+                            "chunk_id": chunk.chunk_id,
+                            "title": chunk.source.title,
+                            "source_type": chunk.source.source_type,
+                            "domain": chunk.source.domain,
+                            "relevance_score": chunk.relevance_score,
+                        }
+                        for chunk in rag_context.chunks
+                    ],
+                    "chunks_found": len(rag_context.chunks),
                     "debug": debug_metadata  # Add comprehensive debug info
                 }
             }
