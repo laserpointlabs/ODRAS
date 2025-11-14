@@ -32,33 +32,73 @@ export function initializeWorkbenchManager() {
     }
   });
 
+  // Initialize default workbench after a short delay to ensure DOM is ready
+  setTimeout(() => {
+    initializeDefaultWorkbench();
+  }, 100);
+
   console.log('✅ Workbench Manager initialized');
 }
 
 /**
- * Switch to a specific workbench
+ * Initialize the default workbench on page load
  */
-function switchWorkbench(workbenchId) {
+function initializeDefaultWorkbench() {
+  // Check URL for workbench parameter
+  const urlParams = new URLSearchParams(window.location.search);
+  const urlWorkbench = urlParams.get('wb');
+  
+  // Check localStorage for saved workbench
+  const savedWorkbench = localStorage.getItem('active_workbench');
+  
+  // Check for workbench with active class in HTML
+  const activeWorkbenchEl = document.querySelector('.workbench.active');
+  const htmlWorkbench = activeWorkbenchEl ? activeWorkbenchEl.id.replace('wb-', '') : null;
+  
+  // Priority: URL > localStorage > HTML > default
+  const defaultWorkbench = urlWorkbench || savedWorkbench || htmlWorkbench || 'ontology';
+  
+  console.log('🔷 Initializing default workbench:', defaultWorkbench);
+  switchWorkbench(defaultWorkbench);
+}
+
+/**
+ * Switch to a specific workbench
+ * 
+ * This is the central function for showing/hiding workbenches.
+ * All workbench visibility is controlled through this function.
+ * 
+ * @param {string} workbenchId - The ID of the workbench to activate (e.g., 'ontology', 'requirements')
+ */
+export function switchWorkbench(workbenchId) {
+  if (!workbenchId) {
+    console.warn('⚠️ switchWorkbench called with no workbenchId');
+    return;
+  }
+
   console.log('🔄 Switching to workbench:', workbenchId);
 
-  // Update active icon in iconbar
+  // Step 1: Update active icon in iconbar
   document.querySelectorAll('.iconbar .icon').forEach(icon => {
     icon.classList.remove('active');
   });
   const activeIcon = document.querySelector(`.iconbar .icon[data-wb="${workbenchId}"]`);
   if (activeIcon) {
     activeIcon.classList.add('active');
+  } else {
+    console.warn(`⚠️ Icon not found for workbench: ${workbenchId}`);
   }
 
-  // Hide all workbench sections
+  // Step 2: Hide all workbench sections (CSS: .workbench { display: none })
   document.querySelectorAll('.workbench').forEach(wb => {
     wb.classList.remove('active');
   });
 
-  // Show selected workbench
+  // Step 3: Show selected workbench (CSS: .workbench.active { display: flex })
   const targetWorkbench = document.getElementById(`wb-${workbenchId}`);
   if (targetWorkbench) {
     targetWorkbench.classList.add('active');
+    console.log(`✅ Workbench ${workbenchId} is now visible`);
     
     // Initialize workbench-specific functionality
     if (workbenchId === 'requirements') {
@@ -77,20 +117,42 @@ function switchWorkbench(workbenchId) {
           .catch(err => console.warn('Could not load requirements workbench:', err));
       }
     } else if (workbenchId === 'ontology') {
-      // Ensure ontology is initialized
-      if (typeof window.ensureOntologyInitialized === 'function') {
-        window.ensureOntologyInitialized();
-      }
-      // Resize cytoscape if available
-      if (window.ontoState && window.ontoState.cy) {
-        setTimeout(() => window.ontoState.cy.resize(), 100);
-      }
+      // Initialize ontology workbench
+      import('/static/js/workbenches/ontology/ontology-ui.js')
+        .then(module => {
+          if (module.initializeOntologyWorkbench) {
+            module.initializeOntologyWorkbench();
+          } else if (typeof window.ensureOntologyInitialized === 'function') {
+            // Fallback to legacy function
+            window.ensureOntologyInitialized();
+          }
+          // Resize cytoscape if available
+          if (window.ontoState && window.ontoState.cy) {
+            setTimeout(() => window.ontoState.cy.resize(), 100);
+          }
+        })
+        .catch(err => {
+          console.warn('Could not load ontology workbench:', err);
+          // Fallback to legacy function
+          if (typeof window.ensureOntologyInitialized === 'function') {
+            window.ensureOntologyInitialized();
+          }
+        });
     } else if (workbenchId === 'project') {
-      // Load project info if available
-      if (typeof window.loadProjectInfo === 'function') {
-        const state = getAppState();
-        if (state.activeProject?.projectId) {
-          window.loadProjectInfo();
+      // Load project info - use event system
+      const state = getAppState();
+      if (state.activeProject?.projectId) {
+        emitEvent('project:selected', state.activeProject.projectId);
+      } else {
+        // Show no project message
+        const projectInfoCard = document.getElementById('projectInfoCard');
+        if (projectInfoCard) {
+          projectInfoCard.innerHTML = `
+            <div style="text-align: center; color: var(--muted);">
+              <h3>No Project Selected</h3>
+              <p>Select a project from the dropdown or create a new one to view project information.</p>
+            </div>
+          `;
         }
       }
     } else if (workbenchId === 'admin') {

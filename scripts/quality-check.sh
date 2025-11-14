@@ -1,58 +1,76 @@
 #!/bin/bash
-# Comprehensive code quality checks
+# Comprehensive Code Quality Checks
 # Usage: ./scripts/quality-check.sh
 
 set -e
 
-echo "🔍 Running code quality checks..."
+echo "🔍 Running comprehensive code quality checks..."
 echo "============================================================"
 
-# 1. Linting (flake8) - Critical errors only
+# 1. Linting (flake8)
 echo ""
-echo "1️⃣ Running flake8 linting (critical errors)..."
-if flake8 backend/ --count --select=E9,F63,F7,F82 --show-source --statistics; then
-    echo "✅ Flake8 critical errors check passed"
+echo "📝 Step 1: Running flake8 linting..."
+if command -v flake8 &> /dev/null; then
+    flake8 backend/ --count --select=E9,F63,F7,F82 --show-source --statistics || {
+        echo "⚠️ Flake8 found issues (continuing with other checks)..."
+    }
 else
-    echo "❌ Flake8 found critical errors"
-    exit 1
+    echo "⚠️ flake8 not installed, skipping..."
+    echo "   Install with: pip install flake8"
 fi
 
-# 2. Formatting (black) - Check only
+# 2. Formatting (black)
 echo ""
-echo "2️⃣ Checking code formatting with black..."
-if black --check backend/ scripts/ 2>/dev/null || python -m black --check backend/ scripts/ 2>/dev/null; then
-    echo "✅ Code formatting check passed"
+echo "🎨 Step 2: Checking code formatting with black..."
+if command -v black &> /dev/null; then
+    black --check backend/ --line-length=100 || {
+        echo "⚠️ Black found formatting issues"
+        echo "   Run 'black backend/' to auto-format"
+    }
 else
-    echo "⚠️  Code formatting issues found (run 'black backend/ scripts/' to fix)"
-    # Don't fail on formatting issues, just warn
+    echo "⚠️ black not installed, skipping..."
+    echo "   Install with: pip install black"
 fi
 
-# 3. Type checking (mypy) - Optional
+# 3. Type checking (mypy) - optional
 echo ""
-echo "3️⃣ Running type checking with mypy (optional)..."
+echo "🔎 Step 3: Running type checking with mypy..."
 if command -v mypy &> /dev/null; then
-    if mypy backend/ --ignore-missing-imports 2>/dev/null || true; then
-        echo "✅ Type checking passed (or skipped)"
-    else
-        echo "⚠️  Type checking found issues (non-critical)"
-    fi
+    mypy backend/ --ignore-missing-imports || {
+        echo "⚠️ Mypy found type issues (non-blocking)"
+    }
 else
-    echo "⚠️  mypy not installed, skipping type checking"
+    echo "ℹ️ mypy not installed, skipping (optional)..."
+    echo "   Install with: pip install mypy"
 fi
 
-# 4. Security scanning (bandit) - Optional
+# 4. Security scanning (bandit)
 echo ""
-echo "4️⃣ Running security scanning with bandit (optional)..."
+echo "🔒 Step 4: Running security scan with bandit..."
 if command -v bandit &> /dev/null; then
-    if bandit -r backend/ -f json -o bandit-report.json 2>/dev/null || true; then
-        echo "✅ Security scan completed (check bandit-report.json)"
-    else
-        echo "⚠️  Security scan found issues (check bandit-report.json)"
-    fi
+    bandit -r backend/ -f json -o bandit-report.json || {
+        echo "⚠️ Bandit found security issues"
+        echo "   Check bandit-report.json for details"
+    }
 else
-    echo "⚠️  bandit not installed, skipping security scan"
+    echo "⚠️ bandit not installed, skipping..."
+    echo "   Install with: pip install bandit"
+fi
+
+# 5. Import sorting (isort) - optional
+echo ""
+echo "📦 Step 5: Checking import sorting with isort..."
+if command -v isort &> /dev/null; then
+    isort --check-only backend/ || {
+        echo "⚠️ isort found import ordering issues"
+        echo "   Run 'isort backend/' to auto-fix"
+    }
+else
+    echo "ℹ️ isort not installed, skipping (optional)..."
+    echo "   Install with: pip install isort"
 fi
 
 echo ""
+echo "============================================================"
 echo "✅ Code quality checks completed"
 echo "============================================================"

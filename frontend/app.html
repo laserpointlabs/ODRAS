@@ -12402,7 +12402,7 @@ ${insertParts.join('\\n')}
         if (pid) {
           const token = localStorage.getItem('authToken');
 
-          const assumptionsRes = await fetch(`/api/das2/project/${pid}/assumptions`, {
+          const assumptionsRes = await fetch(`/api/das/project/${pid}/assumptions`, {
             headers: {
               'Authorization': `Bearer ${token}`,
               'Content-Type': 'application/json'
@@ -19430,7 +19430,7 @@ ${insertParts.join('\\n')}
         try {
           console.log(`Loading project thread history for project: ${projectId}`);
 
-          const response = await fetch(`/api/das2/project/${projectId}/history`, {
+          const response = await fetch(`/api/das/project/${projectId}/history`, {
             method: 'GET',
             headers: { ...authHeader() }
           });
@@ -19675,9 +19675,9 @@ ${insertParts.join('\\n')}
           const projectId = getCurrentProjectId();
           if (projectId && conversationsToRemove > 0) {
             try {
-              // Call DAS2 delete endpoint for each conversation pair
+              // Call DAS delete endpoint for each conversation pair
               for (let i = 0; i < conversationsToRemove; i++) {
-                const deleteResponse = await fetch(`/api/das2/project/${projectId}/conversation/last`, {
+                const deleteResponse = await fetch(`/api/das/project/${projectId}/conversation/last`, {
                   method: 'DELETE',
                   headers: { ...authHeader() }
                 });
@@ -25905,7 +25905,7 @@ def hello_world():
 
         console.log('🧵 Loading project thread for:', threadManagerProjectId);
 
-        const response = await fetch(`/api/das2/project/${threadManagerProjectId}/thread`, {
+        const response = await fetch(`/api/das/project/${threadManagerProjectId}/thread`, {
           headers: { ...authHeader() }
         });
 

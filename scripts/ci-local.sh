@@ -1,5 +1,6 @@
 #!/bin/bash
-# Local CI runner - mirrors .github/workflows/ci.yml exactly for local testing
+# Local CI Replication Script
+# Mirrors .github/workflows/ci.yml exactly for local testing
 # Usage: ./scripts/ci-local.sh
 
 set -e
@@ -9,42 +10,37 @@ echo "============================================================"
 
 # Step 1: Start ODRAS stack (same as CI)
 echo ""
-echo "📦 Step 1: Starting ODRAS stack (CI-compatible with CPU ollama)..."
+echo "📦 Step 1: Starting ODRAS stack..."
 ./odras.sh clean -y
-# Start core services (no GPU profile)
 docker-compose up -d
-# Optionally start CPU ollama for LLM testing (if docker-compose.ci.yml exists)
-if [ -f docker-compose.ci.yml ]; then
-    docker-compose -f docker-compose.yml -f docker-compose.ci.yml up -d ollama || echo "⚠️  ollama not available (optional)"
-fi
 
 echo "Waiting for services to be ready..."
 sleep 20
 
-# Verify critical services (same as odras.sh)
+# Verify critical services (same as CI)
 echo "Checking PostgreSQL..."
 for i in {1..30}; do
-    if pg_isready -h localhost -p 5432 -U postgres > /dev/null 2>&1; then
-        echo "✅ PostgreSQL ready"
-        break
-    fi
-    sleep 2
+  if pg_isready -h localhost -p 5432 -U postgres > /dev/null 2>&1; then
+    echo "✅ PostgreSQL ready"
+    break
+  fi
+  sleep 2
 done
 
 echo "Checking Redis..."
 for i in {1..30}; do
-    if redis-cli -h localhost -p 6379 ping > /dev/null 2>&1; then
-        echo "✅ Redis ready"
-        break
-    fi
-    sleep 2
+  if redis-cli -h localhost -p 6379 ping > /dev/null 2>&1; then
+    echo "✅ Redis ready"
+    break
+  fi
+  sleep 2
 done
 
-echo "✅ ODRAS stack ready with proper container names and GPU fallback"
+echo "✅ ODRAS stack ready"
 
 # Step 2: Initialize database (same as CI)
 echo ""
-echo "🗄️ Step 2: Initializing database (EXACTLY like CI)..."
+echo "🗄️ Step 2: Initializing database..."
 ./odras.sh init-db
 
 # Step 3: Start application (same as CI)
@@ -55,89 +51,134 @@ echo "🚀 Step 3: Starting ODRAS application..."
 echo "Waiting for application startup..."
 sleep 30
 
-# Verify COMPLETE system
-echo "🔍 Verifying COMPLETE ODRAS system..."
+# Verify application is running
+echo "🔍 Verifying application..."
+if ! pgrep -f "uvicorn.*main" > /dev/null && ! pgrep -f "python.*main" > /dev/null; then
+  echo "❌ ERROR: Application process not found!"
+  echo "Checking logs..."
+  tail -50 /tmp/odras_app.log 2>/dev/null || echo "No logs found"
+  exit 1
+fi
+echo "✅ Application process is running"
 
-# API Health
-for i in {1..30}; do
-    if curl -s http://localhost:8000/api/health > /dev/null; then
-        health_data=$(curl -s http://localhost:8000/api/health)
-        echo "✅ ODRAS API responding"
-        echo "📊 Health status: $health_data"
-        break
-    fi
-    echo "API not ready... ($i/30)"
-    sleep 3
+# API Health check
+echo "Waiting for API to be ready..."
+api_ready=false
+for i in {1..60}; do
+  health_response=$(curl -s -w "\n%{http_code}" --connect-timeout 5 --max-time 10 http://localhost:8000/api/health 2>/dev/null || echo -e "\n000")
+  http_code=$(echo "$health_response" | tail -1)
+  
+  if [ "$http_code" = "200" ]; then
+    health_data=$(echo "$health_response" | head -n -1)
+    echo "✅ ODRAS API responding (HTTP $http_code)"
+    echo "📊 Health status: $health_data"
+    api_ready=true
+    break
+  elif [ "$http_code" = "000" ]; then
+    echo "API connection failed... ($i/60)"
+  else
+    echo "API returned HTTP $http_code... ($i/60)"
+  fi
+  sleep 2
 done
 
-# Service status (if endpoint exists)
-service_status=$(curl -s http://localhost:8000/api/service-status 2>/dev/null || echo "Service status not available")
-echo "📊 Service status: $service_status"
+if [ "$api_ready" = "false" ]; then
+  echo "❌ ERROR: API health check failed after 120 seconds"
+  echo "Application logs (last 100 lines):"
+  tail -100 /tmp/odras_app.log 2>/dev/null || echo "No logs found"
+  exit 1
+fi
 
 echo "🎯 COMPLETE ODRAS APPLICATION READY"
 
 # Step 4: Run test suite (same as CI)
 echo ""
-echo "🧪 Step 4: Running COMPLETE ODRAS system tests (EXACT SAME AS CI)"
+echo "🧪 Step 4: Running COMPLETE ODRAS system tests..."
 echo "============================================================"
 
-echo "🏃‍♂️ Step 1: Fast DAS Health Check..."
+echo "🏃‍♂️ Step 4.1: Fast DAS Health Check..."
 python scripts/fast_das_validator.py
 
-echo "🧪 Step 2: Enhanced Ontology Attributes Test..."
+echo ""
+echo "🧪 Step 4.2: Enhanced Ontology Attributes Test..."
 python -m pytest tests/test_working_ontology_attributes.py -v --tb=short
 
-echo "🧪 Step 3: Baseline DAS Integration Test..."
+echo ""
+echo "🧪 Step 4.3: Baseline DAS Integration Test..."
 python tests/test_das_integration_comprehensive.py
 
-echo "🧪 Step 4: RAG System Stability Test..."
+echo ""
+echo "🧪 Step 4.4: RAG System Stability Test..."
 python tests/test_rag_system_stability.py
 
+echo ""
 echo "🧪 Step 4.5: RAG Modularization Test..."
 python -m pytest tests/test_rag_modular.py -v --tb=short -m "not integration"
 
+echo ""
 echo "🧪 Step 4.6: RAG LLM Configuration Test..."
 python -m pytest tests/test_rag_llm_config.py -v --tb=short -m "not integration"
 
+echo ""
 echo "🧪 Step 4.7: RAG Hybrid Search and Reranker Test..."
 python -m pytest tests/test_rag_hybrid_search.py -v --tb=short -m "not integration"
 
+echo ""
 echo "🧪 Step 4.8: RAG Hybrid Search Evaluation Test..."
 python -m pytest tests/test_rag_hybrid_search_evaluation.py -v --tb=short -m "not integration"
 
+echo ""
 echo "🧪 Step 4.9: RAG Real-World Performance Evaluation..."
 python -m pytest tests/test_rag_real_world_evaluation.py -v --tb=short -s || echo "⚠️ Real-world evaluation requires running services"
 
-echo "🧪 Step 5: Ontology Inheritance System Test..."
+echo ""
+echo "🧪 Step 4.10: RAG CI Verification Test..."
+python -m pytest tests/test_rag_ci_verification.py -v --tb=short -m integration
+
+echo ""
+echo "🧪 Step 4.11: DAS Training Data Initialization Test..."
+python -m pytest tests/test_training_data_initialization.py -v --tb=short -m integration -s || {
+  echo "❌ Training data tests failed!"
+  echo "Checking API status..."
+  curl -s http://localhost:8000/api/health || echo "API not responding"
+  exit 1
+}
+
+echo ""
+echo "🧪 Step 4.12: Ontology Inheritance System Test..."
 python -m pytest tests/test_inheritance_system.py -v --tb=short
 
-echo "🧪 Step 6: CQ/MT Workbench Test..."
+echo ""
+echo "🧪 Step 4.13: CQ/MT Workbench Test..."
 python scripts/cqmt_ui_test.py
 
-echo "🧪 Step 7: CQMT Dependency Tracking Test..."
+echo ""
+echo "🧪 Step 4.14: CQMT Dependency Tracking Test..."
 python -m pytest tests/test_cqmt_dependency_tracking.py -v --tb=short
 
-echo "🧪 Step 8: CQMT Change Detection Test..."
+echo ""
+echo "🧪 Step 4.15: CQMT Change Detection Test..."
 python -m pytest tests/test_ontology_change_detection.py -v --tb=short
 
-echo "🧪 Step 9: Individual Tables CRUD Test..."
+echo ""
+echo "🧪 Step 4.16: Individual Tables CRUD Test..."
 python -m pytest tests/test_individuals_crud.py -v --tb=short
 
-echo "🧪 Step 10: Class Migration Test (XFAIL - Known Issues)..."
+echo ""
+echo "🧪 Step 4.17: Class Migration Test (XFAIL - Known Issues)..."
 python -m pytest tests/test_class_migration.py -v --tb=short || true
 
-echo "🧪 Step 11: Property Migration Test (XFAIL - Known Issues)..."
+echo ""
+echo "🧪 Step 4.18: Property Migration Test (XFAIL - Known Issues)..."
 python -m pytest tests/test_property_migration.py -v --tb=short || true
 
-echo "🧪 Step 12: CQMT Workbench Complete Test..."
+echo ""
+echo "🧪 Step 4.19: CQMT Workbench Complete Test..."
 python -m pytest tests/test_cqmt_workbench_complete.py -v --tb=short
 
-echo "✅ COMPLETE ODRAS system validation finished"
-
-# Step 5: Run tests with coverage (same as CI)
+# Step 5: Run tests with coverage
 echo ""
 echo "📊 Step 5: Running tests with coverage reporting..."
-export PYTHONPATH="${PWD}"
 pytest tests/ \
   --cov=backend \
   --cov-report=html \
@@ -145,9 +186,13 @@ pytest tests/ \
   --cov-report=xml \
   --cov-fail-under=80 || echo "⚠️ Coverage below 80% or tests failed"
 
+echo ""
+echo "🧪 Running RAG Modularization Integration Tests..."
+python -m pytest tests/test_rag_modular.py -v --tb=short -m integration || echo "⚠️ RAG integration tests failed (may require running services)"
+
 # Step 6: Diagnostic report (same as CI)
 echo ""
-echo "📊 Step 6: System diagnostic report"
+echo "📊 Step 6: System diagnostics..."
 echo "============================================================"
 
 echo "DATABASE TABLES:"
@@ -174,6 +219,20 @@ try:
 except Exception as e:
     print(f'Qdrant check failed: {e}')
 " || echo "Qdrant unavailable"
+
+echo ""
+echo "NEO4J STATUS:"
+cypher-shell -a neo4j://localhost:7687 -u neo4j -p testpassword "
+CALL db.labels() YIELD label RETURN label LIMIT 10;
+" || echo "Neo4j unavailable"
+
+echo ""
+echo "REDIS STATUS:"
+redis-cli -h localhost -p 6379 info server | head -5 || echo "Redis unavailable"
+
+echo ""
+echo "FUSEKI STATUS:"
+curl -s http://localhost:3030/\$/ping || echo "Fuseki unavailable"
 
 echo ""
 echo "============================================================"

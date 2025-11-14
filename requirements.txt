@@ -38,6 +38,7 @@ pytest-asyncio>=1.1.0
 pytest-cov>=4.1.0
 pytest-mock>=3.10.0
 pytest-json-report>=1.5.0
+pytest-xdist>=3.3.0  # Parallel test execution
 playwright>=1.55.0
 rich>=13.0.0
 
@@ -45,6 +46,9 @@ rich>=13.0.0
 flake8>=6.0.0
 black>=23.0.0
 bandit>=1.7.0
+pre-commit>=3.5.0  # Git pre-commit hooks
+mypy>=1.5.0  # Type checking (optional but recommended)
+isort>=5.12.0  # Import sorting (optional but recommended)
 
 # Additional utilities
 python-multipart>=0.0.6

@@ -14,6 +14,10 @@
   <script src="https://cdn.jsdelivr.net/npm/highlight.js@11.9.0/highlight.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/mermaid@10.6.1/dist/mermaid.min.js"></script>
 
+  <!-- Cytoscape (required for Ontology Workbench) -->
+  <script src="https://unpkg.com/cytoscape@3.28.1/dist/cytoscape.min.js"></script>
+  <script src="https://unpkg.com/cytoscape-edgehandles@4.0.1/cytoscape-edgehandles.min.js"></script>
+
   <!-- Main Stylesheet (extracted from app.html) -->
   <link rel="stylesheet" href="/static/css/main.css">
 </head>
@@ -199,12 +203,9 @@
           </div>
         </section>
         
-        <!-- Ontology Workbench -->
+        <!-- Ontology Workbench (Dynamic Content) -->
         <section id="wb-ontology" class="workbench active">
-          <div style="padding: 20px;">
-            <h2>Ontology Workbench</h2>
-            <p>Ontology workbench content will be loaded here...</p>
-          </div>
+          <!-- Content will be dynamically created by ontology-ui.js -->
         </section>
         
         <!-- Conceptualizer Workbench -->
@@ -368,6 +369,7 @@
     
     // Workbench modules
     import { initializeRequirementsWorkbench } from '/static/js/workbenches/requirements/requirements-ui.js';
+    import { initializeOntologyWorkbench } from '/static/js/workbenches/ontology/ontology-ui.js';
 
     // Initialize application when DOM is ready
     async function initializeAll() {
@@ -388,13 +390,28 @@
       initializeAll();
     }
 
-    // Initialize requirements workbench when activated
+    // Initialize workbenches when activated
     document.addEventListener('DOMContentLoaded', () => {
+      // Requirements workbench
       const requirementsTab = document.querySelector('[data-wb="requirements"]');
       if (requirementsTab) {
         requirementsTab.addEventListener('click', () => {
           initializeRequirementsWorkbench();
         }, { once: true });
+      }
+      
+      // Ontology workbench (default active)
+      const ontologyTab = document.querySelector('[data-wb="ontology"]');
+      if (ontologyTab) {
+        ontologyTab.addEventListener('click', () => {
+          initializeOntologyWorkbench();
+        }, { once: true });
+      }
+      
+      // Initialize ontology workbench if it's the default active workbench
+      const activeWorkbench = document.querySelector('.workbench.active');
+      if (activeWorkbench && activeWorkbench.id === 'wb-ontology') {
+        initializeOntologyWorkbench();
       }
     });
   </script>

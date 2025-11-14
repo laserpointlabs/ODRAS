@@ -529,6 +529,9 @@
       height: calc(100vh - var(--toolbar-h) - var(--bottombar-h));
       display: flex;
       flex-direction: column;
+      grid-column: 4;
+      min-width: 0;
+      width: 100%;
     }
 
     .workbench {
