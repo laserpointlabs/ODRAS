@@ -33,18 +33,7 @@ function debounce(func, wait) {
   };
 }
 
-// Authenticated fetch helper
-async function authenticatedFetch(url, options = {}) {
-  const token = localStorage.getItem('odras_token');
-  const headers = {
-    'Content-Type': 'application/json',
-    ...options.headers
-  };
-  if (token) {
-    headers['Authorization'] = `Bearer ${token}`;
-  }
-  return fetch(url, { ...options, headers });
-}
+// Authenticated fetch helper is defined later in the file (line ~5150)
 
 // Ontology workbench state
 const ontoState = {
