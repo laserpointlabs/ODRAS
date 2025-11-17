@@ -14,6 +14,10 @@
   <script src="https://cdn.jsdelivr.net/npm/highlight.js@11.9.0/highlight.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/mermaid@10.6.1/dist/mermaid.min.js"></script>
 
+  <!-- Cytoscape (required for Ontology Workbench) -->
+  <script src="https://unpkg.com/cytoscape@3.28.1/dist/cytoscape.min.js"></script>
+  <script src="https://unpkg.com/cytoscape-edgehandles@4.0.1/cytoscape-edgehandles.min.js"></script>
+
   <!-- Main Stylesheet (extracted from app.html) -->
   <link rel="stylesheet" href="/static/css/main.css">
 </head>
@@ -199,12 +203,9 @@
           </div>
         </section>
         
-        <!-- Ontology Workbench -->
+        <!-- Ontology Workbench (Dynamic Content) -->
         <section id="wb-ontology" class="workbench active">
-          <div style="padding: 20px;">
-            <h2>Ontology Workbench</h2>
-            <p>Ontology workbench content will be loaded here...</p>
-          </div>
+          <!-- Content will be dynamically created by ontology-ui.js -->
         </section>
         
         <!-- Conceptualizer Workbench -->
@@ -368,6 +369,58 @@
     
     // Workbench modules
     import { initializeRequirementsWorkbench } from '/static/js/workbenches/requirements/requirements-ui.js';
+    import { createOntologyWorkbench, createOdrasAdapters } from '/static/js/workbenches/ontology/index.js';
+    
+    // Core ODRAS modules for workbench adapters
+    import { apiClient } from '/static/js/core/api-client.js';
+    import { getAppState, updateAppState } from '/static/js/core/state-manager.js';
+    import { subscribeToEvent, emitEvent } from '/static/js/core/event-bus.js';
+
+    // Ontology workbench instance (to prevent multiple initializations)
+    let ontologyWorkbenchInstance = null;
+    
+    // Initialize modular ontology workbench
+    async function initializeOntologyWorkbench() {
+      if (ontologyWorkbenchInstance) {
+        console.log('Ontology workbench already initialized');
+        return ontologyWorkbenchInstance;
+      }
+      
+      try {
+        // Get container element
+        const container = document.getElementById('wb-ontology');
+        if (!container) {
+          console.error('Ontology workbench container not found');
+          return null;
+        }
+        
+        // Create adapters from ODRAS modules
+        const adapters = createOdrasAdapters({
+          apiClient,
+          getAppState,
+          updateAppState,
+          subscribeToEvent,
+          emitEvent
+        });
+        
+        // Create workbench instance
+        ontologyWorkbenchInstance = createOntologyWorkbench({
+          container,
+          apiAdapter: adapters.apiAdapter,
+          stateAdapter: adapters.stateAdapter,
+          eventAdapter: adapters.eventAdapter
+        });
+        
+        // Initialize the workbench
+        await ontologyWorkbenchInstance.initialize();
+        
+        console.log('✅ Modular ontology workbench initialized');
+        return ontologyWorkbenchInstance;
+      } catch (error) {
+        console.error('❌ Failed to initialize ontology workbench:', error);
+        return null;
+      }
+    }
 
     // Initialize application when DOM is ready
     async function initializeAll() {
@@ -388,20 +441,35 @@
       initializeAll();
     }
 
-    // Initialize requirements workbench when activated
+    // Initialize workbenches when activated
     document.addEventListener('DOMContentLoaded', () => {
+      // Requirements workbench
       const requirementsTab = document.querySelector('[data-wb="requirements"]');
       if (requirementsTab) {
         requirementsTab.addEventListener('click', () => {
           initializeRequirementsWorkbench();
         }, { once: true });
       }
+      
+      // Ontology workbench (default active)
+      const ontologyTab = document.querySelector('[data-wb="ontology"]');
+      if (ontologyTab) {
+        ontologyTab.addEventListener('click', () => {
+          initializeOntologyWorkbench();
+        }, { once: true });
+      }
+      
+      // Initialize ontology workbench if it's the default active workbench
+      const activeWorkbench = document.querySelector('.workbench.active');
+      if (activeWorkbench && activeWorkbench.id === 'wb-ontology') {
+        initializeOntologyWorkbench();
+      }
     });
   </script>
 
   <!-- Legacy app.html compatibility layer (temporary, to be removed after full migration) -->
   <script type="module">
-    // Authentication handlers
+    // Authentication handlers (separate module scope requires separate imports)
     import { apiClient } from '/static/js/core/api-client.js';
     import { updateAppState } from '/static/js/core/state-manager.js';
     import { emitEvent } from '/static/js/core/event-bus.js';

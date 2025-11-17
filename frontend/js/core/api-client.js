@@ -78,13 +78,27 @@ class APIClient {
    */
   async get(endpoint, options = {}) {
     const url = `${this.baseURL}${endpoint}`;
-    const response = await fetch(url, {
-      method: 'GET',
-      headers: this.getHeaders(options.headers),
-      ...options
-    });
-
-    return this.handleResponse(response);
+    
+    // Add timeout to prevent hanging requests
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 10000); // 10 second timeout
+    
+    try {
+      const response = await fetch(url, {
+        method: 'GET',
+        headers: this.getHeaders(options.headers),
+        signal: controller.signal,
+        ...options
+      });
+      clearTimeout(timeoutId);
+      return this.handleResponse(response);
+    } catch (error) {
+      clearTimeout(timeoutId);
+      if (error.name === 'AbortError') {
+        throw new Error(`Request timeout: ${endpoint}`);
+      }
+      throw error;
+    }
   }
 
   /**

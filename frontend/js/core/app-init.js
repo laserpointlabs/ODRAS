@@ -29,6 +29,13 @@ export async function initializeApplication() {
   // Set up global event listeners
   setupGlobalEventListeners();
 
+  // Initialize project info loader if user is authenticated
+  const state = getAppState();
+  if (state.token) {
+    const { initializeProjectInfoLoader } = await import('/static/js/core/project-info-loader.js');
+    initializeProjectInfoLoader();
+  }
+
   // Apply initial URL state
   applyURLState();
 
@@ -149,9 +156,13 @@ function setupGlobalEventListeners() {
     console.log('✅ User logged in:', userData);
     showMainView();
     
-    // Load projects after login
+    // Initialize core modules after login
     const { initializeProjectManager } = await import('/static/js/core/project-manager.js');
     await initializeProjectManager();
+    
+    // Initialize project info loader
+    const { initializeProjectInfoLoader } = await import('/static/js/core/project-info-loader.js');
+    initializeProjectInfoLoader();
   });
 
   // Listen for auth:loggedOut event to show auth view
@@ -221,7 +232,20 @@ function showMainView() {
   const logoutBtn = document.getElementById('logoutBtn');
 
   if (authView) authView.style.display = 'none';
-  if (mainView) mainView.style.display = 'grid';
+  if (mainView) {
+    mainView.style.display = 'grid';
+    // After showing main view, ensure default workbench is activated
+    // Import and call switchWorkbench to activate the default workbench
+    import('/static/js/core/workbench-manager.js').then(module => {
+      if (module.switchWorkbench) {
+        // Small delay to ensure DOM is ready
+        setTimeout(() => {
+          const savedWorkbench = localStorage.getItem('active_workbench') || 'ontology';
+          module.switchWorkbench(savedWorkbench);
+        }, 50);
+      }
+    }).catch(err => console.warn('Could not activate default workbench:', err));
+  }
   if (logoutBtn) logoutBtn.style.display = 'block';
 }
 

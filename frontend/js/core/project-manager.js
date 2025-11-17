@@ -7,6 +7,7 @@
 import { apiClient } from './api-client.js';
 import { updateAppState, getAppState } from './state-manager.js';
 import { emitEvent, subscribeToEvent } from './event-bus.js';
+import { renderTree, initializeProjectTree } from './project-tree.js';
 
 const ApiClient = apiClient;
 
@@ -15,6 +16,9 @@ const ApiClient = apiClient;
  */
 export async function initializeProjectManager() {
   console.log('📁 Initializing Project Manager...');
+
+  // Initialize project tree
+  initializeProjectTree();
 
   // Wire up project creation button
   const addNodeBtn = document.getElementById('addNodeBtn');
@@ -116,6 +120,14 @@ export async function selectProject(projectId) {
       }
     }, true);
 
+    // Update localStorage
+    try {
+      localStorage.setItem('active_project_id', projectId);
+    } catch (_) { }
+
+    // Render tree with selected project
+    await renderTree(project);
+
     emitEvent('project:selected', projectId);
     console.log('✅ Project selected:', project.name || projectId);
   } catch (error) {
@@ -125,8 +137,9 @@ export async function selectProject(projectId) {
 
 /**
  * Show create project modal (from app.html)
+ * Exported for programmatic access
  */
-function showCreateProjectModal() {
+export function showCreateProjectModal() {
   // Prevent duplicate modals
   const existingModals = document.querySelectorAll('.modal');
   if (existingModals.length > 0) {
@@ -198,9 +211,14 @@ function showCreateProjectModal() {
 
   document.body.appendChild(modal);
 
-  // Load released namespaces and active domains
-  loadReleasedNamespaces();
-  loadActiveDomains();
+  // Load released namespaces and active domains after modal is in DOM
+  // Pass modal reference to ensure we update the correct select element
+  requestAnimationFrame(() => {
+    setTimeout(() => {
+      loadReleasedNamespaces(modal);
+      loadActiveDomains(modal);
+    }, 100);
+  });
 
   // Wire up cancel button
   const cancelBtn = modal.querySelector('#cancelProjectBtn');
@@ -237,65 +255,169 @@ function showCreateProjectModal() {
 
 /**
  * Load released namespaces for project creation
+ * @param {HTMLElement} modalElement - Optional modal element to search within
  */
-async function loadReleasedNamespaces() {
+async function loadReleasedNamespaces(modalElement = null) {
   try {
     console.log('🔧 Loading released namespaces...');
-    const response = await ApiClient.get('/api/namespaces/released');
-    const namespaces = response.namespaces || response || [];
+    console.log('🔧 ApiClient available:', typeof ApiClient !== 'undefined');
+    console.log('🔧 ApiClient.get available:', typeof ApiClient?.get === 'function');
+    console.log('🔧 Making API call to /api/namespaces/released...');
+    
+    let response;
+    const startTime = Date.now();
+    try {
+      response = await ApiClient.get('/api/namespaces/released');
+      const duration = Date.now() - startTime;
+      console.log(`✅ API call completed in ${duration}ms`);
+      console.log('📦 Namespace API response:', response);
+      console.log('📦 Response type:', typeof response, 'Is array:', Array.isArray(response));
+    } catch (apiError) {
+      const duration = Date.now() - startTime;
+      console.error(`❌ API call failed after ${duration}ms:`, apiError);
+      console.error('❌ API error details:', {
+        message: apiError.message,
+        stack: apiError.stack,
+        name: apiError.name
+      });
+      throw apiError;
+    }
+    
+    // Handle both array response and wrapped response
+    let namespaces = [];
+    if (Array.isArray(response)) {
+      namespaces = response;
+      console.log('✅ Response is array, using directly');
+    } else if (response && response.namespaces && Array.isArray(response.namespaces)) {
+      namespaces = response.namespaces;
+      console.log('✅ Response has namespaces property');
+    } else if (response && typeof response === 'object') {
+      // Try to extract array from object
+      console.warn('⚠️ Unexpected response format, attempting to extract namespaces');
+      namespaces = Object.values(response).find(v => Array.isArray(v)) || [];
+    } else {
+      console.error('❌ Unexpected response format:', typeof response, response);
+    }
 
-    const select = document.getElementById('projectNamespace');
-    if (!select) return;
+    console.log(`📦 Extracted ${namespaces.length} namespaces`);
 
-    if (namespaces.length === 0) {
+    // Find select element - use provided modal or find it
+    const modal = modalElement || document.querySelector('.modal');
+    const select = modal ? modal.querySelector('#projectNamespace') : document.getElementById('projectNamespace');
+    if (!select) {
+      console.error('❌ projectNamespace select element not found');
+      console.error('❌ Modal exists:', !!modal);
+      console.error('❌ All selects:', Array.from(document.querySelectorAll('select')).map(s => s.id));
+      return;
+    }
+    console.log('✅ Found select element in modal');
+
+    if (!namespaces || namespaces.length === 0) {
+      console.warn('⚠️ No namespaces returned from API');
       select.innerHTML = '<option value="">No released namespaces available</option>';
       return;
     }
 
-    select.innerHTML = '<option value="">Select a namespace...</option>' +
+    console.log(`✅ Loading ${namespaces.length} namespaces into dropdown`);
+    console.log('📦 First namespace:', namespaces[0]);
+    
+    const optionsHTML = '<option value="">Select a namespace...</option>' +
       namespaces.map(ns => {
-        const id = ns.id || ns.namespace_id;
+        const id = ns.id || ns.namespace_id || '';
         const path = ns.path || ns.namespace_path || '';
         const name = ns.name || ns.namespace_name || '';
-        return `<option value="${id}">${path} - ${name}</option>`;
+        const displayText = path && name ? `${path} - ${name}` : (name || path || id || 'Unnamed namespace');
+        console.log(`  → Adding namespace: ${id} = ${displayText}`);
+        return `<option value="${id}">${displayText}</option>`;
       }).join('');
+    
+    // Clear and set options
+    select.innerHTML = optionsHTML;
+    
+    // Verify it was set - if not, find select again and retry
+    if (select.innerHTML.length < 50) {
+      console.warn('⚠️ Select innerHTML was not set correctly, finding select again...');
+      const retrySelect = modal ? modal.querySelector('#projectNamespace') : document.getElementById('projectNamespace');
+      if (retrySelect && retrySelect !== select) {
+        console.log('✅ Found different select element, updating it');
+        retrySelect.innerHTML = optionsHTML;
+      } else if (retrySelect) {
+        retrySelect.innerHTML = optionsHTML;
+      }
+    }
+    
+    console.log('✅ Namespaces loaded successfully');
+    console.log('📦 Select element innerHTML length:', select.innerHTML.length);
+    console.log('📦 Select element innerHTML preview:', select.innerHTML.substring(0, 150));
+    // Check options count safely (options may not be immediately available after innerHTML change)
+    try {
+      const optionsCount = select.options?.length;
+      console.log('📦 Select element options count:', optionsCount || 'N/A');
+    } catch (e) {
+      console.log('📦 Select element options count: N/A (not available yet)');
+    }
+    // Success - return early to avoid error handler overwriting the success
+    return;
   } catch (error) {
-    console.error('Error loading released namespaces:', error);
+    console.error('❌ Error loading released namespaces:', error);
+    console.error('❌ Error type:', error?.constructor?.name);
+    console.error('❌ Error message:', error?.message);
+    console.error('❌ Error stack:', error?.stack);
     const select = document.getElementById('projectNamespace');
     if (select) {
-      select.innerHTML = '<option value="">Error loading namespaces</option>';
+      // Only set error message if select is empty or still showing loading message
+      const currentText = select.options[0]?.text || '';
+      if (!currentText || currentText.includes('Loading') || currentText.includes('Error')) {
+        select.innerHTML = `<option value="">Error loading namespaces: ${error.message || 'Unknown error'}</option>`;
+      } else {
+        console.warn('⚠️ Error occurred but namespaces were already loaded, keeping existing options');
+      }
     }
   }
 }
 
 /**
  * Load active domains for project creation
+ * @param {HTMLElement} modalElement - Optional modal element to search within
  */
-async function loadActiveDomains() {
+async function loadActiveDomains(modalElement = null) {
   try {
     console.log('🔧 Loading active domains...');
     const response = await ApiClient.get('/api/domains/active');
-    const domains = response.domains || response || [];
+    console.log('📦 Domain API response:', response);
+    
+    // Handle both array response and wrapped response
+    const domains = Array.isArray(response) ? response : (response.domains || []);
 
-    const select = document.getElementById('projectDomain');
-    if (!select) return;
+    // Find select element - use provided modal or find it
+    const modal = modalElement || document.querySelector('.modal');
+    const select = modal ? modal.querySelector('#projectDomain') : document.getElementById('projectDomain');
+    if (!select) {
+      console.error('❌ projectDomain select element not found');
+      return;
+    }
 
-    if (domains.length === 0) {
+    if (!domains || domains.length === 0) {
+      console.warn('⚠️ No domains returned from API');
       select.innerHTML = '<option value="">No domains available</option>';
       return;
     }
 
+    console.log(`✅ Loading ${domains.length} domains into dropdown`);
     select.innerHTML = '<option value="">Select a domain...</option>' +
       domains.map(domain => {
         const domainName = domain.domain || domain.domain_name || '';
         const description = domain.description || '';
-        return `<option value="${domainName}">${domainName} - ${description}</option>`;
+        const displayText = domainName && description ? `${domainName} - ${description}` : (domainName || 'Unnamed domain');
+        return `<option value="${domainName}">${displayText}</option>`;
       }).join('');
+    
+    console.log('✅ Domains loaded successfully');
   } catch (error) {
-    console.error('Error loading active domains:', error);
+    console.error('❌ Error loading active domains:', error);
     const select = document.getElementById('projectDomain');
     if (select) {
-      select.innerHTML = '<option value="">Error loading domains</option>';
+      select.innerHTML = `<option value="">Error loading domains: ${error.message || 'Unknown error'}</option>`;
     }
   }
 }
@@ -308,12 +430,21 @@ async function handleCreateProject(modal) {
   const originalBtnText = createBtn ? createBtn.textContent : 'Create Project';
 
   try {
-    const nameEl = document.getElementById('projectName');
-    const namespaceEl = document.getElementById('projectNamespace');
-    const domainEl = document.getElementById('projectDomain');
-    const descriptionEl = document.getElementById('projectDescription');
+    // Find elements within the modal
+    const nameEl = modal.querySelector('#projectName');
+    const namespaceEl = modal.querySelector('#projectNamespace');
+    const domainEl = modal.querySelector('#projectDomain');
+    const descriptionEl = modal.querySelector('#projectDescription');
+
+    console.log('🔧 Creating project with:', {
+      name: nameEl?.value,
+      namespace: namespaceEl?.value,
+      domain: domainEl?.value,
+      description: descriptionEl?.value
+    });
 
     if (!nameEl || !namespaceEl) {
+      console.error('❌ Required elements not found in modal');
       alert('Project name and namespace are required');
       return;
     }
@@ -323,7 +454,10 @@ async function handleCreateProject(modal) {
     const domain = domainEl ? domainEl.value : '';
     const description = descriptionEl ? descriptionEl.value.trim() : '';
 
+    console.log('🔧 Validating:', { name, namespaceId, domain, description });
+
     if (!name || !namespaceId) {
+      console.error('❌ Validation failed:', { name: !!name, namespaceId: !!namespaceId });
       alert('Please fill in project name and select a namespace');
       return;
     }
