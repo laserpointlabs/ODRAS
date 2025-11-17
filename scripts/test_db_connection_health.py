@@ -41,6 +41,7 @@ class ConnectionHealthTester:
             db_service._return(conn)
             
         print("✓ Basic connection test passed")
+        return True  # Explicitly return True for consistency
         
     def test_connection_pool_stress(self):
         """Test connection pool under stress to detect leaks."""
@@ -160,27 +161,37 @@ class ConnectionHealthTester:
         tests_passed = 0
         tests_total = 4
         
+        # Test 1: Basic Connection
         try:
-            if self.test_basic_connection():
-                tests_passed += 1
+            self.test_basic_connection()
+            tests_passed += 1
         except Exception as e:
             print(f"❌ Basic connection test failed: {e}")
             
+        # Test 2: Connection Pool Stress  
         try:
             if self.test_connection_pool_stress():
                 tests_passed += 1
+            else:
+                print("❌ Connection pool stress test returned False")
         except Exception as e:
             print(f"❌ Connection pool stress test failed: {e}")
             
+        # Test 3: Concurrent Access
         try:
             if self.test_concurrent_access():
                 tests_passed += 1
+            else:
+                print("❌ Concurrent access test returned False")
         except Exception as e:
             print(f"❌ Concurrent access test failed: {e}")
             
+        # Test 4: Project Lattice Services
         try:
             if self.test_project_lattice_services():
                 tests_passed += 1
+            else:
+                print("❌ Project lattice services test returned False")
         except Exception as e:
             print(f"❌ Project lattice services test failed: {e}")
         
