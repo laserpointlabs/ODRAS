@@ -77,11 +77,10 @@ jobs:
 
       - name: Start ODRAS stack (CI-compatible)
         run: |
-          echo "🚀 Starting ODRAS stack (CI-compatible with CPU ollama)..."
-          # Start core services (no GPU profile)
-          docker-compose up -d
-          # Optionally start CPU ollama for LLM testing
-          docker-compose -f docker-compose.yml -f docker-compose.ci.yml up -d ollama
+          echo "🚀 Starting ODRAS stack (CI-compatible, no LLM)..."
+          # Start core services only (skip Ollama to save disk space)
+          docker-compose up -d postgres redis neo4j fuseki qdrant camunda7 minio
+          # Skip Ollama in CI to prevent CUDA disk space issues
 
           echo "Waiting for services to be ready..."
           sleep 20
