@@ -158,6 +158,31 @@ CREATE TABLE IF NOT EXISTS public.projects (
     iri VARCHAR(1000) UNIQUE
 );
 
+-- Add project lattice columns (idempotent - safe to run multiple times)
+ALTER TABLE public.projects
+ADD COLUMN IF NOT EXISTS project_level INTEGER CHECK (project_level IN (0, 1, 2, 3));
+
+ALTER TABLE public.projects
+ADD COLUMN IF NOT EXISTS parent_project_id UUID REFERENCES public.projects(project_id) ON DELETE SET NULL;
+
+ALTER TABLE public.projects
+ADD COLUMN IF NOT EXISTS publication_status VARCHAR(20) DEFAULT 'draft' 
+    CHECK (publication_status IN ('draft', 'review', 'published', 'deprecated'));
+
+ALTER TABLE public.projects
+ADD COLUMN IF NOT EXISTS published_at TIMESTAMPTZ;
+
+ALTER TABLE public.projects
+ADD COLUMN IF NOT EXISTS published_by UUID REFERENCES public.users(user_id);
+
+ALTER TABLE public.projects
+ADD COLUMN IF NOT EXISTS tenant_id UUID;
+
+-- Add constraint (will fail silently if already exists)
+ALTER TABLE public.projects
+DROP CONSTRAINT IF EXISTS no_self_parent,
+ADD CONSTRAINT no_self_parent CHECK (project_id != parent_project_id);
+
 -- Project membership
 CREATE TABLE IF NOT EXISTS public.project_members (
     user_id UUID NOT NULL REFERENCES public.users(user_id) ON DELETE CASCADE,
@@ -165,6 +190,47 @@ CREATE TABLE IF NOT EXISTS public.project_members (
     role VARCHAR(50) DEFAULT 'member',
     joined_at TIMESTAMPTZ DEFAULT NOW(),
     PRIMARY KEY (user_id, project_id)
+);
+
+-- Project relationships (cousin links - cross-domain coordination)
+CREATE TABLE IF NOT EXISTS public.project_relationships (
+    relationship_id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    source_project_id UUID NOT NULL REFERENCES public.projects(project_id) ON DELETE CASCADE,
+    target_project_id UUID NOT NULL REFERENCES public.projects(project_id) ON DELETE CASCADE,
+    relationship_type VARCHAR(50) NOT NULL,
+    description TEXT,
+    created_by UUID REFERENCES public.users(user_id),
+    created_at TIMESTAMPTZ DEFAULT NOW(),
+    UNIQUE(source_project_id, target_project_id, relationship_type),
+    CHECK (source_project_id != target_project_id)
+);
+
+-- Cross-domain knowledge links (explicit cross-domain knowledge access)
+CREATE TABLE IF NOT EXISTS public.cross_domain_knowledge_links (
+    link_id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    source_project_id UUID NOT NULL REFERENCES public.projects(project_id) ON DELETE CASCADE,
+    target_project_id UUID NOT NULL REFERENCES public.projects(project_id) ON DELETE CASCADE,
+    link_type VARCHAR(50) NOT NULL,
+    source_element_iri TEXT,
+    target_element_iri TEXT,
+    identified_by VARCHAR(50) NOT NULL,
+    confidence FLOAT,
+    status VARCHAR(20) DEFAULT 'proposed' CHECK (status IN ('proposed', 'approved', 'rejected')),
+    approved_by UUID REFERENCES public.users(user_id),
+    approved_at TIMESTAMPTZ,
+    created_by UUID REFERENCES public.users(user_id),
+    created_at TIMESTAMPTZ DEFAULT NOW(),
+    UNIQUE(source_project_id, target_project_id, link_type)
+);
+
+-- Project event subscriptions (pub/sub for artifacts and data)
+CREATE TABLE IF NOT EXISTS public.project_event_subscriptions (
+    subscription_id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    project_id UUID NOT NULL REFERENCES public.projects(project_id) ON DELETE CASCADE,
+    event_type VARCHAR(100) NOT NULL,
+    source_project_id UUID REFERENCES public.projects(project_id) ON DELETE CASCADE,
+    is_active BOOLEAN DEFAULT TRUE,
+    created_at TIMESTAMPTZ DEFAULT NOW()
 );
 
 -- Ontologies registry per project (required for DAS ontology context)
@@ -380,8 +446,22 @@ CREATE INDEX IF NOT EXISTS idx_projects_namespace_id ON public.projects(namespac
 CREATE INDEX IF NOT EXISTS idx_projects_status ON public.projects(status);
 CREATE INDEX IF NOT EXISTS idx_projects_created_by ON public.projects(created_by);
 CREATE INDEX IF NOT EXISTS idx_projects_iri ON public.projects(iri);
+-- Project lattice indexes
+CREATE INDEX IF NOT EXISTS idx_projects_domain ON public.projects(domain);
+CREATE INDEX IF NOT EXISTS idx_projects_level ON public.projects(project_level);
+CREATE INDEX IF NOT EXISTS idx_projects_parent ON public.projects(parent_project_id);
+CREATE INDEX IF NOT EXISTS idx_projects_publication ON public.projects(publication_status);
 CREATE INDEX IF NOT EXISTS idx_project_members_user_id ON public.project_members(user_id);
 CREATE INDEX IF NOT EXISTS idx_project_members_project_id ON public.project_members(project_id);
+-- Project relationship indexes
+CREATE INDEX IF NOT EXISTS idx_project_relationships_source ON public.project_relationships(source_project_id);
+CREATE INDEX IF NOT EXISTS idx_project_relationships_target ON public.project_relationships(target_project_id);
+-- Cross-domain knowledge link indexes
+CREATE INDEX IF NOT EXISTS idx_knowledge_links_source ON public.cross_domain_knowledge_links(source_project_id);
+CREATE INDEX IF NOT EXISTS idx_knowledge_links_target ON public.cross_domain_knowledge_links(target_project_id);
+-- Event subscription indexes
+CREATE INDEX IF NOT EXISTS idx_event_subs_project ON public.project_event_subscriptions(project_id);
+CREATE INDEX IF NOT EXISTS idx_event_subs_type ON public.project_event_subscriptions(event_type);
 
 -- Files indexes
 CREATE INDEX IF NOT EXISTS idx_files_project_id ON files(project_id);

@@ -241,8 +241,20 @@ async def create_project(body: Dict, user=Depends(get_user)):
     name = (body.get("name") or "").strip()
     namespace_id = body.get("namespace_id")
     domain = body.get("domain")
+    project_level = body.get("project_level")
+    parent_project_id = body.get("parent_project_id")
+    tenant_id = body.get("tenant_id")
+    
     if not name:
         raise HTTPException(status_code=400, detail="Name required")
+    
+    # Validate project level if provided
+    if project_level is not None:
+        if not isinstance(project_level, int) or project_level not in [0, 1, 2, 3]:
+            raise HTTPException(
+                status_code=400, 
+                detail="Project level must be 0 (L0), 1 (L1), 2 (L2), or 3 (L3)"
+            )
 
     # Validate namespace if provided
     if namespace_id:
@@ -273,6 +285,9 @@ async def create_project(body: Dict, user=Depends(get_user)):
             description=(body.get("description") or None),
             namespace_id=namespace_id,
             domain=domain,
+            project_level=project_level,
+            parent_project_id=parent_project_id,
+            tenant_id=tenant_id,
         )
 
         # Create project thread automatically (NOT via DAS - via direct service call)

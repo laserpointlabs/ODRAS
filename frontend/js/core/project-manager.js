@@ -107,12 +107,12 @@ export async function loadProjects() {
  */
 export async function selectProject(projectId) {
   console.log('📁 Selecting project:', projectId);
-  
+
   try {
     const response = await ApiClient.get(`/api/projects/${projectId}`);
     const project = response.project || response;
-    
-    updateAppState({ 
+
+    updateAppState({
       activeProject: {
         projectId: projectId,
         name: project.name || project.project_name || 'Project',
@@ -190,6 +190,35 @@ export function showCreateProjectModal() {
         </div>
       </div>
 
+      <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin-bottom: 16px;">
+        <div>
+          <label style="display: block; margin-bottom: 6px; color: var(--text);">Layer (optional):</label>
+          <select id="projectLevel" 
+            style="width: 100%; padding: 8px; border: 1px solid var(--border); border-radius: 6px; background: var(--panel-2); color: var(--text); box-sizing: border-box;">
+            <option value="">Select layer...</option>
+            <option value="0">L0 - Abstract/Foundation</option>
+            <option value="1">L1 - Strategic</option>
+            <option value="2">L2 - Tactical</option>
+            <option value="3">L3 - Concrete</option>
+          </select>
+          <div style="font-size: 0.85em; color: var(--muted); margin-top: 4px;">
+            Layer defines abstraction level
+          </div>
+        </div>
+        
+        <div>
+          <label style="display: block; margin-bottom: 6px; color: var(--text);">Parent Project (optional):</label>
+          <select id="parentProject" 
+            style="width: 100%; padding: 8px; border: 1px solid var(--border); border-radius: 6px; background: var(--panel-2); color: var(--text); box-sizing: border-box;">
+            <option value="">No parent</option>
+            <option value="">Loading projects...</option>
+          </select>
+          <div style="font-size: 0.85em; color: var(--muted); margin-top: 4px;">
+            Parent for workflow coordination
+          </div>
+        </div>
+      </div>
+
       <div style="margin-bottom: 16px;">
         <label style="display: block; margin-bottom: 6px; color: var(--text);">Description (optional):</label>
         <textarea id="projectDescription" placeholder="Brief description of the project..." 
@@ -211,12 +240,13 @@ export function showCreateProjectModal() {
 
   document.body.appendChild(modal);
 
-  // Load released namespaces and active domains after modal is in DOM
+  // Load released namespaces, active domains, and available parent projects
   // Pass modal reference to ensure we update the correct select element
   requestAnimationFrame(() => {
     setTimeout(() => {
       loadReleasedNamespaces(modal);
       loadActiveDomains(modal);
+      loadAvailableParentProjects(modal);
     }, 100);
   });
 
@@ -263,7 +293,7 @@ async function loadReleasedNamespaces(modalElement = null) {
     console.log('🔧 ApiClient available:', typeof ApiClient !== 'undefined');
     console.log('🔧 ApiClient.get available:', typeof ApiClient?.get === 'function');
     console.log('🔧 Making API call to /api/namespaces/released...');
-    
+
     let response;
     const startTime = Date.now();
     try {
@@ -282,7 +312,7 @@ async function loadReleasedNamespaces(modalElement = null) {
       });
       throw apiError;
     }
-    
+
     // Handle both array response and wrapped response
     let namespaces = [];
     if (Array.isArray(response)) {
@@ -320,7 +350,7 @@ async function loadReleasedNamespaces(modalElement = null) {
 
     console.log(`✅ Loading ${namespaces.length} namespaces into dropdown`);
     console.log('📦 First namespace:', namespaces[0]);
-    
+
     const optionsHTML = '<option value="">Select a namespace...</option>' +
       namespaces.map(ns => {
         const id = ns.id || ns.namespace_id || '';
@@ -330,10 +360,10 @@ async function loadReleasedNamespaces(modalElement = null) {
         console.log(`  → Adding namespace: ${id} = ${displayText}`);
         return `<option value="${id}">${displayText}</option>`;
       }).join('');
-    
+
     // Clear and set options
     select.innerHTML = optionsHTML;
-    
+
     // Verify it was set - if not, find select again and retry
     if (select.innerHTML.length < 50) {
       console.warn('⚠️ Select innerHTML was not set correctly, finding select again...');
@@ -345,7 +375,7 @@ async function loadReleasedNamespaces(modalElement = null) {
         retrySelect.innerHTML = optionsHTML;
       }
     }
-    
+
     console.log('✅ Namespaces loaded successfully');
     console.log('📦 Select element innerHTML length:', select.innerHTML.length);
     console.log('📦 Select element innerHTML preview:', select.innerHTML.substring(0, 150));
@@ -385,7 +415,7 @@ async function loadActiveDomains(modalElement = null) {
     console.log('🔧 Loading active domains...');
     const response = await ApiClient.get('/api/domains/active');
     console.log('📦 Domain API response:', response);
-    
+
     // Handle both array response and wrapped response
     const domains = Array.isArray(response) ? response : (response.domains || []);
 
@@ -411,7 +441,7 @@ async function loadActiveDomains(modalElement = null) {
         const displayText = domainName && description ? `${domainName} - ${description}` : (domainName || 'Unnamed domain');
         return `<option value="${domainName}">${displayText}</option>`;
       }).join('');
-    
+
     console.log('✅ Domains loaded successfully');
   } catch (error) {
     console.error('❌ Error loading active domains:', error);
@@ -435,12 +465,16 @@ async function handleCreateProject(modal) {
     const namespaceEl = modal.querySelector('#projectNamespace');
     const domainEl = modal.querySelector('#projectDomain');
     const descriptionEl = modal.querySelector('#projectDescription');
+    const levelEl = modal.querySelector('#projectLevel');
+    const parentEl = modal.querySelector('#parentProject');
 
     console.log('🔧 Creating project with:', {
       name: nameEl?.value,
       namespace: namespaceEl?.value,
       domain: domainEl?.value,
-      description: descriptionEl?.value
+      description: descriptionEl?.value,
+      level: levelEl?.value,
+      parent: parentEl?.value
     });
 
     if (!nameEl || !namespaceEl) {
@@ -453,8 +487,10 @@ async function handleCreateProject(modal) {
     const namespaceId = namespaceEl.value;
     const domain = domainEl ? domainEl.value : '';
     const description = descriptionEl ? descriptionEl.value.trim() : '';
+    const level = levelEl && levelEl.value ? parseInt(levelEl.value) : null;
+    const parentId = parentEl && parentEl.value ? parentEl.value : null;
 
-    console.log('🔧 Validating:', { name, namespaceId, domain, description });
+    console.log('🔧 Validating:', { name, namespaceId, domain, description, level, parentId });
 
     if (!name || !namespaceId) {
       console.error('❌ Validation failed:', { name: !!name, namespaceId: !!namespaceId });
@@ -480,7 +516,9 @@ async function handleCreateProject(modal) {
       name,
       namespace_id: namespaceId,
       ...(domain && { domain }),
-      ...(description && { description })
+      ...(description && { description }),
+      ...(level !== null && { project_level: level }),
+      ...(parentId && { parent_project_id: parentId })
     };
 
     const response = await ApiClient.post('/api/projects', requestData);
@@ -512,7 +550,7 @@ async function handleCreateProject(modal) {
 
   } catch (error) {
     console.error('❌ Failed to create project:', error);
-    
+
     // Reset button
     if (createBtn) {
       if (createBtn._ellipsisInterval) {
@@ -561,5 +599,58 @@ export async function createProject(projectName) {
     console.error('❌ Failed to create project:', error);
     alert(`Failed to create project: ${error.message || 'Unknown error'}`);
     throw error;
+  }
+}
+
+/**
+ * Load available parent projects for project creation modal
+ */
+async function loadAvailableParentProjects(modalElement = null) {
+  try {
+    const response = await ApiClient.get('/api/projects');
+    const projects = response?.projects || [];
+
+    const selector = modalElement ?
+      modalElement.querySelector('#parentProject') :
+      document.getElementById('parentProject');
+
+    if (selector) {
+      // Keep the "No parent" option
+      selector.innerHTML = '<option value="">No parent</option>';
+
+      if (projects.length === 0) {
+        selector.innerHTML += '<option value="" disabled>No projects available</option>';
+      } else {
+        // Group by domain and level for better organization
+        const groupedProjects = {};
+        projects.forEach(project => {
+          const domain = project.domain || 'Unknown';
+          const level = project.project_level !== undefined ? `L${project.project_level}` : 'No Level';
+          const key = `${domain} (${level})`;
+
+          if (!groupedProjects[key]) {
+            groupedProjects[key] = [];
+          }
+          groupedProjects[key].push(project);
+        });
+
+        // Add organized options
+        Object.keys(groupedProjects).sort().forEach(groupKey => {
+          const optgroup = document.createElement('optgroup');
+          optgroup.label = groupKey;
+
+          groupedProjects[groupKey].forEach(project => {
+            const option = document.createElement('option');
+            option.value = project.project_id;
+            option.textContent = project.name;
+            optgroup.appendChild(option);
+          });
+
+          selector.appendChild(optgroup);
+        });
+      }
+    }
+  } catch (error) {
+    console.error('❌ Failed to load parent projects:', error);
   }
 }

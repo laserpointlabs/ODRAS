@@ -235,13 +235,30 @@ class DatabaseService:
         description: Optional[str] = None,
         namespace_id: Optional[str] = None,
         domain: Optional[str] = None,
+        project_level: Optional[int] = None,
+        parent_project_id: Optional[str] = None,
+        tenant_id: Optional[str] = None,
     ) -> Dict[str, Any]:
         conn = self._conn()
         try:
             with conn.cursor(cursor_factory=RealDictCursor) as cur:
+                # Validate parent-child relationship if parent specified
+                if parent_project_id:
+                    validation_result = self._validate_parent_child_relationship(
+                        parent_project_id, project_level, cur
+                    )
+                    if not validation_result["valid"]:
+                        raise ValueError(validation_result["error"])
+                
                 cur.execute(
-                    "INSERT INTO public.projects (name, description, created_by, namespace_id, domain) VALUES (%s, %s, %s, %s, %s) RETURNING project_id, name, description, created_at, updated_at, created_by, is_active, namespace_id, domain",
-                    (name, description or None, owner_user_id, namespace_id, domain),
+                    """INSERT INTO public.projects 
+                       (name, description, created_by, namespace_id, domain, project_level, parent_project_id, tenant_id) 
+                       VALUES (%s, %s, %s, %s, %s, %s, %s, %s) 
+                       RETURNING project_id, name, description, created_at, updated_at, created_by, 
+                                 is_active, namespace_id, domain, project_level, parent_project_id, 
+                                 publication_status, tenant_id""",
+                    (name, description or None, owner_user_id, namespace_id, domain, 
+                     project_level, parent_project_id, tenant_id),
                 )
                 proj = dict(cur.fetchone())
                 # add membership as owner
@@ -251,6 +268,112 @@ class DatabaseService:
                 )
                 conn.commit()
                 return proj
+        finally:
+            self._return(conn)
+
+    def _validate_parent_child_relationship(
+        self, parent_project_id: str, child_level: Optional[int], cursor
+    ) -> Dict[str, Any]:
+        """Validate parent-child relationship rules."""
+        try:
+            # Get parent project info - cursor is already RealDictCursor from create_project
+            cursor.execute(
+                "SELECT project_level, domain FROM public.projects WHERE project_id = %s",
+                (parent_project_id,),
+            )
+            result = cursor.fetchone()
+            if not result:
+                return {"valid": False, "error": f"Parent project {parent_project_id} not found"}
+            
+            # RealDictCursor returns dict-like objects
+            parent_level = result["project_level"] 
+            parent_domain = result["domain"]
+            
+            # Convert to int - parent_level should already be int from database
+            if parent_level is not None and not isinstance(parent_level, int):
+                parent_level = int(parent_level)
+            
+            # Rule: No upward relationships (parent level must be <= child level)
+            if child_level is not None and parent_level is not None:
+                if parent_level > child_level:
+                    return {
+                        "valid": False,
+                        "error": f"Parent L{parent_level} cannot be parent of child L{child_level}. "
+                                 "Knowledge flows downward only (L0→L1→L2→L3)."
+                    }
+            
+            return {"valid": True}
+        
+        except Exception as e:
+            return {"valid": False, "error": f"Validation error: {str(e)}"}
+
+    def get_child_projects(self, project_id: str) -> List[Dict[str, Any]]:
+        """Get all direct child projects."""
+        conn = self._conn()
+        try:
+            with conn.cursor(cursor_factory=RealDictCursor) as cur:
+                cur.execute(
+                    """SELECT p.project_id, p.name, p.domain, p.project_level, p.publication_status
+                       FROM public.projects p
+                       WHERE p.parent_project_id = %s
+                       ORDER BY p.project_level, p.name""",
+                    (project_id,),
+                )
+                return [dict(row) for row in cur.fetchall()]
+        finally:
+            self._return(conn)
+
+    def get_parent_project(self, project_id: str) -> Optional[Dict[str, Any]]:
+        """Get parent project if exists."""
+        conn = self._conn()
+        try:
+            with conn.cursor(cursor_factory=RealDictCursor) as cur:
+                cur.execute(
+                    """SELECT p2.project_id, p2.name, p2.domain, p2.project_level, p2.publication_status
+                       FROM public.projects p1
+                       JOIN public.projects p2 ON p1.parent_project_id = p2.project_id
+                       WHERE p1.project_id = %s""",
+                    (project_id,),
+                )
+                row = cur.fetchone()
+                return dict(row) if row else None
+        finally:
+            self._return(conn)
+
+    def get_project_lineage(self, project_id: str) -> List[Dict[str, Any]]:
+        """Get complete parent lineage up to L0."""
+        lineage = []
+        current_id = project_id
+        
+        while True:
+            parent = self.get_parent_project(current_id)
+            if not parent:
+                break
+            lineage.append(parent)
+            current_id = parent["project_id"]
+            
+            # Safety check to prevent infinite loops
+            if len(lineage) > 10:
+                logger.warning(f"Project lineage too deep for {project_id}, stopping at 10 levels")
+                break
+                
+        return lineage
+
+    def get_domain_projects(
+        self, domain: str, publication_status: str = "published"
+    ) -> List[Dict[str, Any]]:
+        """Get all published projects in a domain."""
+        conn = self._conn()
+        try:
+            with conn.cursor(cursor_factory=RealDictCursor) as cur:
+                cur.execute(
+                    """SELECT project_id, name, domain, project_level, publication_status, published_at
+                       FROM public.projects
+                       WHERE domain = %s AND publication_status = %s
+                       ORDER BY project_level, name""",
+                    (domain, publication_status),
+                )
+                return [dict(row) for row in cur.fetchall()]
         finally:
             self._return(conn)
 
