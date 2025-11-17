@@ -7,6 +7,7 @@ Handles creation, validation, and querying of project relationships.
 
 import logging
 from typing import Dict, List, Optional, Any
+from psycopg2.extras import RealDictCursor
 
 from .db import DatabaseService
 from .config import Settings
@@ -81,7 +82,7 @@ class ProjectRelationshipService:
         try:
             conn = self.db_service._conn()
             try:
-                with conn.cursor() as cur:
+                with conn.cursor(cursor_factory=RealDictCursor) as cur:
                     # Get both directions: where project is source or target
                     cur.execute(
                         """
@@ -119,7 +120,7 @@ class ProjectRelationshipService:
         try:
             conn = self.db_service._conn()
             try:
-                with conn.cursor() as cur:
+                with conn.cursor(cursor_factory=RealDictCursor) as cur:
                     query = """
                         SELECT r.relationship_id, r.source_project_id, r.target_project_id,
                                r.relationship_type, r.description, r.created_at,

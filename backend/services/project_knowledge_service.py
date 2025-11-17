@@ -7,6 +7,7 @@ Implements domain-wide knowledge dissemination and explicit cross-domain knowled
 
 import logging
 from typing import Dict, List, Optional, Any
+from psycopg2.extras import RealDictCursor
 
 from .db import DatabaseService
 from .config import Settings
@@ -99,7 +100,7 @@ class ProjectKnowledgeService:
         try:
             conn = self.db_service._conn()
             try:
-                with conn.cursor() as cur:
+                with conn.cursor(cursor_factory=RealDictCursor) as cur:
                     cur.execute(
                         """SELECT p.project_id, p.name, p.domain, p.project_level, 
                                   p.publication_status, p.published_at,
@@ -210,7 +211,7 @@ class ProjectKnowledgeService:
         try:
             conn = self.db_service._conn()
             try:
-                with conn.cursor() as cur:
+                with conn.cursor(cursor_factory=RealDictCursor) as cur:
                     cur.execute(
                         """SELECT l.link_id, l.source_project_id, l.target_project_id,
                                   l.link_type, l.source_element_iri, l.target_element_iri,
