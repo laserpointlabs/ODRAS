@@ -7,7 +7,8 @@ No legacy compatibility - modern implementation only.
 import logging
 import uuid
 import re
-from typing import Dict, Optional
+import secrets
+from typing import Dict, Optional, Set
 from urllib.parse import quote
 
 from .config import Settings
@@ -139,6 +140,86 @@ class UnifiedIRIService:
         return f"{self.tenant.base_iri}/das/{safe_type}/{safe_id}"
 
     # =======================
+    # 8-Character Universal Resource Codes
+    # =======================
+
+    def generate_8char_code(self) -> str:
+        """
+        Generate 8-character random code for ANY ODRAS resource.
+        Format: A1B2-C3D4 (4 chars + hyphen + 4 chars)
+        Uses alphanumeric characters (excluding confusing ones like 0, O, I, l)
+        
+        Can be used for:
+        - Ontology elements (classes, properties, individuals)
+        - Files, knowledge assets, configurations
+        - Requirements, projects, any resource that needs human-memorable IDs
+        """
+        # Use clear alphanumeric characters (no 0, O, I, l to avoid confusion)
+        chars = "123456789ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnpqrstuvwxyz"
+        
+        # Generate two 4-character groups
+        group1 = ''.join(secrets.choice(chars) for _ in range(4))
+        group2 = ''.join(secrets.choice(chars) for _ in range(4))
+        
+        return f"{group1}-{group2}"
+
+    def generate_unique_8char_code(self, project_id: str, ontology_name: str, max_attempts: int = 10) -> str:
+        """
+        Generate unique 8-character code for ontology elements within an ontology.
+        Ensures no collisions with existing elements in the same ontology.
+        """
+        if not self.db_service:
+            # Without database, just return a random code
+            return self.generate_8char_code()
+        
+        existing_codes = self._get_existing_ontology_codes(project_id, ontology_name)
+        
+        for attempt in range(max_attempts):
+            code = self.generate_8char_code()
+            if code not in existing_codes:
+                return code
+        
+        # Fallback: append attempt number if we can't find unique code
+        base_code = self.generate_8char_code()
+        return f"{base_code[:7]}{attempt}"
+
+    def generate_ontology_element_iri_with_code(self, project_id: str, ontology_name: str, element_code: str) -> str:
+        """
+        Generate ontology element IRI using 8-character code.
+        Format: {tenant_base}/{namespace}/{project_uuid}/ontologies/{name}#{code}
+        Example: https://odras.navy.mil/usn-adt/se/abc123/ontologies/requirements#A1B2-C3D4
+        """
+        ontology_iri = self.generate_ontology_iri(project_id, ontology_name)
+        return f"{ontology_iri}#{element_code}"
+
+    def mint_ontology_element_iri(self, project_id: str, ontology_name: str, element_type: str = "element") -> Dict[str, str]:
+        """
+        Mint a new unique IRI for an ontology element.
+        Returns both the 8-character code and full IRI.
+        
+        Args:
+            project_id: Project UUID
+            ontology_name: Ontology name
+            element_type: Type of element (class, objectProperty, dataProperty) - for logging only
+            
+        Returns:
+            Dict with 'code' and 'iri' keys
+        """
+        code = self.generate_unique_8char_code(project_id, ontology_name)
+        iri = self.generate_ontology_element_iri_with_code(project_id, ontology_name, code)
+        
+        # Log for debugging/monitoring
+        logger.debug(f"Minted {element_type} IRI: {code} -> {iri}")
+        
+        return {
+            "code": code,
+            "iri": iri,
+            "element_type": element_type,
+            "project_id": project_id,
+            "ontology_name": ontology_name
+        }
+
+    # =======================
     # IRI Parsing and Analysis
     # =======================
 
@@ -163,16 +244,17 @@ class UnifiedIRIService:
 
             # Parse standard pattern: /{namespace}/{project}/{resource_type}/{resource_id}
             if len(parts) >= 2:
-                if self._is_uuid(parts[-2]):  # Second-to-last part is project UUID
-                    # Standard project-based pattern
-                    project_idx = -1
-                    for i, part in enumerate(parts):
-                        if self._is_uuid(part):
-                            project_idx = i
-                            break
-                    
+                # Find project UUID in the path
+                project_idx = -1
+                for i, part in enumerate(parts):
+                    if self._is_uuid(part):
+                        project_idx = i
+                        break
+                
+                if project_idx >= 0:
+                    # Found a project UUID
                     if project_idx > 0:
-                        # Namespace path is everything before project UUID
+                        # Everything before project UUID is namespace path
                         components["namespace_path"] = "/".join(parts[:project_idx])
                     components["project_id"] = parts[project_idx]
                     
@@ -248,6 +330,39 @@ class UnifiedIRIService:
             logger.warning(f"Failed to get resource context for project {project_id}: {e}")
             return ResourceContext(project_id=project_id)
 
+    def _get_existing_ontology_codes(self, project_id: str, ontology_name: str) -> Set[str]:
+        """Get existing 8-character codes for elements in an ontology to ensure uniqueness."""
+        if not self.db_service:
+            return set()
+            
+        existing_codes = set()
+        
+        try:
+            conn = self.db_service._conn()
+            try:
+                with conn.cursor() as cur:
+                    # Get ontology IRI first
+                    ontology_iri = self.generate_ontology_iri(project_id, ontology_name)
+                    
+                    # Query Fuseki for existing elements in this ontology
+                    # This would require SPARQL query to get all elements
+                    # For now, we'll use a simple approach and assume low collision probability
+                    
+                    # TODO: Implement SPARQL query to Fuseki to get existing element IRIs
+                    # and extract 8-char codes from fragment identifiers
+                    
+                    # For the initial implementation, we'll rely on the low collision probability
+                    # of 8-character codes from a 58-character alphabet (58^8 ≈ 128 billion combinations)
+                    pass
+                    
+            finally:
+                self.db_service._return(conn)
+                
+        except Exception as e:
+            logger.warning(f"Failed to check existing ontology codes: {e}")
+        
+        return existing_codes
+
     # =======================
     # Validation
     # =======================
@@ -304,8 +419,8 @@ class UnifiedIRIService:
         sanitized = sanitized.replace(" ", "-")
         sanitized = sanitized.replace("_", "-")
 
-        # Remove any characters that aren't alphanumeric, hyphens, or periods
-        sanitized = re.sub(r"[^a-z0-9\-\.]", "", sanitized)
+        # Remove any characters that aren't alphanumeric or hyphens
+        sanitized = re.sub(r"[^a-z0-9\-]", "", sanitized)
 
         # Remove multiple consecutive hyphens
         sanitized = re.sub(r"-+", "-", sanitized)

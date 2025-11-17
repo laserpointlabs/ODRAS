@@ -144,3 +144,86 @@ def test_tenant_iris(
             "requirement": iri_service.generate_requirement_iri(project_id, "req-789")
         }
     }
+
+
+# =======================
+# 8-Character Ontology Element IRI Generation
+# =======================
+
+class MintElementIRIRequest(BaseModel):
+    project_id: str
+    ontology_name: str
+    element_type: str = "element"  # class, objectProperty, dataProperty, individual
+
+
+class ElementIRIResponse(BaseModel):
+    code: str           # 8-character code like "A1B2-C3D4"
+    iri: str            # Full IRI
+    element_type: str   # Type of element
+    project_id: str     # Project UUID
+    ontology_name: str  # Ontology name
+
+
+@router.post("/mint-element-iri", response_model=ElementIRIResponse)
+def mint_ontology_element_iri(
+    request: MintElementIRIRequest,
+    tenant_user: TenantUser = Depends(get_tenant_user),
+    tenant_service: TenantService = Depends(get_tenant_service_dependency)
+):
+    """
+    Mint a new 8-character IRI for an ontology element.
+    
+    This endpoint generates human-memorable 8-character codes (like A1B2-C3D4)
+    for ontology elements (classes, properties, individuals) instead of UUIDs.
+    """
+    # Get tenant info and create IRI service
+    tenant_info = tenant_service.get_tenant(tenant_user.tenant_id)
+    if not tenant_info:
+        raise HTTPException(status_code=404, detail="Tenant not found")
+    
+    iri_service = UnifiedIRIService(tenant_info.to_context())
+    
+    # Mint the element IRI
+    result = iri_service.mint_ontology_element_iri(
+        project_id=request.project_id,
+        ontology_name=request.ontology_name,
+        element_type=request.element_type
+    )
+    
+    return ElementIRIResponse(**result)
+
+
+@router.get("/generate-8char-codes/{count}")
+def generate_sample_8char_codes(
+    count: int,
+    tenant_user: TenantUser = Depends(get_tenant_user),
+    tenant_service: TenantService = Depends(get_tenant_service_dependency)
+):
+    """
+    Generate sample 8-character codes for testing/preview.
+    Useful for showing users what the codes look like.
+    """
+    if count < 1 or count > 20:
+        raise HTTPException(status_code=400, detail="Count must be between 1 and 20")
+    
+    # Get tenant info and create IRI service
+    tenant_info = tenant_service.get_tenant(tenant_user.tenant_id)
+    if not tenant_info:
+        raise HTTPException(status_code=404, detail="Tenant not found")
+    
+    iri_service = UnifiedIRIService(tenant_info.to_context())
+    
+    # Generate sample codes
+    codes = []
+    for i in range(count):
+        code = iri_service.generate_8char_code()
+        codes.append({
+            "code": code,
+            "example_iri": f"{tenant_info.base_iri}/projects/sample-project/ontologies/example#{code}"
+        })
+    
+    return {
+        "tenant_code": tenant_user.tenant_code,
+        "sample_codes": codes,
+        "format_description": "8-character codes in format XXXX-XXXX using clear alphanumeric characters"
+    }

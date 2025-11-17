@@ -49,12 +49,43 @@ User:       https://system.odras.local/users/jdehart
 
 ## Testing
 
-### **Automated Tests** (`scripts/test_multitenant.py`)
+### **Automated Tests**
+
+**Multi-Tenant Tests** (`scripts/test_multitenant.py`)
 - ✅ Database schema validation
 - ✅ Tenant management operations
 - ✅ Unified IRI service functionality
 - ✅ Tenant isolation constraints
 - ✅ API integration testing
+
+**Comprehensive IRI Tests** (`scripts/test_iri_comprehensive.py`)
+- ✅ System tenant IRI patterns (8 resource types)
+- ✅ Custom tenant IRI patterns (Navy, USAF examples)
+- ✅ IRI parsing and component extraction
+- ✅ IRI validation and compliance checking
+- ✅ Edge cases and error handling (8 scenarios)
+- ✅ Cross-resource IRI consistency validation
+
+**Pytest Test Suite** (`tests/test_multi_tenant_ci.py`)
+- ✅ Database schema unit tests
+- ✅ Service layer unit tests
+- ✅ API integration tests (health, auth, tenant endpoints)
+- ✅ Admin tenant operations
+
+### **CI/CD Integration**
+
+**Fast CI** (`.github/workflows/ci-fast.yml`)
+- ✅ Multi-tenant and IRI unit tests (no database required)
+- ✅ IRI generation, parsing, and validation
+- ✅ Cross-tenant IRI patterns
+- ✅ Edge case sanitization testing
+
+**Comprehensive CI** (`.github/workflows/ci.yml`)
+- ✅ Step 13: Multi-Tenant Architecture Test (full database)
+- ✅ Step 13.5: Multi-Tenant Pytest Suite
+- ✅ Step 13.6: Comprehensive IRI Testing (45 test cases)
+- ✅ Step 14: Multi-Tenant API Integration with real endpoints
+- ✅ Enhanced database diagnostics with tenant information
 
 ### **Manual Testing**
 ```bash

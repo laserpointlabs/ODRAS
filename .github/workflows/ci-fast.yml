@@ -43,6 +43,91 @@ jobs:
           python -m pytest tests/test_rag_llm_config.py -v --tb=short -m "not integration and not slow" || echo "⚠️ RAG config tests failed"
           python -m pytest tests/test_rag_hybrid_search.py -v --tb=short -m "not integration and not slow" || echo "⚠️ RAG hybrid search tests failed"
           
+          # Run multi-tenant and IRI unit tests (no services required)
+          echo "📦 Running Multi-Tenant and IRI unit tests..."
+          python -c "
+import sys
+sys.path.append('backend')
+from services.unified_iri_service import UnifiedIRIService, create_tenant_context
+from services.tenant_service import TenantService
+
+# Test IRI service without database
+tenant_ctx = create_tenant_context('test', 'test-org', 'Test Org', 'https://test.example.com/test-org')
+iri_service = UnifiedIRIService(tenant_ctx)
+
+# Test basic IRI generation
+project_uuid = '12345678-1234-1234-1234-123456789abc'
+project_iri = iri_service.generate_project_iri(project_uuid)
+ontology_iri = iri_service.generate_ontology_iri(project_uuid, 'Requirements')
+user_iri = iri_service.generate_user_iri('testuser')
+file_iri = iri_service.generate_file_iri(project_uuid, 'test-doc')
+das_iri = iri_service.generate_das_iri('personas', 'analyst')
+
+print('✓ IRI Service Unit Tests:')
+print(f'  Project IRI: {project_iri}')
+print(f'  Ontology IRI: {ontology_iri}')
+print(f'  User IRI: {user_iri}')
+print(f'  File IRI: {file_iri}')
+print(f'  DAS IRI: {das_iri}')
+
+# Test IRI parsing
+components = iri_service.parse_iri_components(project_iri)
+assert components.get('tenant_code') == 'test-org'
+assert components.get('project_id') == project_uuid
+print('✓ IRI parsing works')
+
+# Test parsing more complex IRIs
+file_components = iri_service.parse_iri_components(file_iri)
+assert file_components.get('tenant_code') == 'test-org'
+assert file_components.get('project_id') == project_uuid
+assert file_components.get('resource_type') == 'files'
+assert file_components.get('resource_id') == 'test-doc'
+print('✓ Complex IRI parsing works')
+
+# Test ontology entity IRI
+entity_iri = iri_service.generate_ontology_entity_iri(project_uuid, 'Requirements', 'Requirement')
+expected_entity = f'{ontology_iri}#requirement'
+assert entity_iri == expected_entity
+print('✓ Ontology entity IRI generation works')
+
+# Test IRI validation
+issues = iri_service.validate_tenant_iri_compliance()
+print(f'✓ IRI validation: {len(issues)} issues found')
+
+# Test different tenant types
+navy_ctx = create_tenant_context('navy', 'usn-adt', 'USN ADT', 'https://odras.navy.mil/usn-adt')
+navy_iri_service = UnifiedIRIService(navy_ctx)
+navy_project_iri = navy_iri_service.generate_project_iri(project_uuid)
+assert 'usn-adt' in navy_project_iri
+print(f'✓ Navy tenant IRI: {navy_project_iri}')
+
+# Test edge case sanitization
+edge_ontology_iri = iri_service.generate_ontology_iri(project_uuid, 'Test Ontology with Spaces & Symbols!')
+assert 'test-ontology-with-spaces-symbols' in edge_ontology_iri
+print('✓ IRI sanitization works for edge cases')
+
+print('✅ Multi-tenant and IRI unit tests passed')
+
+# Test 8-character code generation for ontology elements
+print('\\n📦 Testing 8-Character Ontology Element IRI Generation...')
+for i in range(5):
+    code = iri_service.generate_8char_code()
+    print(f'  Code {i+1}: {code}')
+    # Validate format
+    import re
+    if not re.match(r'^[123456789ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnpqrstuvwxyz]{4}-[123456789ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnpqrstuvwxyz]{4}$', code):
+        raise AssertionError(f'Invalid 8-char code format: {code}')
+
+# Test full ontology element IRI generation
+element_result = iri_service.mint_ontology_element_iri(project_uuid, 'TestOntology', 'class')
+print(f'✓ Minted element IRI: {element_result[\"code\"]} -> {element_result[\"iri\"]}')
+assert element_result['code'] in element_result['iri']
+assert '#' in element_result['iri']
+print('✓ 8-character ontology element IRI generation works')
+
+print('✅ All unit tests including 8-character IRI generation passed')
+" || echo "⚠️ Multi-tenant/IRI unit tests failed"
+          
           echo "✅ Fast unit tests completed"
           echo "Note: Failures here are warnings - comprehensive CI will catch all issues"
         env:
