@@ -54,6 +54,8 @@ jobs:
           docker system prune -af --volumes || echo "Docker prune failed"
           # Remove old container logs
           sudo truncate -s 0 /var/lib/docker/containers/*/*-json.log 2>/dev/null || echo "No container logs to clear"
+          # Remove unnecessary system packages to free space
+          sudo rm -rf /usr/share/dotnet /opt/ghc /usr/local/share/boost 2>/dev/null || echo "Additional cleanup completed"
           
           echo "📊 Disk usage after cleanup:"
           df -h
@@ -89,16 +91,20 @@ jobs:
           pip install -r requirements.txt
           pip install pytest pytest-asyncio psycopg2-binary
 
+      - name: Setup Ollama for CI
+        uses: ai-action/ollama-action@v1
+        with:
+          model: 'llama3.2:1b'  # Lightweight model for CI
+          prompt: 'System ready'  # Simple test to verify LLM works
+
       - name: Start ODRAS stack (CI-compatible)
         run: |
-          echo "🚀 Starting ODRAS stack (CI-compatible with CPU ollama)..."
+          echo "🚀 Starting ODRAS stack (CI-compatible)..."
           # Clean up disk space before starting
           docker system prune -f --volumes
           
-          # Start core services (no GPU profile)
-          docker-compose up -d
-          # Start CPU ollama with CI profile (no CUDA layers)
-          docker-compose -f docker-compose.yml -f docker-compose.ci.yml up -d ollama
+          # Start core services (Ollama handled by GitHub Action above)
+          docker-compose up -d postgres redis neo4j fuseki qdrant camunda7 minio
 
           echo "Waiting for services to be ready..."
           sleep 20
@@ -122,7 +128,15 @@ jobs:
             sleep 2
           done
 
-          echo "✅ ODRAS stack ready with proper container names and GPU fallback"
+          # Verify Ollama is available
+          echo "Checking Ollama availability..."
+          if ollama --version > /dev/null 2>&1; then
+            echo "✅ Ollama ready (GitHub Action)"
+          else
+            echo "⚠️ Ollama not available (some tests may be skipped)"
+          fi
+          
+          echo "✅ ODRAS stack ready"
 
       - name: Initialize database (EXACTLY like local)
         run: |
