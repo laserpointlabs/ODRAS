@@ -34,6 +34,7 @@ from ..api.iri_resolution import router as iri_router
 from ..api.federated_access import router as federated_router
 from ..api.events import router as events_router
 from ..api.users import router as users_router
+from ..api.tenants import router as tenants_router
 from ..api.core import router as core_router
 from ..api.ui import router as ui_router
 from ..api.system import router as system_router
@@ -105,6 +106,9 @@ def register_routers(app: FastAPI) -> None:
     
     # User management
     app.include_router(users_router)
+    
+    # Tenant management
+    app.include_router(tenants_router)
     
     # Project lattice endpoints
     app.include_router(project_relationships_router, tags=["project-relationships"])
