@@ -373,8 +373,8 @@ jobs:
             /tmp/*test_results*.json
             /tmp/*confidence*.json
             /tmp/*performance*.json
+          if-no-files-found: ignore  # Don't fail if no metrics files found
           retention-days: 90 # Keep performance data longer for trend analysis
-        continue-on-error: true  # Don't fail if metrics files don't exist
 
   # REMOVED: das-integration-test job to eliminate port conflicts
   # DAS test now runs within main job using shared infrastructure
