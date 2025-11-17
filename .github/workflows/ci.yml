@@ -142,6 +142,9 @@ jobs:
         run: |
           echo "🗄️ Running ./odras.sh init-db (SAME AS LOCAL)..."
           ./odras.sh init-db
+          
+          echo "🔍 Testing database connection health..."
+          python scripts/test_db_connection_health.py
 
       - name: Start ODRAS application (EXACTLY like local)
         run: |
@@ -208,6 +211,15 @@ jobs:
           echo "📊 Service status: $service_status"
 
           echo "🎯 COMPLETE ODRAS APPLICATION READY"
+          
+          # Test connection pool health after app startup
+          echo "🔍 Testing connection pool health after application startup..."
+          python scripts/test_db_connection_health.py || {
+            echo "❌ Connection pool health check failed!"
+            echo "📊 Connection pool status:"
+            curl -s http://localhost:8000/api/system/status 2>/dev/null || echo "Could not get system status"
+            exit 1
+          }
 
       - name: Run COMPLETE ODRAS system tests (IDENTICAL to local)
         run: |
