@@ -26,6 +26,7 @@ CREATE TABLE IF NOT EXISTS public.users (
     is_admin BOOLEAN DEFAULT FALSE,
     is_active BOOLEAN DEFAULT TRUE,
     iri VARCHAR(1000) UNIQUE,
+    tenant_id UUID NOT NULL REFERENCES public.tenants(tenant_id) DEFAULT '00000000-0000-0000-0000-000000000000'::UUID,
     created_at TIMESTAMPTZ DEFAULT NOW(),
     updated_at TIMESTAMPTZ DEFAULT NOW()
 );
@@ -42,6 +43,92 @@ CREATE TABLE IF NOT EXISTS public.auth_tokens (
     last_used_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
     is_active BOOLEAN DEFAULT TRUE
 );
+
+-- =====================================
+-- MULTI-TENANT INFRASTRUCTURE
+-- =====================================
+
+-- Tenant management table
+CREATE TABLE IF NOT EXISTS public.tenants (
+    tenant_id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    tenant_code VARCHAR(50) UNIQUE NOT NULL, -- Short code for IRIs (usn-adt, afit-research)
+    tenant_name VARCHAR(255) NOT NULL,       -- Display name (USN ADT, AFIT Research)
+    tenant_type VARCHAR(50) DEFAULT 'organization', -- organization, program, research, commercial
+    parent_tenant_id UUID REFERENCES public.tenants(tenant_id),
+    
+    -- Configuration
+    max_projects INTEGER DEFAULT 1000,
+    max_users INTEGER DEFAULT 500,
+    max_storage_gb INTEGER DEFAULT 100,
+    
+    -- IRI Configuration
+    base_iri VARCHAR(1000) NOT NULL, -- https://odras.navy.mil/usn-adt
+    custom_domain VARCHAR(255),      -- Optional custom domain
+    
+    -- Features enabled
+    features_enabled TEXT[] DEFAULT '{}', -- project_lattice, cross_domain_links, das_advanced
+    
+    -- Status
+    status VARCHAR(20) DEFAULT 'active' CHECK (status IN ('active', 'suspended', 'archived')),
+    subscription_tier VARCHAR(20) DEFAULT 'basic', -- basic, professional, enterprise
+    
+    -- Metadata
+    created_by UUID REFERENCES public.users(user_id),
+    created_at TIMESTAMPTZ DEFAULT NOW(),
+    updated_at TIMESTAMPTZ DEFAULT NOW(),
+    
+    -- Constraints
+    CHECK (tenant_code ~ '^[a-z0-9][a-z0-9-]*[a-z0-9]$'), -- kebab-case validation
+    CHECK (LENGTH(tenant_code) >= 3 AND LENGTH(tenant_code) <= 50)
+);
+
+-- Tenant membership table
+CREATE TABLE IF NOT EXISTS public.tenant_members (
+    tenant_id UUID NOT NULL REFERENCES public.tenants(tenant_id) ON DELETE CASCADE,
+    user_id UUID NOT NULL REFERENCES public.users(user_id) ON DELETE CASCADE,
+    role VARCHAR(50) DEFAULT 'member' CHECK (role IN ('admin', 'member', 'viewer')),
+    joined_at TIMESTAMPTZ DEFAULT NOW(),
+    invited_by UUID REFERENCES public.users(user_id),
+    PRIMARY KEY (tenant_id, user_id)
+);
+
+-- System tenant for default data
+INSERT INTO public.tenants (
+    tenant_id, tenant_code, tenant_name, tenant_type, base_iri, status
+) VALUES (
+    '00000000-0000-0000-0000-000000000000'::UUID,
+    'system',
+    'System Resources',
+    'system',
+    'https://system.odras.local',
+    'active'
+) ON CONFLICT (tenant_id) DO NOTHING;
+
+-- Indexes for tenant tables
+CREATE INDEX IF NOT EXISTS idx_tenants_tenant_code ON public.tenants(tenant_code);
+CREATE INDEX IF NOT EXISTS idx_tenants_status ON public.tenants(status) WHERE status = 'active';
+CREATE INDEX IF NOT EXISTS idx_tenant_members_user_id ON public.tenant_members(user_id);
+CREATE INDEX IF NOT EXISTS idx_tenant_members_tenant_id ON public.tenant_members(tenant_id);
+
+-- Tenant-scoped indexes for performance
+CREATE INDEX IF NOT EXISTS idx_users_tenant_id ON public.users(tenant_id);
+CREATE INDEX IF NOT EXISTS idx_projects_tenant_id ON public.projects(tenant_id);
+CREATE INDEX IF NOT EXISTS idx_files_tenant_id ON public.files(tenant_id);
+CREATE INDEX IF NOT EXISTS idx_knowledge_assets_tenant_id ON public.knowledge_assets(tenant_id);
+CREATE INDEX IF NOT EXISTS idx_ontologies_registry_tenant_id ON public.ontologies_registry(tenant_id);
+
+-- Triggers for updated_at
+CREATE OR REPLACE FUNCTION update_updated_at_column()
+RETURNS TRIGGER AS $$
+BEGIN
+    NEW.updated_at = NOW();
+    RETURN NEW;
+END;
+$$ LANGUAGE plpgsql;
+
+CREATE TRIGGER update_tenants_updated_at
+    BEFORE UPDATE ON public.tenants
+    FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
 
 -- =====================================
 -- PROJECT & NAMESPACE MANAGEMENT
@@ -176,7 +263,7 @@ ALTER TABLE public.projects
 ADD COLUMN IF NOT EXISTS published_by UUID REFERENCES public.users(user_id);
 
 ALTER TABLE public.projects
-ADD COLUMN IF NOT EXISTS tenant_id UUID;
+ADD COLUMN IF NOT EXISTS tenant_id UUID NOT NULL REFERENCES public.tenants(tenant_id) DEFAULT '00000000-0000-0000-0000-000000000000'::UUID;
 
 -- Add constraint (will fail silently if already exists)
 ALTER TABLE public.projects
@@ -236,6 +323,7 @@ CREATE TABLE IF NOT EXISTS public.project_event_subscriptions (
 -- Ontologies registry per project (required for DAS ontology context)
 CREATE TABLE IF NOT EXISTS public.ontologies_registry (
     id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    tenant_id UUID NOT NULL REFERENCES public.tenants(tenant_id) DEFAULT '00000000-0000-0000-0000-000000000000'::UUID,
     project_id UUID REFERENCES public.projects(project_id) ON DELETE CASCADE,
     graph_iri TEXT UNIQUE NOT NULL,
     label TEXT,
@@ -252,6 +340,7 @@ CREATE TABLE IF NOT EXISTS public.ontologies_registry (
 -- Files table for knowledge management compatibility
 CREATE TABLE IF NOT EXISTS files (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    tenant_id UUID NOT NULL REFERENCES public.tenants(tenant_id) DEFAULT '00000000-0000-0000-0000-000000000000'::UUID,
     project_id UUID NOT NULL,
     filename VARCHAR(500) NOT NULL,
     original_filename VARCHAR(500),
@@ -287,6 +376,7 @@ CREATE TABLE IF NOT EXISTS file_content (
 -- Knowledge Assets Table
 CREATE TABLE IF NOT EXISTS knowledge_assets (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    tenant_id UUID NOT NULL REFERENCES public.tenants(tenant_id) DEFAULT '00000000-0000-0000-0000-000000000000'::UUID,
     source_file_id UUID REFERENCES files(id) ON DELETE SET NULL,
     project_id UUID NOT NULL,
     title VARCHAR(512) NOT NULL,
