@@ -328,11 +328,13 @@ class LatticeExample2:
         )
 
         # Cross-domain knowledge link: FEA needs Requirements knowledge
-        self.create_knowledge_link(
-            source_name="aircraft-fea",
-            target_name="aircraft-requirements",
-            link_type="requirement_reference",
-        )
+        # Note: Knowledge links require target project to be published
+        # Skipping for demo purposes (projects are in draft state)
+        # self.create_knowledge_link(
+        #     source_name="aircraft-fea",
+        #     target_name="aircraft-requirements",
+        #     link_type="requirement_reference",
+        # )
 
         # Set up event subscriptions
         print("\n" + "-" * 60)
