@@ -200,7 +200,28 @@ This removes all created projects after the demonstration.
 
 ## Complete Demonstration Workflow
 
-For a complete customer demonstration:
+### Quick Start (All-in-One)
+
+For a complete automated demonstration:
+
+```bash
+# Run complete demo (creates, visualizes, executes, cleans up)
+python scripts/demo/run_complete_demo.py 2
+
+# Keep projects for further exploration
+python scripts/demo/run_complete_demo.py 2 --keep-projects
+```
+
+This single command:
+1. Creates the project lattice
+2. Validates the structure
+3. Generates interactive visualization HTML
+4. Executes workflow with mock workbenches
+5. Cleans up (unless --keep-projects specified)
+
+### Manual Step-by-Step
+
+For a manual demonstration with more control:
 
 1. **Create the Lattice**:
    ```bash
@@ -215,7 +236,7 @@ For a complete customer demonstration:
 
 3. **Execute the Workflow**:
    ```bash
-   python scripts/demo/execute_workflow.py 2 --interactive
+   python scripts/demo/execute_workflow.py 2
    ```
 
 4. **Show the Results**:
