@@ -109,6 +109,64 @@ python scripts/demo/create_lattice_example_3.py
 - Cousin relationships across domains
 - Event cascade showing system self-assembly
 
+## Visualization
+
+### Interactive Graph Visualization
+
+Generate an interactive HTML visualization of the lattice:
+
+```bash
+# Visualize all projects
+python scripts/demo/visualize_lattice.py
+
+# Visualize from a specific root project
+python scripts/demo/visualize_lattice.py <project_id>
+
+# Specify output file
+python scripts/demo/visualize_lattice.py --output my_lattice.html
+```
+
+This creates an interactive Cytoscape.js visualization showing:
+- Project nodes colored by level (L0-L3)
+- Parent-child relationships (solid blue lines)
+- Cousin relationships (dashed gray lines)
+- Click and drag to explore
+- Hover to highlight projects
+
+Open the generated HTML file in a web browser to view the lattice.
+
+### Workflow Execution with Mock Workbenches
+
+Execute a step-by-step workflow demonstration showing data flow:
+
+```bash
+# Execute scenario 1 (simple 3-project)
+python scripts/demo/execute_workflow.py 1
+
+# Execute scenario 2 (aircraft FEA workflow)
+python scripts/demo/execute_workflow.py 2
+
+# Execute scenario 3 (multi-domain bootstrap)
+python scripts/demo/execute_workflow.py 3
+
+# Interactive mode (pause between steps)
+python scripts/demo/execute_workflow.py 2 --interactive
+```
+
+The workflow executor:
+- Shows each step of the workflow
+- Performs mock calculations at each project (e.g., FEA adds 2+2)
+- Demonstrates data flow between projects
+- Shows event publishing and subscription notifications
+- Displays final results
+
+**Mock Workbenches:**
+- **Requirements Workbench**: Validates and approves requirements
+- **Loads Workbench**: Calculates structural loads (60% wings, 40% fuselage)
+- **FEA Workbench**: Performs finite element analysis (mock: adds loads together)
+- **Cost Workbench**: Estimates cost based on mass and material
+- **Strategy/Tactical/Implementation Workbenches**: Process workflow stages
+
 ## Validation
 
 After creating a lattice, validate its structure:
@@ -139,6 +197,32 @@ python scripts/demo/create_lattice_example_3.py --cleanup
 ```
 
 This removes all created projects after the demonstration.
+
+## Complete Demonstration Workflow
+
+For a complete customer demonstration:
+
+1. **Create the Lattice**:
+   ```bash
+   python scripts/demo/create_lattice_example_2.py
+   ```
+
+2. **Visualize the Structure**:
+   ```bash
+   python scripts/demo/visualize_lattice.py
+   # Open lattice_visualization.html in browser
+   ```
+
+3. **Execute the Workflow**:
+   ```bash
+   python scripts/demo/execute_workflow.py 2 --interactive
+   ```
+
+4. **Show the Results**:
+   - Point to the visualization showing the lattice structure
+   - Walk through each step of the workflow execution
+   - Highlight how data flows from Requirements → Loads → FEA → Cost
+   - Show how cousin relationships enable cross-domain coordination
 
 ## Customer Demonstration Talking Points
 
