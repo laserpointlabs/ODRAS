@@ -63,12 +63,12 @@ class LatticeExample1:
     def get_default_namespace(self) -> Optional[str]:
         """Get default namespace ID."""
         try:
-            response = self.client.get("/api/namespace/simple")
+            response = self.client.get("/api/namespaces/released")
             if response.status_code == 200:
-                namespaces = response.json().get("namespaces", [])
-                if namespaces:
-                    default_ns = next((ns for ns in namespaces if ns["status"] == "released"), namespaces[0])
-                    return default_ns["id"]
+                namespaces = response.json()
+                if isinstance(namespaces, list) and namespaces:
+                    # Use first released namespace
+                    return namespaces[0]["id"]
             return None
         except Exception as e:
             print(f"⚠️  Error getting namespace: {e}")
