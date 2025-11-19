@@ -1,0 +1,44 @@
+---
+alwaysApply: true
+---
+# Repository Cleanliness Standards
+
+## 🎯 CRITICAL: Repository Cleanliness
+- NEVER create unnecessary files in root directory
+- ALWAYS organize files in appropriate directories
+- KEEP root directory minimal (15 files maximum)
+- PREVENT documentation sprawl - consolidate instead of creating new docs
+- MAINTAIN clean structure established during September 2025 cleanup
+
+## 🎯 Success Criteria
+- **Root directory**: ≤15 files
+- **Documentation**: ≤35 files, well-organized in docs/
+- **Scripts**: ≤50 files, all actively used
+- **Database build**: `./odras.sh clean -y && ./odras.sh init-db` works flawlessly
+- **DAS functionality**: No collection errors, das_service account works
+- **Repository size**: Minimal, no unnecessary files
+
+## 🔄 Regular Maintenance (Monthly)
+1. **Review unused scripts** - move to cleanup/unused_scripts/ if uncertain
+2. **Check document count** - consolidate if approaching limits
+3. **Test database build** - ensure all migrations work
+4. **Verify DAS collections** - all 5 collections exist
+5. **Clean temporary files** - logs, test artifacts, etc.
+
+## 📚 Reference Documentation
+- **Document History**: docs/DOCUMENT_HISTORY.md
+- **Architecture Guides**: docs/architecture/ (consolidated)
+- **Feature Guides**: docs/features/ (consolidated)
+- **Testing Guide**: docs/development/TESTING_GUIDE.md
+- **Database Schema**: backend/database_schema_info.json
+
+## 🏆 Repository Philosophy
+**"Clean, Minimal, Functional"**
+- Every file has a clear purpose
+- Every directory is logically organized
+- Every script is actively used
+- Every document provides unique value
+- Every change preserves cleanliness
+
+**Remember**: We spent significant effort creating this clean structure in September 2025.
+**Maintain it religiously** - it's easier to keep clean than to clean up later!
