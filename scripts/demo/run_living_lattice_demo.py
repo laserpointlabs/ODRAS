@@ -560,9 +560,12 @@ def main():
     print("\nRequirements to be used:")
     print(requirements_text.strip())
     
-    # Confirm before starting
+    # Confirm before starting (skip if non-interactive)
     if not args.manual_mode:
-        input("\n⏸️  Press Enter to start bootstrapping from these requirements...")
+        try:
+            input("\n⏸️  Press Enter to start bootstrapping from these requirements...")
+        except (EOFError, KeyboardInterrupt):
+            print("\n🚀 Starting automatically (non-interactive mode)...")
     
     # Run demonstration
     demonstrator = LivingLatticeDemonstrator()

@@ -103,11 +103,19 @@ class LatticeWebSocketServer:
         
         try:
             # Send initial lattice data
-            lattice_data = await self.fetch_lattice_data()
-            await websocket.send(json.dumps({
-                "type": "initial_lattice",
-                "data": lattice_data
-            }))
+            try:
+                lattice_data = await self.fetch_lattice_data()
+                await websocket.send(json.dumps({
+                    "type": "initial_lattice",
+                    "data": lattice_data
+                }))
+                logger.info(f"Sent initial lattice data: {len(lattice_data.get('projects', []))} projects")
+            except Exception as e:
+                logger.error(f"Error fetching/sending initial data: {e}", exc_info=True)
+                await websocket.send(json.dumps({
+                    "type": "error",
+                    "message": f"Failed to fetch lattice data: {str(e)}"
+                }))
             
             # Keep connection alive and handle messages
             async for message in websocket:
@@ -117,10 +125,12 @@ class LatticeWebSocketServer:
                 except json.JSONDecodeError:
                     logger.warning(f"Invalid JSON received: {message}")
                 except Exception as e:
-                    logger.error(f"Error handling message: {e}")
+                    logger.error(f"Error handling message: {e}", exc_info=True)
         
         except websockets.exceptions.ConnectionClosed:
             logger.info("WebSocket connection closed")
+        except Exception as e:
+            logger.error(f"Error in WebSocket handler: {e}", exc_info=True)
         finally:
             self.connections.discard(websocket)
             logger.info(f"WebSocket disconnected. Total connections: {len(self.connections)}")
@@ -233,7 +243,12 @@ class LatticeWebSocketServer:
         await self.authenticate_with_odras()
         
         # Start WebSocket server
-        async with websockets.serve(self.handle_websocket, "localhost", self.port):
+        # websockets.serve calls handler(websocket) - path is available on websocket.path
+        async def handler(websocket):
+            path = getattr(websocket, 'path', '')
+            await self.handle_websocket(websocket, path)
+        
+        async with websockets.serve(handler, "localhost", self.port):
             logger.info(f"✅ WebSocket server running on ws://localhost:{self.port}")
             
             # Start periodic updates

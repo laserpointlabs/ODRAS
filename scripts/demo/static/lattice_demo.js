@@ -22,10 +22,10 @@ class LatticeVisualizer {
         // Configuration
         this.websocketUrl = 'ws://localhost:8081';
         this.gridSpacing = {
-            columnWidth: 140,
-            rowHeight: 100,
-            startX: 80,
-            startY: 60
+            columnWidth: 180,  // Increased for better spacing
+            rowHeight: 120,    // Increased for better spacing
+            startX: 100,
+            startY: 80
         };
         
         this.init();
@@ -71,13 +71,15 @@ class LatticeVisualizer {
                             else if (level === 3) baseColor = '#ef4444'; // Red
                             else baseColor = '#64748b';                  // Gray
                             
-                            // Modify opacity based on state
-                            if (state === 'draft') return baseColor + '80';      // 50% opacity
-                            else if (state === 'processing') return baseColor;   // Full opacity + animation
-                            else if (state === 'ready') return baseColor;       // Full opacity
-                            else if (state === 'published') return baseColor;   // Full opacity
+                            // For draft state, use rgba for transparency
+                            if (state === 'draft') {
+                                const r = parseInt(baseColor.substr(1, 2), 16);
+                                const g = parseInt(baseColor.substr(3, 2), 16);
+                                const b = parseInt(baseColor.substr(5, 2), 16);
+                                return `rgba(${r}, ${g}, ${b}, 0.6)`;
+                            }
                             
-                            return baseColor;
+                            return baseColor; // Full opacity for other states
                         },
                         'color': '#ffffff',
                         'text-valign': 'center',
@@ -268,8 +270,59 @@ class LatticeVisualizer {
     updateLattice(latticeData) {
         console.log('📊 Updating lattice visualization...');
         
-        const projects = latticeData.projects || [];
+        let projects = latticeData.projects || [];
         const relationships = latticeData.relationships || [];
+        
+        // ALWAYS infer project levels from names since API doesn't return them
+        projects = projects.map(p => {
+            const name = (p.name || '').toLowerCase();
+            
+            // Infer level from name patterns
+            if (name.includes('foundation') || name.includes('ontology')) {
+                p.project_level = 0;  // L0 Foundation
+            } else if (name.includes('icd') || name.includes('mission-analysis') || name.includes('cost-strategy')) {
+                p.project_level = 1;  // L1 Strategic
+            } else if (name.includes('cdd') || name.includes('conops') || name.includes('affordability')) {
+                p.project_level = 2;  // L2 Tactical
+            } else if (name.includes('concept') || name.includes('trade-study')) {
+                p.project_level = 3;  // L3 Concrete
+            } else {
+                // Default to 1 if we can't determine
+                p.project_level = 1;
+            }
+            return p;
+        });
+        
+        // Filter to only show the most recent lattice projects
+        // Keep only the lattice project names we expect
+        projects = projects.filter(p => {
+            const name = (p.name || '').toLowerCase();
+            const latticeNames = [
+                'foundation-ontology', 'icd-development', 'mission-analysis', 'cost-strategy',
+                'cdd-development', 'conops-development', 'affordability-analysis',
+                'solution-concept-a', 'solution-concept-b', 'trade-study'
+            ];
+            return latticeNames.includes(name);
+        });
+        
+        // If no lattice projects found, show the 10 most recent projects
+        if (projects.length === 0) {
+            console.log('No lattice projects found, showing 10 most recent...');
+            projects = latticeData.projects.slice(0, 10);
+            projects.forEach(p => {
+                if (p.project_level === null || p.project_level === undefined) {
+                    p.project_level = 1; // Default level for visualization
+                }
+            });
+        }
+        
+        console.log(`Showing ${projects.length} projects (levels inferred if needed)`);
+        
+        // Debug: Log project details
+        console.log('Project details:');
+        projects.slice(0, 5).forEach(p => {
+            console.log(`  ${p.name}: level=${p.project_level}, domain=${p.domain}`);
+        });
         
         // Extract domains and organize projects
         this.domains.clear();
@@ -308,11 +361,16 @@ class LatticeVisualizer {
         
         // Create nodes
         projects.forEach(project => {
+            // Ensure project_level is a number
+            const level = typeof project.project_level === 'number' ? project.project_level : 
+                         project.project_level !== null && project.project_level !== undefined ? 
+                         parseInt(project.project_level) : 0;
+            
             const element = {
                 data: {
                     id: project.project_id,
                     label: project.name || 'Project',
-                    level: project.project_level || 0,
+                    level: level,
                     domain: project.domain || 'unknown',
                     state: project.state || 'draft',
                     type: 'project'
@@ -353,22 +411,51 @@ class LatticeVisualizer {
     applyGridLayout() {
         const nodes = this.cy.nodes();
         
-        // Calculate positions for each node based on grid layout
+        // Group nodes by domain and layer to handle overlaps
+        const gridCells = new Map();
+        
         nodes.forEach(node => {
-            const level = node.data('level');
-            const domain = node.data('domain');
+            const level = node.data('level') || 0;
+            const domain = node.data('domain') || 'unknown';
             
-            const domainIndex = this.domainOrder.indexOf(domain);
-            const layerIndex = level;
-            
-            const x = this.gridSpacing.startX + (domainIndex * this.gridSpacing.columnWidth);
-            const y = this.gridSpacing.startY + (layerIndex * this.gridSpacing.rowHeight);
-            
-            node.position({ x, y });
+            const key = `${domain}-${level}`;
+            if (!gridCells.has(key)) {
+                gridCells.set(key, []);
+            }
+            gridCells.get(key).push(node);
         });
         
-        // Fit to view
-        this.cy.fit(this.cy.nodes(), 50);
+        // Position nodes with offsets for multiple nodes in same cell
+        gridCells.forEach((nodesInCell, key) => {
+            const [domain, level] = key.split('-');
+            const domainIndex = this.domainOrder.indexOf(domain);
+            const layerIndex = parseInt(level) || 0;
+            
+            // Base position for this grid cell
+            const baseX = this.gridSpacing.startX + (domainIndex * this.gridSpacing.columnWidth);
+            const baseY = this.gridSpacing.startY + (layerIndex * this.gridSpacing.rowHeight);
+            
+            // If multiple nodes in same cell, offset them
+            if (nodesInCell.length === 1) {
+                nodesInCell[0].position({ x: baseX, y: baseY });
+            } else {
+                // Arrange multiple nodes in a small cluster
+                const offsetRadius = 25;
+                const angleStep = (2 * Math.PI) / nodesInCell.length;
+                nodesInCell.forEach((node, index) => {
+                    const angle = index * angleStep;
+                    const offsetX = Math.cos(angle) * offsetRadius;
+                    const offsetY = Math.sin(angle) * offsetRadius;
+                    node.position({ 
+                        x: baseX + offsetX, 
+                        y: baseY + offsetY 
+                    });
+                });
+            }
+        });
+        
+        // Fit to view with padding
+        this.cy.fit(this.cy.nodes(), 80);
     }
     
     updateDomainLabels() {
@@ -410,6 +497,19 @@ class LatticeVisualizer {
         const eventLog = document.getElementById('eventLog');
         if (!eventLog) return;
         
+        // Rate limit: don't add duplicate events within 1 second
+        const eventKey = `${eventData.event_type}-${eventData.source_project_id}`;
+        const now = Date.now();
+        if (!this.lastEventTimes) this.lastEventTimes = new Map();
+        
+        if (this.lastEventTimes.has(eventKey)) {
+            const timeSince = now - this.lastEventTimes.get(eventKey);
+            if (timeSince < 1000) { // Skip if less than 1 second since last
+                return;
+            }
+        }
+        this.lastEventTimes.set(eventKey, now);
+        
         // Remove "no events" message
         const noEvents = eventLog.querySelector('.no-events');
         if (noEvents) noEvents.remove();
@@ -427,9 +527,9 @@ class LatticeVisualizer {
         
         eventLog.insertBefore(eventItem, eventLog.firstChild);
         
-        // Keep only last 20 events
+        // Keep only last 10 events (reduced from 20)
         const events = eventLog.querySelectorAll('.event-item');
-        if (events.length > 20) {
+        if (events.length > 10) {
             events[events.length - 1].remove();
         }
     }
@@ -533,16 +633,27 @@ class LatticeVisualizer {
         // Simulate project state changes in response to events
         const affectedProjects = this.findEventSubscribers(eventData.event_type, eventData.source_project_id);
         
+        // Limit to prevent cascading loops - only process if not too many recent events
+        const recentEventCount = this.getRecentEventCount(5000); // last 5 seconds
+        if (recentEventCount > 10) {
+            console.log('⚠️ Too many recent events, skipping cascade to prevent loop');
+            return;
+        }
+        
         affectedProjects.forEach(projectId => {
+            // Only process if project is not already processing
+            const node = this.cy.getElementById(projectId);
+            if (node.length && node.data('state') === 'processing') {
+                return; // Skip if already processing
+            }
+            
             // Set project to processing state
             this.updateProjectState(projectId, 'processing');
             
-            // After processing time, set to ready
+            // After processing time, set to ready (but don't auto-publish)
             setTimeout(() => {
                 this.updateProjectState(projectId, 'ready');
-                
-                // Potentially publish new event from this project
-                this.simulateProcessingComplete(projectId);
+                // Removed automatic event publishing to prevent loops
             }, 2000 + Math.random() * 3000); // 2-5 second processing time
         });
     }
