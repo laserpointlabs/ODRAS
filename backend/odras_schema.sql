@@ -1212,7 +1212,11 @@ INSERT INTO domain_registry (domain, description, owner, created_by) VALUES
 ('cybersecurity', 'Cybersecurity and information assurance', 'admin@odras.local', 'admin'),
 ('communications', 'Communication systems and protocols', 'admin@odras.local', 'admin'),
 ('radar-systems', 'Radar and sensor technologies', 'admin@odras.local', 'admin'),
-('weapons-systems', 'Weapons and armament systems', 'admin@odras.local', 'admin')
+('weapons-systems', 'Weapons and armament systems', 'admin@odras.local', 'admin'),
+('cost', 'Cost analysis and modeling', 'admin@odras.local', 'admin'),
+('foundation', 'Foundational and abstract projects', 'admin@odras.local', 'admin'),
+('structures', 'Structural analysis and engineering', 'admin@odras.local', 'admin'),
+('analysis', 'Analysis and computational modeling', 'admin@odras.local', 'admin')
 ON CONFLICT (domain) DO NOTHING;
 
 -- Insert default namespaces
