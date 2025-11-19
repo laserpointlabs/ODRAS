@@ -293,4 +293,3 @@ ollama run <model-name> "test prompt"
 
 *Last Updated: November 2025*  
 *Consolidated from: LOCAL_LLM_SETUP.md, LOCAL_LLM_QUICKREF.md, OLLAMA_GPU_SETUP_GUIDE.md*
-

@@ -627,4 +627,3 @@ curl -H "Authorization: Bearer $TOKEN" \
 
 *Last Updated: November 2025*  
 *Consolidated from: CQMT_API_TESTING_EXAMPLES.md, CQMT_MANUAL_TESTING_GUIDE.md, CQMT_UI_TEST_PLAN.md, CQMT_COVERAGE_ANALYSIS_PLAN.md, and related testing documentation*
-

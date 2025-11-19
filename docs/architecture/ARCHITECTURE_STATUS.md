@@ -349,4 +349,3 @@ The integration architecture defines external system integration patterns and ca
 ---
 
 *This document consolidates status information from individual architecture CURRENT_STATUS.md files. For detailed information about specific architectures, refer to their respective guides in docs/architecture/.*
-

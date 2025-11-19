@@ -358,4 +358,3 @@ The Process Workbench provides tools for managing BPMN workflows and process exe
 ---
 
 *This document consolidates status information from individual workbench CURRENT_STATUS.md files. For detailed information about specific workbenches, refer to their respective guides in docs/workbenches/.*
-

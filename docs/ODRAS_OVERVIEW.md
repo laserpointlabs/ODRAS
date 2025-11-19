@@ -65,4 +65,3 @@ The Decision Assistance System (DAS) provides:
 - Project context awareness with conversation memory
 - RAG-powered knowledge retrieval from project documents
 - Proactive capabilities (roadmap): initiate investigations, recommend acquisitions, schedule tasks
-
