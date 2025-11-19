@@ -93,9 +93,15 @@ After disabling servers:
 ## Recommended MCP Server Priority
 
 ### ✅ **Keep Active** (Essential)
-- **GitHub** - Code repository management
 - **Browser** - Web browsing and research
 - **Context7** - Documentation lookup (if used)
+
+### ❌ **Can Disable** (We Use CLI Instead)
+- **GitHub MCP Server** - We use `git` and `gh` CLI commands instead
+  - All Git operations: `git checkout`, `git commit`, `git push`
+  - All GitHub operations: `gh pr create`, `gh pr merge`
+  - GitHub MCP tools are NOT used in our workflow
+  - **Recommendation**: Disable GitHub MCP server (saves ~15 tools)
 
 ### ⚠️ **Evaluate** (Use Case Dependent)
 - **Chrome DevTools** - Only if actively debugging browsers
@@ -139,11 +145,16 @@ After disabling servers:
 - File System: 8 tools
 - **Total: 58 tools** ❌
 
-**After** (disable Chrome DevTools, Playwright, File System):
-- GitHub: 15 tools
+**After** (disable GitHub MCP, Chrome DevTools, Playwright, File System):
 - Browser: 8 tools
 - Context7: 12 tools
-- **Total: 35 tools** ✅
+- **Total: 20 tools** ✅
+
+**Why disable GitHub MCP?**
+- We use `git` CLI for all Git operations
+- We use `gh` CLI for all GitHub operations (PRs, issues, etc.)
+- GitHub MCP tools are redundant in our workflow
+- Disabling saves ~15 tool slots
 
 ## Maintenance
 
@@ -214,4 +225,3 @@ After disabling servers:
 6. ⏳ Document active servers above
 
 *Last Updated: November 2024*
-
