@@ -153,7 +153,14 @@ start_ws() {
     fi
     
     cd "$DEMO_DIR"
-    python3 visualization_server.py --ws-port $WS_PORT --websocket-only > "$WS_LOG" 2>&1 &
+    
+    # Use venv Python if available, otherwise system Python
+    local python_cmd="python3"
+    if [[ -f "$PROJECT_ROOT/.venv/bin/python3" ]]; then
+        python_cmd="$PROJECT_ROOT/.venv/bin/python3"
+    fi
+    
+    "$python_cmd" visualization_server.py --ws-port $WS_PORT --websocket-only > "$WS_LOG" 2>&1 &
     local pid=$!
     
     # Wait a moment and find the actual Python process
@@ -182,13 +189,21 @@ start_llm() {
         return 1
     fi
     
+    cd "$PROJECT_ROOT"
+    
+    # Use venv Python if available, otherwise system Python
+    local python_cmd="python3"
+    if [[ -f "$PROJECT_ROOT/.venv/bin/python3" ]]; then
+        python_cmd="$PROJECT_ROOT/.venv/bin/python3"
+    fi
+    
     cd "$DEMO_DIR"
-    python3 llm_service.py > "$LLM_LOG" 2>&1 &
+    nohup "$python_cmd" llm_service.py > "$LLM_LOG" 2>&1 &
     local pid=$!
     
     # Wait a moment and find the actual Python process
     sleep 2
-        local actual_pid=$(pgrep -f "llm_service.py" | head -1)
+    local actual_pid=$(pgrep -f "llm_service.py" | head -1)
     if [[ -n "$actual_pid" ]] && ps -p "$actual_pid" > /dev/null 2>&1; then
         echo "$actual_pid" > "$LLM_PID_FILE"
         # Check if service is responding
