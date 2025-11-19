@@ -357,7 +357,45 @@ python scripts/single_query_test.py
 
 **Related Documentation:**
 - **RAG Stabilization Guide:** `docs/development/RAG_STABILIZATION_GUIDE.md`
-- **SQL-First RAG:** `docs/sql_first_rag_implementation.md`
+- **RAG Architecture:** `docs/architecture/RAG_ARCHITECTURE.md`
+
+## 🤖 DAS Testing
+
+### **DAS Comprehensive Testing**
+
+**Test Suites:**
+- `test_working_ontology_attributes.py` - Rich ontology attributes testing
+- `test_das_comprehensive_context_awareness.py` - Context awareness validation
+- `test_das_integration_comprehensive.py` - Integration testing
+- `test_das_edge_cases_comprehensive.py` - Edge case handling
+
+**Context Areas Tested:**
+- Rich ontology attributes (metadata, hierarchy, properties)
+- Project metadata and structure
+- Knowledge assets and files
+- Conversation memory and history
+- Edge cases and error handling
+- Cross-context integration
+
+**Evaluation Methods:**
+- LLM-based evaluation for response quality
+- Concept-based scoring for accuracy
+- Performance metrics (response time, token usage)
+- Realistic thresholds (not perfectionist)
+
+### **GitHub Artifacts**
+
+**DAS Test Reports** (30-day retention):
+- Location: GitHub Actions → Workflow runs → Artifacts
+- Contents: Markdown reports, JSON results, application logs
+- Use Cases: Review failures, validate enhancements, debug context issues
+
+**Access:**
+```bash
+# Download artifacts from GitHub Actions UI
+# Or use GitHub CLI:
+gh run download <run-id> --name das-test-reports
+```
 
 ## 📋 Daily Testing Workflow
 
