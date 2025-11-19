@@ -140,6 +140,11 @@ class IntelligentLatticeGenerator {
         document.getElementById('resetBtn')?.addEventListener('click', () => {
             this.resetDemo();
         });
+        
+        // Debug panel control
+        document.getElementById('showDebugBtn')?.addEventListener('click', () => {
+            this.showDebugContext();
+        });
     }
     
     loadExampleRequirements() {
@@ -225,6 +230,9 @@ Emergency response teams need rapid deployment UAV capability for disaster asses
                 if (debugResponse.ok) {
                     this.debugContext = await debugResponse.json();
                     this.showDebugContext();
+                    
+                    // Show debug button for reopening
+                    document.getElementById('showDebugBtn').style.display = 'block';
                 }
                 
                 this.updateAnalysisStatus('✅ Real LLM generation complete');
@@ -252,13 +260,22 @@ Emergency response teams need rapid deployment UAV capability for disaster asses
             this.createLatticeVisualization();
             this.enableControls();
             this.updateAnalysisStatus('✅ Generated using probabilistic mock');
+            
+            // Show debug button even for mock
+            document.getElementById('showDebugBtn').style.display = 'block';
         } finally {
             document.getElementById('generateLatticeBtn').disabled = false;
         }
     }
     
     showDebugContext() {
-        if (!this.debugContext) return;
+        if (!this.debugContext && !this.currentLattice) return;
+        
+        // If no debug context but have current lattice, show lattice info
+        if (!this.debugContext) {
+            this.showMockDebugInfo();
+            return;
+        }
         
         console.log('🔍 LLM Debug Context:', this.debugContext);
         
@@ -323,6 +340,75 @@ Emergency response teams need rapid deployment UAV capability for disaster asses
         }
         
         // Remove existing debug panel if any
+        const existing = document.getElementById('debugPanel');
+        if (existing) existing.remove();
+        
+        document.body.appendChild(debugPanel);
+    }
+    
+    showMockDebugInfo() {
+        // Show debug info for mock generation
+        const debugPanel = document.createElement('div');
+        debugPanel.id = 'debugPanel';
+        debugPanel.style.cssText = `
+            position: fixed; 
+            top: 20px; 
+            right: 20px; 
+            width: 400px; 
+            max-height: 80vh; 
+            background: var(--dark-2); 
+            border: 2px solid var(--warning); 
+            border-radius: 8px; 
+            padding: 16px; 
+            z-index: 1000;
+            overflow-y: auto;
+            font-size: 0.8rem;
+        `;
+        
+        debugPanel.innerHTML = `
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px;">
+                <h4 style="color: var(--warning); margin: 0;">🔍 Generation Context (Mock)</h4>
+                <button onclick="this.parentElement.parentElement.remove()" style="background: var(--danger); color: white; border: none; padding: 4px 8px; border-radius: 4px; cursor: pointer;">✕</button>
+            </div>
+            
+            <div style="margin-bottom: 8px;">
+                <strong>Source:</strong> Probabilistic Mock LLM<br>
+                <strong>Type:</strong> ${this.currentLattice.lattice_type || 'mock_generation'}<br>
+                <strong>Probabilistic:</strong> ✅ Yes<br>
+            </div>
+            
+            <div style="margin-bottom: 8px; padding: 8px; background: var(--dark-3); border-radius: 4px;">
+                <strong style="color: var(--warning);">📝 Mock Analysis Process:</strong><br>
+                <div style="font-size: 0.75rem; margin-top: 4px;">
+                    1. Analyzed requirements for key themes (disaster, performance, etc.)<br>
+                    2. Probabilistically selected variant based on content<br>
+                    3. Generated ${this.currentLattice.projects?.length || 0} projects with logical relationships<br>
+                    4. Each run produces different structure (truly probabilistic)
+                </div>
+            </div>
+            
+            <div style="margin-bottom: 8px;">
+                <strong style="color: var(--primary);">📊 Generated Structure:</strong><br>
+                <div style="font-size: 0.75rem;">
+                    Projects: ${this.currentLattice.projects?.length || 0}<br>
+                    Data Flows: ${this.currentLattice.data_flows?.length || 0}<br>
+                    Confidence: ${Math.round((this.currentLattice.confidence || 0) * 100)}%<br>
+                    Domains: ${this.currentLattice.domains?.join(', ') || 'unknown'}
+                </div>
+            </div>
+            
+            <div style="background: var(--dark-3); padding: 8px; border-radius: 4px; font-size: 0.75rem;">
+                <strong>Analysis Summary:</strong><br>
+                ${this.currentLattice.analysis_summary || 'No summary available'}
+            </div>
+            
+            <div style="margin-top: 8px; padding: 8px; background: rgba(16, 185, 129, 0.1); border-radius: 4px; font-size: 0.75rem;">
+                <strong style="color: var(--success);">💡 To see real OpenAI context:</strong><br>
+                Set OPENAI_API_KEY in .env file and restart the LLM debug service
+            </div>
+        `;
+        
+        // Remove existing debug panel
         const existing = document.getElementById('debugPanel');
         if (existing) existing.remove();
         
