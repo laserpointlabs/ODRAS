@@ -69,6 +69,15 @@ ORDER BY name;
 3. **Document Active Tools**: Maintain a list in this file
 4. **Quarterly Review**: Include MCP tool audit in quarterly cleanup
 
+## ⚠️ **If You See "Exceeding Total Tools Limit" Warning**
+
+Cursor has a **limit of 40 MCP tools** total. If you're seeing this warning:
+
+1. **See**: `MCP_TOOLS_REDUCTION_GUIDE.md` for step-by-step instructions
+2. **Quick Fix**: Disable unused MCP servers in Cursor settings
+3. **Priority**: Keep only essential servers (GitHub, Browser, Context7)
+4. **Disable**: Chrome DevTools, Playwright, File System (if not actively using)
+
 ## Active Tools Log
 
 *Update this section as you enable/disable tools*
@@ -80,4 +89,3 @@ ORDER BY name;
 ---
 
 *Last Updated: November 2024*
-
