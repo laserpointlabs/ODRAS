@@ -25,6 +25,10 @@ yarn-error.log*
 *.swp
 *.swo
 *~
+external_task_worker.log
+
+# Cursor chat backups (large files)
+data/cursor_chat_backups/
 
 # Database files
 *.db
