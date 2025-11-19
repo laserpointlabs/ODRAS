@@ -12,7 +12,8 @@ import threading
 from pathlib import Path
 
 # Add project root to Python path
-project_root = Path(__file__).parent.parent
+# tests/scripts/test_db_connection_health.py -> tests/scripts/ -> tests/ -> project root
+project_root = Path(__file__).parent.parent.parent
 sys.path.insert(0, str(project_root))
 
 from backend.services.config import Settings
