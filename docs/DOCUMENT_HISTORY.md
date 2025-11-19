@@ -2,6 +2,29 @@
 
 This document tracks all documentation changes, consolidations, and deletions to maintain historical record.
 
+## Document Restoration - November 2025
+
+### SDD and Related Documents Restoration ✅
+**Date:** November 2025  
+**Files Restored:**
+- `docs/architecture/odras_sdd.md` (974 lines)
+- `docs/development/FRONTEND_REFACTORING_STATUS.md` (130 lines)
+- `docs/development/WORKBENCH_VISIBILITY_PATTERN.md` (172 lines)
+
+**Original Creation Date:** November 17, 2025 (all created together in commit 9394357)
+
+**Reason:** These documents were accidentally deleted during documentation cleanup (November 19, 2025). They were incorrectly marked as redundant, but are important architecture and development documentation that should be preserved.
+
+**Action Taken:**
+- Restored from git history (commit 9394357)
+- Committed to main branch
+- Merged to feature/ontology-workbench-refactor
+- Merged to feature/project-lattice-demos
+
+**Note:** These documents contain comprehensive system architecture and development patterns documentation and should not be deleted in future cleanups.
+
+---
+
 ## Major Documentation Consolidation - November 2025
 
 **Branch:** `cleanup/documentation-consolidation`  
