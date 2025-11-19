@@ -131,6 +131,52 @@
             font-size: 0.8rem;
             font-weight: 600;
         }
+        
+        /* Canvas legend positioning */
+        .canvas-legend {
+            position: absolute;
+            top: 20px;
+            right: 20px;
+            background: rgba(15, 23, 42, 0.95);
+            border: 1px solid var(--border-dark);
+            border-radius: 8px;
+            padding: 12px;
+            font-size: 0.8rem;
+            z-index: 10;
+            backdrop-filter: blur(5px);
+        }
+        
+        .canvas-legend h4 {
+            color: var(--primary);
+            margin: 0 0 8px 0;
+            font-size: 0.9rem;
+        }
+        
+        .canvas-legend .legend-item {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            margin-bottom: 4px;
+            font-size: 0.75rem;
+        }
+        
+        .canvas-legend .legend-color {
+            width: 12px;
+            height: 12px;
+            border-radius: 2px;
+        }
+        
+        .canvas-legend .legend-line {
+            width: 16px;
+            height: 2px;
+            border-radius: 1px;
+        }
+        
+        .canvas-legend .legend-divider {
+            height: 1px;
+            background: var(--border-dark);
+            margin: 6px 0;
+        }
     </style>
 </head>
 <body>
@@ -231,6 +277,32 @@
                 
                 <div class="graph-container">
                     <div id="cy" class="cytoscape-container"></div>
+                    
+                    <!-- Legend positioned in canvas corner -->
+                    <div class="canvas-legend">
+                        <h4>Legend</h4>
+                        <div class="legend-item">
+                            <div class="legend-color" style="background: #3b82f6;"></div>
+                            <span>L0 Foundation</span>
+                        </div>
+                        <div class="legend-item">
+                            <div class="legend-color" style="background: #10b981;"></div>
+                            <span>L1 Strategic</span>
+                        </div>
+                        <div class="legend-item">
+                            <div class="legend-color" style="background: #f59e0b;"></div>
+                            <span>L2 Tactical</span>
+                        </div>
+                        <div class="legend-item">
+                            <div class="legend-color" style="background: #ef4444;"></div>
+                            <span>L3 Concrete</span>
+                        </div>
+                        <div class="legend-divider"></div>
+                        <div class="legend-item">
+                            <div class="legend-line" style="background: #60a5fa; height: 2px;"></div>
+                            <span>Data Flow</span>
+                        </div>
+                    </div>
                 </div>
             </div>
 
@@ -259,31 +331,6 @@
             </div>
         </div>
 
-        <!-- Legend -->
-        <div class="legend">
-            <h4>Legend</h4>
-            <div class="legend-item">
-                <div class="legend-color" style="background: #3b82f6;"></div>
-                <span>L0 Foundation</span>
-            </div>
-            <div class="legend-item">
-                <div class="legend-color" style="background: #10b981;"></div>
-                <span>L1 Strategic</span>
-            </div>
-            <div class="legend-item">
-                <div class="legend-color" style="background: #f59e0b;"></div>
-                <span>L2 Tactical</span>
-            </div>
-            <div class="legend-item">
-                <div class="legend-color" style="background: #ef4444;"></div>
-                <span>L3 Concrete</span>
-            </div>
-            <div class="legend-divider"></div>
-            <div class="legend-item">
-                <div class="legend-line" style="background: #60a5fa; height: 2px;"></div>
-                <span>Data Flow</span>
-            </div>
-        </div>
     </div>
 
     <script src="intelligent_lattice.js"></script>
