@@ -359,6 +359,189 @@ python scripts/single_query_test.py
 - **RAG Stabilization Guide:** `docs/development/RAG_STABILIZATION_GUIDE.md`
 - **SQL-First RAG:** `docs/sql_first_rag_implementation.md`
 
+## 📋 Daily Testing Workflow
+
+### **Quick Validation (Most Common)**
+```bash
+# After code changes - validates complete workflow
+pytest tests/api/test_full_use_case.py -v -s
+```
+**What it tests:**
+- ✅ Project creation and management
+- ✅ Ontology creation with entities and properties
+- ✅ File uploads and management
+- ✅ Knowledge assets and search
+- ✅ System verification and cleanup
+- ✅ Real database integration
+
+### **Schema Change Validation**
+```bash
+# After database schema changes - full rebuild
+pytest tests/api/test_schema_validation.py -v -s
+```
+**What it does:**
+1. 🔄 Stops ODRAS API
+2. 🧹 Cleans entire database (`./odras.sh clean -y`)
+3. 🏗️ Rebuilds from scratch (`./odras.sh init-db`)
+4. 🚀 Starts ODRAS API
+5. ✅ Runs complete workflow validation
+
+### **Component Testing**
+```bash
+# Test specific components during development
+pytest tests/api/test_project_crud.py -v        # Projects only
+pytest tests/api/test_ontology_crud.py -v       # Ontology only
+pytest tests/api/test_file_crud.py -v           # Files only
+```
+
+### **Pytest Command Reference**
+
+**Essential Flags:**
+```bash
+-v, --verbose      # Show detailed test output
+-s, --no-capture   # Show print() statements in real-time
+--tb=short         # Shorter error tracebacks
+--tb=long          # Full error tracebacks
+-x                 # Stop on first failure
+```
+
+**Common Combinations:**
+```bash
+# Development workflow
+pytest tests/api/test_full_use_case.py -v -s --tb=short
+
+# Debugging failures
+pytest tests/api/test_project_crud.py -v -s --tb=long -x
+
+# Quick status check
+pytest tests/api/test_full_use_case.py --tb=short
+
+# Run specific test method
+pytest tests/api/test_full_use_case.py::TestFullODRASUseCase::test_complete_odras_workflow -v
+```
+
+### **Prerequisites**
+
+**Services Must Be Running:**
+```bash
+# Check service status
+docker ps
+
+# Ensure all services are up
+docker-compose up -d
+
+# Check ODRAS API status
+./odras.sh status
+
+# Start if needed
+./odras.sh start
+```
+
+**Required Services:**
+- ✅ PostgreSQL (port 5432)
+- ✅ Neo4j (ports 7474, 7687)
+- ✅ Qdrant (port 6333)
+- ✅ Redis (port 6379)
+- ✅ Fuseki (port 3030)
+- ✅ ODRAS API (port 8000)
+
+### **Test Results Interpretation**
+
+**✅ Success Indicators:**
+```bash
+# Full workflow success
+🎉 WORKFLOW COMPLETE!
+✓ Admin functions (prefixes, domains, namespaces)
+✓ Project creation and management
+✓ Ontology and entity creation
+✓ File upload and management
+✓ Knowledge asset processing
+✓ Search and retrieval
+```
+
+**⚠️ Partial Success (Expected):**
+Some admin endpoints may not be implemented:
+```bash
+⚠️ Prefix creation not available (status: 404)
+⚠️ Domain creation not available (status: 404)
+⚠️ Namespace creation not available (status: 404)
+```
+This is **normal** - not all admin features are implemented yet.
+
+**❌ Failure Scenarios:**
+
+**API Connection Issues:**
+```bash
+# Symptoms
+httpx.ConnectError: Connection refused
+ReadTimeout
+
+# Solutions
+./odras.sh start
+# Wait 10 seconds, retry test
+```
+
+**Authentication Failures:**
+```bash
+# Symptoms
+assert 500 == 200 (login failed)
+Login error: 'NoneType' object has no attribute 'cursor'
+
+# Solutions
+./odras.sh clean -y && ./odras.sh init-db
+# This recreates test users
+```
+
+**Database Issues:**
+```bash
+# Symptoms
+Connection failed, Table doesn't exist
+
+# Solutions
+./odras.sh clean -y && ./odras.sh init-db
+./odras.sh start
+```
+
+### **Development Workflow**
+
+**Recommended Testing Sequence:**
+
+1. **Daily Development:**
+   ```bash
+   pytest tests/api/test_full_use_case.py -v -s
+   ```
+
+2. **Before Committing:**
+   ```bash
+   pytest tests/api/test_full_use_case.py -v --tb=short
+   pytest tests/api/test_project_crud.py -v
+   ```
+
+3. **After Database Changes:**
+   ```bash
+   pytest tests/api/test_schema_validation.py -v -s
+   ```
+
+4. **Component Development:**
+   ```bash
+   pytest tests/api/test_project_crud.py -v      # Working on projects
+   pytest tests/api/test_ontology_crud.py -v     # Working on ontology
+   ```
+
+**Integration with Development:**
+```bash
+# Standard development cycle
+git pull origin main
+docker-compose up -d
+./odras.sh restart
+pytest tests/api/test_full_use_case.py -v -s    # Validate system
+# Make changes...
+pytest tests/api/test_full_use_case.py -v -s    # Validate changes
+git add . && git commit -m "feature: description"
+git push origin feature/branch-name
+# GitHub Actions runs full test suite
+```
+
 ---
 
 *This consolidated guide replaces multiple testing documents and serves as the single source of truth for ODRAS testing practices.*

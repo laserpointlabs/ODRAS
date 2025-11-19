@@ -7,8 +7,25 @@ This document tracks all documentation changes, consolidations, and deletions to
 **Branch:** `cleanup/documentation-consolidation`  
 **Date:** November 2025  
 **Total Documents Before:** 199 markdown files  
-**Total Documents After:** ~35 consolidated guides  
-**Reduction:** 82% reduction (164 files consolidated/archived)
+**Total Documents After:** ~35-40 active guides (target: ≤35)  
+**Reduction:** 80%+ reduction (160+ files deleted/consolidated/archived)
+
+### Deletion Strategy
+
+**Best Practice:** Delete obsolete documentation rather than archiving. Git history preserves everything, so deleted files remain accessible via `git log --all --full-history -- <file>`.
+
+**Categories Deleted:**
+1. **Status/Completion Docs** - Historical implementation summaries (22 files)
+2. **Presentation Slides** - Not needed for Cursor context (8 files)
+3. **Old Research Papers** - Superseded by active guides (3 files)
+4. **Duplicate Testing Guides** - Consolidated into TESTING_GUIDE.md (2 files)
+5. **Old Architecture Docs** - Superseded by current architecture docs (5 files)
+6. **Old Feature Docs** - Superseded by current feature guides (2 files)
+7. **Old System Docs** - Superseded by current documentation (7 files)
+8. **Old Workbench Summaries** - Superseded by comprehensive guides (2 files)
+9. **Old Testing Summaries** - Historical test results (2 files)
+
+**Total Deleted:** 58+ files (preserved in git history)
 
 ### Consolidation Strategy
 
