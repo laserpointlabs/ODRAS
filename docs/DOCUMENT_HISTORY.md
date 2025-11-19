@@ -2,6 +2,24 @@
 
 This document tracks all documentation changes, consolidations, and deletions to maintain historical record.
 
+## Document Restoration - November 2025
+
+### SDD Restoration ✅
+**Date:** November 2025  
+**File Restored:** `docs/architecture/odras_sdd.md` (974 lines)
+
+**Reason:** The Software Design Document was accidentally deleted during documentation cleanup. It was incorrectly marked as redundant with ODRAS_OVERVIEW.md, but the SDD is core architecture documentation that should be preserved.
+
+**Action Taken:**
+- Restored from git history (commit 3bad663^)
+- Committed to main branch
+- Merged to feature/ontology-workbench-refactor
+- Merged to feature/project-lattice-demos
+
+**Note:** The SDD contains comprehensive system architecture documentation and should not be deleted in future cleanups.
+
+---
+
 ## Major Documentation Consolidation - November 2025
 
 **Branch:** `cleanup/documentation-consolidation`  
