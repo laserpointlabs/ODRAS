@@ -24,7 +24,34 @@ Successfully implemented a complete demonstrator showing ODRAS's core capability
 
 ## 🚀 How to Use
 
-### Quick Start
+### Quick Start with Management Script
+
+The easiest way to manage all demo services is using the `demo.sh` script:
+
+```bash
+# Start all demo services (HTTP, WebSocket, LLM)
+./scripts/demo/demo.sh start
+
+# Check status of all services
+./scripts/demo/demo.sh status
+
+# View logs
+./scripts/demo/demo.sh logs              # All services
+./scripts/demo/demo.sh logs llm          # LLM service only
+./scripts/demo/demo.sh logs-watch all    # Watch all logs continuously
+
+# Restart services
+./scripts/demo/demo.sh restart
+
+# Stop all services
+./scripts/demo/demo.sh stop
+
+# Clean up old processes
+./scripts/demo/demo.sh clean
+```
+
+### Manual Start (Alternative)
+
 ```bash
 # Complete automated demonstration
 python scripts/demo/run_living_lattice_demo.py
@@ -106,15 +133,19 @@ python scripts/demo/run_living_lattice_demo.py --cleanup
 
 ```
 scripts/demo/
-├── program_bootstrapper.py      # Rule-based lattice generation
-├── run_living_lattice_demo.py   # Master demonstration script
+├── demo.sh                    # Service management script (start/stop/status/logs)
+├── llm_service.py             # LLM lattice generation service (port 8083)
+├── program_bootstrapper.py    # Rule-based lattice generation
+├── run_living_lattice_demo.py # Master demonstration script
 ├── visualization_server.py     # WebSocket server for real-time updates
-├── mock_analyses.py            # Project computational work simulation
-├── mock_gray_system.py         # Continuous sensitivity analysis
+├── mock_analyses.py           # Project computational work simulation
+├── mock_gray_system.py        # Continuous sensitivity analysis
 ├── mock_x_layer.py            # Alternative exploration
 └── static/
     ├── lattice_demo.html      # Frontend interface
-    ├── lattice_demo.js        # Grid layout and live updates
+    ├── intelligent_lattice_demo.html  # LLM-powered lattice generator
+    ├── lattice_demo.js         # Grid layout and live updates
+    ├── intelligent_lattice.js # LLM integration JavaScript
     └── lattice_demo.css       # Styling
 
 backend/services/
@@ -123,6 +154,35 @@ backend/services/
 docs/demos/
 └── LIVING_LATTICE_DEMONSTRATOR_GUIDE.md  # Comprehensive user guide
 ```
+
+## 🔧 Service Management
+
+### Demo Services
+
+The demo requires these services:
+
+1. **ODRAS API** (port 8000) - Main ODRAS backend
+   - Start: `./odras.sh start`
+   - Must be running before starting demo services
+
+2. **HTTP Server** (port 8082) - Static file server
+   - Serves HTML/JS/CSS files
+   - Started by `demo.sh start`
+
+3. **WebSocket Server** (port 8081) - Real-time updates
+   - Handles live visualization updates
+   - Started by `demo.sh start`
+
+4. **LLM Debug Service** (port 8083) - LLM lattice generation
+   - Powers intelligent lattice generation
+   - Requires OPENAI_API_KEY in .env
+   - Started by `demo.sh start`
+
+### Service Ports
+
+- **8081**: WebSocket server (visualization updates)
+- **8082**: HTTP server (static files)
+- **8083**: LLM debug service (lattice generation)
 
 ## 🎉 Result
 

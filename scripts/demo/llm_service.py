@@ -1,10 +1,11 @@
 #!/usr/bin/env python3
 """
-LLM Debug Service - Shows actual LLM interaction
+LLM Service - Intelligent project lattice generation using LLM
 
-Exposes the complete LLM context for verification:
-- Exact prompts sent to LLM
-- Raw LLM responses
+Provides LLM-powered project lattice generation with:
+- Intelligent requirements analysis
+- Project structure generation
+- Debug context exposure for verification
 - Probabilistic generation (different results each run)
 """
 
@@ -24,8 +25,8 @@ app = Flask(__name__)
 CORS(app)  # Enable CORS for browser requests
 
 
-class LLMDebugger:
-    """Debug service that exposes LLM interaction details."""
+class LLMService:
+    """LLM service for intelligent project lattice generation."""
     
     def __init__(self):
         self.client = self._get_openai_client()
@@ -115,11 +116,9 @@ class LLMDebugger:
                     
             except Exception as e:
                 logger.error(f"OpenAI generation failed: {e}")
-                # Fallback to mock but mark as fallback
-                return self._generate_mock_with_context(requirements_text, generation_id, str(e))
+                raise RuntimeError(f"OpenAI API call failed: {e}") from e
         else:
-            logger.info("Using mock LLM (no API key)")
-            return self._generate_mock_with_context(requirements_text, generation_id, "No OpenAI API key")
+            raise RuntimeError("OpenAI API key not configured. Set OPENAI_API_KEY in .env file or environment variables.")
     
     def _generate_mock_with_context(self, requirements: str, generation_id: str, reason: str) -> Dict[str, Any]:
         """Generate mock lattice but expose it as if it was LLM generated."""
@@ -493,8 +492,148 @@ IMPORTANT:
 - Make the lattice specifically relevant to the provided requirements
 """
     
+    def process_project(self, project: Dict[str, Any], requirements: str, upstream_data: Dict[str, Any] = None) -> Dict[str, Any]:
+        """Process a single project using LLM to generate detailed analysis."""
+        
+        if not self.client:
+            raise RuntimeError("OpenAI API key not configured. Set OPENAI_API_KEY in .env file or environment variables.")
+        
+        # Build project-specific prompt
+        prompt = self._build_project_processing_prompt(project, requirements, upstream_data)
+        
+        generation_id = f"project_{project.get('name', 'unknown')}_{int(time.time())}"
+        
+        try:
+            logger.info(f"🧠 Processing project: {project.get('name')} ({project.get('processing_type')})")
+            
+            response = self.client.chat.completions.create(
+                model="gpt-4-turbo-preview",
+                messages=[
+                    {
+                        "role": "system",
+                        "content": "You are an expert systems engineer analyzing UAV acquisition requirements. You provide detailed, realistic analysis with specific confidence levels based on data quality and analysis depth."
+                    },
+                    {
+                        "role": "user",
+                        "content": prompt
+                    }
+                ],
+                temperature=0.4,
+                max_tokens=2000
+            )
+            
+            llm_response = response.choices[0].message.content
+            
+            # Parse JSON from response
+            json_start = llm_response.find('{')
+            json_end = llm_response.rfind('}') + 1
+            if json_start >= 0 and json_end > json_start:
+                json_content = llm_response[json_start:json_end]
+                result_data = json.loads(json_content)
+                
+                # Ensure confidence is included and is from LLM
+                if 'confidence' not in result_data:
+                    raise ValueError("LLM response must include confidence level")
+                
+                result = {
+                    "generation_id": generation_id,
+                    "source": "openai_gpt4",
+                    "prompt_sent": prompt,
+                    "raw_response": llm_response,
+                    "project_name": project.get('name'),
+                    "result": result_data,
+                    "success": True,
+                    "generation_time": time.time()
+                }
+                
+                self.generation_history.append(result)
+                logger.info(f"✅ Project processing complete: {project.get('name')} (confidence: {result_data.get('confidence', 'N/A')})")
+                return result
+            else:
+                raise ValueError("No valid JSON in LLM response")
+                
+        except Exception as e:
+            logger.error(f"Project processing failed: {e}")
+            raise RuntimeError(f"OpenAI API call failed: {e}") from e
+    
+    def _build_project_processing_prompt(self, project: Dict[str, Any], requirements: str, upstream_data: Dict[str, Any] = None) -> str:
+        """Build prompt for processing a specific project."""
+        
+        upstream_info = ""
+        if upstream_data:
+            upstream_info = f"""
+UPSTREAM DATA AVAILABLE:
+{json.dumps(upstream_data, indent=2)}
+"""
+        
+        return f"""
+TASK: Process the project "{project.get('name')}" as part of a UAV acquisition program.
+
+PROJECT DETAILS:
+- Name: {project.get('name')}
+- Domain: {project.get('domain')}
+- Layer: {project.get('layer')}
+- Processing Type: {project.get('processing_type')}
+- Purpose: {project.get('purpose')}
+- Description: {project.get('description')}
+- Expected Inputs: {', '.join(project.get('inputs', []))}
+- Expected Outputs: {', '.join(project.get('outputs', []))}
+
+ORIGINAL REQUIREMENTS:
+{requirements[:2000]}
+
+{upstream_info}
+
+INSTRUCTIONS:
+Analyze and process this project according to its purpose and processing type. Provide detailed, realistic results specific to UAV acquisition.
+
+For {project.get('processing_type')} type projects, focus on:
+- Analysis projects: Extract specific data, identify patterns, quantify requirements
+- Design projects: Create detailed designs, architectures, or plans
+- Evaluation projects: Compare options, make recommendations with justification
+
+IMPORTANT:
+- Provide a REAL confidence level (0.0-1.0) based on:
+  * Quality and completeness of input data
+  * Clarity of requirements
+  * Complexity of the analysis
+  * Availability of upstream data
+- Confidence should be realistic - not always high (0.85-0.95)
+- Lower confidence (0.65-0.80) if data is incomplete or requirements are vague
+- Higher confidence (0.85-0.95) if data is complete and requirements are clear
+- NEVER use fixed confidence values - vary based on actual analysis quality
+
+RESPONSE FORMAT:
+Return ONLY a JSON object with this EXACT structure:
+
+{{
+  "project_name": "{project.get('name')}",
+  "analysis_type": "specific_type_of_analysis",
+  "llm_reasoning": [
+    "Step 1 of your reasoning process",
+    "Step 2 of your reasoning process",
+    "Step 3..."
+  ],
+  "extracted_data": {{
+    "key_findings": ["finding1", "finding2"],
+    "specific_metrics": {{"metric": "value"}},
+    "recommendations": ["rec1", "rec2"]
+  }},
+  "confidence": 0.82,
+  "confidence_reasoning": "Why this confidence level (data quality, completeness, etc.)",
+  "processing_time": 2.5,
+  "ready_for_downstream": true,
+  "next_actions": [
+    "Action 1 for downstream projects",
+    "Action 2 for downstream projects"
+  ]
+}}
+
+Make the response specific to UAV acquisition and realistic. Include actual confidence reasoning.
+"""
+    
     def get_debug_info(self) -> Dict[str, Any]:
-        """Get complete debug information."""
+        """Get complete LLM interaction information."""
         return {
             "last_generation": self.generation_history[-1] if self.generation_history else None,
             "total_generations": len(self.generation_history),
@@ -503,13 +642,13 @@ IMPORTANT:
         }
 
 
-# Global debugger instance
-debugger = LLMDebugger()
+# Global LLM service instance
+llm_service = LLMService()
 
 
 @app.route('/generate-lattice', methods=['POST'])
 def generate_lattice():
-    """Generate lattice with full debug context."""
+    """Generate project lattice using LLM."""
     try:
         data = request.json
         requirements = data.get('requirements', '')
@@ -519,7 +658,7 @@ def generate_lattice():
             return jsonify({"error": "Requirements text is required"}), 400
         
         # Generate with full context
-        result = debugger.generate_with_context(requirements, max_projects)
+        result = llm_service.generate_with_context(requirements, max_projects)
         
         # Return just the lattice data (debug info available via separate endpoint)
         return jsonify(result['parsed_lattice'])
@@ -531,15 +670,15 @@ def generate_lattice():
 
 @app.route('/debug-context', methods=['GET'])
 def get_debug_context():
-    """Get complete LLM debug context."""
-    return jsonify(debugger.get_debug_info())
+    """Get complete LLM interaction context."""
+    return jsonify(llm_service.get_debug_info())
 
 
 @app.route('/debug-last-prompt', methods=['GET']) 
 def get_last_prompt():
     """Get the last prompt sent to LLM."""
-    if debugger.generation_history:
-        last_gen = debugger.generation_history[-1]
+    if llm_service.generation_history:
+        last_gen = llm_service.generation_history[-1]
         return jsonify({
             "generation_id": last_gen["generation_id"],
             "source": last_gen["source"],
@@ -550,24 +689,51 @@ def get_last_prompt():
     return jsonify({"error": "No generations yet"}), 404
 
 
+@app.route('/process-project', methods=['POST'])
+def process_project():
+    """Process a single project using LLM."""
+    try:
+        data = request.json
+        project = data.get('project')
+        requirements = data.get('requirements', '')
+        upstream_data = data.get('upstream_data')
+        
+        if not project:
+            return jsonify({"error": "Project data is required"}), 400
+        
+        if not requirements.strip():
+            return jsonify({"error": "Requirements text is required"}), 400
+        
+        # Process project with LLM
+        result = llm_service.process_project(project, requirements, upstream_data)
+        
+        # Return the result data
+        return jsonify(result['result'])
+        
+    except Exception as e:
+        logger.error(f"Project processing failed: {e}")
+        return jsonify({"error": str(e)}), 500
+
+
 @app.route('/health', methods=['GET'])
 def health():
     """Health check."""
     return jsonify({
         "status": "ok",
-        "openai_available": debugger.client is not None,
-        "generations": len(debugger.generation_history)
+        "openai_available": llm_service.client is not None,
+        "generations": len(llm_service.generation_history)
     })
 
 
 if __name__ == "__main__":
-    print("🧠 Starting LLM Debug Service...")
-    print("🔍 This service exposes complete LLM interaction context")
-    print(f"✅ OpenAI Available: {debugger.client is not None}")
+    print("🧠 Starting LLM Service...")
+    print("🔍 Intelligent project lattice generation with LLM")
+    print(f"✅ OpenAI Available: {llm_service.client is not None}")
     print("")
     print("📋 Endpoints:")
     print("  POST /generate-lattice - Generate project lattice")
-    print("  GET  /debug-context - Get complete debug info")
+    print("  POST /process-project - Process individual project")
+    print("  GET  /debug-context - Get complete LLM interaction context")
     print("  GET  /debug-last-prompt - Get last LLM prompt/response")
     print("  GET  /health - Service health")
     print("")

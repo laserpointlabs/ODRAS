@@ -11,10 +11,10 @@ class IntelligentLatticeGenerator {
         this.currentLattice = null;
         this.processingStates = new Map();
         this.dataStore = new Map(); // Stores actual data flowing between projects
-        
+
         this.init();
     }
-    
+
     init() {
         console.log('🧠 Initializing Intelligent Lattice Generator...');
         this.initCytoscape();
@@ -22,10 +22,10 @@ class IntelligentLatticeGenerator {
         this.loadExampleRequirements();
         console.log('✅ Intelligent generator ready');
     }
-    
+
     initCytoscape() {
         const container = document.getElementById('cy');
-        
+
         this.cy = cytoscape({
             container: container,
             elements: [],
@@ -37,17 +37,17 @@ class IntelligentLatticeGenerator {
                         'width': 100,
                         'height': 80,
                         'shape': 'round-rectangle',
-                        'background-color': function(ele) {
+                        'background-color': function (ele) {
                             const level = ele.data('level');
                             const state = ele.data('state') || 'inactive';
-                            
+
                             let baseColor;
                             if (level === 0) baseColor = '#3b82f6';      // Blue
                             else if (level === 1) baseColor = '#10b981'; // Green  
                             else if (level === 2) baseColor = '#f59e0b'; // Orange
                             else if (level === 3) baseColor = '#ef4444'; // Red
                             else baseColor = '#64748b';                  // Gray
-                            
+
                             if (state === 'inactive') {
                                 const r = parseInt(baseColor.substr(1, 2), 16);
                                 const g = parseInt(baseColor.substr(3, 2), 16);
@@ -56,7 +56,7 @@ class IntelligentLatticeGenerator {
                             } else if (state === 'processing') {
                                 return '#fbbf24'; // Yellow for processing
                             }
-                            
+
                             return baseColor;
                         },
                         'color': '#ffffff',
@@ -64,11 +64,11 @@ class IntelligentLatticeGenerator {
                         'text-halign': 'center',
                         'font-size': '11px',
                         'font-weight': 'bold',
-                        'border-width': function(ele) {
+                        'border-width': function (ele) {
                             const state = ele.data('state');
                             return state === 'processing' ? 4 : 2;
                         },
-                        'border-color': function(ele) {
+                        'border-color': function (ele) {
                             const state = ele.data('state');
                             if (state === 'processing') return '#fbbf24';
                             return '#334155';
@@ -82,7 +82,7 @@ class IntelligentLatticeGenerator {
                     style: {
                         'width': 3,
                         'line-color': '#60a5fa',
-                        'target-arrow-color': '#60a5fa', 
+                        'target-arrow-color': '#60a5fa',
                         'target-arrow-shape': 'triangle',
                         'curve-style': 'bezier',
                         'label': 'data(label)',
@@ -104,49 +104,49 @@ class IntelligentLatticeGenerator {
             minZoom: 0.3,
             maxZoom: 2.0
         });
-        
+
         // Handle node clicks
         this.cy.on('tap', 'node', (evt) => {
             const node = evt.target;
             this.showProjectDetails(node.data());
         });
     }
-    
+
     initEventHandlers() {
         // File upload
         document.getElementById('requirementsFile')?.addEventListener('change', (e) => {
             this.handleFileUpload(e);
         });
-        
+
         // Load example
         document.getElementById('loadExampleBtn')?.addEventListener('click', () => {
             this.loadExampleRequirements();
         });
-        
+
         // Generate lattice
         document.getElementById('generateLatticeBtn')?.addEventListener('click', () => {
             this.generateLattice();
         });
-        
+
         // Controls
         document.getElementById('activateProjectsBtn')?.addEventListener('click', () => {
             this.startProcessing();
         });
-        
+
         document.getElementById('stepThroughBtn')?.addEventListener('click', () => {
             this.stepThroughProcessing();
         });
-        
+
         document.getElementById('resetBtn')?.addEventListener('click', () => {
             this.resetDemo();
         });
-        
+
         // Debug panel control
         document.getElementById('showDebugBtn')?.addEventListener('click', () => {
             this.showDebugContext();
         });
     }
-    
+
     loadExampleRequirements() {
         const exampleRequirements = `# UAV Mission Requirements for Disaster Response
 
@@ -185,7 +185,7 @@ Emergency response teams need rapid deployment UAV capability for disaster asses
         document.getElementById('requirementsInput').value = exampleRequirements;
         this.updateAnalysisStatus('Example requirements loaded');
     }
-    
+
     async handleFileUpload(event) {
         const file = event.target.files[0];
         if (file) {
@@ -198,87 +198,116 @@ Emergency response teams need rapid deployment UAV capability for disaster asses
             }
         }
     }
-    
+
     async generateLattice() {
         const requirementsText = document.getElementById('requirementsInput').value.trim();
-        
+
         if (!requirementsText) {
             alert('Please enter or load requirements first');
             return;
         }
-        
+
         this.updateAnalysisStatus('🧠 Analyzing requirements with LLM...');
         document.getElementById('generateLatticeBtn').disabled = true;
-        
+
         try {
             // Call the actual LLM debug service
             console.log('📡 Calling LLM Debug Service...');
             const response = await fetch('http://localhost:8083/generate-lattice', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ 
+                body: JSON.stringify({
                     requirements: requirementsText,
-                    max_projects: 6 
+                    max_projects: 6
                 })
             });
-            
+
             if (response.ok) {
                 this.currentLattice = await response.json();
-                
+
                 // Fetch debug context to show LLM interaction
                 const debugResponse = await fetch('http://localhost:8083/debug-context');
                 if (debugResponse.ok) {
                     this.debugContext = await debugResponse.json();
                     this.showDebugContext();
-                    
+
                     // Show debug button for reopening
                     document.getElementById('showDebugBtn').style.display = 'block';
                 }
-                
+
                 this.updateAnalysisStatus('✅ Real LLM generation complete');
                 console.log('✅ Used real LLM service');
             } else {
-                throw new Error(`LLM service error: ${response.status}`);
+                // Try to parse error message from response
+                let errorMessage = `HTTP ${response.status}`;
+                try {
+                    const errorData = await response.json();
+                    if (errorData.error) {
+                        errorMessage = errorData.error;
+                    }
+                } catch (e) {
+                    // If JSON parsing fails, use status text
+                    errorMessage = response.statusText || `HTTP ${response.status}`;
+                }
+                throw new Error(errorMessage);
             }
-            
+
             // Display analysis results
             this.displayAnalysisResults();
-            
+
             // Create visualization  
             this.createLatticeVisualization();
-            
+
             // Enable controls
             this.enableControls();
-            
+
         } catch (error) {
-            console.error('LLM service unavailable:', error);
-            console.log('📋 Falling back to probabilistic mock...');
-            
-            // Use probabilistic mock that varies each time
-            this.currentLattice = this.generateProbabilisticMock(requirementsText);
-            this.displayAnalysisResults();
-            this.createLatticeVisualization();
-            this.enableControls();
-            this.updateAnalysisStatus('✅ Generated using probabilistic mock');
-            
-            // Show debug button even for mock
-            document.getElementById('showDebugBtn').style.display = 'block';
+            console.error('LLM service error:', error);
+            this.updateAnalysisStatus('❌ LLM service unavailable');
+            document.getElementById('generateLatticeBtn').disabled = false;
+
+            // Show clear error message
+            const summaryDiv = document.getElementById('analysisSummary');
+            summaryDiv.style.display = 'block';
+
+            let errorMsg = error.message || 'Unknown error';
+            if (errorMsg.includes('Failed to fetch') || errorMsg.includes('ERR_CONNECTION')) {
+                errorMsg = 'Connection failed - LLM service is not running';
+            }
+
+            summaryDiv.innerHTML = `
+                <div style="color: var(--danger); padding: 12px; background: rgba(239, 68, 68, 0.1); border-radius: 4px; border: 1px solid var(--danger);">
+                    <strong>❌ Error: LLM Service Unavailable</strong><br>
+                    <div style="margin-top: 8px; font-size: 0.9rem;">
+                        The LLM service at http://localhost:8083 is not available.<br>
+                        <strong>Error:</strong> ${errorMsg}<br><br>
+                        <strong>To fix:</strong><br>
+                        1. Start the LLM debug service:<br>
+                           &nbsp;&nbsp;<code style="background: var(--dark-3); padding: 2px 6px; border-radius: 3px;">cd scripts/demo && python3 llm_service.py</code><br>
+                        2. Ensure port 8083 is not blocked<br>
+                        3. Verify OPENAI_API_KEY is configured in .env
+                    </div>
+                </div>
+            `;
+
+            // Don't throw - error is already displayed to user
+            return;
         } finally {
             document.getElementById('generateLatticeBtn').disabled = false;
         }
     }
-    
+
     showDebugContext() {
         if (!this.debugContext && !this.currentLattice) return;
-        
-        // If no debug context but have current lattice, show lattice info
+
+        // If no debug context, show error
         if (!this.debugContext) {
-            this.showMockDebugInfo();
+            console.warn('No debug context available');
             return;
         }
-        
+
         console.log('🔍 LLM Debug Context:', this.debugContext);
-        
+
         // Add debug panel to show LLM interaction
         const debugPanel = document.createElement('div');
         debugPanel.id = 'debugPanel';
@@ -296,7 +325,7 @@ Emergency response teams need rapid deployment UAV capability for disaster asses
             overflow-y: auto;
             font-size: 0.8rem;
         `;
-        
+
         const lastGen = this.debugContext.last_generation;
         if (lastGen) {
             debugPanel.innerHTML = `
@@ -338,14 +367,14 @@ Emergency response teams need rapid deployment UAV capability for disaster asses
                 <div>No debug context available</div>
             `;
         }
-        
+
         // Remove existing debug panel if any
         const existing = document.getElementById('debugPanel');
         if (existing) existing.remove();
-        
+
         document.body.appendChild(debugPanel);
     }
-    
+
     showMockDebugInfo() {
         // Show debug info for mock generation
         const debugPanel = document.createElement('div');
@@ -364,7 +393,7 @@ Emergency response teams need rapid deployment UAV capability for disaster asses
             overflow-y: auto;
             font-size: 0.8rem;
         `;
-        
+
         debugPanel.innerHTML = `
             <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px;">
                 <h4 style="color: var(--warning); margin: 0;">🔍 Generation Context (Mock)</h4>
@@ -407,25 +436,25 @@ Emergency response teams need rapid deployment UAV capability for disaster asses
                 Set OPENAI_API_KEY in .env file and restart the LLM debug service
             </div>
         `;
-        
+
         // Remove existing debug panel
         const existing = document.getElementById('debugPanel');
         if (existing) existing.remove();
-        
+
         document.body.appendChild(debugPanel);
     }
-    
+
     generateProbabilisticMock(requirements) {
         // Generate different lattice structures based on content - TRULY PROBABILISTIC
         const reqLower = requirements.toLowerCase();
         const random = Math.random();
-        
+
         // Add randomness to structure selection
         if (reqLower.includes('disaster') && reqLower.includes('emergency')) {
             if (random > 0.6) {
                 return this.getDisasterResponseVariant();
             } else {
-                return this.getEmergencyOptimizedVariant(); 
+                return this.getEmergencyOptimizedVariant();
             }
         } else if (reqLower.includes('performance') || reqLower.includes('endurance')) {
             if (random > 0.5) {
@@ -439,7 +468,7 @@ Emergency response teams need rapid deployment UAV capability for disaster asses
             return variants[Math.floor(random * variants.length)];
         }
     }
-    
+
     getDisasterResponseVariant() {
         return {
             analysis_summary: "VARIANT A: Emergency-focused lattice with rapid deployment emphasis. Probabilistic generation detected disaster response priority.",
@@ -459,7 +488,7 @@ Emergency response teams need rapid deployment UAV capability for disaster asses
                     description: "Design rapid deployment procedures",
                     purpose: "Develop 15-minute deployment capability",
                     inputs: ["critical_requirements", "field_conditions"],
-                    outputs: ["deployment_procedures", "setup_protocols"], 
+                    outputs: ["deployment_procedures", "setup_protocols"],
                     processing_type: "analysis", parent_name: "emergency-requirements",
                     subscribes_to: ["emergency.analyzed"], publishes: ["deployment.ready"]
                 },
@@ -491,8 +520,8 @@ Emergency response teams need rapid deployment UAV capability for disaster asses
             domains: ["systems-engineering", "mission-planning", "analysis"]
         };
     }
-    
-    getEmergencyOptimizedVariant() { 
+
+    getEmergencyOptimizedVariant() {
         return {
             analysis_summary: "VARIANT B: Emergency-optimized lattice emphasizing operational resilience. Alternative probabilistic structure.",
             confidence: 0.86,
@@ -521,7 +550,7 @@ Emergency response teams need rapid deployment UAV capability for disaster asses
                     purpose: "Match UAV capabilities to emergency needs",
                     inputs: ["operational_requirements", "uav_capabilities"],
                     outputs: ["optimized_capabilities", "performance_targets"],
-                    processing_type: "analysis", parent_name: "emergency-needs-analysis", 
+                    processing_type: "analysis", parent_name: "emergency-needs-analysis",
                     subscribes_to: ["needs.analyzed"], publishes: ["capabilities.optimized"]
                 },
                 {
@@ -543,7 +572,7 @@ Emergency response teams need rapid deployment UAV capability for disaster asses
             domains: ["systems-engineering", "mission-planning", "analysis"]
         };
     }
-    
+
     getPerformanceVariant() {
         return {
             analysis_summary: "VARIANT A: Performance-centric lattice focusing on technical optimization. Generated probabilistically from performance keywords.",
@@ -564,7 +593,7 @@ Emergency response teams need rapid deployment UAV capability for disaster asses
             domains: ["systems-engineering", "analysis"]
         };
     }
-    
+
     getEnduranceOptimizedVariant() {
         return {
             analysis_summary: "VARIANT B: Endurance-optimized lattice with extended operation focus. Alternative probabilistic generation.",
@@ -585,7 +614,7 @@ Emergency response teams need rapid deployment UAV capability for disaster asses
             domains: ["systems-engineering", "mission-planning", "analysis"]
         };
     }
-    
+
     getGeneralVariantA() {
         return {
             analysis_summary: "VARIANT A: Comprehensive analysis lattice with balanced approach. Randomly selected structure.",
@@ -603,11 +632,11 @@ Emergency response teams need rapid deployment UAV capability for disaster asses
             domains: ["systems-engineering", "architecture", "analysis"]
         };
     }
-    
+
     getGeneralVariantB() {
         return {
             analysis_summary: "VARIANT B: Alternative comprehensive lattice with different emphasis. Probabilistic variant selection.",
-            confidence: 0.74, 
+            confidence: 0.74,
             lattice_type: "general_variant_b",
             projects: [
                 { name: "comprehensive-analysis", domain: "systems-engineering", layer: 1, description: "Comprehensive UAV requirements analysis", purpose: "Thorough analysis of all UAV aspects", inputs: ["comprehensive_docs"], outputs: ["complete_analysis"], processing_type: "analysis", publishes: ["analysis.comprehensive"] },
@@ -621,17 +650,17 @@ Emergency response teams need rapid deployment UAV capability for disaster asses
             domains: ["systems-engineering", "architecture", "analysis"]
         };
     }
-    
+
     mockLLMAnalysis(requirements) {
         // Mock intelligent analysis based on requirements content
-        const hasPerformance = requirements.toLowerCase().includes('performance') || 
-                              requirements.toLowerCase().includes('speed') ||
-                              requirements.toLowerCase().includes('range');
+        const hasPerformance = requirements.toLowerCase().includes('performance') ||
+            requirements.toLowerCase().includes('speed') ||
+            requirements.toLowerCase().includes('range');
         const hasMission = requirements.toLowerCase().includes('mission') ||
-                          requirements.toLowerCase().includes('operational');
+            requirements.toLowerCase().includes('operational');
         const hasCost = requirements.toLowerCase().includes('cost') ||
-                       requirements.toLowerCase().includes('budget');
-        
+            requirements.toLowerCase().includes('budget');
+
         if (hasPerformance && hasMission) {
             return {
                 analysis_summary: "Requirements emphasize operational performance and mission effectiveness. Generated lattice focuses on mission scenario development and performance analysis leading to solution evaluation.",
@@ -650,7 +679,7 @@ Emergency response teams need rapid deployment UAV capability for disaster asses
                     },
                     {
                         name: "mission-analysis",
-                        domain: "mission-planning", 
+                        domain: "mission-planning",
                         layer: 2,
                         description: "Develop mission scenarios and operational concepts",
                         purpose: "Define operational use cases and deployment scenarios",
@@ -663,7 +692,7 @@ Emergency response teams need rapid deployment UAV capability for disaster asses
                     {
                         name: "performance-analysis",
                         domain: "analysis",
-                        layer: 2, 
+                        layer: 2,
                         description: "Analyze performance requirements vs UAV capabilities",
                         purpose: "Evaluate UAV performance against mission requirements",
                         inputs: ["performance_requirements", "uav_specifications"],
@@ -679,7 +708,7 @@ Emergency response teams need rapid deployment UAV capability for disaster asses
                         description: "Select optimal UAV solution",
                         purpose: "Recommend best UAV option based on mission and performance analysis",
                         inputs: ["mission_scenarios", "performance_assessment", "cost_constraints"],
-                        outputs: ["recommended_solution", "justification", "implementation_plan"], 
+                        outputs: ["recommended_solution", "justification", "implementation_plan"],
                         processing_type: "evaluation",
                         parent_name: "performance-analysis",
                         publishes: ["solution.selected"]
@@ -694,7 +723,7 @@ Emergency response teams need rapid deployment UAV capability for disaster asses
                         trigger_event: "requirements.analyzed"
                     },
                     {
-                        from_project: "requirements-analysis", 
+                        from_project: "requirements-analysis",
                         to_project: "performance-analysis",
                         data_type: "performance_requirements",
                         description: "Performance specifications guide technical analysis",
@@ -702,7 +731,7 @@ Emergency response teams need rapid deployment UAV capability for disaster asses
                     },
                     {
                         from_project: "mission-analysis",
-                        to_project: "solution-selection", 
+                        to_project: "solution-selection",
                         data_type: "mission_scenarios",
                         description: "Mission scenarios inform solution selection criteria",
                         trigger_event: "scenarios.defined"
@@ -710,7 +739,7 @@ Emergency response teams need rapid deployment UAV capability for disaster asses
                     {
                         from_project: "performance-analysis",
                         to_project: "solution-selection",
-                        data_type: "performance_assessment", 
+                        data_type: "performance_assessment",
                         description: "Performance analysis guides solution recommendation",
                         trigger_event: "performance.analyzed"
                     }
@@ -736,7 +765,7 @@ Emergency response teams need rapid deployment UAV capability for disaster asses
                     },
                     {
                         name: "solution-design",
-                        domain: "architecture", 
+                        domain: "architecture",
                         layer: 2,
                         description: "Design solution architecture",
                         purpose: "Develop system architecture to meet requirements",
@@ -754,7 +783,7 @@ Emergency response teams need rapid deployment UAV capability for disaster asses
                         purpose: "Assess solution against requirements",
                         inputs: ["system_design", "evaluation_criteria"],
                         outputs: ["evaluation_results", "recommendations"],
-                        processing_type: "evaluation", 
+                        processing_type: "evaluation",
                         parent_name: "solution-design",
                         publishes: ["evaluation.complete"]
                     }
@@ -769,7 +798,7 @@ Emergency response teams need rapid deployment UAV capability for disaster asses
                     },
                     {
                         from_project: "solution-design",
-                        to_project: "evaluation", 
+                        to_project: "evaluation",
                         data_type: "system_design",
                         description: "System design flows to evaluation",
                         trigger_event: "design.complete"
@@ -779,10 +808,10 @@ Emergency response teams need rapid deployment UAV capability for disaster asses
             };
         }
     }
-    
+
     displayAnalysisResults() {
         if (!this.currentLattice) return;
-        
+
         // Show analysis summary
         const summaryDiv = document.getElementById('analysisSummary');
         summaryDiv.style.display = 'block';
@@ -794,11 +823,11 @@ Emergency response teams need rapid deployment UAV capability for disaster asses
                 <div class="confidence-badge">${Math.round(this.currentLattice.confidence * 100)}% confidence</div>
             </div>
         `;
-        
+
         // Show project list
         const projectList = document.getElementById('projectList');
         projectList.innerHTML = '';
-        
+
         this.currentLattice.projects.forEach(project => {
             const projectDiv = document.createElement('div');
             projectDiv.className = 'project-item';
@@ -818,11 +847,11 @@ Emergency response teams need rapid deployment UAV capability for disaster asses
             `;
             projectList.appendChild(projectDiv);
         });
-        
+
         // Show data flows
         const dataFlows = document.getElementById('dataFlows');
         dataFlows.innerHTML = '';
-        
+
         this.currentLattice.data_flows.forEach(flow => {
             const flowDiv = document.createElement('div');
             flowDiv.className = 'flow-item';
@@ -839,18 +868,18 @@ Emergency response teams need rapid deployment UAV capability for disaster asses
             `;
             dataFlows.appendChild(flowDiv);
         });
-        
+
         // Update counts
         document.getElementById('projectCount').textContent = this.currentLattice.projects.length;
         document.getElementById('flowCount').textContent = this.currentLattice.data_flows.length;
     }
-    
+
     createLatticeVisualization() {
         if (!this.currentLattice) return;
-        
+
         // Clear existing elements
         this.cy.elements().remove();
-        
+
         // Create nodes
         const elements = [];
         this.currentLattice.projects.forEach(project => {
@@ -865,7 +894,7 @@ Emergency response teams need rapid deployment UAV capability for disaster asses
                 }
             });
         });
-        
+
         // Create edges for data flows
         this.currentLattice.data_flows.forEach(flow => {
             elements.push({
@@ -878,41 +907,41 @@ Emergency response teams need rapid deployment UAV capability for disaster asses
                 }
             });
         });
-        
+
         // Add elements to graph
         this.cy.add(elements);
-        
+
         // Apply intelligent layout
         this.applyIntelligentLayout();
     }
-    
+
     applyIntelligentLayout() {
         const nodes = this.cy.nodes();
         const domains = [...new Set(nodes.map(n => n.data('domain')))].sort();
-        
+
         // Position nodes in grid layout
         nodes.forEach(node => {
             const level = node.data('level');
             const domain = node.data('domain');
-            
+
             const domainIndex = domains.indexOf(domain);
             const x = 150 + (domainIndex * 200);
             const y = 100 + (level * 120);
-            
+
             node.position({ x, y });
         });
-        
+
         // Update domain labels
         this.updateDomainLabels(domains);
-        
+
         // Fit to view
         this.cy.fit(this.cy.nodes(), 50);
     }
-    
+
     updateDomainLabels(domains) {
         const container = document.getElementById('domainLabels');
         container.innerHTML = '';
-        
+
         domains.forEach(domain => {
             const label = document.createElement('div');
             label.className = 'domain-label';
@@ -920,11 +949,11 @@ Emergency response teams need rapid deployment UAV capability for disaster asses
             container.appendChild(label);
         });
     }
-    
+
     showProjectDetails(projectData) {
         const details = projectData.project_data;
         if (!details) return;
-        
+
         const statusDiv = document.getElementById('processingStatus');
         statusDiv.innerHTML = `
             <div style="font-weight: bold; margin-bottom: 8px;">${details.name}</div>
@@ -938,58 +967,185 @@ Emergency response teams need rapid deployment UAV capability for disaster asses
             </div>
         `;
     }
-    
+
     enableControls() {
         document.getElementById('activateProjectsBtn').disabled = false;
         document.getElementById('stepThroughBtn').disabled = false;
     }
-    
+
     async startProcessing() {
         if (!this.currentLattice) return;
-        
+
         this.updateAnalysisStatus('🚀 Starting project processing...');
-        
+
+        // Initialize progress bar with all projects
+        this.initializeProgressBar();
+
         // Start with L1 projects (requirements analysis)
         const l1Projects = this.currentLattice.projects.filter(p => p.layer === 1);
-        
+
         for (const project of l1Projects) {
             await this.processProject(project.name);
         }
     }
-    
+
+    initializeProgressBar() {
+        if (!this.currentLattice) return;
+
+        const progressBar = document.getElementById('progressBar');
+        const noProgress = document.getElementById('noProgress');
+
+        if (!progressBar) return;
+
+        // Show progress bar, hide "no progress" message
+        progressBar.style.display = 'block';
+        if (noProgress) noProgress.style.display = 'none';
+
+        // Clear existing progress
+        progressBar.innerHTML = '';
+
+        // Create progress items for all projects
+        const allProjects = [...this.currentLattice.projects].sort((a, b) => {
+            // Sort by layer first, then by name
+            if (a.layer !== b.layer) return a.layer - b.layer;
+            return a.name.localeCompare(b.name);
+        });
+
+        allProjects.forEach(project => {
+            const progressItem = document.createElement('div');
+            progressItem.className = 'progress-item pending';
+            progressItem.id = `progress-${project.name}`;
+            progressItem.innerHTML = `
+                <div class="progress-item-name">${project.name}</div>
+                <div class="progress-item-status pending">Pending</div>
+            `;
+            progressBar.appendChild(progressItem);
+        });
+
+        // Add summary
+        const summary = document.createElement('div');
+        summary.className = 'progress-summary';
+        summary.id = 'progressSummary';
+        summary.innerHTML = `0 / ${allProjects.length} projects analyzed`;
+        progressBar.appendChild(summary);
+    }
+
+    updateProgressBar(projectName, status) {
+        const progressItem = document.getElementById(`progress-${projectName}`);
+        if (!progressItem) return;
+
+        // Update classes
+        progressItem.className = `progress-item ${status}`;
+
+        // Update status badge
+        const statusBadge = progressItem.querySelector('.progress-item-status');
+        if (statusBadge) {
+            statusBadge.className = `progress-item-status ${status}`;
+            const statusText = {
+                'pending': 'Pending',
+                'processing': 'Analyzing...',
+                'complete': 'Complete',
+                'error': 'Error'
+            };
+            statusBadge.textContent = statusText[status] || status;
+        }
+
+        // Update summary
+        this.updateProgressSummary();
+    }
+
+    updateProgressSummary() {
+        if (!this.currentLattice) return;
+
+        const summary = document.getElementById('progressSummary');
+        if (!summary) return;
+
+        const allProjects = this.currentLattice.projects;
+        const completeCount = allProjects.filter(p => {
+            const item = document.getElementById(`progress-${p.name}`);
+            return item && item.classList.contains('complete');
+        }).length;
+
+        const errorCount = allProjects.filter(p => {
+            const item = document.getElementById(`progress-${p.name}`);
+            return item && item.classList.contains('error');
+        }).length;
+
+        const processingCount = allProjects.filter(p => {
+            const item = document.getElementById(`progress-${p.name}`);
+            return item && item.classList.contains('processing');
+        }).length;
+
+        let summaryText = `${completeCount} / ${allProjects.length} projects analyzed`;
+        if (processingCount > 0) {
+            summaryText += ` • ${processingCount} analyzing`;
+        }
+        if (errorCount > 0) {
+            summaryText += ` • ${errorCount} errors`;
+        }
+
+        summary.textContent = summaryText;
+    }
+
     async processProject(projectName) {
         const node = this.cy.getElementById(projectName);
         if (!node.length) return;
-        
+
         const projectData = node.data('project_data');
-        
+
         // Set to processing state
         node.data('state', 'processing');
-        this.updateProjectState(projectName, 'processing', 'Analyzing requirements...');
-        
+        this.updateProjectState(projectName, 'processing', 'Calling LLM service...');
+        this.updateProgressBar(projectName, 'processing');
+
         // Show detailed processing view
         this.showDetailedProcessing(projectData);
-        
-        // Simulate LLM processing with realistic timing
-        await new Promise(resolve => setTimeout(resolve, 2000 + Math.random() * 2000));
-        
-        // Generate detailed LLM-like results
-        const results = await this.generateDetailedResults(projectData);
-        
-        // Store results in data store
-        this.dataStore.set(projectName, results);
-        
-        // Set to complete
-        node.data('state', 'complete');
-        this.updateProjectState(projectName, 'complete', 'Analysis complete');
-        
-        // Show detailed results
-        this.displayDetailedResults(projectName, results);
-        
-        // Trigger downstream projects
-        this.triggerDownstreamProjects(projectName, results);
+
+        try {
+            // Call LLM service to generate real results
+            const results = await this.generateDetailedResults(projectData);
+
+            // Store results in data store
+            this.dataStore.set(projectName, results);
+
+            // Set to complete
+            node.data('state', 'complete');
+            this.updateProjectState(projectName, 'complete', 'LLM analysis complete');
+            this.updateProgressBar(projectName, 'complete');
+
+            // Show detailed results
+            this.displayDetailedResults(projectName, results);
+
+            // Trigger downstream projects
+            this.triggerDownstreamProjects(projectName, results);
+
+        } catch (error) {
+            // Fail hard - no fallback
+            node.data('state', 'error');
+            this.updateProjectState(projectName, 'error', `Failed: ${error.message}`);
+            this.updateProgressBar(projectName, 'error');
+            this.updateAnalysisStatus(`❌ ${projectName} processing failed: ${error.message}`);
+
+            // Show error in results panel
+            const resultsDiv = document.getElementById('results');
+            const errorDiv = document.createElement('div');
+            errorDiv.className = 'result-item';
+            errorDiv.style.cssText = 'border: 1px solid var(--danger); border-radius: 6px; padding: 12px; margin-bottom: 12px; background: rgba(239, 68, 68, 0.1);';
+            errorDiv.innerHTML = `
+                <div style="font-weight: bold; color: var(--danger); margin-bottom: 8px;">
+                    ❌ ${projectName} Processing Failed
+                </div>
+                <div style="font-size: 0.9rem;">
+                    <strong>Error:</strong> ${error.message}<br>
+                    <strong>Action:</strong> Check LLM service is running and OpenAI API key is configured
+                </div>
+            `;
+            resultsDiv.insertBefore(errorDiv, resultsDiv.firstChild);
+
+            throw error; // Re-throw to stop processing chain
+        }
     }
-    
+
     showDetailedProcessing(projectData) {
         const statusDiv = document.getElementById('processingStatus');
         statusDiv.innerHTML = `
@@ -1003,7 +1159,7 @@ Emergency response teams need rapid deployment UAV capability for disaster asses
                 LLM is analyzing requirements and generating ${projectData.processing_type} specific to ${projectData.domain}...
             </div>
         `;
-        
+
         const dataDiv = document.getElementById('currentData');
         dataDiv.innerHTML = `
             <div style="font-weight: bold; margin-bottom: 6px;">Input Data for ${projectData.name}:</div>
@@ -1014,283 +1170,172 @@ Emergency response teams need rapid deployment UAV capability for disaster asses
             </div>
         `;
     }
-    
+
     async generateDetailedResults(project) {
         const requirements = document.getElementById('requirementsInput').value;
-        
-        // Generate detailed LLM-style analysis
-        if (project.processing_type === 'analysis' && project.name === 'requirements-analysis') {
-            return {
-                project_name: project.name,
-                analysis_type: 'requirements_decomposition',
-                llm_reasoning: [
-                    "📋 Analyzing UAV requirements document...",
-                    "🎯 Identified key mission: Disaster response with rapid deployment",
-                    "📏 Extracted performance parameters: 50km range, 3+ hour endurance, 2kg payload",
-                    "🌤️ Environmental constraints: 25 knot winds, operational altitudes 100-3000m",
-                    "💰 Cost constraints: $2M acquisition, $500/hour operational",
-                    "⚡ Critical requirement: 15-minute deployment time"
-                ],
-                extracted_data: {
-                    capability_gaps: [
-                        "Rapid deployment capability (≤15 min setup)",
-                        "Extended endurance operations (≥3 hours)", 
-                        "All-weather operation capability",
-                        "Multi-sensor payload integration"
-                    ],
-                    performance_requirements: {
-                        range: "≥50 km operational radius",
-                        endurance: "≥3 hours flight time",
-                        payload: "≥2 kg capacity",
-                        altitude: "100-3000 meters AGL",
-                        wind_tolerance: "≥25 knots"
-                    },
-                    technical_constraints: [
-                        "IR camera with heat detection required",
-                        "Real-time data transmission capability",
-                        "Field-ruggedized design required"
-                    ]
-                },
-                confidence: 0.91,
-                processing_time: 3.2,
-                ready_for_downstream: true,
-                next_actions: [
-                    "Send capability_gaps to mission-analysis project",
-                    "Send performance_requirements to performance-analysis project"
-                ]
-            };
-        } else if (project.processing_type === 'analysis' && project.name === 'mission-analysis') {
-            const reqData = this.dataStore.get('requirements-analysis');
-            const capabilityGaps = reqData?.extracted_data?.capability_gaps || [];
-            
-            return {
-                project_name: project.name,
-                analysis_type: 'mission_scenario_development',
-                llm_reasoning: [
-                    "🎯 Receiving capability gaps from requirements analysis...",
-                    "📍 Primary mission: Disaster response in challenging environments",
-                    "🚁 Analyzing deployment scenarios for emergency response",
-                    "⏱️ Critical factor: 15-minute rapid deployment requirement",
-                    "🌍 Operating environment: Variable terrain, potentially hazardous conditions",
-                    "👥 User profile: Emergency response teams with minimal UAV training"
-                ],
-                developed_scenarios: {
-                    scenario_1: {
-                        name: "Rapid Assessment Mission",
-                        description: "Quick area survey immediately after disaster",
-                        duration: "2-3 hours",
-                        coverage: "5-10 sq km systematic grid",
-                        critical_factors: ["15-min deployment", "IR capability", "weather tolerance"]
-                    },
-                    scenario_2: {
-                        name: "Extended Monitoring Mission", 
-                        description: "Continuous area monitoring over extended period",
-                        duration: "6+ hours",
-                        coverage: "Targeted areas with repeat visits",
-                        critical_factors: ["Endurance", "Payload flexibility", "Real-time feed"]
-                    },
-                    scenario_3: {
-                        name: "Search and Rescue Support",
-                        description: "Support SAR operations with thermal detection",
-                        duration: "4+ hours",
-                        coverage: "Focused search areas",
-                        critical_factors: ["Thermal imaging", "Low altitude operation", "Weather tolerance"]
-                    }
-                },
-                operational_constraints: [
-                    "Must operate in 25+ knot winds",
-                    "Required 2+ kg payload for sensor packages",
-                    "15-minute maximum setup time",
-                    "2-person operation team maximum"
-                ],
-                confidence: 0.88,
-                ready_for_downstream: true,
-                next_actions: [
-                    "Send mission_scenarios to solution-selection project"
-                ]
-            };
-        } else if (project.processing_type === 'analysis' && project.name === 'performance-analysis') {
-            const reqData = this.dataStore.get('requirements-analysis');
-            const perfRequirements = reqData?.extracted_data?.performance_requirements || {};
-            
-            return {
-                project_name: project.name,
-                analysis_type: 'performance_evaluation',
-                llm_reasoning: [
-                    "⚡ Receiving performance requirements from requirements analysis...",
-                    "📊 Evaluating UAV options against performance criteria",
-                    "🔍 Analyzing available UAV specifications against requirements",
-                    "⚖️ Performing trade-off analysis: performance vs cost vs mission fit",
-                    "🎯 Identifying UAV candidates that meet minimum requirements",
-                    "📈 Ranking solutions by performance match score"
-                ],
-                performance_evaluation: {
-                    evaluated_uavs: [
-                        {
-                            name: "SkyEagle X500",
-                            performance_score: 0.94,
-                            strengths: ["8-10hr endurance exceeds requirement", "150km range exceeds requirement", "3.5kg payload exceeds requirement"],
-                            weaknesses: ["Higher cost at $1.2M", "Complex setup may challenge 15-min requirement"]
-                        },
-                        {
-                            name: "AeroMapper X8", 
-                            performance_score: 0.89,
-                            strengths: ["12-14hr endurance well above requirement", "High weather tolerance", "5kg payload capacity"],
-                            weaknesses: ["$1.7M cost approaching limit", "Complex pneumatic launcher"]
-                        },
-                        {
-                            name: "Falcon VTOL-X",
-                            performance_score: 0.82, 
-                            strengths: ["VTOL capability simplifies deployment", "Good endurance at 5-6 hours", "Moderate cost at $850K"],
-                            weaknesses: ["Lower payload at 2.5kg", "Complex transition mechanics"]
-                        }
-                    ],
-                    performance_gap_analysis: [
-                        "All candidates meet minimum endurance requirement (≥3 hours)",
-                        "SkyEagle X500 and AeroMapper X8 significantly exceed range requirements",
-                        "Deployment time may be challenging for complex launcher systems",
-                        "Weather tolerance varies - AeroMapper X8 has best all-weather capability"
-                    ]
-                },
-                confidence: 0.86,
-                ready_for_downstream: true,
-                next_actions: [
-                    "Send performance_assessment to solution-selection project"
-                ]
-            };
-        } else if (project.processing_type === 'evaluation' && project.name === 'solution-selection') {
-            const missionData = this.dataStore.get('mission-analysis');
-            const perfData = this.dataStore.get('performance-analysis');
-            
-            return {
-                project_name: project.name,
-                analysis_type: 'solution_recommendation',
-                llm_reasoning: [
-                    "🔍 Integrating mission scenarios and performance analysis...",
-                    "⚖️ Weighing mission requirements against UAV capabilities",
-                    "💡 Scenario 1 (Rapid Assessment) favors quick-deploy UAVs",
-                    "💡 Scenario 2 (Extended Monitoring) favors high-endurance UAVs", 
-                    "💡 Scenario 3 (SAR Support) requires thermal and weather capability",
-                    "🎯 Finding optimal solution that covers all scenarios effectively",
-                    "💰 Considering cost-effectiveness and lifecycle costs"
-                ],
-                evaluation_matrix: {
-                    criteria: {
-                        mission_fit: 0.35,
-                        performance: 0.25,
-                        cost_effectiveness: 0.20,
-                        deployment_ease: 0.20
-                    },
-                    final_scores: [
-                        { name: "SkyEagle X500", total_score: 0.89, recommendation_rank: 1 },
-                        { name: "AeroMapper X8", total_score: 0.84, recommendation_rank: 2 },
-                        { name: "Falcon VTOL-X", total_score: 0.76, recommendation_rank: 3 }
-                    ]
-                },
-                final_recommendation: {
-                    selected_uav: "SkyEagle X500",
-                    justification: "Best balance of performance, mission capability, and operational requirements. 8-10 hour endurance provides significant operational margin. 150km range exceeds requirements by 3x. Payload capacity supports multiple sensor configurations for disaster response scenarios.",
-                    risk_factors: [
-                        "Setup time may challenge 15-minute requirement - recommend training focus",
-                        "Higher acquisition cost requires budget justification"
-                    ],
-                    implementation_notes: [
-                        "Prioritize rapid deployment training for operators",
-                        "Consider pre-positioned equipment to reduce setup time",
-                        "Recommend procurement of 2 units for redundancy"
-                    ]
-                },
-                confidence: 0.91,
-                ready_for_downstream: true
-            };
+
+        // Collect upstream data from projects that feed into this one
+        const upstreamData = {};
+        const upstreamFlows = this.currentLattice.data_flows.filter(flow => flow.to_project === project.name);
+        for (const flow of upstreamFlows) {
+            const upstreamProjectData = this.dataStore.get(flow.from_project);
+            if (upstreamProjectData) {
+                upstreamData[flow.from_project] = upstreamProjectData;
+            }
         }
-        
-        // Default for other project types
-        return {
-            project_name: project.name,
-            results: [`Completed ${project.processing_type} for ${project.description}`],
-            confidence: 0.75,
-            ready_for_downstream: true
-        };
+
+        try {
+            // Call LLM service to process this project
+            console.log(`📡 Calling LLM service to process project: ${project.name}`);
+
+            const response = await fetch('http://localhost:8083/process-project', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    project: project,
+                    requirements: requirements,
+                    upstream_data: upstreamData
+                })
+            });
+
+            if (!response.ok) {
+                let errorMessage = `HTTP ${response.status}`;
+                try {
+                    const errorData = await response.json();
+                    if (errorData.error) {
+                        errorMessage = errorData.error;
+                    }
+                } catch (e) {
+                    errorMessage = response.statusText || `HTTP ${response.status}`;
+                }
+                throw new Error(`LLM service error: ${errorMessage}`);
+            }
+
+            const result = await response.json();
+            console.log(`✅ LLM processing complete for ${project.name} (confidence: ${result.confidence})`);
+
+            // Ensure all required fields are present
+            return {
+                project_name: result.project_name || project.name,
+                analysis_type: result.analysis_type || `${project.processing_type}_analysis`,
+                llm_reasoning: result.llm_reasoning || [],
+                extracted_data: result.extracted_data || {},
+                developed_scenarios: result.developed_scenarios || {},
+                performance_evaluation: result.performance_evaluation || {},
+                final_recommendation: result.final_recommendation || {},
+                evaluation_matrix: result.evaluation_matrix || {},
+                confidence: result.confidence,
+                confidence_reasoning: result.confidence_reasoning || '',
+                processing_time: result.processing_time || 2.0,
+                ready_for_downstream: result.ready_for_downstream !== false,
+                next_actions: result.next_actions || []
+            };
+
+        } catch (error) {
+            console.error(`LLM service error for ${project.name}:`, error);
+            this.updateAnalysisStatus(`❌ Error processing ${project.name}: ${error.message}`);
+
+            // Fail hard - no fallback
+            throw new Error(`Failed to process project ${project.name}: ${error.message}`);
+        }
     }
-    
+
     async triggerDownstreamProjects(completedProject, results) {
         // Find projects that should receive this data
-        const downstreamProjects = this.currentLattice.projects.filter(p => 
-            p.parent_name === completedProject || 
-            this.currentLattice.data_flows.some(flow => 
+        const downstreamProjects = this.currentLattice.projects.filter(p =>
+            p.parent_name === completedProject ||
+            this.currentLattice.data_flows.some(flow =>
                 flow.from_project === completedProject && flow.to_project === p.name
             )
         );
-        
+
         // Animate data flow
         for (const downstreamProject of downstreamProjects) {
             this.animateDataFlow(completedProject, downstreamProject.name, results);
-            
+
             // Start downstream processing after short delay
             setTimeout(() => {
                 this.processProject(downstreamProject.name);
             }, 1000);
         }
     }
-    
+
     animateDataFlow(fromProject, toProject, data) {
         const fromNode = this.cy.getElementById(fromProject);
         const toNode = this.cy.getElementById(toProject);
-        
+
         if (fromNode.length && toNode.length) {
             // Find the edge
             const edge = this.cy.edges(`[source="${fromProject}"][target="${toProject}"]`);
             if (edge.length) {
                 edge.addClass('data-flowing');
-                
+
                 setTimeout(() => {
                     edge.removeClass('data-flowing');
                 }, 2000);
             }
-            
+
             console.log(`📊 Data flowing: ${fromProject} → ${toProject}`);
         }
     }
-    
+
     updateProjectState(projectName, state, description) {
         this.processingStates.set(projectName, { state, description, timestamp: Date.now() });
-        
+
         const statusDiv = document.getElementById('processingStatus');
         const stateEntries = Array.from(this.processingStates.entries())
             .sort((a, b) => b[1].timestamp - a[1].timestamp);
-        
+
+        // Remove "no processing" message if present
+        const noProcessing = statusDiv.querySelector('.no-processing');
+        if (noProcessing) noProcessing.remove();
+
         statusDiv.innerHTML = '';
         stateEntries.slice(0, 5).forEach(([name, info]) => {
             const stateDiv = document.createElement('div');
             stateDiv.className = 'processing-item';
+
+            // Add spinner for processing state
+            const spinner = info.state === 'processing' ? '<div class="processing-progress"></div>' : '';
+            const stateColor = info.state === 'processing' ? 'var(--warning)' :
+                info.state === 'complete' ? 'var(--success)' :
+                    info.state === 'error' ? 'var(--danger)' : 'var(--text-light)';
+
             stateDiv.innerHTML = `
-                <div style="font-weight: bold;">${name}</div>
-                <div style="font-size: 0.8rem; color: var(--text-light);">${info.description}</div>
-                <div style="font-size: 0.7rem; color: var(--text-light);">${info.state}</div>
+                <div style="flex: 1;">
+                    <div style="font-weight: bold; margin-bottom: 4px;">${name}</div>
+                    <div style="font-size: 0.8rem; color: var(--text-light);">${info.description}</div>
+                    <div style="font-size: 0.7rem; color: ${stateColor}; margin-top: 2px; font-weight: 500;">${info.state}</div>
+                </div>
+                ${spinner}
             `;
             statusDiv.appendChild(stateDiv);
         });
+
+        // Show "no processing" if empty
+        if (statusDiv.children.length === 0) {
+            statusDiv.innerHTML = '<div class="no-processing">No processing active...</div>';
+        }
     }
-    
+
     displayDetailedResults(projectName, results) {
         const resultsDiv = document.getElementById('results');
-        
+
         // Remove "no results" message
         const noResults = resultsDiv.querySelector('.no-results');
         if (noResults) noResults.remove();
-        
+
         const resultDiv = document.createElement('div');
         resultDiv.className = 'result-item';
         resultDiv.style.cssText = 'border: 1px solid var(--border-dark); border-radius: 6px; padding: 12px; margin-bottom: 12px; background: var(--dark-3);';
-        
+
         // Build detailed result display
         let content = `
             <div style="font-weight: bold; color: var(--success); margin-bottom: 8px; font-size: 1rem;">
                 ✅ ${projectName} Complete
             </div>
         `;
-        
+
         // Show LLM reasoning process
         if (results.llm_reasoning) {
             content += `
@@ -1302,55 +1347,75 @@ Emergency response teams need rapid deployment UAV capability for disaster asses
                 </div>
             `;
         }
-        
-        // Show extracted/developed data
+
+        // Show extracted/developed data - flexibly handle whatever structure LLM returns
         if (results.extracted_data) {
+            const extracted = results.extracted_data;
             content += `
                 <div style="margin-bottom: 8px;">
                     <div style="font-weight: bold; color: var(--warning); margin-bottom: 4px;">📊 Extracted Data:</div>
                     <div style="font-size: 0.8rem;">
-                        <strong>Capability Gaps:</strong> ${results.extracted_data.capability_gaps.length} identified<br>
-                        <strong>Performance Req's:</strong> ${Object.keys(results.extracted_data.performance_requirements).length} parameters<br>
-                        <strong>Constraints:</strong> ${results.extracted_data.technical_constraints.length} technical constraints
-                    </div>
-                </div>
-            `;
-        } else if (results.developed_scenarios) {
-            content += `
-                <div style="margin-bottom: 8px;">
-                    <div style="font-weight: bold; color: var(--warning); margin-bottom: 4px;">🎯 Developed Scenarios:</div>
-                    <div style="font-size: 0.8rem;">
-                        ${Object.values(results.developed_scenarios).map(scenario => 
-                            `<strong>${scenario.name}:</strong> ${scenario.description}`
-                        ).join('<br>')}
-                    </div>
-                </div>
-            `;
-        } else if (results.performance_evaluation) {
-            content += `
-                <div style="margin-bottom: 8px;">
-                    <div style="font-weight: bold; color: var(--warning); margin-bottom: 4px;">📈 Performance Evaluation:</div>
-                    <div style="font-size: 0.8rem;">
-                        ${results.performance_evaluation.evaluated_uavs.map(uav => 
-                            `<strong>${uav.name}:</strong> Score ${Math.round(uav.performance_score * 100)}%`
-                        ).join('<br>')}
-                    </div>
-                </div>
-            `;
-        } else if (results.final_recommendation) {
-            content += `
-                <div style="margin-bottom: 8px;">
-                    <div style="font-weight: bold; color: var(--success); margin-bottom: 4px;">🎯 Final Recommendation:</div>
-                    <div style="font-size: 0.9rem; font-weight: bold; color: var(--success);">
-                        ${results.final_recommendation.selected_uav}
-                    </div>
-                    <div style="font-size: 0.8rem; margin-top: 4px;">
-                        ${results.final_recommendation.justification}
+                        ${this.formatExtractedData(extracted)}
                     </div>
                 </div>
             `;
         }
-        
+
+        // Handle developed scenarios if present
+        if (results.developed_scenarios) {
+            const scenarios = results.developed_scenarios;
+            content += `
+                <div style="margin-bottom: 8px;">
+                    <div style="font-weight: bold; color: var(--warning); margin-bottom: 4px;">🎯 Developed Scenarios:</div>
+                    <div style="font-size: 0.8rem;">
+                        ${this.formatScenarios(scenarios)}
+                    </div>
+                </div>
+            `;
+        }
+
+        // Handle performance evaluation if present
+        if (results.performance_evaluation) {
+            const perfEval = results.performance_evaluation;
+            content += `
+                <div style="margin-bottom: 8px;">
+                    <div style="font-weight: bold; color: var(--warning); margin-bottom: 4px;">📈 Performance Evaluation:</div>
+                    <div style="font-size: 0.8rem;">
+                        ${this.formatPerformanceEvaluation(perfEval)}
+                    </div>
+                </div>
+            `;
+        }
+
+        // Handle final recommendation if present
+        if (results.final_recommendation) {
+            const recommendation = results.final_recommendation;
+            content += `
+                <div style="margin-bottom: 8px;">
+                    <div style="font-weight: bold; color: var(--success); margin-bottom: 4px;">🎯 Final Recommendation:</div>
+                    <div style="font-size: 0.9rem; font-weight: bold; color: var(--success);">
+                        ${recommendation.selected_uav || recommendation.recommendation || recommendation.selected_solution || 'See details'}
+                    </div>
+                    <div style="font-size: 0.8rem; margin-top: 4px;">
+                        ${recommendation.justification || recommendation.reasoning || recommendation.summary || ''}
+                    </div>
+                </div>
+            `;
+        }
+
+        // Handle evaluation matrix if present
+        if (results.evaluation_matrix) {
+            const matrix = results.evaluation_matrix;
+            content += `
+                <div style="margin-bottom: 8px;">
+                    <div style="font-weight: bold; color: var(--primary); margin-bottom: 4px;">📊 Evaluation Matrix:</div>
+                    <div style="font-size: 0.8rem;">
+                        ${this.formatEvaluationMatrix(matrix)}
+                    </div>
+                </div>
+            `;
+        }
+
         // Show confidence and next actions
         content += `
             <div style="display: flex; justify-content: space-between; align-items: center; margin-top: 8px;">
@@ -1363,7 +1428,7 @@ Emergency response teams need rapid deployment UAV capability for disaster asses
                 </div>
             </div>
         `;
-        
+
         if (results.next_actions) {
             content += `
                 <div style="margin-top: 8px; padding-top: 8px; border-top: 1px solid var(--border-dark);">
@@ -1374,33 +1439,123 @@ Emergency response teams need rapid deployment UAV capability for disaster asses
                 </div>
             `;
         }
-        
+
         resultDiv.innerHTML = content;
         resultsDiv.insertBefore(resultDiv, resultsDiv.firstChild);
-        
+
         // Keep only last 2 detailed results
         const items = resultsDiv.querySelectorAll('.result-item');
         if (items.length > 2) {
             items[items.length - 1].remove();
         }
     }
-    
+
     stepThroughProcessing() {
         // Manual step-through for demonstration
         if (!this.currentLattice) return;
-        
+
         const inactiveNodes = this.cy.nodes('[state="inactive"]');
         if (inactiveNodes.length > 0) {
             const nextProject = inactiveNodes[0].data('project_data').name;
             this.processProject(nextProject);
         }
     }
-    
+
+    formatExtractedData(extracted) {
+        // Flexibly format extracted data regardless of structure
+        const parts = [];
+
+        // Handle arrays
+        for (const [key, value] of Object.entries(extracted)) {
+            if (Array.isArray(value)) {
+                const count = value.length;
+                const label = key.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase());
+                parts.push(`<strong>${label}:</strong> ${count} identified`);
+            } else if (typeof value === 'object' && value !== null) {
+                // Handle objects (like performance_requirements)
+                const count = Object.keys(value).length;
+                const label = key.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase());
+                parts.push(`<strong>${label}:</strong> ${count} parameters`);
+            }
+        }
+
+        // If no structured data found, show summary
+        if (parts.length === 0) {
+            const keys = Object.keys(extracted);
+            if (keys.length > 0) {
+                parts.push(`<strong>Data Fields:</strong> ${keys.length} extracted`);
+                // Show first few key-value pairs
+                const sample = keys.slice(0, 3).map(key => {
+                    const val = extracted[key];
+                    if (Array.isArray(val)) {
+                        return `${key}: ${val.length} items`;
+                    } else if (typeof val === 'object') {
+                        return `${key}: object`;
+                    } else {
+                        return `${key}: ${String(val).substring(0, 30)}`;
+                    }
+                }).join(', ');
+                parts.push(`<span style="color: var(--text-light); font-size: 0.75rem;">${sample}${keys.length > 3 ? '...' : ''}</span>`);
+            }
+        }
+
+        return parts.join('<br>') || 'Data extracted successfully';
+    }
+
+    formatScenarios(scenarios) {
+        // Handle scenarios whether it's an object or array
+        if (Array.isArray(scenarios)) {
+            return scenarios.map((scenario, idx) => {
+                const name = scenario.name || `Scenario ${idx + 1}`;
+                const desc = scenario.description || scenario.summary || '';
+                return `<strong>${name}:</strong> ${desc}`;
+            }).join('<br>');
+        } else if (typeof scenarios === 'object') {
+            return Object.values(scenarios).map(scenario => {
+                const name = scenario.name || scenario.title || 'Scenario';
+                const desc = scenario.description || scenario.summary || '';
+                return `<strong>${name}:</strong> ${desc}`;
+            }).join('<br>');
+        }
+        return 'Scenarios developed';
+    }
+
+    formatPerformanceEvaluation(perfEval) {
+        // Handle performance evaluation flexibly
+        if (perfEval.evaluated_uavs && Array.isArray(perfEval.evaluated_uavs)) {
+            return perfEval.evaluated_uavs.map(uav => {
+                const name = uav.name || uav.uav_name || 'UAV';
+                const score = uav.performance_score || uav.score || 0;
+                return `<strong>${name}:</strong> Score ${Math.round(score * 100)}%`;
+            }).join('<br>');
+        } else if (perfEval.options && Array.isArray(perfEval.options)) {
+            return perfEval.options.map(opt => {
+                const name = opt.name || opt.option || 'Option';
+                const score = opt.score || opt.performance_score || 0;
+                return `<strong>${name}:</strong> Score ${Math.round(score * 100)}%`;
+            }).join('<br>');
+        }
+        return 'Performance evaluation completed';
+    }
+
+    formatEvaluationMatrix(matrix) {
+        // Handle evaluation matrix flexibly
+        if (matrix.final_scores && Array.isArray(matrix.final_scores)) {
+            return matrix.final_scores.map(item => {
+                const name = item.name || item.option || 'Option';
+                const score = item.total_score || item.score || 0;
+                const rank = item.recommendation_rank || item.rank || '';
+                return `<strong>${name}:</strong> ${Math.round(score * 100)}%${rank ? ` (Rank ${rank})` : ''}`;
+            }).join('<br>');
+        }
+        return 'Evaluation matrix completed';
+    }
+
     resetDemo() {
         this.currentLattice = null;
         this.processingStates.clear();
         this.dataStore.clear();
-        
+
         this.cy.elements().remove();
         document.getElementById('requirementsInput').value = '';
         document.getElementById('analysisSummary').style.display = 'none';
@@ -1408,13 +1563,19 @@ Emergency response teams need rapid deployment UAV capability for disaster asses
         document.getElementById('dataFlows').innerHTML = '<div class="no-flows">No data flows defined yet...</div>';
         document.getElementById('processingStatus').innerHTML = '<div class="no-processing">No processing active...</div>';
         document.getElementById('results').innerHTML = '<div class="no-results">No results yet...</div>';
-        
+
+        // Reset progress bar
+        const progressBar = document.getElementById('progressBar');
+        const noProgress = document.getElementById('noProgress');
+        if (progressBar) progressBar.style.display = 'none';
+        if (noProgress) noProgress.style.display = 'block';
+
         document.getElementById('activateProjectsBtn').disabled = true;
         document.getElementById('stepThroughBtn').disabled = true;
-        
+
         this.updateAnalysisStatus('Reset complete');
     }
-    
+
     updateAnalysisStatus(message) {
         document.getElementById('analysisStatus').textContent = message;
     }
