@@ -24,11 +24,14 @@ This document consolidates best practices for developing with Cursor IDE and Lar
 
 ### ✅ **Use Rules for Persistent Context**
 - **Principle**: Define system-level instructions that persist across sessions.
-- **Practice**: Store project-specific rules in `.cursor/rules/` directory.
+- **Practice**: Store project-specific rules in `.cursor/rules/` directory as `.mdc` files.
 - **ODRAS Implementation**: 
-  - ✅ We have 26 focused rule files
+  - ✅ We have 27 focused rule files in `.cursor/rules/`
+  - ✅ Migrated from deprecated `.cursorrules` to modern structure
   - ✅ Rules cover testing, git workflow, database management, etc.
   - 💡 **Improvement**: Review rules quarterly to ensure they're still relevant
+
+**Note**: `.cursorrules` file is deprecated. Cursor now uses `.cursor/rules/` directory with individual `.mdc` files for better organization.
 
 ## 2. Project Structure Optimization
 
@@ -241,4 +244,3 @@ This document consolidates best practices for developing with Cursor IDE and Lar
 
 *Last Updated: November 2024*
 *Based on: Cursor documentation, community forums, and LLM development research*
-
