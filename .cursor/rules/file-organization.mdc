@@ -8,7 +8,7 @@ alwaysApply: true
 - **README.md** - Only markdown file allowed in root
 - **Essential scripts only**: [odras.sh](mdc:odras.sh), [install.sh](mdc:install.sh), [setup_test_knowledge_data.py](mdc:setup_test_knowledge_data.py)
 - **Standard files**: [requirements.txt](mdc:requirements.txt), [docker-compose.yml](mdc:docker-compose.yml), .env files
-- **Config files**: [.cursorrules](mdc:.cursorrules), [pytest.ini](mdc:pytest.ini), [.gitignore](mdc:.gitignore), etc.
+- **Config files**: [pytest.ini](mdc:pytest.ini), [.gitignore](mdc:.gitignore), etc.
 - **NO logs, tests, or temporary files in root**
 
 ## Documentation (docs/ folder ONLY)
