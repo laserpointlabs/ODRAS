@@ -142,20 +142,26 @@ def get_user(authorization: Optional[str] = Header(None)):
     # Check cache first for performance
     if token_hash in TOKENS_CACHE:
         user = TOKENS_CACHE[token_hash]
-        # Update last used time in background
-        _update_token_last_used(token_hash)
-        return user
+        # If cached user doesn't have tenant_id, fetch from DB (cache migration)
+        if "tenant_id" not in user:
+            # Clear cache entry to force DB fetch
+            TOKENS_CACHE.pop(token_hash, None)
+        else:
+            # Update last used time in background
+            _update_token_last_used(token_hash)
+            return user
 
-    # Check database
+            # Check database
     db = _get_db_service()
     conn = db._conn()
     try:
         with conn.cursor() as cur:
             cur.execute(
                 """
-                SELECT user_id, username, is_admin, expires_at, is_active
-                FROM public.auth_tokens
-                WHERE token_hash = %s AND is_active = TRUE
+                SELECT at.user_id, at.username, at.is_admin, at.expires_at, at.is_active, u.tenant_id
+                FROM public.auth_tokens at
+                JOIN public.users u ON at.user_id = u.user_id
+                WHERE at.token_hash = %s AND at.is_active = TRUE
             """,
                 (token_hash,),
             )
@@ -164,7 +170,7 @@ def get_user(authorization: Optional[str] = Header(None)):
             if not row:
                 raise HTTPException(status_code=401, detail="Invalid token")
 
-            user_id, username, is_admin, expires_at, is_active = row
+            user_id, username, is_admin, expires_at, is_active, tenant_id = row
 
             # Check if token is expired
             if expires_at:
@@ -186,10 +192,15 @@ def get_user(authorization: Optional[str] = Header(None)):
             )
             conn.commit()
 
+            # Use system tenant as default if tenant_id is None
+            if tenant_id is None:
+                tenant_id = "00000000-0000-0000-0000-000000000000"
+
             user = {
                 "user_id": str(user_id),
                 "username": username,
                 "is_admin": bool(is_admin),
+                "tenant_id": str(tenant_id),
             }
 
             # Cache the result

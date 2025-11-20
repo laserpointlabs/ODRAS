@@ -293,7 +293,6 @@ start_all() {
         echo "  • LLM Service:      http://localhost:$LLM_PORT"
         echo ""
         print_status "Demo URLs:"
-        echo "  • Lattice Demo:     http://localhost:$HTTP_PORT/lattice_demo.html"
         echo "  • Intelligent Demo: http://localhost:$HTTP_PORT/intelligent_lattice_demo.html"
         echo ""
         print_status "View logs: ./demo.sh logs"

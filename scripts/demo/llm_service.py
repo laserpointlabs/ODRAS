@@ -3,10 +3,10 @@
 LLM Service - Intelligent project lattice generation using LLM
 
 Provides LLM-powered project lattice generation with:
-- Intelligent requirements analysis
-- Project structure generation
-- Debug context exposure for verification
-- Probabilistic generation (different results each run)
+- Exact prompts sent to LLM
+- Raw LLM responses
+- Project processing with full context
+- Complete audit trail of all LLM interactions
 """
 
 import json
@@ -26,7 +26,7 @@ CORS(app)  # Enable CORS for browser requests
 
 
 class LLMService:
-    """LLM service for intelligent project lattice generation."""
+    """LLM service for intelligent project lattice generation and processing."""
     
     def __init__(self):
         self.client = self._get_openai_client()
@@ -116,9 +116,11 @@ class LLMService:
                     
             except Exception as e:
                 logger.error(f"OpenAI generation failed: {e}")
-                raise RuntimeError(f"OpenAI API call failed: {e}") from e
+                # Fallback to mock but mark as fallback
+                return self._generate_mock_with_context(requirements_text, generation_id, str(e))
         else:
-            raise RuntimeError("OpenAI API key not configured. Set OPENAI_API_KEY in .env file or environment variables.")
+            logger.info("Using mock LLM (no API key)")
+            return self._generate_mock_with_context(requirements_text, generation_id, "No OpenAI API key")
     
     def _generate_mock_with_context(self, requirements: str, generation_id: str, reason: str) -> Dict[str, Any]:
         """Generate mock lattice but expose it as if it was LLM generated."""
@@ -450,28 +452,12 @@ PROJECT LAYERS (think hierarchical decomposition):
 DOMAINS:
 systems-engineering, mission-planning, cost, analysis, architecture, integration, testing
 
-CRITICAL CONFIDENCE REQUIREMENT:
-You MUST calculate a REAL confidence level (0.0-1.0) for this lattice structure based on:
-- How well the requirements support lattice decomposition (0.0-0.3)
-- Clarity and completeness of requirements (0.0-0.3)
-- Logical coherence of project relationships (0.0-0.2)
-- Appropriateness of layer/domain assignments (0.0-0.2)
-
-Calculate confidence by evaluating:
-- High confidence (0.85-0.95): Clear requirements, well-structured, logical decomposition
-- Medium confidence (0.70-0.84): Good requirements but some ambiguity, reasonable structure
-- Lower confidence (0.60-0.69): Vague requirements, uncertain decomposition quality
-- Low confidence (0.50-0.59): Very unclear requirements, minimal structure possible
-
-DO NOT use default values like 0.85. Calculate based on YOUR ACTUAL ANALYSIS of the requirements.
-
 RESPONSE FORMAT:
 Return ONLY a JSON object with this EXACT structure:
 
 {{
   "analysis_summary": "Your reasoning for why you chose this project structure",
-  "confidence": <CALCULATE_BASED_ON_REQUIREMENTS_QUALITY_AND_LATTICE_COHERENCE>,
-  "confidence_reasoning": "Explain why this confidence level based on requirements clarity, decomposition quality, and structure coherence",
+  "confidence": 0.85,
   "lattice_reasoning": "Explanation of how projects work together",
   "projects": [
     {{
@@ -506,7 +492,6 @@ IMPORTANT:
 - Ensure logical data flows between projects
 - Each project should have clear purpose for UAV selection
 - Make the lattice specifically relevant to the provided requirements
-- The confidence value MUST be calculated from your analysis, not a default
 """
     
     def process_project(self, project: Dict[str, Any], requirements: str, upstream_data: Dict[str, Any] = None) -> Dict[str, Any]:
@@ -609,36 +594,16 @@ For {project.get('processing_type')} type projects, focus on:
 - Design projects: Create detailed designs, architectures, or plans
 - Evaluation projects: Compare options, make recommendations with justification
 
-CRITICAL CONFIDENCE REQUIREMENTS:
-You MUST calculate a REAL confidence level (0.0-1.0) based on ACTUAL analysis quality. DO NOT use default values like 0.85.
-
-Calculate confidence by evaluating:
-1. Input Data Quality (0.0-0.3 points):
-   - Complete requirements document? (+0.2)
-   - Upstream data available and relevant? (+0.1)
-   - Missing critical information? (-0.1 to -0.2)
-   
-2. Requirements Clarity (0.0-0.3 points):
-   - Clear, specific requirements? (+0.2)
-   - Vague or ambiguous requirements? (-0.1 to -0.2)
-   - Conflicting requirements? (-0.1)
-   
-3. Analysis Completeness (0.0-0.3 points):
-   - All expected outputs generated? (+0.2)
-   - Partial analysis only? (-0.1 to -0.2)
-   - Analysis depth matches project type? (+0.1)
-   
-4. Data Availability (0.0-0.1 points):
-   - All necessary data accessible? (+0.1)
-   - Missing upstream dependencies? (-0.05 to -0.1)
-
-EXAMPLES:
-- High confidence (0.88-0.95): Complete requirements, clear objectives, all upstream data available, thorough analysis
-- Medium confidence (0.72-0.87): Good requirements but some ambiguity, partial upstream data, adequate analysis
-- Lower confidence (0.60-0.71): Vague requirements, missing upstream data, incomplete analysis
-- Low confidence (0.50-0.59): Very unclear requirements, no upstream data, minimal analysis possible
-
-YOU MUST CALCULATE confidence based on YOUR ACTUAL ANALYSIS, not use a default value.
+IMPORTANT:
+- Provide a REAL confidence level (0.0-1.0) based on:
+  * Quality and completeness of input data
+  * Clarity of requirements
+  * Complexity of the analysis
+  * Availability of upstream data
+- Confidence should be realistic - not always high (0.85-0.95)
+- Lower confidence (0.65-0.80) if data is incomplete or requirements are vague
+- Higher confidence (0.85-0.95) if data is complete and requirements are clear
+- NEVER use fixed confidence values - vary based on actual analysis quality
 
 RESPONSE FORMAT:
 Return ONLY a JSON object with this EXACT structure:
@@ -656,8 +621,8 @@ Return ONLY a JSON object with this EXACT structure:
     "specific_metrics": {{"metric": "value"}},
     "recommendations": ["rec1", "rec2"]
   }},
-  "confidence": <CALCULATE_BASED_ON_ACTUAL_ANALYSIS_QUALITY>,
-  "confidence_reasoning": "Detailed explanation: Input data quality (X/0.3), Requirements clarity (Y/0.3), Analysis completeness (Z/0.3), Data availability (W/0.1). Total: <calculated_value>",
+  "confidence": 0.82,
+  "confidence_reasoning": "Why this confidence level (data quality, completeness, etc.)",
   "processing_time": 2.5,
   "ready_for_downstream": true,
   "next_actions": [
@@ -666,11 +631,11 @@ Return ONLY a JSON object with this EXACT structure:
   ]
 }}
 
-Make the response specific to UAV acquisition and realistic. The confidence value MUST be calculated from your actual analysis, not a default.
+Make the response specific to UAV acquisition and realistic. Include actual confidence reasoning.
 """
     
     def get_debug_info(self) -> Dict[str, Any]:
-        """Get complete LLM interaction information."""
+        """Get complete debug information."""
         return {
             "last_generation": self.generation_history[-1] if self.generation_history else None,
             "total_generations": len(self.generation_history),
@@ -685,7 +650,7 @@ llm_service = LLMService()
 
 @app.route('/generate-lattice', methods=['POST'])
 def generate_lattice():
-    """Generate project lattice using LLM."""
+    """Generate lattice with full debug context."""
     try:
         data = request.json
         requirements = data.get('requirements', '')
@@ -744,8 +709,17 @@ def process_project():
         # Process project with LLM
         result = llm_service.process_project(project, requirements, upstream_data)
         
-        # Return the result data
-        return jsonify(result['result'])
+        # Return both the result data AND the full interaction details
+        return jsonify({
+            'result': result['result'],
+            'llm_interaction': {
+                'prompt_sent': result.get('prompt_sent'),
+                'raw_response': result.get('raw_response'),
+                'source': result.get('source'),
+                'generation_id': result.get('generation_id'),
+                'success': result.get('success')
+            }
+        })
         
     except Exception as e:
         logger.error(f"Project processing failed: {e}")

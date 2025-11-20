@@ -25,20 +25,28 @@ This guide provides step-by-step instructions for setting up a complete ODRAS de
 ### What You Need
 - **Windows 10 (version 2004 or later)** or **Windows 11**
 - **Internet connection** for downloading components
-- **User account** with standard (non-admin) privileges
+- **Administrator privileges** - Required for enabling virtualization and Windows features
 - **Approximately 10GB free disk space** for WSL, Docker, and ODRAS
 
 ### What You DON'T Need
 - ❌ Windows Store access (though it helps)
-- ❌ Special IT permissions
+- ❌ Special IT permissions (beyond admin access)
 
-**Note**: Some steps may require administrator privileges, particularly enabling virtualization features. If you don't have admin access, contact your IT department for assistance.
+**⚠️ IMPORTANT**: Administrator privileges are **REQUIRED** to enable virtualization features in Windows. If you don't have admin access, you must contact your IT department to:
+1. Enable virtualization in BIOS/UEFI (if disabled)
+2. Enable Windows Virtualization Platform and WSL features
+3. Install WSL2 kernel update if needed
 
 ---
 
 ## Enable Virtualization
 
 **⚠️ IMPORTANT**: Before installing WSL2, you must ensure virtualization is enabled. This is required for WSL2 to function properly.
+
+**⚠️ ADMINISTRATOR/IT ASSISTANCE REQUIRED**: 
+- **BIOS/UEFI changes**: On government-compliant or enterprise-managed machines, BIOS access is restricted and requires IT administrator assistance
+- **Windows features**: Enabling Windows virtualization features requires administrator privileges
+- **If you don't have admin access**: Contact your IT department before proceeding - they must enable virtualization in BIOS and Windows features for you
 
 ### Step 1: Check if Virtualization is Enabled
 
@@ -52,6 +60,18 @@ This guide provides step-by-step instructions for setting up a complete ODRAS de
 ### Step 2: Enable Virtualization in BIOS/UEFI
 
 If virtualization is disabled, you need to enable it in your system's BIOS/UEFI settings:
+
+**⚠️ ADMINISTRATOR/IT ASSISTANCE REQUIRED**: On government-compliant or enterprise-managed machines, BIOS/UEFI access is typically restricted and requires IT administrator assistance. You **cannot** enable virtualization in BIOS without admin privileges on these systems.
+
+**If you're on a government-compliant or enterprise-managed machine:**
+- **Contact your IT department immediately** - they must enable virtualization in BIOS for you
+- Provide them with this document and specify you need "Virtualization Technology" enabled
+- IT will need to:
+  1. Access BIOS/UEFI settings (may require physical access or remote management tools)
+  2. Enable "Virtualization Technology" (Intel VT-x) or "AMD-V" or "SVM Mode"
+  3. Save changes and restart the system
+
+**If you have full admin access to your machine:**
 
 1. **Restart your computer**
 2. **Enter BIOS/UEFI Setup**:
@@ -77,11 +97,14 @@ If virtualization is disabled, you need to enable it in your system's BIOS/UEFI 
 
 After enabling virtualization in BIOS, enable the required Windows features:
 
-1. **Open PowerShell as Administrator**:
-   - Right-click Start menu → **Windows PowerShell (Admin)** or **Terminal (Admin)**
-   - If you don't have admin access, ask your IT department to run these commands
+**⚠️ ADMINISTRATOR PRIVILEGES REQUIRED**: This step requires administrator privileges. You must run PowerShell as Administrator.
 
-2. **Enable required features**:
+1. **Open PowerShell as Administrator** (REQUIRED):
+   - Right-click Start menu → **Windows PowerShell (Admin)** or **Terminal (Admin)**
+   - **You must select "Run as Administrator"** - this is mandatory
+   - If you don't have admin access, **contact your IT department** - they must run these commands for you
+
+2. **Enable required features** (requires admin PowerShell):
    ```powershell
    # Enable Virtual Machine Platform
    dism.exe /online /enable-feature /featurename:VirtualMachinePlatform /all /norestart
@@ -197,7 +220,7 @@ You should see:
 1. **Open .wslconfig** with Notepad or any text editor
 2. **Add the following configuration**:
 
-   ```ini
+   ```bash
    [wsl2]
    networkingMode=mirrored
    memory=16384MB

@@ -13,10 +13,60 @@
 CREATE EXTENSION IF NOT EXISTS "uuid-ossp";
 
 -- =====================================
+-- MULTI-TENANT INFRASTRUCTURE
+-- =====================================
+
+-- Tenant management table (created FIRST to avoid circular dependency)
+CREATE TABLE IF NOT EXISTS public.tenants (
+    tenant_id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    tenant_code VARCHAR(50) UNIQUE NOT NULL, -- Short code for IRIs (usn-adt, afit-research)
+    tenant_name VARCHAR(255) NOT NULL,       -- Display name (USN ADT, AFIT Research)
+    tenant_type VARCHAR(50) DEFAULT 'organization', -- organization, program, research, commercial
+    parent_tenant_id UUID REFERENCES public.tenants(tenant_id),
+    
+    -- Configuration
+    max_projects INTEGER DEFAULT 1000,
+    max_users INTEGER DEFAULT 500,
+    max_storage_gb INTEGER DEFAULT 100,
+    
+    -- IRI Configuration
+    base_iri VARCHAR(1000) NOT NULL, -- https://odras.navy.mil/usn-adt
+    custom_domain VARCHAR(255),      -- Optional custom domain
+    
+    -- Features enabled
+    features_enabled TEXT[] DEFAULT '{}', -- project_lattice, cross_domain_links, das_advanced
+    
+    -- Status
+    status VARCHAR(20) DEFAULT 'active' CHECK (status IN ('active', 'suspended', 'archived')),
+    subscription_tier VARCHAR(20) DEFAULT 'basic', -- basic, professional, enterprise
+    
+    -- Metadata (created_by added later via ALTER TABLE to avoid circular dependency)
+    created_by UUID, -- Will be set to REFERENCES public.users(user_id) after users table is created
+    created_at TIMESTAMPTZ DEFAULT NOW(),
+    updated_at TIMESTAMPTZ DEFAULT NOW(),
+    
+    -- Constraints
+    CHECK (tenant_code ~ '^[a-z0-9][a-z0-9-]*[a-z0-9]$'), -- kebab-case validation
+    CHECK (LENGTH(tenant_code) >= 3 AND LENGTH(tenant_code) <= 50)
+);
+
+-- System tenant for default data (inserted before users table)
+INSERT INTO public.tenants (
+    tenant_id, tenant_code, tenant_name, tenant_type, base_iri, status
+) VALUES (
+    '00000000-0000-0000-0000-000000000000'::UUID,
+    'system',
+    'System Resources',
+    'system',
+    'https://system.odras.local',
+    'active'
+) ON CONFLICT (tenant_id) DO NOTHING;
+
+-- =====================================
 -- AUTHENTICATION & USER MANAGEMENT
 -- =====================================
 
--- Users table with authentication support
+-- Users table with authentication support (created AFTER tenants)
 CREATE TABLE IF NOT EXISTS public.users (
     user_id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     username VARCHAR(255) UNIQUE NOT NULL,
@@ -44,45 +94,7 @@ CREATE TABLE IF NOT EXISTS public.auth_tokens (
     is_active BOOLEAN DEFAULT TRUE
 );
 
--- =====================================
--- MULTI-TENANT INFRASTRUCTURE
--- =====================================
-
--- Tenant management table
-CREATE TABLE IF NOT EXISTS public.tenants (
-    tenant_id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-    tenant_code VARCHAR(50) UNIQUE NOT NULL, -- Short code for IRIs (usn-adt, afit-research)
-    tenant_name VARCHAR(255) NOT NULL,       -- Display name (USN ADT, AFIT Research)
-    tenant_type VARCHAR(50) DEFAULT 'organization', -- organization, program, research, commercial
-    parent_tenant_id UUID REFERENCES public.tenants(tenant_id),
-    
-    -- Configuration
-    max_projects INTEGER DEFAULT 1000,
-    max_users INTEGER DEFAULT 500,
-    max_storage_gb INTEGER DEFAULT 100,
-    
-    -- IRI Configuration
-    base_iri VARCHAR(1000) NOT NULL, -- https://odras.navy.mil/usn-adt
-    custom_domain VARCHAR(255),      -- Optional custom domain
-    
-    -- Features enabled
-    features_enabled TEXT[] DEFAULT '{}', -- project_lattice, cross_domain_links, das_advanced
-    
-    -- Status
-    status VARCHAR(20) DEFAULT 'active' CHECK (status IN ('active', 'suspended', 'archived')),
-    subscription_tier VARCHAR(20) DEFAULT 'basic', -- basic, professional, enterprise
-    
-    -- Metadata
-    created_by UUID REFERENCES public.users(user_id),
-    created_at TIMESTAMPTZ DEFAULT NOW(),
-    updated_at TIMESTAMPTZ DEFAULT NOW(),
-    
-    -- Constraints
-    CHECK (tenant_code ~ '^[a-z0-9][a-z0-9-]*[a-z0-9]$'), -- kebab-case validation
-    CHECK (LENGTH(tenant_code) >= 3 AND LENGTH(tenant_code) <= 50)
-);
-
--- Tenant membership table
+-- Tenant membership table (created after users table exists)
 CREATE TABLE IF NOT EXISTS public.tenant_members (
     tenant_id UUID NOT NULL REFERENCES public.tenants(tenant_id) ON DELETE CASCADE,
     user_id UUID NOT NULL REFERENCES public.users(user_id) ON DELETE CASCADE,
@@ -92,17 +104,18 @@ CREATE TABLE IF NOT EXISTS public.tenant_members (
     PRIMARY KEY (tenant_id, user_id)
 );
 
--- System tenant for default data
-INSERT INTO public.tenants (
-    tenant_id, tenant_code, tenant_name, tenant_type, base_iri, status
-) VALUES (
-    '00000000-0000-0000-0000-000000000000'::UUID,
-    'system',
-    'System Resources',
-    'system',
-    'https://system.odras.local',
-    'active'
-) ON CONFLICT (tenant_id) DO NOTHING;
+-- Add foreign key constraint to tenants.created_by after users table exists
+DO $$
+BEGIN
+    IF NOT EXISTS (
+        SELECT 1 FROM pg_constraint 
+        WHERE conname = 'tenants_created_by_fkey'
+    ) THEN
+        ALTER TABLE public.tenants 
+            ADD CONSTRAINT tenants_created_by_fkey 
+            FOREIGN KEY (created_by) REFERENCES public.users(user_id);
+    END IF;
+END $$;
 
 -- Indexes for tenant tables
 CREATE INDEX IF NOT EXISTS idx_tenants_tenant_code ON public.tenants(tenant_code);
@@ -110,12 +123,10 @@ CREATE INDEX IF NOT EXISTS idx_tenants_status ON public.tenants(status) WHERE st
 CREATE INDEX IF NOT EXISTS idx_tenant_members_user_id ON public.tenant_members(user_id);
 CREATE INDEX IF NOT EXISTS idx_tenant_members_tenant_id ON public.tenant_members(tenant_id);
 
--- Tenant-scoped indexes for performance
+-- Tenant-scoped indexes for performance (created after tables exist)
 CREATE INDEX IF NOT EXISTS idx_users_tenant_id ON public.users(tenant_id);
-CREATE INDEX IF NOT EXISTS idx_projects_tenant_id ON public.projects(tenant_id);
-CREATE INDEX IF NOT EXISTS idx_files_tenant_id ON public.files(tenant_id);
-CREATE INDEX IF NOT EXISTS idx_knowledge_assets_tenant_id ON public.knowledge_assets(tenant_id);
-CREATE INDEX IF NOT EXISTS idx_ontologies_registry_tenant_id ON public.ontologies_registry(tenant_id);
+-- Note: Other tenant-scoped indexes (projects, files, knowledge_assets, ontologies_registry) 
+-- are created in their respective table sections later in the schema file
 
 -- Triggers for updated_at
 CREATE OR REPLACE FUNCTION update_updated_at_column()

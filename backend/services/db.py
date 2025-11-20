@@ -250,6 +250,10 @@ class DatabaseService:
                     if not validation_result["valid"]:
                         raise ValueError(validation_result["error"])
                 
+                # Use system tenant as default if tenant_id is None
+                if tenant_id is None:
+                    tenant_id = "00000000-0000-0000-0000-000000000000"
+                
                 cur.execute(
                     """INSERT INTO public.projects 
                        (name, description, created_by, namespace_id, domain, project_level, parent_project_id, tenant_id) 
@@ -386,7 +390,7 @@ class DatabaseService:
                 if active is None:
                     cur.execute(
                         """
-                        SELECT p.project_id, p.name, p.description, p.created_at, p.updated_at, p.is_active, p.namespace_id, p.domain, p.project_level, pm.role
+                        SELECT p.project_id, p.name, p.description, p.created_at, p.updated_at, p.is_active, p.namespace_id, p.domain, p.project_level, p.parent_project_id, pm.role
                         FROM public.projects p
                         JOIN public.project_members pm ON pm.project_id = p.project_id
                         WHERE pm.user_id = %s
@@ -397,7 +401,7 @@ class DatabaseService:
                 else:
                     cur.execute(
                         """
-                        SELECT p.project_id, p.name, p.description, p.created_at, p.updated_at, p.is_active, p.namespace_id, p.domain, p.project_level, pm.role
+                        SELECT p.project_id, p.name, p.description, p.created_at, p.updated_at, p.is_active, p.namespace_id, p.domain, p.project_level, p.parent_project_id, pm.role
                         FROM public.projects p
                         JOIN public.project_members pm ON pm.project_id = p.project_id
                         WHERE pm.user_id = %s AND p.is_active = %s

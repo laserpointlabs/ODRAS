@@ -243,7 +243,9 @@ async def create_project(body: Dict, user=Depends(get_user)):
     domain = body.get("domain")
     project_level = body.get("project_level")
     parent_project_id = body.get("parent_project_id")
-    tenant_id = body.get("tenant_id")
+    
+    # Get tenant_id from user or use system tenant as default
+    tenant_id = body.get("tenant_id") or user.get("tenant_id") or "00000000-0000-0000-0000-000000000000"
     
     if not name:
         raise HTTPException(status_code=400, detail="Name required")

@@ -1,193 +1,111 @@
-# ODRAS Living Project Lattice Demonstrator
+# Intelligent Lattice Demo
 
-## 🎯 Implementation Complete
+## Overview
 
-Successfully implemented a complete demonstrator showing ODRAS's core capability: **living project lattice that self-assembles, processes, and evolves**.
+The Intelligent Lattice Demo showcases ODRAS's ability to generate project lattices using LLM analysis and process them with proper dependency management.
 
-## 🏗️ What Was Built
+## Features
 
-### Core System (All Working)
-✅ **Program Bootstrapper** - Rule-based lattice generation from requirements  
-✅ **Real-time Event Bus** - Actual pub/sub for live event delivery  
-✅ **Live Visualization** - Grid layout with real-time updates  
-✅ **Mock Analyses** - Computational work simulation with realistic timing  
-✅ **Mock Gray System** - Continuous sensitivity analysis  
-✅ **Mock X-layer** - Evolutionary exploration  
+- **LLM-Powered Lattice Generation** - Uses OpenAI to analyze requirements and generate intelligent project structures
+- **Real Project Creation** - Creates actual projects in ODRAS with parent-child relationships
+- **Workflow Processing** - Processes projects with proper input blocking (waits for all inputs)
+- **Visual Feedback** - Real-time visualization with Cytoscape.js showing project states
+- **LLM Audit Trail** - Complete log of all LLM interactions for review
 
-### Living System Features Implemented
-✅ **Projects as Computational Cells** - Not passive data stores  
-✅ **Autonomous Decision-Making** - Projects evaluate and decide when to publish  
-✅ **Continuous Processing** - State transitions: draft → processing → ready → published  
-✅ **Event-Driven Responsiveness** - Cascading updates through lattice  
-✅ **Real-time Visualization** - System "breathing" with live animations  
-✅ **Decision Support** - Actionable insights, not just visualization  
+## Quick Start
 
-## 🚀 How to Use
-
-### Quick Start with Management Script
-
-The easiest way to manage all demo services is using the `demo.sh` script:
+### Using demo.sh (Recommended)
 
 ```bash
-# Start all demo services (HTTP, WebSocket, LLM)
-./scripts/demo/demo.sh start
-
-# Check status of all services
-./scripts/demo/demo.sh status
-
-# View logs
-./scripts/demo/demo.sh logs              # All services
-./scripts/demo/demo.sh logs llm          # LLM service only
-./scripts/demo/demo.sh logs-watch all    # Watch all logs continuously
-
-# Restart services
-./scripts/demo/demo.sh restart
-
-# Stop all services
-./scripts/demo/demo.sh stop
-
-# Clean up old processes
-./scripts/demo/demo.sh clean
+cd scripts/demo
+./demo.sh start      # Start all services (HTTP, WebSocket, LLM service)
+./demo.sh status     # Check service status
+./demo.sh logs       # View logs
+./demo.sh stop       # Stop all services
 ```
 
-### Manual Start (Alternative)
+Then open: `http://localhost:8082/intelligent_lattice_demo.html`
 
-```bash
-# Complete automated demonstration
-python scripts/demo/run_living_lattice_demo.py
+### Manual Start
 
-# With cleanup
-python scripts/demo/run_living_lattice_demo.py --cleanup
-```
+1. **Start LLM Service:**
+   ```bash
+   cd scripts/demo
+   python3 llm_service.py
+   ```
 
-### What You'll See
-1. **Program Bootstrap** - Requirements → Project lattice (9 projects, proper relationships)
-2. **Live Visualization** - Browser opens showing grid layout (L0-L3 vertical, domains horizontal)
-3. **Interactive Controls** - Activate projects, publish events, change requirements
-4. **Event Cascades** - Watch requirement changes flow through lattice
-5. **Living System** - Projects processing, deciding, publishing autonomously
-6. **Gray System** - Sensitivity indicators and stability analysis
-7. **X-layer** - Alternative configuration suggestions
+2. **Start HTTP Server:**
+   ```bash
+   cd scripts/demo
+   python3 -m http.server 8082 --directory static
+   ```
 
-## 📊 Demonstrates SDD Vision
+3. **Open Browser:**
+   ```
+   http://localhost:8082/intelligent_lattice_demo.html
+   ```
 
-### Self-Assembling Enterprise
-- ✅ Bootstraps complete acquisition program from requirements text
-- ✅ Rule-based determination of layers, domains, projects
-- ✅ Automatic relationship and subscription setup
+## Requirements
 
-### Self-Executing Enterprise  
-- ✅ Projects process inputs and make decisions autonomously
-- ✅ Event-driven coordination between projects
-- ✅ Continuous processing without manual intervention
+- ODRAS API running on `http://localhost:8000`
+- OpenAI API key set in environment (`OPENAI_API_KEY`)
+- Python 3.8+
+- Modern web browser
 
-### Proactive Analysis
-- ✅ Gray System continuously monitors sensitivity
-- ✅ Identifies fragile regions before problems occur
-- ✅ Provides stability assessments
+## Usage
 
-### Evolutionary Improvement
-- ✅ X-layer explores alternative configurations
-- ✅ Generates optimization suggestions
-- ✅ Shows system learning and adapting
+1. **Enter Requirements** - Paste or upload UAV acquisition requirements
+2. **Generate Lattice** - Click "Generate Intelligent Lattice" to create project structure
+3. **Start Processing** - Click "Start Processing" to process projects with LLM
+4. **Review Results** - View workflow history and LLM audit trail
 
-## 🔬 Key Learning Outcomes
+## Files
 
-### For ODRAS Development Team
-1. **Bootstrapping Rules Work** - Simple keyword-based rules effectively create lattice structure
-2. **Living System is Achievable** - Projects can behave as computational cells
-3. **Visualization is Critical** - Real-time visualization makes living system tangible
-4. **Event Architecture Scales** - Real pub/sub enables responsive coordination
-5. **Decision-Making is Key** - Explicit decisions drive system evolution
+- `intelligent_lattice_demo.html` - Main demo interface
+- `intelligent_lattice.js` - Demo logic and visualization
+- `llm_service.py` - LLM service backend (Flask)
+- `demo.sh` - Service management script
+- `clear_das_service_projects.py` - Utility to clean up demo projects
 
-### For Customer Demonstrations
-1. **Understandable Concept** - Mission/airvehicle gap analysis is accessible
-2. **Visual Impact** - Grid layout clearly shows lattice structure
-3. **Live Demonstration** - Real-time updates show system responsiveness
-4. **Decision Support** - Shows actual decision-making, not just data flow
-5. **Self-Growing System** - Demonstrates bootstrapping capability
+## Architecture
 
-## 🔄 Integration Path to ODRAS
+- **Frontend**: HTML/JavaScript with Cytoscape.js for visualization
+- **Backend**: Flask service for LLM interactions
+- **ODRAS API**: Creates projects, relationships, and subscriptions
+- **Workflow**: JavaScript-based with proper input blocking
 
-### Phase 1: Rule Refinement (Current)
-- Test with various requirement sets
-- Refine bootstrapping rules based on results
-- Identify patterns that work consistently
+## Key Features
 
-### Phase 2: DAS Integration
-- Move bootstrapping logic into DAS service
-- Integrate real event system (not mocked)
-- Connect to actual ODRAS workbenches
+### Input Blocking
+Projects wait for ALL required inputs before processing:
+- Parent project data
+- Data flow inputs
+- Requirements (for L1 projects)
 
-### Phase 3: Production Integration
-- Add lattice visualization to main ODRAS UI
-- Implement real Gray System capabilities
-- Add X-layer exploration features
+### Visual States
+- **Waiting** - Orange dashed border (inputs not ready)
+- **Processing** - Yellow with pulsing overlay
+- **Complete** - Green border
+- **Error** - Red border
 
-### Phase 4: Full Capability
-- Complete self-assembling enterprise
-- Real proactive analysis
-- Evolutionary optimization
+### LLM Integration
+- Real OpenAI GPT-4 calls for each project
+- Complete audit trail of prompts and responses
+- Fallback to mock data if LLM fails
 
-## 📁 Files Structure
+## Troubleshooting
 
-```
-scripts/demo/
-├── demo.sh                    # Service management script (start/stop/status/logs)
-├── llm_service.py             # LLM lattice generation service (port 8083)
-├── program_bootstrapper.py    # Rule-based lattice generation
-├── run_living_lattice_demo.py # Master demonstration script
-├── visualization_server.py     # WebSocket server for real-time updates
-├── mock_analyses.py           # Project computational work simulation
-├── mock_gray_system.py        # Continuous sensitivity analysis
-├── mock_x_layer.py            # Alternative exploration
-└── static/
-    ├── lattice_demo.html      # Frontend interface
-    ├── intelligent_lattice_demo.html  # LLM-powered lattice generator
-    ├── lattice_demo.js         # Grid layout and live updates
-    ├── intelligent_lattice.js # LLM integration JavaScript
-    └── lattice_demo.css       # Styling
+### Demo not starting
+- Check ODRAS is running: `./odras.sh status`
+- Check ports are available: `lsof -i :8082 -i :8083`
+- Check LLM service logs: `./demo.sh logs llm`
 
-backend/services/
-└── event_bus.py               # Real-time event bus implementation
+### Projects not creating
+- Verify authentication: Check browser console for auth errors
+- Check ODRAS API: `curl http://localhost:8000/api/projects`
+- Clear old projects: `python3 clear_das_service_projects.py`
 
-docs/demos/
-└── LIVING_LATTICE_DEMONSTRATOR_GUIDE.md  # Comprehensive user guide
-```
-
-## 🔧 Service Management
-
-### Demo Services
-
-The demo requires these services:
-
-1. **ODRAS API** (port 8000) - Main ODRAS backend
-   - Start: `./odras.sh start`
-   - Must be running before starting demo services
-
-2. **HTTP Server** (port 8082) - Static file server
-   - Serves HTML/JS/CSS files
-   - Started by `demo.sh start`
-
-3. **WebSocket Server** (port 8081) - Real-time updates
-   - Handles live visualization updates
-   - Started by `demo.sh start`
-
-4. **LLM Debug Service** (port 8083) - LLM lattice generation
-   - Powers intelligent lattice generation
-   - Requires OPENAI_API_KEY in .env
-   - Started by `demo.sh start`
-
-### Service Ports
-
-- **8081**: WebSocket server (visualization updates)
-- **8082**: HTTP server (static files)
-- **8083**: LLM debug service (lattice generation)
-
-## 🎉 Result
-
-This demonstrator successfully proves the SDD's core thesis:
-
-**ODRAS can create self-assembling, self-executing digital enterprises that bootstrap from requirements, process autonomously, make decisions, and evolve continuously.**
-
-The living project lattice is no longer a concept - it's a working demonstration ready for customer presentations and further development.
+### LLM not working
+- Verify API key: `echo $OPENAI_API_KEY`
+- Check LLM service: `curl http://localhost:8083/health`
+- Review logs: `./demo.sh logs llm`
