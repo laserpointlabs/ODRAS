@@ -1,1 +1,77 @@
-{}
+{
+  "Operational Requirements Decomposition": {
+    "project_id": "3ab93909-a4d8-41f8-a397-0898859191ee",
+    "name": "Operational Requirements Decomposition",
+    "description": "Decomposes and analyzes the operational requirements for the UAV system.",
+    "created_at": "2025-11-20T23:19:04.851807+00:00",
+    "updated_at": "2025-11-20T23:19:04.851807+00:00",
+    "created_by": "f0baf52a-d4e9-40f8-a114-1432b67bf098",
+    "is_active": true,
+    "namespace_id": "ea94d4c5-27e1-46b4-ae90-a82bd0f3786f",
+    "domain": "systems-engineering",
+    "project_level": 1,
+    "parent_project_id": null,
+    "publication_status": "draft",
+    "tenant_id": "00000000-0000-0000-0000-000000000000"
+  },
+  "Technical Performance Evaluation": {
+    "project_id": "79c38f38-7050-43c1-b9be-f376278b09c6",
+    "name": "Technical Performance Evaluation",
+    "description": "Evaluates the technical performance requirements against potential UAV systems.",
+    "created_at": "2025-11-20T23:19:05.242383+00:00",
+    "updated_at": "2025-11-20T23:19:05.242383+00:00",
+    "created_by": "f0baf52a-d4e9-40f8-a114-1432b67bf098",
+    "is_active": true,
+    "namespace_id": "ea94d4c5-27e1-46b4-ae90-a82bd0f3786f",
+    "domain": "analysis",
+    "project_level": 2,
+    "parent_project_id": "3ab93909-a4d8-41f8-a397-0898859191ee",
+    "publication_status": "draft",
+    "tenant_id": "00000000-0000-0000-0000-000000000000"
+  },
+  "Cost and Lifecycle Economics Analysis": {
+    "project_id": "2694f432-e26c-420a-9b83-dd93a904eb96",
+    "name": "Cost and Lifecycle Economics Analysis",
+    "description": "Analyzes the cost constraints and lifecycle economics of potential UAV systems.",
+    "created_at": "2025-11-20T23:19:05.502778+00:00",
+    "updated_at": "2025-11-20T23:19:05.502778+00:00",
+    "created_by": "f0baf52a-d4e9-40f8-a114-1432b67bf098",
+    "is_active": true,
+    "namespace_id": "ea94d4c5-27e1-46b4-ae90-a82bd0f3786f",
+    "domain": "cost",
+    "project_level": 2,
+    "parent_project_id": "3ab93909-a4d8-41f8-a397-0898859191ee",
+    "publication_status": "draft",
+    "tenant_id": "00000000-0000-0000-0000-000000000000"
+  },
+  "System Integration and Compatibility Assessment": {
+    "project_id": "08e4a1ed-12ba-4f70-95e6-326ba69e33f0",
+    "name": "System Integration and Compatibility Assessment",
+    "description": "Analyzes system integration requirements and assesses compatibility with existing disaster response infrastructure.",
+    "created_at": "2025-11-20T23:19:05.764432+00:00",
+    "updated_at": "2025-11-20T23:19:05.764432+00:00",
+    "created_by": "f0baf52a-d4e9-40f8-a114-1432b67bf098",
+    "is_active": true,
+    "namespace_id": "ea94d4c5-27e1-46b4-ae90-a82bd0f3786f",
+    "domain": "integration",
+    "project_level": 2,
+    "parent_project_id": "3ab93909-a4d8-41f8-a397-0898859191ee",
+    "publication_status": "draft",
+    "tenant_id": "00000000-0000-0000-0000-000000000000"
+  },
+  "UAV Solution Evaluation and Recommendation": {
+    "project_id": "506576c8-c500-4bee-bf74-6a3a0ea567af",
+    "name": "UAV Solution Evaluation and Recommendation",
+    "description": "Evaluates potential UAV solutions based on performance, cost, and integration analyses to recommend the best option.",
+    "created_at": "2025-11-20T23:19:06.025135+00:00",
+    "updated_at": "2025-11-20T23:19:06.025135+00:00",
+    "created_by": "f0baf52a-d4e9-40f8-a114-1432b67bf098",
+    "is_active": true,
+    "namespace_id": "ea94d4c5-27e1-46b4-ae90-a82bd0f3786f",
+    "domain": "analysis",
+    "project_level": 3,
+    "parent_project_id": null,
+    "publication_status": "draft",
+    "tenant_id": "00000000-0000-0000-0000-000000000000"
+  }
+}

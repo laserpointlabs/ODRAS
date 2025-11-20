@@ -1,0 +1,36 @@
+{
+  "name": "desktop-environment",
+  "displayName": "Desktop Environment",
+  "description": "Desktop-like environment within VS Code",
+  "version": "0.1.0",
+  "engines": {
+    "vscode": "^1.80.0"
+  },
+  "categories": ["Other"],
+  "activationEvents": ["*"],
+  "main": "./out/extension.js",
+  "contributes": {
+    "commands": [
+      {
+        "command": "desktop.openDesktop",
+        "title": "Desktop: Open Desktop"
+      }
+    ],
+    "keybindings": [
+      {
+        "command": "desktop.openDesktop",
+        "key": "ctrl+alt+d",
+        "mac": "cmd+alt+d"
+      }
+    ]
+  },
+  "scripts": {
+    "compile": "tsc -p ./",
+    "watch": "tsc -watch -p ./"
+  },
+  "devDependencies": {
+    "@types/node": "^18.x",
+    "@types/vscode": "^1.80.0",
+    "typescript": "^5.0.0"
+  }
+}
