@@ -1,0 +1,184 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ODRAS Living Project Lattice Demonstrator</title>
+    <script src="https://unpkg.com/cytoscape@3.28.1/dist/cytoscape.min.js"></script>
+    <link rel="stylesheet" href="lattice_demo.css">
+</head>
+<body>
+    <div class="app-container">
+        <!-- Header -->
+        <header class="header">
+            <h1>🔬 ODRAS Living Project Lattice</h1>
+            <div class="header-controls">
+                <div class="connection-status" id="connectionStatus">
+                    <span class="status-indicator" id="statusIndicator">●</span>
+                    <span id="statusText">Connecting...</span>
+                </div>
+                <button class="btn" id="refreshBtn">Refresh</button>
+                <button class="btn" id="simulateBtn">Simulate Event</button>
+            </div>
+        </header>
+
+        <!-- Main Layout -->
+        <div class="main-layout">
+            <!-- Left Panel - Controls -->
+            <div class="left-panel">
+                <div class="panel-section">
+                    <h3>Lattice Structure</h3>
+                    <div class="lattice-info" id="latticeInfo">
+                        <div>Projects: <span id="projectCount">0</span></div>
+                        <div>Relationships: <span id="relationshipCount">0</span></div>
+                        <div>Active: <span id="activeProjectCount">0</span></div>
+                    </div>
+                </div>
+
+                <div class="panel-section">
+                    <h3>Event Stream</h3>
+                    <div class="event-log" id="eventLog">
+                        <div class="no-events">No events yet...</div>
+                    </div>
+                </div>
+
+                <div class="panel-section">
+                    <h3>System Status</h3>
+                    <div class="system-status">
+                        <div class="status-item">
+                            <span class="status-label">Gray System:</span>
+                            <span class="status-value gray-system" id="graySystemStatus">Active</span>
+                        </div>
+                        <div class="status-item">
+                            <span class="status-label">X-layer:</span>
+                            <span class="status-value x-layer" id="xLayerStatus">Exploring</span>
+                        </div>
+                        <div class="status-item">
+                            <span class="status-label">Processing:</span>
+                            <span class="status-value" id="processingCount">0</span>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="panel-section">
+                    <h3>Controls</h3>
+                    <div class="controls">
+                        <button class="btn-small" id="activateProjectsBtn">Activate L1 Projects</button>
+                        <button class="btn-small" id="publishRequirementsBtn">Publish Requirements</button>
+                        <button class="btn-small" id="changeRequirementBtn">Change Requirement</button>
+                        <button class="btn-small" id="resetLatticeBtn">Reset Lattice</button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Center Panel - Visualization -->
+            <div class="center-panel">
+                <div class="visualization-header">
+                    <div class="layer-labels">
+                        <div class="layer-label" data-layer="0">L0</div>
+                        <div class="layer-label" data-layer="1">L1</div>
+                        <div class="layer-label" data-layer="2">L2</div>
+                        <div class="layer-label" data-layer="3">L3</div>
+                    </div>
+                    <div class="domain-labels" id="domainLabels">
+                        <!-- Domain labels will be added dynamically -->
+                    </div>
+                </div>
+                <div class="graph-container">
+                    <div id="cy" class="cytoscape-container"></div>
+                    <div class="graph-overlay" id="graphOverlay">
+                        <!-- Event flow animations will appear here -->
+                    </div>
+                </div>
+            </div>
+
+            <!-- Right Panel - Project Details -->
+            <div class="right-panel">
+                <div class="panel-section">
+                    <h3>Project Details</h3>
+                    <div class="project-details" id="projectDetails">
+                        <div class="no-selection">Select a project to view details</div>
+                    </div>
+                </div>
+
+                <div class="panel-section">
+                    <h3>Decision Log</h3>
+                    <div class="decision-log" id="decisionLog">
+                        <div class="no-decisions">No decisions yet...</div>
+                    </div>
+                </div>
+
+                <div class="panel-section">
+                    <h3>Processing Queue</h3>
+                    <div class="processing-queue" id="processingQueue">
+                        <div class="no-processing">No items processing...</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Modals -->
+        <div class="modal" id="eventModal" style="display: none;">
+            <div class="modal-content">
+                <h3>Simulate Event</h3>
+                <div class="form-group">
+                    <label>Source Project:</label>
+                    <select id="sourceProjectSelect">
+                        <option value="">Select project...</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label>Event Type:</label>
+                    <select id="eventTypeSelect">
+                        <option value="requirements.approved">Requirements Approved</option>
+                        <option value="scenarios.defined">Scenarios Defined</option>
+                        <option value="constraints.defined">Constraints Defined</option>
+                        <option value="analysis.complete">Analysis Complete</option>
+                        <option value="design.defined">Design Defined</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label>Event Data (JSON):</label>
+                    <textarea id="eventDataInput" placeholder='{"key": "value"}'></textarea>
+                </div>
+                <div class="modal-buttons">
+                    <button class="btn" id="cancelEventBtn">Cancel</button>
+                    <button class="btn btn-primary" id="sendEventBtn">Send Event</button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Legend -->
+        <div class="legend">
+            <h4>Legend</h4>
+            <div class="legend-item">
+                <div class="legend-color" style="background: #3b82f6;"></div>
+                <span>L0 Foundation</span>
+            </div>
+            <div class="legend-item">
+                <div class="legend-color" style="background: #10b981;"></div>
+                <span>L1 Strategic</span>
+            </div>
+            <div class="legend-item">
+                <div class="legend-color" style="background: #f59e0b;"></div>
+                <span>L2 Tactical</span>
+            </div>
+            <div class="legend-item">
+                <div class="legend-color" style="background: #ef4444;"></div>
+                <span>L3 Concrete</span>
+            </div>
+            <div class="legend-divider"></div>
+            <div class="legend-item">
+                <div class="legend-line parent-child"></div>
+                <span>Parent-Child</span>
+            </div>
+            <div class="legend-item">
+                <div class="legend-line cousin"></div>
+                <span>Cousin</span>
+            </div>
+        </div>
+    </div>
+
+    <script src="lattice_demo.js"></script>
+</body>
+</html>

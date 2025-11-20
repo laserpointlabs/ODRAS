@@ -386,7 +386,7 @@ class DatabaseService:
                 if active is None:
                     cur.execute(
                         """
-                        SELECT p.project_id, p.name, p.description, p.created_at, p.updated_at, p.is_active, p.namespace_id, p.domain, pm.role
+                        SELECT p.project_id, p.name, p.description, p.created_at, p.updated_at, p.is_active, p.namespace_id, p.domain, p.project_level, pm.role
                         FROM public.projects p
                         JOIN public.project_members pm ON pm.project_id = p.project_id
                         WHERE pm.user_id = %s
@@ -397,7 +397,7 @@ class DatabaseService:
                 else:
                     cur.execute(
                         """
-                        SELECT p.project_id, p.name, p.description, p.created_at, p.updated_at, p.is_active, p.namespace_id, p.domain, pm.role
+                        SELECT p.project_id, p.name, p.description, p.created_at, p.updated_at, p.is_active, p.namespace_id, p.domain, p.project_level, pm.role
                         FROM public.projects p
                         JOIN public.project_members pm ON pm.project_id = p.project_id
                         WHERE pm.user_id = %s AND p.is_active = %s

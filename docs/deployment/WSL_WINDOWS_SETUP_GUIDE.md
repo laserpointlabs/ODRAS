@@ -2,21 +2,21 @@
 
 ## Overview
 
-This guide provides step-by-step instructions for setting up a complete ODRAS development environment on Windows using WSL (Windows Subsystem for Linux) **without requiring administrator privileges**. This setup enables you to run ODRAS, use Docker, and work with Cursor IDE entirely within WSL.
-
-**⚠️ CMMC Compliance Note**: If you're in a CMMC-compliant environment that restricts WSL2, see the [CMMC Compliance and WSL1 Constraint](#cmmc-compliance-and-wsl1-constraint) section for alternative approaches using Docker Desktop for Windows.
+This guide provides step-by-step instructions for setting up a complete ODRAS development environment on Windows using WSL2 (Windows Subsystem for Linux). This setup enables you to run ODRAS, use Docker, and work with Cursor IDE entirely within WSL2.
 
 ## Table of Contents
 
 1. [Prerequisites](#prerequisites)
-2. [WSL Installation (No Admin Required)](#wsl-installation-no-admin-required)
-3. [WSL Configuration](#wsl-configuration)
-4. [Docker Installation in WSL](#docker-installation-in-wsl)
-5. [Cursor Installation in WSL](#cursor-installation-in-wsl)
-6. [ODRAS Setup](#odras-setup)
-7. [Verification and Testing](#verification-and-testing)
-8. [Troubleshooting](#troubleshooting)
-9. [Quick Reference Commands](#quick-reference-commands)
+2. [Enable Virtualization](#enable-virtualization)
+3. [WSL Installation](#wsl-installation)
+4. [Configure WSL (.wslconfig)](#configure-wsl-wslconfig)
+5. [WSL Configuration](#wsl-configuration)
+6. [Docker Installation in WSL](#docker-installation-in-wsl)
+7. [Cursor Installation in WSL](#cursor-installation-in-wsl)
+8. [ODRAS Setup](#odras-setup)
+9. [Verification and Testing](#verification-and-testing)
+10. [Troubleshooting](#troubleshooting)
+11. [Quick Reference Commands](#quick-reference-commands)
 
 ---
 
@@ -29,13 +29,85 @@ This guide provides step-by-step instructions for setting up a complete ODRAS de
 - **Approximately 10GB free disk space** for WSL, Docker, and ODRAS
 
 ### What You DON'T Need
-- ❌ Administrator privileges
 - ❌ Windows Store access (though it helps)
 - ❌ Special IT permissions
 
+**Note**: Some steps may require administrator privileges, particularly enabling virtualization features. If you don't have admin access, contact your IT department for assistance.
+
 ---
 
-## WSL Installation (No Admin Required)
+## Enable Virtualization
+
+**⚠️ IMPORTANT**: Before installing WSL2, you must ensure virtualization is enabled. This is required for WSL2 to function properly.
+
+### Step 1: Check if Virtualization is Enabled
+
+1. **Open Task Manager** (Press `Ctrl + Shift + Esc`)
+2. **Go to the "Performance" tab**
+3. **Select "CPU"** from the left sidebar
+4. **Look for "Virtualization"** at the bottom
+   - If it shows **"Enabled"** → You're good to go! Skip to WSL Installation
+   - If it shows **"Disabled"** → Continue to Step 2
+
+### Step 2: Enable Virtualization in BIOS/UEFI
+
+If virtualization is disabled, you need to enable it in your system's BIOS/UEFI settings:
+
+1. **Restart your computer**
+2. **Enter BIOS/UEFI Setup**:
+   - **Dell/HP/Lenovo**: Press `F2` or `F12` during boot
+   - **ASUS**: Press `F2` or `Delete` during boot
+   - **Other brands**: Check your manufacturer's documentation
+   - **Windows 11**: Settings → System → Recovery → Advanced startup → Restart now → Troubleshoot → Advanced options → UEFI Firmware Settings
+
+3. **Find Virtualization Settings**:
+   - Look for **"Virtualization Technology"**, **"Intel VT-x"**, **"AMD-V"**, or **"SVM Mode"**
+   - Common locations:
+     - **Advanced** → **CPU Configuration** → **Virtualization Technology**
+     - **Advanced** → **Processor Configuration** → **Intel Virtualization Technology**
+     - **Security** → **Virtualization**
+
+4. **Enable Virtualization**:
+   - Set the option to **"Enabled"**
+   - Save and exit (usually `F10`)
+
+5. **Restart your computer**
+
+### Step 3: Enable Windows Virtualization Features
+
+After enabling virtualization in BIOS, enable the required Windows features:
+
+1. **Open PowerShell as Administrator**:
+   - Right-click Start menu → **Windows PowerShell (Admin)** or **Terminal (Admin)**
+   - If you don't have admin access, ask your IT department to run these commands
+
+2. **Enable required features**:
+   ```powershell
+   # Enable Virtual Machine Platform
+   dism.exe /online /enable-feature /featurename:VirtualMachinePlatform /all /norestart
+   
+   # Enable Windows Subsystem for Linux
+   dism.exe /online /enable-feature /featurename:Microsoft-Windows-Subsystem-Linux /all /norestart
+   ```
+
+3. **Restart your computer** (if prompted)
+
+4. **Verify features are enabled**:
+   ```powershell
+   # Check if features are enabled
+   Get-WindowsOptionalFeature -Online | Where-Object {$_.FeatureName -like "*VirtualMachine*" -or $_.FeatureName -like "*Subsystem*"}
+   ```
+
+### Step 4: Verify Virtualization is Enabled
+
+After restarting, verify virtualization is enabled:
+
+1. **Open Task Manager** → **Performance** → **CPU**
+2. **Confirm "Virtualization" shows "Enabled"**
+
+---
+
+## WSL Installation
 
 ### Method 1: Using Windows Store (Recommended - Easiest)
 
@@ -91,7 +163,96 @@ You should see:
 * Ubuntu-22.04    Running         2
 ```
 
-If VERSION shows "1", you need to convert to WSL2 (see troubleshooting).
+**⚠️ Important**: If VERSION shows "1", you need to convert to WSL2. See the [Troubleshooting](#wsl-issues) section for instructions.
+
+---
+
+## Configure WSL (.wslconfig)
+
+**⚠️ CRITICAL**: This must be done **immediately after WSL installation** to ensure proper internet access and resource allocation. This configuration enables mirrored networking mode which is essential for internet connectivity.
+
+### Step 1: Create .wslconfig File
+
+1. **Open Windows File Explorer**
+2. **Navigate to your user profile directory**:
+   - Press `Win + R`
+   - Type: `%USERPROFILE%`
+   - Press Enter
+   - This opens: `C:\Users\YourUsername\`
+
+3. **Create the .wslconfig file**:
+   - Right-click in the folder → **New** → **Text Document**
+   - Name it exactly: `.wslconfig` (including the leading dot)
+   - If Windows warns about the file extension, click "Yes"
+   - If you can't create a file starting with a dot, use PowerShell:
+
+   ```powershell
+   # Open PowerShell (not as admin)
+   cd $env:USERPROFILE
+   New-Item -Path .wslconfig -ItemType File
+   ```
+
+### Step 2: Configure .wslconfig
+
+1. **Open .wslconfig** with Notepad or any text editor
+2. **Add the following configuration**:
+
+   ```ini
+   [wsl2]
+   networkingMode=mirrored
+   memory=16384MB
+   processors=16
+   ```
+
+3. **Save the file** (Ctrl + S)
+4. **Close the file**
+
+### Step 3: Apply Configuration
+
+1. **Shutdown WSL** to apply the new configuration:
+   ```powershell
+   wsl --shutdown
+   ```
+
+2. **Wait 10-15 seconds** for WSL to fully shutdown
+
+3. **Restart WSL** by opening Ubuntu from the Start menu or running:
+   ```powershell
+   wsl
+   ```
+
+### Step 4: Verify Configuration
+
+1. **Test internet connectivity** in WSL:
+   ```bash
+   # In WSL (Ubuntu)
+   ping -c 3 google.com
+   ```
+
+   You should see successful ping responses. If not, see the [Troubleshooting](#network-issues) section.
+
+2. **Verify resource allocation**:
+   ```bash
+   # Check memory (should show ~16GB available)
+   free -h
+   
+   # Check CPU cores (should show 16 processors)
+   nproc
+   ```
+
+### Configuration Explanation
+
+- **`networkingMode=mirrored`**: Enables mirrored networking mode, which provides:
+  - Full internet access from WSL
+  - Better network performance
+  - Proper DNS resolution
+  - Required for Docker and ODRAS services
+
+- **`memory=16384MB`**: Allocates 16GB of RAM to WSL2 (adjust based on your system's available RAM)
+
+- **`processors=16`**: Allocates 16 CPU cores to WSL2 (adjust based on your system's CPU cores)
+
+**Note**: Adjust `memory` and `processors` values based on your system's resources. Ensure you don't allocate more than your system has available.
 
 ---
 
@@ -154,94 +315,10 @@ pwd
 ## Docker Installation in WSL
 
 ### Important Notes
-- **For WSL2: Install Docker Engine directly** - No Docker Desktop needed
-- **WSL2 is REQUIRED for Docker Engine** - Docker Engine cannot run directly in WSL1
-- **Docker Desktop is NOT needed for WSL2** - Only use Docker Desktop if stuck with WSL1 (CMMC restriction)
-- We'll install Docker Engine directly in WSL
-- This works without admin privileges on Windows
-
-### WSL1 vs WSL2 for Docker
-
-**WSL2 (Required for Docker Engine)**:
-- ✅ Full Linux kernel - required for Docker
-- ✅ Native Docker Engine support
-- ✅ Better performance
-- ✅ Full container networking support
-
-**WSL1 (NOT supported for Docker Engine)**:
-- ❌ No full Linux kernel - Docker Engine won't work
-- ⚠️ Docker Desktop for Windows can use WSL1 backend, but:
-  - Limited functionality
-  - Performance issues
-  - May not work with ODRAS's docker-compose setup
-  - Not recommended
-
-**If you're stuck with WSL1**, you have these options:
-1. **Get WSL2 working** (preferred) - see troubleshooting section for `0xc03a0014` error
-2. **Use Docker Desktop for Windows** with WSL1 backend (may have limitations)
-3. **Ask IT to enable Virtual Machine Platform** to get WSL2 working
-
-### CMMC Compliance and WSL1 Constraint
-
-**⚠️ Important for CMMC Environments**:
-- Some CMMC-compliant environments restrict WSL2 (requires Virtual Machine Platform)
-- WSL1 may be the only allowed option for compliance reasons
-- **Docker Engine cannot run in WSL1** - requires Docker Desktop as workaround
-
-**For WSL2 Users (Standard Setup)**:
-- ✅ **Use Docker Engine** (instructions below) - No Docker Desktop needed
-- ✅ Better performance and native integration
-- ✅ This is the recommended approach
-
-**Solutions for CMMC/WSL1 Environments Only**:
-
-**Option 1: Docker Desktop for Windows (WSL1 Workaround Only)**
-
-**⚠️ Only use this if you're stuck with WSL1 due to CMMC restrictions. If you have WSL2, use Docker Engine instead (see main instructions below).**
-
-1. **Install Docker Desktop for Windows**:
-   - Download from: https://www.docker.com/products/docker-desktop
-   - Install on Windows (may require IT approval in CMMC environments)
-
-2. **Configure Docker Desktop for WSL1**:
-   - Open Docker Desktop Settings
-   - Go to "Resources" → "WSL Integration"
-   - Enable integration with your WSL1 distribution
-   - Apply & Restart
-
-3. **Verify Docker in WSL1**:
-   ```bash
-   # In WSL1, Docker should now be available
-   docker --version
-   docker ps
-   ```
-
-4. **Use ODRAS with Docker Desktop**:
-   ```bash
-   cd ~/working/ODRAS
-   # Docker Desktop will handle docker-compose
-   docker compose up -d
-   ```
-
-**Note**: Docker Desktop with WSL1 backend should work with ODRAS, but you may encounter:
-- Slower performance than WSL2
-- Some networking limitations
-- File system performance differences
-
-**Option 2: Remote Docker Host**
-- Run Docker on a remote server/VM that meets compliance requirements
-- Configure Docker client in WSL1 to connect to remote Docker host
-- Set `DOCKER_HOST` environment variable
-
-**Option 3: Native Windows Services (If Available)**
-- Run ODRAS services natively on Windows if supported
-- May require significant configuration changes
-- Not currently supported by ODRAS
-
-**Option 4: Request WSL2 Exception**
-- Work with IT/security to get WSL2 approved
-- WSL2 can be configured for compliance with proper controls
-- Document security controls and get approval
+- **WSL2 is REQUIRED** - Docker Engine requires WSL2's full Linux kernel
+- **No Docker Desktop needed** - We'll install Docker Engine directly in WSL2
+- **Better performance** - Native Docker Engine in WSL2 performs better than Docker Desktop
+- This setup works entirely within WSL2
 
 ### Step 1: Install Docker Engine
 
@@ -561,12 +638,17 @@ wsl --install
 #### Problem: WSL is version 1, need version 2
 **Solution**:
 ```powershell
-# Convert to WSL2
+# Ensure WSL2 is set as default
+wsl --set-default-version 2
+
+# Convert existing distribution to WSL2
 wsl --set-version Ubuntu-22.04 2
 
-# Set WSL2 as default
-wsl --set-default-version 2
+# Verify the conversion
+wsl --list --verbose
 ```
+
+**Note**: If conversion fails, ensure virtualization is enabled (see [Enable Virtualization](#enable-virtualization) section).
 
 #### Problem: "WSL 2 requires an update to its kernel component"
 **Solution**:
@@ -613,32 +695,15 @@ WSL2 requires:
 - Windows 10 version 2004 or higher (recommended)
 - Windows 11 (recommended)
 
-**Step 6: Alternative - Use WSL1 First, Then Upgrade**
-```powershell
-# Install with WSL1
-wsl --install -d Ubuntu-22.04 --version 1
-
-# After installation, convert to WSL2
-wsl --set-version Ubuntu-22.04 2
-```
-
-**⚠️ Important**: If you install WSL1, you **cannot run Docker Engine directly**. You must upgrade to WSL2 before installing Docker. ODRAS requires WSL2 for Docker to work.
-
-**Step 7: If All Else Fails**
+**Step 6: If All Else Fails**
 - Ask IT to enable "Virtual Machine Platform" and "Windows Subsystem for Linux" features
 - Ensure Windows is fully updated
-- Check if virtualization is enabled in BIOS (if you have access)
-
-**Step 8: CMMC Compliance Restriction**
-If you're in a CMMC-compliant environment that restricts WSL2:
-- WSL1 may be the only option allowed
-- See "CMMC Compliance and WSL1 Constraint" section above for alternatives
-- Docker Desktop for Windows with WSL1 backend is the recommended workaround
-- Contact IT/security team for approved Docker solution
+- Verify virtualization is enabled in BIOS (see [Enable Virtualization](#enable-virtualization) section)
+- Check Windows version meets requirements (Windows 10 version 2004+ or Windows 11)
 
 ### Docker Issues
 
-#### Problem: "Docker requires WSL2" or Docker won't start in WSL1
+#### Problem: "Docker requires WSL2" or Docker won't start
 **Solution**:
 ```powershell
 # Check WSL version
@@ -654,7 +719,7 @@ wsl --set-default-version 2
 wsl --shutdown
 ```
 
-**Note**: Docker Engine **cannot run in WSL1**. You must use WSL2. If you can't get WSL2 working, ask IT to enable "Virtual Machine Platform" Windows feature.
+**Note**: Docker Engine **requires WSL2**. If you can't get WSL2 working, ensure virtualization is enabled (see [Enable Virtualization](#enable-virtualization) section) and ask IT to enable "Virtual Machine Platform" Windows feature.
 
 #### Problem: "Cannot connect to Docker daemon"
 **Solution**:
@@ -806,9 +871,28 @@ hostname -I
 
 #### Problem: WSL IP changes on restart
 **Solution**:
-- This is normal - WSL gets a new IP each time
+- With `networkingMode=mirrored` in `.wslconfig`, this should not be an issue
 - Use `localhost` from Windows - it should work automatically
-- If not, check Windows firewall settings
+- If you still have issues, verify `.wslconfig` has `networkingMode=mirrored` set
+- Check Windows firewall settings if problems persist
+
+#### Problem: No internet access in WSL
+**Solution**:
+```bash
+# Verify .wslconfig is set correctly
+# From Windows PowerShell:
+cat $env:USERPROFILE\.wslconfig
+
+# Should show networkingMode=mirrored
+# If not, update .wslconfig (see Configure WSL section)
+
+# Restart WSL to apply changes
+wsl --shutdown
+# Then reopen WSL
+
+# Test connectivity
+ping -c 3 google.com
+```
 
 ### Performance Issues
 
@@ -835,12 +919,16 @@ docker system df
 # Clean up unused resources
 docker system prune -a
 
-# Check if WSL2 has enough memory allocated
+# Verify .wslconfig has adequate resources allocated
 # Edit: C:\Users\YourName\.wslconfig
-# Add:
+# Ensure it has:
 # [wsl2]
-# memory=4GB
-# processors=2
+# networkingMode=mirrored
+# memory=16384MB  (adjust based on your system)
+# processors=16   (adjust based on your system)
+
+# Restart WSL to apply changes
+wsl --shutdown
 ```
 
 ---

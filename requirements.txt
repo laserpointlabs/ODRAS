@@ -3,6 +3,8 @@ fastapi>=0.100.0
 uvicorn>=0.22.0
 pydantic>=2.0.0
 pydantic-settings>=2.0.0
+flask>=3.0.0  # For demo LLM service
+flask-cors>=4.0.0  # For demo LLM service CORS support
 
 # HTTP Clients
 httpx>=0.24.0
