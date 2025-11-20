@@ -1,0 +1,62 @@
+{
+  "name": "odras-intelligent-lattice-demo",
+  "displayName": "ODRAS Intelligent Lattice Demo",
+  "description": "ODRAS demo for generating and visualizing intelligent project lattices",
+  "version": "0.1.0",
+  "publisher": "odras",
+  "engines": {
+    "vscode": "^1.80.0"
+  },
+  "categories": [
+    "Visualization",
+    "Other"
+  ],
+  "activationEvents": [
+    "onCommand:odras.openLatticeDemo"
+  ],
+  "main": "./out/extension.js",
+  "contributes": {
+    "commands": [
+      {
+        "command": "odras.openLatticeDemo",
+        "title": "Open Intelligent Lattice Demo",
+        "category": "ODRAS"
+      }
+    ],
+    "menus": {
+      "commandPalette": [
+        {
+          "command": "odras.openLatticeDemo",
+          "title": "ODRAS: Open Intelligent Lattice Demo"
+        }
+      ],
+      "view/title": [
+        {
+          "command": "odras.openLatticeDemo",
+          "when": "view == odrasLatticeDemo",
+          "group": "navigation"
+        }
+      ]
+    },
+    "views": {
+      "explorer": [
+        {
+          "id": "odrasLatticeDemo",
+          "name": "ODRAS Lattice Demo",
+          "when": "true"
+        }
+      ]
+    }
+  },
+  "scripts": {
+    "vscode:prepublish": "npm run compile",
+    "compile": "tsc -p ./",
+    "watch": "tsc -watch -p ./"
+  },
+  "devDependencies": {
+    "@types/vscode": "^1.80.0",
+    "@types/node": "^18.0.0",
+    "typescript": "^5.0.0"
+  },
+  "dependencies": {}
+}

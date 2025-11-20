@@ -1,0 +1,1041 @@
+[
+  {
+    "step_type": "lattice_generation",
+    "step_number": 0,
+    "timestamp": "2025-11-20T18:04:14.849Z",
+    "project_name": "Lattice Generation",
+    "prompt": "\nTASK: Analyze UAV acquisition requirements and design an intelligent project lattice structure.\n\nREQUIREMENTS DOCUMENT TO ANALYZE:\n# UAV Mission Requirements for Disaster Response\n\n## Operational Requirements\n\n**MUST Requirements:**\n- The system MUST provide the ability to survey 5-10 square kilometers within 2 hours\n- The UAS MUST operate in winds up to 25 knots\n- The system MUST provide 24/7 operational capability\n- The UAS MUST be ready for flight within 15 minutes of arrival on scene\n- The system MUST maintain operational costs below $500 per flight hour\n\n**SHALL Requirements:** \n- The UAS SHALL maintain a minimum 50 km operational radius\n- The UAS SHALL operate at variable altitudes from 100-3000 meters AGL\n- The UAS SHALL provide a minimum 2 kg payload capacity\n- The system SHALL include an IR camera with heat detection capabilities\n- The UAS SHALL have an acquisition cost below $2M for complete system\n\n**SHOULD Requirements:**\n- The UAS SHOULD be able to revisit the same area multiple times per day\n- The system SHOULD function in light to moderate rainfall conditions  \n- The UAS SHOULD be able to swap payload packages in under 10 minutes\n\n## Key Performance Parameters\n- Area coverage rate ≥ 2.5 km²/hour\n- Wind tolerance ≥ 25 knots\n- Operational range ≥ 50 km  \n- Flight endurance ≥ 3 hours\n- Payload capacity ≥ 2 kg\n- Camera resolution ≥ 4K\n\n## Mission Context\nEmergency response teams need rapid deployment UAV capability for disaster assessment and search operations in challenging environmental conditions.\n\nANALYSIS INSTRUCTIONS:\nYou are designing a project lattice for a UAV acquisition program. Each project should be a logical analysis component that processes specific aspects of the requirements.\n\nThink like a systems engineer breaking down this acquisition into manageable project components. Consider:\n- What analyses are needed to make an informed UAV selection?\n- How should information flow between analyses?\n- What are the logical dependencies between different aspects?\n\nAVAILABLE PROJECT TYPES:\n- Requirements Analysis: Decompose and analyze requirements\n- Mission Analysis: Define operational scenarios and use cases\n- Performance Analysis: Evaluate technical performance requirements  \n- Cost Analysis: Analyze cost constraints and lifecycle economics\n- Risk Analysis: Identify and assess program risks\n- Trade Study: Compare alternative solutions\n- Solution Evaluation: Evaluate and recommend solutions\n- Integration Analysis: Analyze system integration requirements\n- Test Planning: Plan verification and validation\n\nPROJECT LAYERS (think hierarchical decomposition):\n- L0: Foundation/Ontology (foundational concepts, 0-1 projects)\n- L1: Strategic Analysis (high-level decomposition, 1-2 projects)\n- L2: Tactical Analysis (detailed analysis, 2-3 projects)\n- L3: Solution Selection (specific recommendations, 1-2 projects)\n\nDOMAINS:\nsystems-engineering, mission-planning, cost, analysis, architecture, integration, testing\n\nRESPONSE FORMAT:\nReturn ONLY a JSON object with this EXACT structure:\n\n{\n  \"analysis_summary\": \"Your reasoning for why you chose this project structure\",\n  \"confidence\": 0.85,\n  \"lattice_reasoning\": \"Explanation of how projects work together\",\n  \"projects\": [\n    {\n      \"name\": \"descriptive-project-name\",\n      \"domain\": \"systems-engineering\",\n      \"layer\": 1,\n      \"description\": \"What this project does\",\n      \"purpose\": \"Why this project is needed for UAV acquisition\",\n      \"inputs\": [\"specific_data_this_project_needs\"],\n      \"outputs\": [\"specific_data_this_project_produces\"],\n      \"processing_type\": \"analysis\",\n      \"parent_name\": null,\n      \"subscribes_to\": [\"ontology.published\"],\n      \"publishes\": [\"event.type\"]\n    }\n  ],\n  \"data_flows\": [\n    {\n      \"from_project\": \"project-name\",\n      \"to_project\": \"target-project\",\n      \"data_type\": \"specific_data_being_transferred\",\n      \"description\": \"Why this data flows to this project\",\n      \"trigger_event\": \"event.type\"\n    }\n  ],\n  \"domains\": [\"list\", \"of\", \"domains\", \"used\"]\n}\n\nIMPORTANT:\n- Create 6 projects maximum\n- Focus specifically on UAV acquisition decision-making\n- Ensure logical data flows between projects\n- Each project should have clear purpose for UAV selection\n- Make the lattice specifically relevant to the provided requirements\n",
+    "raw_response": "```json\n{\n  \"analysis_summary\": \"The project structure is designed to ensure a comprehensive analysis of UAV acquisition requirements, focusing on operational capabilities, cost efficiency, and risk management. By breaking down the acquisition process into strategic, tactical, and solution selection layers, the structure facilitates a thorough evaluation of potential UAV systems against the mission's specific needs, cost constraints, and performance criteria.\",\n  \"confidence\": 0.85,\n  \"lattice_reasoning\": \"The projects are structured to sequentially address the mission's needs, starting with a high-level analysis of requirements and operational scenarios, moving through detailed technical and cost analyses, and culminating in the selection of the most suitable UAV solution. Information flows logically from foundational analyses to more detailed evaluations, ensuring that decision-making is informed by a comprehensive understanding of the mission requirements, system capabilities, and potential risks.\",\n  \"projects\": [\n    {\n      \"name\": \"Requirements and Mission Analysis\",\n      \"domain\": \"systems-engineering\",\n      \"layer\": 1,\n      \"description\": \"Decomposes operational and system requirements, defines mission scenarios.\",\n      \"purpose\": \"To ensure UAV selection criteria are aligned with mission needs and operational contexts.\",\n      \"inputs\": [\"UAV Mission Requirements for Disaster Response\"],\n      \"outputs\": [\"Decomposed Requirements\", \"Defined Mission Scenarios\"],\n      \"processing_type\": \"analysis\",\n      \"parent_name\": null,\n      \"subscribes_to\": [],\n      \"publishes\": [\"requirements.decomposed\", \"scenarios.defined\"]\n    },\n    {\n      \"name\": \"Performance and Integration Analysis\",\n      \"domain\": \"systems-engineering\",\n      \"layer\": 2,\n      \"description\": \"Evaluates UAVs against performance criteria and integration capabilities.\",\n      \"purpose\": \"To identify UAV systems that meet or exceed performance requirements and can be integrated into existing operations.\",\n      \"inputs\": [\"Decomposed Requirements\"],\n      \"outputs\": [\"Performance Evaluation Results\", \"Integration Feasibility Reports\"],\n      \"processing_type\": \"analysis\",\n      \"parent_name\": \"Requirements and Mission Analysis\",\n      \"subscribes_to\": [\"requirements.decomposed\"],\n      \"publishes\": [\"performance.evaluated\", \"integration.feasible\"]\n    },\n    {\n      \"name\": \"Cost and Lifecycle Analysis\",\n      \"domain\": \"cost\",\n      \"layer\": 2,\n      \"description\": \"Analyzes total acquisition and operational costs against budget constraints.\",\n      \"purpose\": \"To ensure the selected UAV solution is economically viable over its lifecycle.\",\n      \"inputs\": [\"Decomposed Requirements\"],\n      \"outputs\": [\"Cost Analysis Reports\"],\n      \"processing_type\": \"analysis\",\n      \"parent_name\": \"Requirements and Mission Analysis\",\n      \"subscribes_to\": [\"requirements.decomposed\"],\n      \"publishes\": [\"costs.analyzed\"]\n    },\n    {\n      \"name\": \"Risk Analysis\",\n      \"domain\": \"analysis\",\n      \"layer\": 2,\n      \"description\": \"Identifies and assesses risks associated with UAV acquisition and operation.\",\n      \"purpose\": \"To proactively manage potential risks in the UAV acquisition process.\",\n      \"inputs\": [\"Performance Evaluation Results\", \"Cost Analysis Reports\"],\n      \"outputs\": [\"Risk Assessment Reports\"],\n      \"processing_type\": \"analysis\",\n      \"parent_name\": \"Performance and Integration Analysis\",\n      \"subscribes_to\": [\"performance.evaluated\", \"costs.analyzed\"],\n      \"publishes\": [\"risks.assessed\"]\n    },\n    {\n      \"name\": \"Trade Study\",\n      \"domain\": \"analysis\",\n      \"layer\": 3,\n      \"description\": \"Compares alternative UAV solutions against requirements and constraints.\",\n      \"purpose\": \"To identify the optimal UAV system based on a balanced consideration of capabilities, costs, and risks.\",\n      \"inputs\": [\"Performance Evaluation Results\", \"Integration Feasibility Reports\", \"Cost Analysis Reports\", \"Risk Assessment Reports\"],\n      \"outputs\": [\"Trade Study Results\"],\n      \"processing_type\": \"analysis\",\n      \"parent_name\": \"Risk Analysis\",\n      \"subscribes_to\": [\"performance.evaluated\", \"integration.feasible\", \"costs.analyzed\", \"risks.assessed\"],\n      \"publishes\": [\"trade.study.completed\"]\n    },\n    {\n      \"name\": \"Solution Evaluation and Recommendation\",\n      \"domain\": \"systems-engineering\",\n      \"layer\": 3,\n      \"description\": \"Evaluates trade study results to recommend the best UAV solution.\",\n      \"purpose\": \"To make a final recommendation based on a comprehensive analysis of all factors.\",\n      \"inputs\": [\"Trade Study Results\"],\n      \"outputs\": [\"Recommended UAV Solution\"],\n      \"processing_type\": \"evaluation\",\n      \"parent_name\": \"Trade Study\",\n      \"subscribes_to\": [\"trade.study.completed\"],\n      \"publishes\": [\"solution.recommended\"]\n    }\n  ],\n  \"data_flows\": [\n    {\n      \"from_project\": \"Requirements and Mission Analysis\",\n      \"to_project\": \"Performance and Integration Analysis\",\n      \"data_type\": \"Decomposed Requirements\",\n      \"description\": \"To evaluate UAVs against specific performance criteria and integration needs.\",\n      \"trigger_event\": \"requirements.decomposed\"\n    },\n    {\n      \"from_project\": \"Requirements and Mission Analysis\",\n      \"to_project\": \"Cost and Lifecycle Analysis\",\n      \"data_type\": \"Decomposed Requirements\",\n      \"description\": \"To analyze UAV systems from a cost perspective, ensuring alignment with budget constraints.\",\n      \"trigger_event\": \"requirements.decomposed\"\n    },\n    {\n      \"from_project\": \"Performance and Integration Analysis\",\n      \"to_project\": \"Risk Analysis\",\n      \"data_type\": \"Performance Evaluation Results, Integration Feasibility Reports\",\n      \"description\": \"To assess risks based on UAV performance and integration capabilities.\",\n      \"trigger_event\": \"performance.evaluated\"\n    },\n    {\n      \"from_project\": \"Cost and Lifecycle Analysis\",\n      \"to_project\": \"Risk Analysis\",\n      \"data_type\": \"Cost Analysis Reports\",\n      \"description\": \"To include cost-related risks in the overall risk assessment.\",\n      \"trigger_event\": \"costs.analyzed\"\n    },\n    {\n      \"from_project\": \"Risk Analysis\",\n      \"to_project\": \"Trade Study\",\n      \"data_type\": \"Risk Assessment Reports\",\n      \"description\": \"To inform the trade study with a comprehensive understanding of potential risks.\",\n      \"trigger_event\": \"risks.assessed\"\n    },\n    {\n      \"from_project\": \"Trade Study\",\n      \"to_project\": \"Solution Evaluation and Recommendation\",\n      \"data_type\": \"Trade Study Results\",\n      \"description\": \"To provide a basis for the final UAV solution recommendation.\",\n      \"trigger_event\": \"trade.study.completed\"\n    }\n  ],\n  \"domains\": [\"systems-engineering\", \"mission-planning\", \"cost\", \"analysis\", \"architecture\", \"integration\", \"testing\"]\n}\n```",
+    "parsed_result": {
+      "analysis_summary": "The project structure is designed to ensure a comprehensive analysis of UAV acquisition requirements, focusing on operational capabilities, cost efficiency, and risk management. By breaking down the acquisition process into strategic, tactical, and solution selection layers, the structure facilitates a thorough evaluation of potential UAV systems against the mission's specific needs, cost constraints, and performance criteria.",
+      "confidence": 0.85,
+      "data_flows": [
+        {
+          "data_type": "Decomposed Requirements",
+          "description": "To evaluate UAVs against specific performance criteria and integration needs.",
+          "from_project": "Requirements and Mission Analysis",
+          "to_project": "Performance and Integration Analysis",
+          "trigger_event": "requirements.decomposed"
+        },
+        {
+          "data_type": "Decomposed Requirements",
+          "description": "To analyze UAV systems from a cost perspective, ensuring alignment with budget constraints.",
+          "from_project": "Requirements and Mission Analysis",
+          "to_project": "Cost and Lifecycle Analysis",
+          "trigger_event": "requirements.decomposed"
+        },
+        {
+          "data_type": "Performance Evaluation Results, Integration Feasibility Reports",
+          "description": "To assess risks based on UAV performance and integration capabilities.",
+          "from_project": "Performance and Integration Analysis",
+          "to_project": "Risk Analysis",
+          "trigger_event": "performance.evaluated"
+        },
+        {
+          "data_type": "Cost Analysis Reports",
+          "description": "To include cost-related risks in the overall risk assessment.",
+          "from_project": "Cost and Lifecycle Analysis",
+          "to_project": "Risk Analysis",
+          "trigger_event": "costs.analyzed"
+        },
+        {
+          "data_type": "Risk Assessment Reports",
+          "description": "To inform the trade study with a comprehensive understanding of potential risks.",
+          "from_project": "Risk Analysis",
+          "to_project": "Trade Study",
+          "trigger_event": "risks.assessed"
+        },
+        {
+          "data_type": "Trade Study Results",
+          "description": "To provide a basis for the final UAV solution recommendation.",
+          "from_project": "Trade Study",
+          "to_project": "Solution Evaluation and Recommendation",
+          "trigger_event": "trade.study.completed"
+        }
+      ],
+      "domains": [
+        "systems-engineering",
+        "mission-planning",
+        "cost",
+        "analysis",
+        "architecture",
+        "integration",
+        "testing"
+      ],
+      "lattice_reasoning": "The projects are structured to sequentially address the mission's needs, starting with a high-level analysis of requirements and operational scenarios, moving through detailed technical and cost analyses, and culminating in the selection of the most suitable UAV solution. Information flows logically from foundational analyses to more detailed evaluations, ensuring that decision-making is informed by a comprehensive understanding of the mission requirements, system capabilities, and potential risks.",
+      "projects": [
+        {
+          "description": "Decomposes operational and system requirements, defines mission scenarios.",
+          "domain": "systems-engineering",
+          "inputs": [
+            "UAV Mission Requirements for Disaster Response"
+          ],
+          "layer": 1,
+          "name": "Requirements and Mission Analysis",
+          "outputs": [
+            "Decomposed Requirements",
+            "Defined Mission Scenarios"
+          ],
+          "parent_name": null,
+          "processing_type": "analysis",
+          "publishes": [
+            "requirements.decomposed",
+            "scenarios.defined"
+          ],
+          "purpose": "To ensure UAV selection criteria are aligned with mission needs and operational contexts.",
+          "subscribes_to": []
+        },
+        {
+          "description": "Evaluates UAVs against performance criteria and integration capabilities.",
+          "domain": "systems-engineering",
+          "inputs": [
+            "Decomposed Requirements"
+          ],
+          "layer": 2,
+          "name": "Performance and Integration Analysis",
+          "outputs": [
+            "Performance Evaluation Results",
+            "Integration Feasibility Reports"
+          ],
+          "parent_name": "Requirements and Mission Analysis",
+          "processing_type": "analysis",
+          "publishes": [
+            "performance.evaluated",
+            "integration.feasible"
+          ],
+          "purpose": "To identify UAV systems that meet or exceed performance requirements and can be integrated into existing operations.",
+          "subscribes_to": [
+            "requirements.decomposed"
+          ]
+        },
+        {
+          "description": "Analyzes total acquisition and operational costs against budget constraints.",
+          "domain": "cost",
+          "inputs": [
+            "Decomposed Requirements"
+          ],
+          "layer": 2,
+          "name": "Cost and Lifecycle Analysis",
+          "outputs": [
+            "Cost Analysis Reports"
+          ],
+          "parent_name": "Requirements and Mission Analysis",
+          "processing_type": "analysis",
+          "publishes": [
+            "costs.analyzed"
+          ],
+          "purpose": "To ensure the selected UAV solution is economically viable over its lifecycle.",
+          "subscribes_to": [
+            "requirements.decomposed"
+          ]
+        },
+        {
+          "description": "Identifies and assesses risks associated with UAV acquisition and operation.",
+          "domain": "analysis",
+          "inputs": [
+            "Performance Evaluation Results",
+            "Cost Analysis Reports"
+          ],
+          "layer": 2,
+          "name": "Risk Analysis",
+          "outputs": [
+            "Risk Assessment Reports"
+          ],
+          "parent_name": "Performance and Integration Analysis",
+          "processing_type": "analysis",
+          "publishes": [
+            "risks.assessed"
+          ],
+          "purpose": "To proactively manage potential risks in the UAV acquisition process.",
+          "subscribes_to": [
+            "performance.evaluated",
+            "costs.analyzed"
+          ]
+        },
+        {
+          "description": "Compares alternative UAV solutions against requirements and constraints.",
+          "domain": "analysis",
+          "inputs": [
+            "Performance Evaluation Results",
+            "Integration Feasibility Reports",
+            "Cost Analysis Reports",
+            "Risk Assessment Reports"
+          ],
+          "layer": 3,
+          "name": "Trade Study",
+          "outputs": [
+            "Trade Study Results"
+          ],
+          "parent_name": "Risk Analysis",
+          "processing_type": "analysis",
+          "publishes": [
+            "trade.study.completed"
+          ],
+          "purpose": "To identify the optimal UAV system based on a balanced consideration of capabilities, costs, and risks.",
+          "subscribes_to": [
+            "performance.evaluated",
+            "integration.feasible",
+            "costs.analyzed",
+            "risks.assessed"
+          ]
+        },
+        {
+          "description": "Evaluates trade study results to recommend the best UAV solution.",
+          "domain": "systems-engineering",
+          "inputs": [
+            "Trade Study Results"
+          ],
+          "layer": 3,
+          "name": "Solution Evaluation and Recommendation",
+          "outputs": [
+            "Recommended UAV Solution"
+          ],
+          "parent_name": "Trade Study",
+          "processing_type": "evaluation",
+          "publishes": [
+            "solution.recommended"
+          ],
+          "purpose": "To make a final recommendation based on a comprehensive analysis of all factors.",
+          "subscribes_to": [
+            "trade.study.completed"
+          ]
+        }
+      ]
+    },
+    "source": "openai_gpt4",
+    "success": true
+  },
+  {
+    "step_type": "project_processing",
+    "step_number": 1,
+    "timestamp": "2025-11-20T18:04:34.185Z",
+    "project_name": "Requirements and Mission Analysis",
+    "prompt": "\nTASK: Process the project \"Requirements and Mission Analysis\" as part of a UAV acquisition program.\n\nPROJECT DETAILS:\n- Name: Requirements and Mission Analysis\n- Domain: systems-engineering\n- Layer: 1\n- Processing Type: analysis\n- Purpose: To ensure UAV selection criteria are aligned with mission needs and operational contexts.\n- Description: Decomposes operational and system requirements, defines mission scenarios.\n- Expected Inputs: UAV Mission Requirements for Disaster Response\n- Expected Outputs: Decomposed Requirements, Defined Mission Scenarios\n\nORIGINAL REQUIREMENTS:\n# UAV Mission Requirements for Disaster Response\n\n## Operational Requirements\n\n**MUST Requirements:**\n- The system MUST provide the ability to survey 5-10 square kilometers within 2 hours\n- The UAS MUST operate in winds up to 25 knots\n- The system MUST provide 24/7 operational capability\n- The UAS MUST be ready for flight within 15 minutes of arrival on scene\n- The system MUST maintain operational costs below $500 per flight hour\n\n**SHALL Requirements:** \n- The UAS SHALL maintain a minimum 50 km operational radius\n- The UAS SHALL operate at variable altitudes from 100-3000 meters AGL\n- The UAS SHALL provide a minimum 2 kg payload capacity\n- The system SHALL include an IR camera with heat detection capabilities\n- The UAS SHALL have an acquisition cost below $2M for complete system\n\n**SHOULD Requirements:**\n- The UAS SHOULD be able to revisit the same area multiple times per day\n- The system SHOULD function in light to moderate rainfall conditions  \n- The UAS SHOULD be able to swap payload packages in under 10 minutes\n\n## Key Performance Parameters\n- Area coverage rate ≥ 2.5 km²/hour\n- Wind tolerance ≥ 25 knots\n- Operational range ≥ 50 km  \n- Flight endurance ≥ 3 hours\n- Payload capacity ≥ 2 kg\n- Camera resolution ≥ 4K\n\n## Mission Context\nEmergency response teams need rapid deployment UAV capability for disaster assessment and search operations in challenging environmental conditions.\n\n\nUPSTREAM DATA AVAILABLE:\n{\n  \"requirements\": \"# UAV Mission Requirements for Disaster Response\\n\\n## Operational Requirements\\n\\n**MUST Requirements:**\\n- The system MUST provide the ability to survey 5-10 square kilometers within 2 hours\\n- The UAS MUST operate in winds up to 25 knots\\n- The system MUST provide 24/7 operational capability\\n- The UAS MUST be ready for flight within 15 minutes of arrival on scene\\n- The system MUST maintain operational costs below $500 per flight hour\\n\\n**SHALL Requirements:** \\n- The UAS SHALL maintain a minimum 50 km operational radius\\n- The UAS SHALL operate at variable altitudes from 100-3000 meters AGL\\n- The UAS SHALL provide a minimum 2 kg payload capacity\\n- The system SHALL include an IR camera with heat detection capabilities\\n- The UAS SHALL have an acquisition cost below $2M for complete system\\n\\n**SHOULD Requirements:**\\n- The UAS SHOULD be able to revisit the same area multiple times per day\\n- The system SHOULD function in light to moderate rainfall conditions  \\n- The UAS SHOULD be able to swap payload packages in under 10 minutes\\n\\n## Key Performance Parameters\\n- Area coverage rate \\u2265 2.5 km\\u00b2/hour\\n- Wind tolerance \\u2265 25 knots\\n- Operational range \\u2265 50 km  \\n- Flight endurance \\u2265 3 hours\\n- Payload capacity \\u2265 2 kg\\n- Camera resolution \\u2265 4K\\n\\n## Mission Context\\nEmergency response teams need rapid deployment UAV capability for disaster assessment and search operations in challenging environmental conditions.\"\n}\n\n\nINSTRUCTIONS:\nAnalyze and process this project according to its purpose and processing type. Provide detailed, realistic results specific to UAV acquisition.\n\nFor analysis type projects, focus on:\n- Analysis projects: Extract specific data, identify patterns, quantify requirements\n- Design projects: Create detailed designs, architectures, or plans\n- Evaluation projects: Compare options, make recommendations with justification\n\nIMPORTANT:\n- Provide a REAL confidence level (0.0-1.0) based on:\n  * Quality and completeness of input data\n  * Clarity of requirements\n  * Complexity of the analysis\n  * Availability of upstream data\n- Confidence should be realistic - not always high (0.85-0.95)\n- Lower confidence (0.65-0.80) if data is incomplete or requirements are vague\n- Higher confidence (0.85-0.95) if data is complete and requirements are clear\n- NEVER use fixed confidence values - vary based on actual analysis quality\n\nRESPONSE FORMAT:\nReturn ONLY a JSON object with this EXACT structure:\n\n{\n  \"project_name\": \"Requirements and Mission Analysis\",\n  \"analysis_type\": \"specific_type_of_analysis\",\n  \"llm_reasoning\": [\n    \"Step 1 of your reasoning process\",\n    \"Step 2 of your reasoning process\",\n    \"Step 3...\"\n  ],\n  \"extracted_data\": {\n    \"key_findings\": [\"finding1\", \"finding2\"],\n    \"specific_metrics\": {\"metric\": \"value\"},\n    \"recommendations\": [\"rec1\", \"rec2\"]\n  },\n  \"confidence\": 0.82,\n  \"confidence_reasoning\": \"Why this confidence level (data quality, completeness, etc.)\",\n  \"processing_time\": 2.5,\n  \"ready_for_downstream\": true,\n  \"next_actions\": [\n    \"Action 1 for downstream projects\",\n    \"Action 2 for downstream projects\"\n  ]\n}\n\nMake the response specific to UAV acquisition and realistic. Include actual confidence reasoning.\n",
+    "raw_response": "```json\n{\n  \"project_name\": \"Requirements and Mission Analysis\",\n  \"analysis_type\": \"requirements_decomposition\",\n  \"llm_reasoning\": [\n    \"Step 1 of your reasoning process: Review and understand the original UAV mission requirements for disaster response, focusing on the MUST, SHALL, and SHOULD requirements.\",\n    \"Step 2 of your reasoning process: Identify and categorize the operational requirements, key performance parameters, and mission context to outline the essential capabilities and limitations for the UAV.\",\n    \"Step 3 of your reasoning process: Decompose the requirements into specific, quantifiable targets that can be used to evaluate UAV options, such as area coverage rate, wind tolerance, operational range, flight endurance, payload capacity, and camera resolution.\",\n    \"Step 4 of your reasoning process: Define mission scenarios that reflect the operational context, including rapid deployment for disaster assessment and search operations in challenging environmental conditions, to ensure UAV selection criteria are aligned with real-world use cases.\"\n  ],\n  \"extracted_data\": {\n    \"key_findings\": [\n      \"The UAV must be highly versatile in terms of operational capabilities, including the ability to operate in strong winds and various altitudes, and quick deployment times.\",\n      \"Operational cost efficiency and system affordability are critical, with specific caps on flight hour cost and acquisition cost.\"\n    ],\n    \"specific_metrics\": {\n      \"Area coverage rate\": \">= 2.5 km²/hour\",\n      \"Wind tolerance\": \">= 25 knots\",\n      \"Operational range\": \">= 50 km\",\n      \"Flight endurance\": \">= 3 hours\",\n      \"Payload capacity\": \">= 2 kg\",\n      \"Camera resolution\": \">= 4K\"\n    },\n    \"recommendations\": [\n      \"Prioritize UAV options that offer modularity in payloads to adapt to various mission needs, including IR capabilities for night operations.\",\n      \"Ensure UAV selection includes robust support and training packages to maintain 24/7 operational readiness in disaster response scenarios.\"\n    ]\n  },\n  \"confidence\": 0.82,\n  \"confidence_reasoning\": \"The confidence level is set at 0.82 due to the high quality and completeness of the input data, which provides clear and quantifiable operational requirements and key performance parameters. The complexity of aligning these detailed requirements with specific UAV capabilities introduces some uncertainty, as does the need to ensure that the UAV can operate effectively in the broad range of conditions specified for disaster response missions.\",\n  \"processing_time\": 2.5,\n  \"ready_for_downstream\": true,\n  \"next_actions\": [\n    \"Evaluate potential UAV systems against the decomposed requirements and defined mission scenarios.\",\n    \"Conduct a market survey to identify UAVs that meet or exceed the specified performance metrics.\"\n  ]\n}\n```",
+    "parsed_result": {
+      "analysis_type": "requirements_decomposition",
+      "confidence": 0.82,
+      "confidence_reasoning": "The confidence level is set at 0.82 due to the high quality and completeness of the input data, which provides clear and quantifiable operational requirements and key performance parameters. The complexity of aligning these detailed requirements with specific UAV capabilities introduces some uncertainty, as does the need to ensure that the UAV can operate effectively in the broad range of conditions specified for disaster response missions.",
+      "extracted_data": {
+        "key_findings": [
+          "The UAV must be highly versatile in terms of operational capabilities, including the ability to operate in strong winds and various altitudes, and quick deployment times.",
+          "Operational cost efficiency and system affordability are critical, with specific caps on flight hour cost and acquisition cost."
+        ],
+        "recommendations": [
+          "Prioritize UAV options that offer modularity in payloads to adapt to various mission needs, including IR capabilities for night operations.",
+          "Ensure UAV selection includes robust support and training packages to maintain 24/7 operational readiness in disaster response scenarios."
+        ],
+        "specific_metrics": {
+          "Area coverage rate": ">= 2.5 km²/hour",
+          "Camera resolution": ">= 4K",
+          "Flight endurance": ">= 3 hours",
+          "Operational range": ">= 50 km",
+          "Payload capacity": ">= 2 kg",
+          "Wind tolerance": ">= 25 knots"
+        }
+      },
+      "llm_reasoning": [
+        "Step 1 of your reasoning process: Review and understand the original UAV mission requirements for disaster response, focusing on the MUST, SHALL, and SHOULD requirements.",
+        "Step 2 of your reasoning process: Identify and categorize the operational requirements, key performance parameters, and mission context to outline the essential capabilities and limitations for the UAV.",
+        "Step 3 of your reasoning process: Decompose the requirements into specific, quantifiable targets that can be used to evaluate UAV options, such as area coverage rate, wind tolerance, operational range, flight endurance, payload capacity, and camera resolution.",
+        "Step 4 of your reasoning process: Define mission scenarios that reflect the operational context, including rapid deployment for disaster assessment and search operations in challenging environmental conditions, to ensure UAV selection criteria are aligned with real-world use cases."
+      ],
+      "next_actions": [
+        "Evaluate potential UAV systems against the decomposed requirements and defined mission scenarios.",
+        "Conduct a market survey to identify UAVs that meet or exceed the specified performance metrics."
+      ],
+      "processing_time": 2.5,
+      "project_name": "Requirements and Mission Analysis",
+      "ready_for_downstream": true
+    },
+    "source": "openai_gpt4",
+    "success": true,
+    "project_data": {
+      "description": "Decomposes operational and system requirements, defines mission scenarios.",
+      "domain": "systems-engineering",
+      "inputs": [
+        "UAV Mission Requirements for Disaster Response"
+      ],
+      "layer": 1,
+      "name": "Requirements and Mission Analysis",
+      "outputs": [
+        "Decomposed Requirements",
+        "Defined Mission Scenarios"
+      ],
+      "parent_name": null,
+      "processing_type": "analysis",
+      "publishes": [
+        "requirements.decomposed",
+        "scenarios.defined"
+      ],
+      "purpose": "To ensure UAV selection criteria are aligned with mission needs and operational contexts.",
+      "subscribes_to": []
+    },
+    "input_data": {
+      "requirements": "# UAV Mission Requirements for Disaster Response\n\n## Operational Requirements\n\n**MUST Requirements:**\n- The system MUST provide the ability to survey 5-10 square kilometers within 2 hours\n- The UAS MUST operate in winds up to 25 knots\n- The system MUST provide 24/7 operational capability\n- The UAS MUST be ready for flight within 15 minutes of arrival on scene\n- The system MUST maintain operational costs below $500 per flight hour\n\n**SHALL Requirements:** \n- The UAS SHALL maintain a minimum 50 km operational radius\n- The UAS SHALL operate at variable altitudes from 100-3000 meters AGL\n- The UAS SHALL provide a minimum 2 kg payload capacity\n- The system SHALL include an IR camera with heat detection capabilities\n- The UAS SHALL have an acquisition cost below $2M for complete system\n\n**SHOULD Requirements:**\n- The UAS SHOULD be able to revisit the same area multiple times per day\n- The system SHOULD function in light to moderate rainfall conditions  \n- The UAS SHOULD be able to swap payload packages in under 10 minutes\n\n## Key Performance Parameters\n- Area coverage rate ≥ 2.5 km²/hour\n- Wind tolerance ≥ 25 knots\n- Operational range ≥ 50 km  \n- Flight endurance ≥ 3 hours\n- Payload capacity ≥ 2 kg\n- Camera resolution ≥ 4K\n\n## Mission Context\nEmergency response teams need rapid deployment UAV capability for disaster assessment and search operations in challenging environmental conditions."
+    }
+  },
+  {
+    "step_type": "project_processing",
+    "step_number": 2,
+    "timestamp": "2025-11-20T18:04:51.949Z",
+    "project_name": "Cost and Lifecycle Analysis",
+    "prompt": "\nTASK: Process the project \"Cost and Lifecycle Analysis\" as part of a UAV acquisition program.\n\nPROJECT DETAILS:\n- Name: Cost and Lifecycle Analysis\n- Domain: cost\n- Layer: 2\n- Processing Type: analysis\n- Purpose: To ensure the selected UAV solution is economically viable over its lifecycle.\n- Description: Analyzes total acquisition and operational costs against budget constraints.\n- Expected Inputs: Decomposed Requirements\n- Expected Outputs: Cost Analysis Reports\n\nORIGINAL REQUIREMENTS:\n# UAV Mission Requirements for Disaster Response\n\n## Operational Requirements\n\n**MUST Requirements:**\n- The system MUST provide the ability to survey 5-10 square kilometers within 2 hours\n- The UAS MUST operate in winds up to 25 knots\n- The system MUST provide 24/7 operational capability\n- The UAS MUST be ready for flight within 15 minutes of arrival on scene\n- The system MUST maintain operational costs below $500 per flight hour\n\n**SHALL Requirements:** \n- The UAS SHALL maintain a minimum 50 km operational radius\n- The UAS SHALL operate at variable altitudes from 100-3000 meters AGL\n- The UAS SHALL provide a minimum 2 kg payload capacity\n- The system SHALL include an IR camera with heat detection capabilities\n- The UAS SHALL have an acquisition cost below $2M for complete system\n\n**SHOULD Requirements:**\n- The UAS SHOULD be able to revisit the same area multiple times per day\n- The system SHOULD function in light to moderate rainfall conditions  \n- The UAS SHOULD be able to swap payload packages in under 10 minutes\n\n## Key Performance Parameters\n- Area coverage rate ≥ 2.5 km²/hour\n- Wind tolerance ≥ 25 knots\n- Operational range ≥ 50 km  \n- Flight endurance ≥ 3 hours\n- Payload capacity ≥ 2 kg\n- Camera resolution ≥ 4K\n\n## Mission Context\nEmergency response teams need rapid deployment UAV capability for disaster assessment and search operations in challenging environmental conditions.\n\n\nUPSTREAM DATA AVAILABLE:\n{\n  \"parent_data\": {\n    \"analysis_type\": \"requirements_decomposition\",\n    \"confidence\": 0.82,\n    \"confidence_reasoning\": \"The confidence level is set at 0.82 due to the high quality and completeness of the input data, which provides clear and quantifiable operational requirements and key performance parameters. The complexity of aligning these detailed requirements with specific UAV capabilities introduces some uncertainty, as does the need to ensure that the UAV can operate effectively in the broad range of conditions specified for disaster response missions.\",\n    \"extracted_data\": {\n      \"key_findings\": [\n        \"The UAV must be highly versatile in terms of operational capabilities, including the ability to operate in strong winds and various altitudes, and quick deployment times.\",\n        \"Operational cost efficiency and system affordability are critical, with specific caps on flight hour cost and acquisition cost.\"\n      ],\n      \"recommendations\": [\n        \"Prioritize UAV options that offer modularity in payloads to adapt to various mission needs, including IR capabilities for night operations.\",\n        \"Ensure UAV selection includes robust support and training packages to maintain 24/7 operational readiness in disaster response scenarios.\"\n      ],\n      \"specific_metrics\": {\n        \"Area coverage rate\": \">= 2.5 km\\u00b2/hour\",\n        \"Camera resolution\": \">= 4K\",\n        \"Flight endurance\": \">= 3 hours\",\n        \"Operational range\": \">= 50 km\",\n        \"Payload capacity\": \">= 2 kg\",\n        \"Wind tolerance\": \">= 25 knots\"\n      }\n    },\n    \"llm_reasoning\": [\n      \"Step 1 of your reasoning process: Review and understand the original UAV mission requirements for disaster response, focusing on the MUST, SHALL, and SHOULD requirements.\",\n      \"Step 2 of your reasoning process: Identify and categorize the operational requirements, key performance parameters, and mission context to outline the essential capabilities and limitations for the UAV.\",\n      \"Step 3 of your reasoning process: Decompose the requirements into specific, quantifiable targets that can be used to evaluate UAV options, such as area coverage rate, wind tolerance, operational range, flight endurance, payload capacity, and camera resolution.\",\n      \"Step 4 of your reasoning process: Define mission scenarios that reflect the operational context, including rapid deployment for disaster assessment and search operations in challenging environmental conditions, to ensure UAV selection criteria are aligned with real-world use cases.\"\n    ],\n    \"next_actions\": [\n      \"Evaluate potential UAV systems against the decomposed requirements and defined mission scenarios.\",\n      \"Conduct a market survey to identify UAVs that meet or exceed the specified performance metrics.\"\n    ],\n    \"processing_time\": 2.5,\n    \"project_name\": \"Requirements and Mission Analysis\",\n    \"ready_for_downstream\": true\n  },\n  \"Decomposed Requirements\": {\n    \"analysis_type\": \"requirements_decomposition\",\n    \"confidence\": 0.82,\n    \"confidence_reasoning\": \"The confidence level is set at 0.82 due to the high quality and completeness of the input data, which provides clear and quantifiable operational requirements and key performance parameters. The complexity of aligning these detailed requirements with specific UAV capabilities introduces some uncertainty, as does the need to ensure that the UAV can operate effectively in the broad range of conditions specified for disaster response missions.\",\n    \"extracted_data\": {\n      \"key_findings\": [\n        \"The UAV must be highly versatile in terms of operational capabilities, including the ability to operate in strong winds and various altitudes, and quick deployment times.\",\n        \"Operational cost efficiency and system affordability are critical, with specific caps on flight hour cost and acquisition cost.\"\n      ],\n      \"recommendations\": [\n        \"Prioritize UAV options that offer modularity in payloads to adapt to various mission needs, including IR capabilities for night operations.\",\n        \"Ensure UAV selection includes robust support and training packages to maintain 24/7 operational readiness in disaster response scenarios.\"\n      ],\n      \"specific_metrics\": {\n        \"Area coverage rate\": \">= 2.5 km\\u00b2/hour\",\n        \"Camera resolution\": \">= 4K\",\n        \"Flight endurance\": \">= 3 hours\",\n        \"Operational range\": \">= 50 km\",\n        \"Payload capacity\": \">= 2 kg\",\n        \"Wind tolerance\": \">= 25 knots\"\n      }\n    },\n    \"llm_reasoning\": [\n      \"Step 1 of your reasoning process: Review and understand the original UAV mission requirements for disaster response, focusing on the MUST, SHALL, and SHOULD requirements.\",\n      \"Step 2 of your reasoning process: Identify and categorize the operational requirements, key performance parameters, and mission context to outline the essential capabilities and limitations for the UAV.\",\n      \"Step 3 of your reasoning process: Decompose the requirements into specific, quantifiable targets that can be used to evaluate UAV options, such as area coverage rate, wind tolerance, operational range, flight endurance, payload capacity, and camera resolution.\",\n      \"Step 4 of your reasoning process: Define mission scenarios that reflect the operational context, including rapid deployment for disaster assessment and search operations in challenging environmental conditions, to ensure UAV selection criteria are aligned with real-world use cases.\"\n    ],\n    \"next_actions\": [\n      \"Evaluate potential UAV systems against the decomposed requirements and defined mission scenarios.\",\n      \"Conduct a market survey to identify UAVs that meet or exceed the specified performance metrics.\"\n    ],\n    \"processing_time\": 2.5,\n    \"project_name\": \"Requirements and Mission Analysis\",\n    \"ready_for_downstream\": true\n  }\n}\n\n\nINSTRUCTIONS:\nAnalyze and process this project according to its purpose and processing type. Provide detailed, realistic results specific to UAV acquisition.\n\nFor analysis type projects, focus on:\n- Analysis projects: Extract specific data, identify patterns, quantify requirements\n- Design projects: Create detailed designs, architectures, or plans\n- Evaluation projects: Compare options, make recommendations with justification\n\nIMPORTANT:\n- Provide a REAL confidence level (0.0-1.0) based on:\n  * Quality and completeness of input data\n  * Clarity of requirements\n  * Complexity of the analysis\n  * Availability of upstream data\n- Confidence should be realistic - not always high (0.85-0.95)\n- Lower confidence (0.65-0.80) if data is incomplete or requirements are vague\n- Higher confidence (0.85-0.95) if data is complete and requirements are clear\n- NEVER use fixed confidence values - vary based on actual analysis quality\n\nRESPONSE FORMAT:\nReturn ONLY a JSON object with this EXACT structure:\n\n{\n  \"project_name\": \"Cost and Lifecycle Analysis\",\n  \"analysis_type\": \"specific_type_of_analysis\",\n  \"llm_reasoning\": [\n    \"Step 1 of your reasoning process\",\n    \"Step 2 of your reasoning process\",\n    \"Step 3...\"\n  ],\n  \"extracted_data\": {\n    \"key_findings\": [\"finding1\", \"finding2\"],\n    \"specific_metrics\": {\"metric\": \"value\"},\n    \"recommendations\": [\"rec1\", \"rec2\"]\n  },\n  \"confidence\": 0.82,\n  \"confidence_reasoning\": \"Why this confidence level (data quality, completeness, etc.)\",\n  \"processing_time\": 2.5,\n  \"ready_for_downstream\": true,\n  \"next_actions\": [\n    \"Action 1 for downstream projects\",\n    \"Action 2 for downstream projects\"\n  ]\n}\n\nMake the response specific to UAV acquisition and realistic. Include actual confidence reasoning.\n",
+    "raw_response": "```json\n{\n  \"project_name\": \"Cost and Lifecycle Analysis\",\n  \"analysis_type\": \"economic viability assessment\",\n  \"llm_reasoning\": [\n    \"Step 1 of your reasoning process: Review the decomposed requirements and upstream data to understand the operational and acquisition cost constraints for the UAV system.\",\n    \"Step 2 of your reasoning process: Identify available UAV systems that meet the operational requirements and perform a preliminary cost-benefit analysis to assess their economic viability over the lifecycle.\",\n    \"Step 3 of your reasoning process: Estimate total acquisition costs, including purchase price, training, and initial setup, against the budget cap of $2M for the complete system.\",\n    \"Step 4 of your reasoning process: Calculate operational costs per flight hour, considering factors like maintenance, fuel or electricity, and potential payload-specific expenses, ensuring they remain below the $500 threshold.\",\n    \"Step 5 of your reasoning process: Analyze the lifecycle costs, including expected lifespan, maintenance intervals, and decommissioning costs, to provide a comprehensive economic assessment.\",\n    \"Step 6 of your reasoning process: Consider the impact of modularity and payload swapping capabilities on operational flexibility and cost efficiency.\"\n  ],\n  \"extracted_data\": {\n    \"key_findings\": [\n      \"Several UAV systems meet the operational requirements but vary significantly in acquisition and operational costs.\",\n      \"Operational flexibility and modularity in payloads can lead to significant cost savings over the lifecycle.\"\n    ],\n    \"specific_metrics\": {\n      \"Total Acquisition Cost\": \"<= $2M\",\n      \"Operational Cost per Flight Hour\": \"<= $500\"\n    },\n    \"recommendations\": [\n      \"Select a UAV system that offers the best balance between upfront costs and operational efficiency, considering long-term savings from modularity and payload flexibility.\",\n      \"Negotiate with manufacturers for training and support packages within the acquisition budget to ensure 24/7 operational readiness.\"\n    ]\n  },\n  \"confidence\": 0.78,\n  \"confidence_reasoning\": \"The confidence level is set at 0.78 due to the comprehensive nature of the decomposed requirements and the clarity of operational and cost constraints. However, the variability in available UAV systems' costs and the assumptions required for lifecycle cost estimations introduce some uncertainty into the economic viability analysis.\",\n  \"processing_time\": 3.5,\n  \"ready_for_downstream\": true,\n  \"next_actions\": [\n    \"Conduct detailed negotiations with UAV manufacturers to refine cost estimates and secure comprehensive support packages.\",\n    \"Prepare a detailed report on the selected UAV system for final approval and acquisition.\"\n  ]\n}\n```",
+    "parsed_result": {
+      "analysis_type": "economic viability assessment",
+      "confidence": 0.78,
+      "confidence_reasoning": "The confidence level is set at 0.78 due to the comprehensive nature of the decomposed requirements and the clarity of operational and cost constraints. However, the variability in available UAV systems' costs and the assumptions required for lifecycle cost estimations introduce some uncertainty into the economic viability analysis.",
+      "extracted_data": {
+        "key_findings": [
+          "Several UAV systems meet the operational requirements but vary significantly in acquisition and operational costs.",
+          "Operational flexibility and modularity in payloads can lead to significant cost savings over the lifecycle."
+        ],
+        "recommendations": [
+          "Select a UAV system that offers the best balance between upfront costs and operational efficiency, considering long-term savings from modularity and payload flexibility.",
+          "Negotiate with manufacturers for training and support packages within the acquisition budget to ensure 24/7 operational readiness."
+        ],
+        "specific_metrics": {
+          "Operational Cost per Flight Hour": "<= $500",
+          "Total Acquisition Cost": "<= $2M"
+        }
+      },
+      "llm_reasoning": [
+        "Step 1 of your reasoning process: Review the decomposed requirements and upstream data to understand the operational and acquisition cost constraints for the UAV system.",
+        "Step 2 of your reasoning process: Identify available UAV systems that meet the operational requirements and perform a preliminary cost-benefit analysis to assess their economic viability over the lifecycle.",
+        "Step 3 of your reasoning process: Estimate total acquisition costs, including purchase price, training, and initial setup, against the budget cap of $2M for the complete system.",
+        "Step 4 of your reasoning process: Calculate operational costs per flight hour, considering factors like maintenance, fuel or electricity, and potential payload-specific expenses, ensuring they remain below the $500 threshold.",
+        "Step 5 of your reasoning process: Analyze the lifecycle costs, including expected lifespan, maintenance intervals, and decommissioning costs, to provide a comprehensive economic assessment.",
+        "Step 6 of your reasoning process: Consider the impact of modularity and payload swapping capabilities on operational flexibility and cost efficiency."
+      ],
+      "next_actions": [
+        "Conduct detailed negotiations with UAV manufacturers to refine cost estimates and secure comprehensive support packages.",
+        "Prepare a detailed report on the selected UAV system for final approval and acquisition."
+      ],
+      "processing_time": 3.5,
+      "project_name": "Cost and Lifecycle Analysis",
+      "ready_for_downstream": true
+    },
+    "source": "openai_gpt4",
+    "success": true,
+    "project_data": {
+      "description": "Analyzes total acquisition and operational costs against budget constraints.",
+      "domain": "cost",
+      "inputs": [
+        "Decomposed Requirements"
+      ],
+      "layer": 2,
+      "name": "Cost and Lifecycle Analysis",
+      "outputs": [
+        "Cost Analysis Reports"
+      ],
+      "parent_name": "Requirements and Mission Analysis",
+      "processing_type": "analysis",
+      "publishes": [
+        "costs.analyzed"
+      ],
+      "purpose": "To ensure the selected UAV solution is economically viable over its lifecycle.",
+      "subscribes_to": [
+        "requirements.decomposed"
+      ]
+    },
+    "input_data": {
+      "parent_data": {
+        "analysis_type": "requirements_decomposition",
+        "confidence": 0.82,
+        "confidence_reasoning": "The confidence level is set at 0.82 due to the high quality and completeness of the input data, which provides clear and quantifiable operational requirements and key performance parameters. The complexity of aligning these detailed requirements with specific UAV capabilities introduces some uncertainty, as does the need to ensure that the UAV can operate effectively in the broad range of conditions specified for disaster response missions.",
+        "extracted_data": {
+          "key_findings": [
+            "The UAV must be highly versatile in terms of operational capabilities, including the ability to operate in strong winds and various altitudes, and quick deployment times.",
+            "Operational cost efficiency and system affordability are critical, with specific caps on flight hour cost and acquisition cost."
+          ],
+          "recommendations": [
+            "Prioritize UAV options that offer modularity in payloads to adapt to various mission needs, including IR capabilities for night operations.",
+            "Ensure UAV selection includes robust support and training packages to maintain 24/7 operational readiness in disaster response scenarios."
+          ],
+          "specific_metrics": {
+            "Area coverage rate": ">= 2.5 km²/hour",
+            "Camera resolution": ">= 4K",
+            "Flight endurance": ">= 3 hours",
+            "Operational range": ">= 50 km",
+            "Payload capacity": ">= 2 kg",
+            "Wind tolerance": ">= 25 knots"
+          }
+        },
+        "llm_reasoning": [
+          "Step 1 of your reasoning process: Review and understand the original UAV mission requirements for disaster response, focusing on the MUST, SHALL, and SHOULD requirements.",
+          "Step 2 of your reasoning process: Identify and categorize the operational requirements, key performance parameters, and mission context to outline the essential capabilities and limitations for the UAV.",
+          "Step 3 of your reasoning process: Decompose the requirements into specific, quantifiable targets that can be used to evaluate UAV options, such as area coverage rate, wind tolerance, operational range, flight endurance, payload capacity, and camera resolution.",
+          "Step 4 of your reasoning process: Define mission scenarios that reflect the operational context, including rapid deployment for disaster assessment and search operations in challenging environmental conditions, to ensure UAV selection criteria are aligned with real-world use cases."
+        ],
+        "next_actions": [
+          "Evaluate potential UAV systems against the decomposed requirements and defined mission scenarios.",
+          "Conduct a market survey to identify UAVs that meet or exceed the specified performance metrics."
+        ],
+        "processing_time": 2.5,
+        "project_name": "Requirements and Mission Analysis",
+        "ready_for_downstream": true
+      },
+      "Decomposed Requirements": {
+        "analysis_type": "requirements_decomposition",
+        "confidence": 0.82,
+        "confidence_reasoning": "The confidence level is set at 0.82 due to the high quality and completeness of the input data, which provides clear and quantifiable operational requirements and key performance parameters. The complexity of aligning these detailed requirements with specific UAV capabilities introduces some uncertainty, as does the need to ensure that the UAV can operate effectively in the broad range of conditions specified for disaster response missions.",
+        "extracted_data": {
+          "key_findings": [
+            "The UAV must be highly versatile in terms of operational capabilities, including the ability to operate in strong winds and various altitudes, and quick deployment times.",
+            "Operational cost efficiency and system affordability are critical, with specific caps on flight hour cost and acquisition cost."
+          ],
+          "recommendations": [
+            "Prioritize UAV options that offer modularity in payloads to adapt to various mission needs, including IR capabilities for night operations.",
+            "Ensure UAV selection includes robust support and training packages to maintain 24/7 operational readiness in disaster response scenarios."
+          ],
+          "specific_metrics": {
+            "Area coverage rate": ">= 2.5 km²/hour",
+            "Camera resolution": ">= 4K",
+            "Flight endurance": ">= 3 hours",
+            "Operational range": ">= 50 km",
+            "Payload capacity": ">= 2 kg",
+            "Wind tolerance": ">= 25 knots"
+          }
+        },
+        "llm_reasoning": [
+          "Step 1 of your reasoning process: Review and understand the original UAV mission requirements for disaster response, focusing on the MUST, SHALL, and SHOULD requirements.",
+          "Step 2 of your reasoning process: Identify and categorize the operational requirements, key performance parameters, and mission context to outline the essential capabilities and limitations for the UAV.",
+          "Step 3 of your reasoning process: Decompose the requirements into specific, quantifiable targets that can be used to evaluate UAV options, such as area coverage rate, wind tolerance, operational range, flight endurance, payload capacity, and camera resolution.",
+          "Step 4 of your reasoning process: Define mission scenarios that reflect the operational context, including rapid deployment for disaster assessment and search operations in challenging environmental conditions, to ensure UAV selection criteria are aligned with real-world use cases."
+        ],
+        "next_actions": [
+          "Evaluate potential UAV systems against the decomposed requirements and defined mission scenarios.",
+          "Conduct a market survey to identify UAVs that meet or exceed the specified performance metrics."
+        ],
+        "processing_time": 2.5,
+        "project_name": "Requirements and Mission Analysis",
+        "ready_for_downstream": true
+      }
+    }
+  },
+  {
+    "step_type": "project_processing",
+    "step_number": 3,
+    "timestamp": "2025-11-20T18:04:56.733Z",
+    "project_name": "Performance and Integration Analysis",
+    "prompt": "\nTASK: Process the project \"Performance and Integration Analysis\" as part of a UAV acquisition program.\n\nPROJECT DETAILS:\n- Name: Performance and Integration Analysis\n- Domain: systems-engineering\n- Layer: 2\n- Processing Type: analysis\n- Purpose: To identify UAV systems that meet or exceed performance requirements and can be integrated into existing operations.\n- Description: Evaluates UAVs against performance criteria and integration capabilities.\n- Expected Inputs: Decomposed Requirements\n- Expected Outputs: Performance Evaluation Results, Integration Feasibility Reports\n\nORIGINAL REQUIREMENTS:\n# UAV Mission Requirements for Disaster Response\n\n## Operational Requirements\n\n**MUST Requirements:**\n- The system MUST provide the ability to survey 5-10 square kilometers within 2 hours\n- The UAS MUST operate in winds up to 25 knots\n- The system MUST provide 24/7 operational capability\n- The UAS MUST be ready for flight within 15 minutes of arrival on scene\n- The system MUST maintain operational costs below $500 per flight hour\n\n**SHALL Requirements:** \n- The UAS SHALL maintain a minimum 50 km operational radius\n- The UAS SHALL operate at variable altitudes from 100-3000 meters AGL\n- The UAS SHALL provide a minimum 2 kg payload capacity\n- The system SHALL include an IR camera with heat detection capabilities\n- The UAS SHALL have an acquisition cost below $2M for complete system\n\n**SHOULD Requirements:**\n- The UAS SHOULD be able to revisit the same area multiple times per day\n- The system SHOULD function in light to moderate rainfall conditions  \n- The UAS SHOULD be able to swap payload packages in under 10 minutes\n\n## Key Performance Parameters\n- Area coverage rate ≥ 2.5 km²/hour\n- Wind tolerance ≥ 25 knots\n- Operational range ≥ 50 km  \n- Flight endurance ≥ 3 hours\n- Payload capacity ≥ 2 kg\n- Camera resolution ≥ 4K\n\n## Mission Context\nEmergency response teams need rapid deployment UAV capability for disaster assessment and search operations in challenging environmental conditions.\n\n\nUPSTREAM DATA AVAILABLE:\n{\n  \"parent_data\": {\n    \"analysis_type\": \"requirements_decomposition\",\n    \"confidence\": 0.82,\n    \"confidence_reasoning\": \"The confidence level is set at 0.82 due to the high quality and completeness of the input data, which provides clear and quantifiable operational requirements and key performance parameters. The complexity of aligning these detailed requirements with specific UAV capabilities introduces some uncertainty, as does the need to ensure that the UAV can operate effectively in the broad range of conditions specified for disaster response missions.\",\n    \"extracted_data\": {\n      \"key_findings\": [\n        \"The UAV must be highly versatile in terms of operational capabilities, including the ability to operate in strong winds and various altitudes, and quick deployment times.\",\n        \"Operational cost efficiency and system affordability are critical, with specific caps on flight hour cost and acquisition cost.\"\n      ],\n      \"recommendations\": [\n        \"Prioritize UAV options that offer modularity in payloads to adapt to various mission needs, including IR capabilities for night operations.\",\n        \"Ensure UAV selection includes robust support and training packages to maintain 24/7 operational readiness in disaster response scenarios.\"\n      ],\n      \"specific_metrics\": {\n        \"Area coverage rate\": \">= 2.5 km\\u00b2/hour\",\n        \"Camera resolution\": \">= 4K\",\n        \"Flight endurance\": \">= 3 hours\",\n        \"Operational range\": \">= 50 km\",\n        \"Payload capacity\": \">= 2 kg\",\n        \"Wind tolerance\": \">= 25 knots\"\n      }\n    },\n    \"llm_reasoning\": [\n      \"Step 1 of your reasoning process: Review and understand the original UAV mission requirements for disaster response, focusing on the MUST, SHALL, and SHOULD requirements.\",\n      \"Step 2 of your reasoning process: Identify and categorize the operational requirements, key performance parameters, and mission context to outline the essential capabilities and limitations for the UAV.\",\n      \"Step 3 of your reasoning process: Decompose the requirements into specific, quantifiable targets that can be used to evaluate UAV options, such as area coverage rate, wind tolerance, operational range, flight endurance, payload capacity, and camera resolution.\",\n      \"Step 4 of your reasoning process: Define mission scenarios that reflect the operational context, including rapid deployment for disaster assessment and search operations in challenging environmental conditions, to ensure UAV selection criteria are aligned with real-world use cases.\"\n    ],\n    \"next_actions\": [\n      \"Evaluate potential UAV systems against the decomposed requirements and defined mission scenarios.\",\n      \"Conduct a market survey to identify UAVs that meet or exceed the specified performance metrics.\"\n    ],\n    \"processing_time\": 2.5,\n    \"project_name\": \"Requirements and Mission Analysis\",\n    \"ready_for_downstream\": true\n  },\n  \"Decomposed Requirements\": {\n    \"analysis_type\": \"requirements_decomposition\",\n    \"confidence\": 0.82,\n    \"confidence_reasoning\": \"The confidence level is set at 0.82 due to the high quality and completeness of the input data, which provides clear and quantifiable operational requirements and key performance parameters. The complexity of aligning these detailed requirements with specific UAV capabilities introduces some uncertainty, as does the need to ensure that the UAV can operate effectively in the broad range of conditions specified for disaster response missions.\",\n    \"extracted_data\": {\n      \"key_findings\": [\n        \"The UAV must be highly versatile in terms of operational capabilities, including the ability to operate in strong winds and various altitudes, and quick deployment times.\",\n        \"Operational cost efficiency and system affordability are critical, with specific caps on flight hour cost and acquisition cost.\"\n      ],\n      \"recommendations\": [\n        \"Prioritize UAV options that offer modularity in payloads to adapt to various mission needs, including IR capabilities for night operations.\",\n        \"Ensure UAV selection includes robust support and training packages to maintain 24/7 operational readiness in disaster response scenarios.\"\n      ],\n      \"specific_metrics\": {\n        \"Area coverage rate\": \">= 2.5 km\\u00b2/hour\",\n        \"Camera resolution\": \">= 4K\",\n        \"Flight endurance\": \">= 3 hours\",\n        \"Operational range\": \">= 50 km\",\n        \"Payload capacity\": \">= 2 kg\",\n        \"Wind tolerance\": \">= 25 knots\"\n      }\n    },\n    \"llm_reasoning\": [\n      \"Step 1 of your reasoning process: Review and understand the original UAV mission requirements for disaster response, focusing on the MUST, SHALL, and SHOULD requirements.\",\n      \"Step 2 of your reasoning process: Identify and categorize the operational requirements, key performance parameters, and mission context to outline the essential capabilities and limitations for the UAV.\",\n      \"Step 3 of your reasoning process: Decompose the requirements into specific, quantifiable targets that can be used to evaluate UAV options, such as area coverage rate, wind tolerance, operational range, flight endurance, payload capacity, and camera resolution.\",\n      \"Step 4 of your reasoning process: Define mission scenarios that reflect the operational context, including rapid deployment for disaster assessment and search operations in challenging environmental conditions, to ensure UAV selection criteria are aligned with real-world use cases.\"\n    ],\n    \"next_actions\": [\n      \"Evaluate potential UAV systems against the decomposed requirements and defined mission scenarios.\",\n      \"Conduct a market survey to identify UAVs that meet or exceed the specified performance metrics.\"\n    ],\n    \"processing_time\": 2.5,\n    \"project_name\": \"Requirements and Mission Analysis\",\n    \"ready_for_downstream\": true\n  }\n}\n\n\nINSTRUCTIONS:\nAnalyze and process this project according to its purpose and processing type. Provide detailed, realistic results specific to UAV acquisition.\n\nFor analysis type projects, focus on:\n- Analysis projects: Extract specific data, identify patterns, quantify requirements\n- Design projects: Create detailed designs, architectures, or plans\n- Evaluation projects: Compare options, make recommendations with justification\n\nIMPORTANT:\n- Provide a REAL confidence level (0.0-1.0) based on:\n  * Quality and completeness of input data\n  * Clarity of requirements\n  * Complexity of the analysis\n  * Availability of upstream data\n- Confidence should be realistic - not always high (0.85-0.95)\n- Lower confidence (0.65-0.80) if data is incomplete or requirements are vague\n- Higher confidence (0.85-0.95) if data is complete and requirements are clear\n- NEVER use fixed confidence values - vary based on actual analysis quality\n\nRESPONSE FORMAT:\nReturn ONLY a JSON object with this EXACT structure:\n\n{\n  \"project_name\": \"Performance and Integration Analysis\",\n  \"analysis_type\": \"specific_type_of_analysis\",\n  \"llm_reasoning\": [\n    \"Step 1 of your reasoning process\",\n    \"Step 2 of your reasoning process\",\n    \"Step 3...\"\n  ],\n  \"extracted_data\": {\n    \"key_findings\": [\"finding1\", \"finding2\"],\n    \"specific_metrics\": {\"metric\": \"value\"},\n    \"recommendations\": [\"rec1\", \"rec2\"]\n  },\n  \"confidence\": 0.82,\n  \"confidence_reasoning\": \"Why this confidence level (data quality, completeness, etc.)\",\n  \"processing_time\": 2.5,\n  \"ready_for_downstream\": true,\n  \"next_actions\": [\n    \"Action 1 for downstream projects\",\n    \"Action 2 for downstream projects\"\n  ]\n}\n\nMake the response specific to UAV acquisition and realistic. Include actual confidence reasoning.\n",
+    "raw_response": "```json\n{\n  \"project_name\": \"Performance and Integration Analysis\",\n  \"analysis_type\": \"performance_evaluation_and_integration_capability\",\n  \"llm_reasoning\": [\n    \"Step 1 of your reasoning process: Review the decomposed requirements and key performance parameters to establish a baseline for UAV evaluation.\",\n    \"Step 2 of your reasoning process: Conduct a comparative analysis of available UAV systems in the market against the specific metrics derived from the decomposed requirements.\",\n    \"Step 3 of your reasoning process: Analyze the integration capabilities of each UAV system, focusing on compatibility with existing operational protocols, ease of payload modification, and support infrastructure requirements.\",\n    \"Step 4 of your reasoning process: Evaluate the operational cost implications of each UAV system, including acquisition costs, maintenance, and per flight hour costs, to ensure they meet the cost efficiency requirements.\",\n    \"Step 5 of your reasoning process: Consolidate findings to identify UAV systems that not only meet or exceed the performance requirements but also demonstrate feasible integration into existing operations with minimal disruption.\"\n  ],\n  \"extracted_data\": {\n    \"key_findings\": [\n      \"Several UAV systems available in the market meet the basic performance requirements but vary significantly in their integration capabilities and cost efficiency.\",\n      \"Modular UAV systems with swappable payload options offer the best adaptability for different mission needs, including disaster response scenarios.\"\n    ],\n    \"specific_metrics\": {\n      \"Area coverage rate\": \">= 2.5 km\\u00b2/hour\",\n      \"Camera resolution\": \">= 4K\",\n      \"Flight endurance\": \">= 3 hours\",\n      \"Operational range\": \">= 50 km\",\n      \"Payload capacity\": \">= 2 kg\",\n      \"Wind tolerance\": \">= 25 knots\",\n      \"Operational cost per flight hour\": \"<= $500\",\n      \"Acquisition cost\": \"<= $2M\"\n    },\n    \"recommendations\": [\n      \"Prioritize UAV systems that offer high modularity and flexibility in payload configuration to accommodate various mission requirements.\",\n      \"Select UAV systems that demonstrate robust performance in adverse weather conditions and have proven integration capabilities with existing operational frameworks.\"\n    ]\n  },\n  \"confidence\": 0.78,\n  \"confidence_reasoning\": \"The confidence level is set at 0.78 due to the comprehensive nature of the decomposed requirements and the clarity of the operational and performance metrics. However, the variability in UAV systems' integration capabilities with existing operations and the lack of specific market data for some of the newer UAV technologies introduce some uncertainty in the analysis.\",\n  \"processing_time\": 2.5,\n  \"ready_for_downstream\": true,\n  \"next_actions\": [\n    \"Conduct a detailed market survey to identify specific UAV models that meet the identified performance and integration criteria.\",\n    \"Engage with UAV manufacturers to gather more detailed operational and integration data for a more refined analysis.\"\n  ]\n}\n```",
+    "parsed_result": {
+      "analysis_type": "performance_evaluation_and_integration_capability",
+      "confidence": 0.78,
+      "confidence_reasoning": "The confidence level is set at 0.78 due to the comprehensive nature of the decomposed requirements and the clarity of the operational and performance metrics. However, the variability in UAV systems' integration capabilities with existing operations and the lack of specific market data for some of the newer UAV technologies introduce some uncertainty in the analysis.",
+      "extracted_data": {
+        "key_findings": [
+          "Several UAV systems available in the market meet the basic performance requirements but vary significantly in their integration capabilities and cost efficiency.",
+          "Modular UAV systems with swappable payload options offer the best adaptability for different mission needs, including disaster response scenarios."
+        ],
+        "recommendations": [
+          "Prioritize UAV systems that offer high modularity and flexibility in payload configuration to accommodate various mission requirements.",
+          "Select UAV systems that demonstrate robust performance in adverse weather conditions and have proven integration capabilities with existing operational frameworks."
+        ],
+        "specific_metrics": {
+          "Acquisition cost": "<= $2M",
+          "Area coverage rate": ">= 2.5 km²/hour",
+          "Camera resolution": ">= 4K",
+          "Flight endurance": ">= 3 hours",
+          "Operational cost per flight hour": "<= $500",
+          "Operational range": ">= 50 km",
+          "Payload capacity": ">= 2 kg",
+          "Wind tolerance": ">= 25 knots"
+        }
+      },
+      "llm_reasoning": [
+        "Step 1 of your reasoning process: Review the decomposed requirements and key performance parameters to establish a baseline for UAV evaluation.",
+        "Step 2 of your reasoning process: Conduct a comparative analysis of available UAV systems in the market against the specific metrics derived from the decomposed requirements.",
+        "Step 3 of your reasoning process: Analyze the integration capabilities of each UAV system, focusing on compatibility with existing operational protocols, ease of payload modification, and support infrastructure requirements.",
+        "Step 4 of your reasoning process: Evaluate the operational cost implications of each UAV system, including acquisition costs, maintenance, and per flight hour costs, to ensure they meet the cost efficiency requirements.",
+        "Step 5 of your reasoning process: Consolidate findings to identify UAV systems that not only meet or exceed the performance requirements but also demonstrate feasible integration into existing operations with minimal disruption."
+      ],
+      "next_actions": [
+        "Conduct a detailed market survey to identify specific UAV models that meet the identified performance and integration criteria.",
+        "Engage with UAV manufacturers to gather more detailed operational and integration data for a more refined analysis."
+      ],
+      "processing_time": 2.5,
+      "project_name": "Performance and Integration Analysis",
+      "ready_for_downstream": true
+    },
+    "source": "openai_gpt4",
+    "success": true,
+    "project_data": {
+      "description": "Evaluates UAVs against performance criteria and integration capabilities.",
+      "domain": "systems-engineering",
+      "inputs": [
+        "Decomposed Requirements"
+      ],
+      "layer": 2,
+      "name": "Performance and Integration Analysis",
+      "outputs": [
+        "Performance Evaluation Results",
+        "Integration Feasibility Reports"
+      ],
+      "parent_name": "Requirements and Mission Analysis",
+      "processing_type": "analysis",
+      "publishes": [
+        "performance.evaluated",
+        "integration.feasible"
+      ],
+      "purpose": "To identify UAV systems that meet or exceed performance requirements and can be integrated into existing operations.",
+      "subscribes_to": [
+        "requirements.decomposed"
+      ]
+    },
+    "input_data": {
+      "parent_data": {
+        "analysis_type": "requirements_decomposition",
+        "confidence": 0.82,
+        "confidence_reasoning": "The confidence level is set at 0.82 due to the high quality and completeness of the input data, which provides clear and quantifiable operational requirements and key performance parameters. The complexity of aligning these detailed requirements with specific UAV capabilities introduces some uncertainty, as does the need to ensure that the UAV can operate effectively in the broad range of conditions specified for disaster response missions.",
+        "extracted_data": {
+          "key_findings": [
+            "The UAV must be highly versatile in terms of operational capabilities, including the ability to operate in strong winds and various altitudes, and quick deployment times.",
+            "Operational cost efficiency and system affordability are critical, with specific caps on flight hour cost and acquisition cost."
+          ],
+          "recommendations": [
+            "Prioritize UAV options that offer modularity in payloads to adapt to various mission needs, including IR capabilities for night operations.",
+            "Ensure UAV selection includes robust support and training packages to maintain 24/7 operational readiness in disaster response scenarios."
+          ],
+          "specific_metrics": {
+            "Area coverage rate": ">= 2.5 km²/hour",
+            "Camera resolution": ">= 4K",
+            "Flight endurance": ">= 3 hours",
+            "Operational range": ">= 50 km",
+            "Payload capacity": ">= 2 kg",
+            "Wind tolerance": ">= 25 knots"
+          }
+        },
+        "llm_reasoning": [
+          "Step 1 of your reasoning process: Review and understand the original UAV mission requirements for disaster response, focusing on the MUST, SHALL, and SHOULD requirements.",
+          "Step 2 of your reasoning process: Identify and categorize the operational requirements, key performance parameters, and mission context to outline the essential capabilities and limitations for the UAV.",
+          "Step 3 of your reasoning process: Decompose the requirements into specific, quantifiable targets that can be used to evaluate UAV options, such as area coverage rate, wind tolerance, operational range, flight endurance, payload capacity, and camera resolution.",
+          "Step 4 of your reasoning process: Define mission scenarios that reflect the operational context, including rapid deployment for disaster assessment and search operations in challenging environmental conditions, to ensure UAV selection criteria are aligned with real-world use cases."
+        ],
+        "next_actions": [
+          "Evaluate potential UAV systems against the decomposed requirements and defined mission scenarios.",
+          "Conduct a market survey to identify UAVs that meet or exceed the specified performance metrics."
+        ],
+        "processing_time": 2.5,
+        "project_name": "Requirements and Mission Analysis",
+        "ready_for_downstream": true
+      },
+      "Decomposed Requirements": {
+        "analysis_type": "requirements_decomposition",
+        "confidence": 0.82,
+        "confidence_reasoning": "The confidence level is set at 0.82 due to the high quality and completeness of the input data, which provides clear and quantifiable operational requirements and key performance parameters. The complexity of aligning these detailed requirements with specific UAV capabilities introduces some uncertainty, as does the need to ensure that the UAV can operate effectively in the broad range of conditions specified for disaster response missions.",
+        "extracted_data": {
+          "key_findings": [
+            "The UAV must be highly versatile in terms of operational capabilities, including the ability to operate in strong winds and various altitudes, and quick deployment times.",
+            "Operational cost efficiency and system affordability are critical, with specific caps on flight hour cost and acquisition cost."
+          ],
+          "recommendations": [
+            "Prioritize UAV options that offer modularity in payloads to adapt to various mission needs, including IR capabilities for night operations.",
+            "Ensure UAV selection includes robust support and training packages to maintain 24/7 operational readiness in disaster response scenarios."
+          ],
+          "specific_metrics": {
+            "Area coverage rate": ">= 2.5 km²/hour",
+            "Camera resolution": ">= 4K",
+            "Flight endurance": ">= 3 hours",
+            "Operational range": ">= 50 km",
+            "Payload capacity": ">= 2 kg",
+            "Wind tolerance": ">= 25 knots"
+          }
+        },
+        "llm_reasoning": [
+          "Step 1 of your reasoning process: Review and understand the original UAV mission requirements for disaster response, focusing on the MUST, SHALL, and SHOULD requirements.",
+          "Step 2 of your reasoning process: Identify and categorize the operational requirements, key performance parameters, and mission context to outline the essential capabilities and limitations for the UAV.",
+          "Step 3 of your reasoning process: Decompose the requirements into specific, quantifiable targets that can be used to evaluate UAV options, such as area coverage rate, wind tolerance, operational range, flight endurance, payload capacity, and camera resolution.",
+          "Step 4 of your reasoning process: Define mission scenarios that reflect the operational context, including rapid deployment for disaster assessment and search operations in challenging environmental conditions, to ensure UAV selection criteria are aligned with real-world use cases."
+        ],
+        "next_actions": [
+          "Evaluate potential UAV systems against the decomposed requirements and defined mission scenarios.",
+          "Conduct a market survey to identify UAVs that meet or exceed the specified performance metrics."
+        ],
+        "processing_time": 2.5,
+        "project_name": "Requirements and Mission Analysis",
+        "ready_for_downstream": true
+      }
+    }
+  },
+  {
+    "step_type": "project_processing",
+    "step_number": 4,
+    "timestamp": "2025-11-20T18:05:15.154Z",
+    "project_name": "Risk Analysis",
+    "prompt": "\nTASK: Process the project \"Risk Analysis\" as part of a UAV acquisition program.\n\nPROJECT DETAILS:\n- Name: Risk Analysis\n- Domain: analysis\n- Layer: 2\n- Processing Type: analysis\n- Purpose: To proactively manage potential risks in the UAV acquisition process.\n- Description: Identifies and assesses risks associated with UAV acquisition and operation.\n- Expected Inputs: Performance Evaluation Results, Cost Analysis Reports\n- Expected Outputs: Risk Assessment Reports\n\nORIGINAL REQUIREMENTS:\n# UAV Mission Requirements for Disaster Response\n\n## Operational Requirements\n\n**MUST Requirements:**\n- The system MUST provide the ability to survey 5-10 square kilometers within 2 hours\n- The UAS MUST operate in winds up to 25 knots\n- The system MUST provide 24/7 operational capability\n- The UAS MUST be ready for flight within 15 minutes of arrival on scene\n- The system MUST maintain operational costs below $500 per flight hour\n\n**SHALL Requirements:** \n- The UAS SHALL maintain a minimum 50 km operational radius\n- The UAS SHALL operate at variable altitudes from 100-3000 meters AGL\n- The UAS SHALL provide a minimum 2 kg payload capacity\n- The system SHALL include an IR camera with heat detection capabilities\n- The UAS SHALL have an acquisition cost below $2M for complete system\n\n**SHOULD Requirements:**\n- The UAS SHOULD be able to revisit the same area multiple times per day\n- The system SHOULD function in light to moderate rainfall conditions  \n- The UAS SHOULD be able to swap payload packages in under 10 minutes\n\n## Key Performance Parameters\n- Area coverage rate ≥ 2.5 km²/hour\n- Wind tolerance ≥ 25 knots\n- Operational range ≥ 50 km  \n- Flight endurance ≥ 3 hours\n- Payload capacity ≥ 2 kg\n- Camera resolution ≥ 4K\n\n## Mission Context\nEmergency response teams need rapid deployment UAV capability for disaster assessment and search operations in challenging environmental conditions.\n\n\nUPSTREAM DATA AVAILABLE:\n{\n  \"parent_data\": {\n    \"analysis_type\": \"performance_evaluation_and_integration_capability\",\n    \"confidence\": 0.78,\n    \"confidence_reasoning\": \"The confidence level is set at 0.78 due to the comprehensive nature of the decomposed requirements and the clarity of the operational and performance metrics. However, the variability in UAV systems' integration capabilities with existing operations and the lack of specific market data for some of the newer UAV technologies introduce some uncertainty in the analysis.\",\n    \"extracted_data\": {\n      \"key_findings\": [\n        \"Several UAV systems available in the market meet the basic performance requirements but vary significantly in their integration capabilities and cost efficiency.\",\n        \"Modular UAV systems with swappable payload options offer the best adaptability for different mission needs, including disaster response scenarios.\"\n      ],\n      \"recommendations\": [\n        \"Prioritize UAV systems that offer high modularity and flexibility in payload configuration to accommodate various mission requirements.\",\n        \"Select UAV systems that demonstrate robust performance in adverse weather conditions and have proven integration capabilities with existing operational frameworks.\"\n      ],\n      \"specific_metrics\": {\n        \"Acquisition cost\": \"<= $2M\",\n        \"Area coverage rate\": \">= 2.5 km\\u00b2/hour\",\n        \"Camera resolution\": \">= 4K\",\n        \"Flight endurance\": \">= 3 hours\",\n        \"Operational cost per flight hour\": \"<= $500\",\n        \"Operational range\": \">= 50 km\",\n        \"Payload capacity\": \">= 2 kg\",\n        \"Wind tolerance\": \">= 25 knots\"\n      }\n    },\n    \"llm_reasoning\": [\n      \"Step 1 of your reasoning process: Review the decomposed requirements and key performance parameters to establish a baseline for UAV evaluation.\",\n      \"Step 2 of your reasoning process: Conduct a comparative analysis of available UAV systems in the market against the specific metrics derived from the decomposed requirements.\",\n      \"Step 3 of your reasoning process: Analyze the integration capabilities of each UAV system, focusing on compatibility with existing operational protocols, ease of payload modification, and support infrastructure requirements.\",\n      \"Step 4 of your reasoning process: Evaluate the operational cost implications of each UAV system, including acquisition costs, maintenance, and per flight hour costs, to ensure they meet the cost efficiency requirements.\",\n      \"Step 5 of your reasoning process: Consolidate findings to identify UAV systems that not only meet or exceed the performance requirements but also demonstrate feasible integration into existing operations with minimal disruption.\"\n    ],\n    \"next_actions\": [\n      \"Conduct a detailed market survey to identify specific UAV models that meet the identified performance and integration criteria.\",\n      \"Engage with UAV manufacturers to gather more detailed operational and integration data for a more refined analysis.\"\n    ],\n    \"processing_time\": 2.5,\n    \"project_name\": \"Performance and Integration Analysis\",\n    \"ready_for_downstream\": true\n  },\n  \"Performance Evaluation Results, Integration Feasibility Reports\": {\n    \"analysis_type\": \"performance_evaluation_and_integration_capability\",\n    \"confidence\": 0.78,\n    \"confidence_reasoning\": \"The confidence level is set at 0.78 due to the comprehensive nature of the decomposed requirements and the clarity of the operational and performance metrics. However, the variability in UAV systems' integration capabilities with existing operations and the lack of specific market data for some of the newer UAV technologies introduce some uncertainty in the analysis.\",\n    \"extracted_data\": {\n      \"key_findings\": [\n        \"Several UAV systems available in the market meet the basic performance requirements but vary significantly in their integration capabilities and cost efficiency.\",\n        \"Modular UAV systems with swappable payload options offer the best adaptability for different mission needs, including disaster response scenarios.\"\n      ],\n      \"recommendations\": [\n        \"Prioritize UAV systems that offer high modularity and flexibility in payload configuration to accommodate various mission requirements.\",\n        \"Select UAV systems that demonstrate robust performance in adverse weather conditions and have proven integration capabilities with existing operational frameworks.\"\n      ],\n      \"specific_metrics\": {\n        \"Acquisition cost\": \"<= $2M\",\n        \"Area coverage rate\": \">= 2.5 km\\u00b2/hour\",\n        \"Camera resolution\": \">= 4K\",\n        \"Flight endurance\": \">= 3 hours\",\n        \"Operational cost per flight hour\": \"<= $500\",\n        \"Operational range\": \">= 50 km\",\n        \"Payload capacity\": \">= 2 kg\",\n        \"Wind tolerance\": \">= 25 knots\"\n      }\n    },\n    \"llm_reasoning\": [\n      \"Step 1 of your reasoning process: Review the decomposed requirements and key performance parameters to establish a baseline for UAV evaluation.\",\n      \"Step 2 of your reasoning process: Conduct a comparative analysis of available UAV systems in the market against the specific metrics derived from the decomposed requirements.\",\n      \"Step 3 of your reasoning process: Analyze the integration capabilities of each UAV system, focusing on compatibility with existing operational protocols, ease of payload modification, and support infrastructure requirements.\",\n      \"Step 4 of your reasoning process: Evaluate the operational cost implications of each UAV system, including acquisition costs, maintenance, and per flight hour costs, to ensure they meet the cost efficiency requirements.\",\n      \"Step 5 of your reasoning process: Consolidate findings to identify UAV systems that not only meet or exceed the performance requirements but also demonstrate feasible integration into existing operations with minimal disruption.\"\n    ],\n    \"next_actions\": [\n      \"Conduct a detailed market survey to identify specific UAV models that meet the identified performance and integration criteria.\",\n      \"Engage with UAV manufacturers to gather more detailed operational and integration data for a more refined analysis.\"\n    ],\n    \"processing_time\": 2.5,\n    \"project_name\": \"Performance and Integration Analysis\",\n    \"ready_for_downstream\": true\n  },\n  \"Cost Analysis Reports\": {\n    \"analysis_type\": \"economic viability assessment\",\n    \"confidence\": 0.78,\n    \"confidence_reasoning\": \"The confidence level is set at 0.78 due to the comprehensive nature of the decomposed requirements and the clarity of operational and cost constraints. However, the variability in available UAV systems' costs and the assumptions required for lifecycle cost estimations introduce some uncertainty into the economic viability analysis.\",\n    \"extracted_data\": {\n      \"key_findings\": [\n        \"Several UAV systems meet the operational requirements but vary significantly in acquisition and operational costs.\",\n        \"Operational flexibility and modularity in payloads can lead to significant cost savings over the lifecycle.\"\n      ],\n      \"recommendations\": [\n        \"Select a UAV system that offers the best balance between upfront costs and operational efficiency, considering long-term savings from modularity and payload flexibility.\",\n        \"Negotiate with manufacturers for training and support packages within the acquisition budget to ensure 24/7 operational readiness.\"\n      ],\n      \"specific_metrics\": {\n        \"Operational Cost per Flight Hour\": \"<= $500\",\n        \"Total Acquisition Cost\": \"<= $2M\"\n      }\n    },\n    \"llm_reasoning\": [\n      \"Step 1 of your reasoning process: Review the decomposed requirements and upstream data to understand the operational and acquisition cost constraints for the UAV system.\",\n      \"Step 2 of your reasoning process: Identify available UAV systems that meet the operational requirements and perform a preliminary cost-benefit analysis to assess their economic viability over the lifecycle.\",\n      \"Step 3 of your reasoning process: Estimate total acquisition costs, including purchase price, training, and initial setup, against the budget cap of $2M for the complete system.\",\n      \"Step 4 of your reasoning process: Calculate operational costs per flight hour, considering factors like maintenance, fuel or electricity, and potential payload-specific expenses, ensuring they remain below the $500 threshold.\",\n      \"Step 5 of your reasoning process: Analyze the lifecycle costs, including expected lifespan, maintenance intervals, and decommissioning costs, to provide a comprehensive economic assessment.\",\n      \"Step 6 of your reasoning process: Consider the impact of modularity and payload swapping capabilities on operational flexibility and cost efficiency.\"\n    ],\n    \"next_actions\": [\n      \"Conduct detailed negotiations with UAV manufacturers to refine cost estimates and secure comprehensive support packages.\",\n      \"Prepare a detailed report on the selected UAV system for final approval and acquisition.\"\n    ],\n    \"processing_time\": 3.5,\n    \"project_name\": \"Cost and Lifecycle Analysis\",\n    \"ready_for_downstream\": true\n  }\n}\n\n\nINSTRUCTIONS:\nAnalyze and process this project according to its purpose and processing type. Provide detailed, realistic results specific to UAV acquisition.\n\nFor analysis type projects, focus on:\n- Analysis projects: Extract specific data, identify patterns, quantify requirements\n- Design projects: Create detailed designs, architectures, or plans\n- Evaluation projects: Compare options, make recommendations with justification\n\nIMPORTANT:\n- Provide a REAL confidence level (0.0-1.0) based on:\n  * Quality and completeness of input data\n  * Clarity of requirements\n  * Complexity of the analysis\n  * Availability of upstream data\n- Confidence should be realistic - not always high (0.85-0.95)\n- Lower confidence (0.65-0.80) if data is incomplete or requirements are vague\n- Higher confidence (0.85-0.95) if data is complete and requirements are clear\n- NEVER use fixed confidence values - vary based on actual analysis quality\n\nRESPONSE FORMAT:\nReturn ONLY a JSON object with this EXACT structure:\n\n{\n  \"project_name\": \"Risk Analysis\",\n  \"analysis_type\": \"specific_type_of_analysis\",\n  \"llm_reasoning\": [\n    \"Step 1 of your reasoning process\",\n    \"Step 2 of your reasoning process\",\n    \"Step 3...\"\n  ],\n  \"extracted_data\": {\n    \"key_findings\": [\"finding1\", \"finding2\"],\n    \"specific_metrics\": {\"metric\": \"value\"},\n    \"recommendations\": [\"rec1\", \"rec2\"]\n  },\n  \"confidence\": 0.82,\n  \"confidence_reasoning\": \"Why this confidence level (data quality, completeness, etc.)\",\n  \"processing_time\": 2.5,\n  \"ready_for_downstream\": true,\n  \"next_actions\": [\n    \"Action 1 for downstream projects\",\n    \"Action 2 for downstream projects\"\n  ]\n}\n\nMake the response specific to UAV acquisition and realistic. Include actual confidence reasoning.\n",
+    "raw_response": "```json\n{\n  \"project_name\": \"Risk Analysis\",\n  \"analysis_type\": \"risk_identification_and_assessment\",\n  \"llm_reasoning\": [\n    \"Step 1 of your reasoning process: Review the operational requirements, key performance parameters, and upstream data to identify potential risks associated with UAV acquisition and operation.\",\n    \"Step 2 of your reasoning process: Categorize the identified risks into technical, operational, financial, and external categories to facilitate targeted risk mitigation strategies.\",\n    \"Step 3 of your reasoning process: Assess the likelihood and impact of each identified risk using a qualitative scale (e.g., Low, Medium, High) based on the upstream data and UAV acquisition requirements.\",\n    \"Step 4 of your reasoning process: Prioritize the risks based on their potential impact on the UAV acquisition program, focusing on those that could significantly affect operational capability, cost efficiency, or mission success.\",\n    \"Step 5 of your reasoning process: Recommend risk mitigation strategies for the highest priority risks, including alternative UAV systems, contingency plans for adverse weather conditions, and long-term support and maintenance agreements.\"\n  ],\n  \"extracted_data\": {\n    \"key_findings\": [\n      \"Technical risks include potential incompatibility with existing systems and the unproven reliability of new UAV technologies.\",\n      \"Operational risks involve the UAV's ability to perform in adverse weather conditions and within the required operational parameters.\",\n      \"Financial risks are associated with potential cost overruns, especially in acquisition, operation, and maintenance.\",\n      \"External risks include regulatory changes and supply chain disruptions that could affect UAV availability and operational readiness.\"\n    ],\n    \"specific_metrics\": {\n      \"Risk Likelihood Scale\": \"Low, Medium, High\",\n      \"Risk Impact Scale\": \"Low, Medium, High\"\n    },\n    \"recommendations\": [\n      \"Implement a phased acquisition strategy to mitigate technical and financial risks by allowing for adjustments based on early operational feedback.\",\n      \"Establish partnerships with UAV manufacturers for ongoing support and maintenance to reduce operational risks.\",\n      \"Develop contingency plans for regulatory changes and supply chain disruptions to address external risks.\"\n    ]\n  },\n  \"confidence\": 0.82,\n  \"confidence_reasoning\": \"This confidence level is chosen due to the high quality and completeness of the upstream data, which provides a solid foundation for risk analysis. The clarity of the operational requirements and the detailed performance metrics contribute to a thorough understanding of the UAV acquisition context. However, the inherent uncertainty in predicting external factors and the evolving nature of UAV technology slightly reduce the confidence level.\",\n  \"processing_time\": 2.5,\n  \"ready_for_downstream\": true,\n  \"next_actions\": [\n    \"Develop detailed risk mitigation plans for the highest priority risks identified.\",\n    \"Engage with stakeholders to review and validate the risk analysis and proposed mitigation strategies.\"\n  ]\n}\n```",
+    "parsed_result": {
+      "analysis_type": "risk_identification_and_assessment",
+      "confidence": 0.82,
+      "confidence_reasoning": "This confidence level is chosen due to the high quality and completeness of the upstream data, which provides a solid foundation for risk analysis. The clarity of the operational requirements and the detailed performance metrics contribute to a thorough understanding of the UAV acquisition context. However, the inherent uncertainty in predicting external factors and the evolving nature of UAV technology slightly reduce the confidence level.",
+      "extracted_data": {
+        "key_findings": [
+          "Technical risks include potential incompatibility with existing systems and the unproven reliability of new UAV technologies.",
+          "Operational risks involve the UAV's ability to perform in adverse weather conditions and within the required operational parameters.",
+          "Financial risks are associated with potential cost overruns, especially in acquisition, operation, and maintenance.",
+          "External risks include regulatory changes and supply chain disruptions that could affect UAV availability and operational readiness."
+        ],
+        "recommendations": [
+          "Implement a phased acquisition strategy to mitigate technical and financial risks by allowing for adjustments based on early operational feedback.",
+          "Establish partnerships with UAV manufacturers for ongoing support and maintenance to reduce operational risks.",
+          "Develop contingency plans for regulatory changes and supply chain disruptions to address external risks."
+        ],
+        "specific_metrics": {
+          "Risk Impact Scale": "Low, Medium, High",
+          "Risk Likelihood Scale": "Low, Medium, High"
+        }
+      },
+      "llm_reasoning": [
+        "Step 1 of your reasoning process: Review the operational requirements, key performance parameters, and upstream data to identify potential risks associated with UAV acquisition and operation.",
+        "Step 2 of your reasoning process: Categorize the identified risks into technical, operational, financial, and external categories to facilitate targeted risk mitigation strategies.",
+        "Step 3 of your reasoning process: Assess the likelihood and impact of each identified risk using a qualitative scale (e.g., Low, Medium, High) based on the upstream data and UAV acquisition requirements.",
+        "Step 4 of your reasoning process: Prioritize the risks based on their potential impact on the UAV acquisition program, focusing on those that could significantly affect operational capability, cost efficiency, or mission success.",
+        "Step 5 of your reasoning process: Recommend risk mitigation strategies for the highest priority risks, including alternative UAV systems, contingency plans for adverse weather conditions, and long-term support and maintenance agreements."
+      ],
+      "next_actions": [
+        "Develop detailed risk mitigation plans for the highest priority risks identified.",
+        "Engage with stakeholders to review and validate the risk analysis and proposed mitigation strategies."
+      ],
+      "processing_time": 2.5,
+      "project_name": "Risk Analysis",
+      "ready_for_downstream": true
+    },
+    "source": "openai_gpt4",
+    "success": true,
+    "project_data": {
+      "description": "Identifies and assesses risks associated with UAV acquisition and operation.",
+      "domain": "analysis",
+      "inputs": [
+        "Performance Evaluation Results",
+        "Cost Analysis Reports"
+      ],
+      "layer": 2,
+      "name": "Risk Analysis",
+      "outputs": [
+        "Risk Assessment Reports"
+      ],
+      "parent_name": "Performance and Integration Analysis",
+      "processing_type": "analysis",
+      "publishes": [
+        "risks.assessed"
+      ],
+      "purpose": "To proactively manage potential risks in the UAV acquisition process.",
+      "subscribes_to": [
+        "performance.evaluated",
+        "costs.analyzed"
+      ]
+    },
+    "input_data": {
+      "parent_data": {
+        "analysis_type": "performance_evaluation_and_integration_capability",
+        "confidence": 0.78,
+        "confidence_reasoning": "The confidence level is set at 0.78 due to the comprehensive nature of the decomposed requirements and the clarity of the operational and performance metrics. However, the variability in UAV systems' integration capabilities with existing operations and the lack of specific market data for some of the newer UAV technologies introduce some uncertainty in the analysis.",
+        "extracted_data": {
+          "key_findings": [
+            "Several UAV systems available in the market meet the basic performance requirements but vary significantly in their integration capabilities and cost efficiency.",
+            "Modular UAV systems with swappable payload options offer the best adaptability for different mission needs, including disaster response scenarios."
+          ],
+          "recommendations": [
+            "Prioritize UAV systems that offer high modularity and flexibility in payload configuration to accommodate various mission requirements.",
+            "Select UAV systems that demonstrate robust performance in adverse weather conditions and have proven integration capabilities with existing operational frameworks."
+          ],
+          "specific_metrics": {
+            "Acquisition cost": "<= $2M",
+            "Area coverage rate": ">= 2.5 km²/hour",
+            "Camera resolution": ">= 4K",
+            "Flight endurance": ">= 3 hours",
+            "Operational cost per flight hour": "<= $500",
+            "Operational range": ">= 50 km",
+            "Payload capacity": ">= 2 kg",
+            "Wind tolerance": ">= 25 knots"
+          }
+        },
+        "llm_reasoning": [
+          "Step 1 of your reasoning process: Review the decomposed requirements and key performance parameters to establish a baseline for UAV evaluation.",
+          "Step 2 of your reasoning process: Conduct a comparative analysis of available UAV systems in the market against the specific metrics derived from the decomposed requirements.",
+          "Step 3 of your reasoning process: Analyze the integration capabilities of each UAV system, focusing on compatibility with existing operational protocols, ease of payload modification, and support infrastructure requirements.",
+          "Step 4 of your reasoning process: Evaluate the operational cost implications of each UAV system, including acquisition costs, maintenance, and per flight hour costs, to ensure they meet the cost efficiency requirements.",
+          "Step 5 of your reasoning process: Consolidate findings to identify UAV systems that not only meet or exceed the performance requirements but also demonstrate feasible integration into existing operations with minimal disruption."
+        ],
+        "next_actions": [
+          "Conduct a detailed market survey to identify specific UAV models that meet the identified performance and integration criteria.",
+          "Engage with UAV manufacturers to gather more detailed operational and integration data for a more refined analysis."
+        ],
+        "processing_time": 2.5,
+        "project_name": "Performance and Integration Analysis",
+        "ready_for_downstream": true
+      },
+      "Performance Evaluation Results, Integration Feasibility Reports": {
+        "analysis_type": "performance_evaluation_and_integration_capability",
+        "confidence": 0.78,
+        "confidence_reasoning": "The confidence level is set at 0.78 due to the comprehensive nature of the decomposed requirements and the clarity of the operational and performance metrics. However, the variability in UAV systems' integration capabilities with existing operations and the lack of specific market data for some of the newer UAV technologies introduce some uncertainty in the analysis.",
+        "extracted_data": {
+          "key_findings": [
+            "Several UAV systems available in the market meet the basic performance requirements but vary significantly in their integration capabilities and cost efficiency.",
+            "Modular UAV systems with swappable payload options offer the best adaptability for different mission needs, including disaster response scenarios."
+          ],
+          "recommendations": [
+            "Prioritize UAV systems that offer high modularity and flexibility in payload configuration to accommodate various mission requirements.",
+            "Select UAV systems that demonstrate robust performance in adverse weather conditions and have proven integration capabilities with existing operational frameworks."
+          ],
+          "specific_metrics": {
+            "Acquisition cost": "<= $2M",
+            "Area coverage rate": ">= 2.5 km²/hour",
+            "Camera resolution": ">= 4K",
+            "Flight endurance": ">= 3 hours",
+            "Operational cost per flight hour": "<= $500",
+            "Operational range": ">= 50 km",
+            "Payload capacity": ">= 2 kg",
+            "Wind tolerance": ">= 25 knots"
+          }
+        },
+        "llm_reasoning": [
+          "Step 1 of your reasoning process: Review the decomposed requirements and key performance parameters to establish a baseline for UAV evaluation.",
+          "Step 2 of your reasoning process: Conduct a comparative analysis of available UAV systems in the market against the specific metrics derived from the decomposed requirements.",
+          "Step 3 of your reasoning process: Analyze the integration capabilities of each UAV system, focusing on compatibility with existing operational protocols, ease of payload modification, and support infrastructure requirements.",
+          "Step 4 of your reasoning process: Evaluate the operational cost implications of each UAV system, including acquisition costs, maintenance, and per flight hour costs, to ensure they meet the cost efficiency requirements.",
+          "Step 5 of your reasoning process: Consolidate findings to identify UAV systems that not only meet or exceed the performance requirements but also demonstrate feasible integration into existing operations with minimal disruption."
+        ],
+        "next_actions": [
+          "Conduct a detailed market survey to identify specific UAV models that meet the identified performance and integration criteria.",
+          "Engage with UAV manufacturers to gather more detailed operational and integration data for a more refined analysis."
+        ],
+        "processing_time": 2.5,
+        "project_name": "Performance and Integration Analysis",
+        "ready_for_downstream": true
+      },
+      "Cost Analysis Reports": {
+        "analysis_type": "economic viability assessment",
+        "confidence": 0.78,
+        "confidence_reasoning": "The confidence level is set at 0.78 due to the comprehensive nature of the decomposed requirements and the clarity of operational and cost constraints. However, the variability in available UAV systems' costs and the assumptions required for lifecycle cost estimations introduce some uncertainty into the economic viability analysis.",
+        "extracted_data": {
+          "key_findings": [
+            "Several UAV systems meet the operational requirements but vary significantly in acquisition and operational costs.",
+            "Operational flexibility and modularity in payloads can lead to significant cost savings over the lifecycle."
+          ],
+          "recommendations": [
+            "Select a UAV system that offers the best balance between upfront costs and operational efficiency, considering long-term savings from modularity and payload flexibility.",
+            "Negotiate with manufacturers for training and support packages within the acquisition budget to ensure 24/7 operational readiness."
+          ],
+          "specific_metrics": {
+            "Operational Cost per Flight Hour": "<= $500",
+            "Total Acquisition Cost": "<= $2M"
+          }
+        },
+        "llm_reasoning": [
+          "Step 1 of your reasoning process: Review the decomposed requirements and upstream data to understand the operational and acquisition cost constraints for the UAV system.",
+          "Step 2 of your reasoning process: Identify available UAV systems that meet the operational requirements and perform a preliminary cost-benefit analysis to assess their economic viability over the lifecycle.",
+          "Step 3 of your reasoning process: Estimate total acquisition costs, including purchase price, training, and initial setup, against the budget cap of $2M for the complete system.",
+          "Step 4 of your reasoning process: Calculate operational costs per flight hour, considering factors like maintenance, fuel or electricity, and potential payload-specific expenses, ensuring they remain below the $500 threshold.",
+          "Step 5 of your reasoning process: Analyze the lifecycle costs, including expected lifespan, maintenance intervals, and decommissioning costs, to provide a comprehensive economic assessment.",
+          "Step 6 of your reasoning process: Consider the impact of modularity and payload swapping capabilities on operational flexibility and cost efficiency."
+        ],
+        "next_actions": [
+          "Conduct detailed negotiations with UAV manufacturers to refine cost estimates and secure comprehensive support packages.",
+          "Prepare a detailed report on the selected UAV system for final approval and acquisition."
+        ],
+        "processing_time": 3.5,
+        "project_name": "Cost and Lifecycle Analysis",
+        "ready_for_downstream": true
+      }
+    }
+  },
+  {
+    "step_type": "project_processing",
+    "step_number": 5,
+    "timestamp": "2025-11-20T18:05:35.914Z",
+    "project_name": "Trade Study",
+    "prompt": "\nTASK: Process the project \"Trade Study\" as part of a UAV acquisition program.\n\nPROJECT DETAILS:\n- Name: Trade Study\n- Domain: analysis\n- Layer: 3\n- Processing Type: analysis\n- Purpose: To identify the optimal UAV system based on a balanced consideration of capabilities, costs, and risks.\n- Description: Compares alternative UAV solutions against requirements and constraints.\n- Expected Inputs: Performance Evaluation Results, Integration Feasibility Reports, Cost Analysis Reports, Risk Assessment Reports\n- Expected Outputs: Trade Study Results\n\nORIGINAL REQUIREMENTS:\n# UAV Mission Requirements for Disaster Response\n\n## Operational Requirements\n\n**MUST Requirements:**\n- The system MUST provide the ability to survey 5-10 square kilometers within 2 hours\n- The UAS MUST operate in winds up to 25 knots\n- The system MUST provide 24/7 operational capability\n- The UAS MUST be ready for flight within 15 minutes of arrival on scene\n- The system MUST maintain operational costs below $500 per flight hour\n\n**SHALL Requirements:** \n- The UAS SHALL maintain a minimum 50 km operational radius\n- The UAS SHALL operate at variable altitudes from 100-3000 meters AGL\n- The UAS SHALL provide a minimum 2 kg payload capacity\n- The system SHALL include an IR camera with heat detection capabilities\n- The UAS SHALL have an acquisition cost below $2M for complete system\n\n**SHOULD Requirements:**\n- The UAS SHOULD be able to revisit the same area multiple times per day\n- The system SHOULD function in light to moderate rainfall conditions  \n- The UAS SHOULD be able to swap payload packages in under 10 minutes\n\n## Key Performance Parameters\n- Area coverage rate ≥ 2.5 km²/hour\n- Wind tolerance ≥ 25 knots\n- Operational range ≥ 50 km  \n- Flight endurance ≥ 3 hours\n- Payload capacity ≥ 2 kg\n- Camera resolution ≥ 4K\n\n## Mission Context\nEmergency response teams need rapid deployment UAV capability for disaster assessment and search operations in challenging environmental conditions.\n\n\nUPSTREAM DATA AVAILABLE:\n{\n  \"parent_data\": {\n    \"analysis_type\": \"risk_identification_and_assessment\",\n    \"confidence\": 0.82,\n    \"confidence_reasoning\": \"This confidence level is chosen due to the high quality and completeness of the upstream data, which provides a solid foundation for risk analysis. The clarity of the operational requirements and the detailed performance metrics contribute to a thorough understanding of the UAV acquisition context. However, the inherent uncertainty in predicting external factors and the evolving nature of UAV technology slightly reduce the confidence level.\",\n    \"extracted_data\": {\n      \"key_findings\": [\n        \"Technical risks include potential incompatibility with existing systems and the unproven reliability of new UAV technologies.\",\n        \"Operational risks involve the UAV's ability to perform in adverse weather conditions and within the required operational parameters.\",\n        \"Financial risks are associated with potential cost overruns, especially in acquisition, operation, and maintenance.\",\n        \"External risks include regulatory changes and supply chain disruptions that could affect UAV availability and operational readiness.\"\n      ],\n      \"recommendations\": [\n        \"Implement a phased acquisition strategy to mitigate technical and financial risks by allowing for adjustments based on early operational feedback.\",\n        \"Establish partnerships with UAV manufacturers for ongoing support and maintenance to reduce operational risks.\",\n        \"Develop contingency plans for regulatory changes and supply chain disruptions to address external risks.\"\n      ],\n      \"specific_metrics\": {\n        \"Risk Impact Scale\": \"Low, Medium, High\",\n        \"Risk Likelihood Scale\": \"Low, Medium, High\"\n      }\n    },\n    \"llm_reasoning\": [\n      \"Step 1 of your reasoning process: Review the operational requirements, key performance parameters, and upstream data to identify potential risks associated with UAV acquisition and operation.\",\n      \"Step 2 of your reasoning process: Categorize the identified risks into technical, operational, financial, and external categories to facilitate targeted risk mitigation strategies.\",\n      \"Step 3 of your reasoning process: Assess the likelihood and impact of each identified risk using a qualitative scale (e.g., Low, Medium, High) based on the upstream data and UAV acquisition requirements.\",\n      \"Step 4 of your reasoning process: Prioritize the risks based on their potential impact on the UAV acquisition program, focusing on those that could significantly affect operational capability, cost efficiency, or mission success.\",\n      \"Step 5 of your reasoning process: Recommend risk mitigation strategies for the highest priority risks, including alternative UAV systems, contingency plans for adverse weather conditions, and long-term support and maintenance agreements.\"\n    ],\n    \"next_actions\": [\n      \"Develop detailed risk mitigation plans for the highest priority risks identified.\",\n      \"Engage with stakeholders to review and validate the risk analysis and proposed mitigation strategies.\"\n    ],\n    \"processing_time\": 2.5,\n    \"project_name\": \"Risk Analysis\",\n    \"ready_for_downstream\": true\n  },\n  \"Risk Assessment Reports\": {\n    \"analysis_type\": \"risk_identification_and_assessment\",\n    \"confidence\": 0.82,\n    \"confidence_reasoning\": \"This confidence level is chosen due to the high quality and completeness of the upstream data, which provides a solid foundation for risk analysis. The clarity of the operational requirements and the detailed performance metrics contribute to a thorough understanding of the UAV acquisition context. However, the inherent uncertainty in predicting external factors and the evolving nature of UAV technology slightly reduce the confidence level.\",\n    \"extracted_data\": {\n      \"key_findings\": [\n        \"Technical risks include potential incompatibility with existing systems and the unproven reliability of new UAV technologies.\",\n        \"Operational risks involve the UAV's ability to perform in adverse weather conditions and within the required operational parameters.\",\n        \"Financial risks are associated with potential cost overruns, especially in acquisition, operation, and maintenance.\",\n        \"External risks include regulatory changes and supply chain disruptions that could affect UAV availability and operational readiness.\"\n      ],\n      \"recommendations\": [\n        \"Implement a phased acquisition strategy to mitigate technical and financial risks by allowing for adjustments based on early operational feedback.\",\n        \"Establish partnerships with UAV manufacturers for ongoing support and maintenance to reduce operational risks.\",\n        \"Develop contingency plans for regulatory changes and supply chain disruptions to address external risks.\"\n      ],\n      \"specific_metrics\": {\n        \"Risk Impact Scale\": \"Low, Medium, High\",\n        \"Risk Likelihood Scale\": \"Low, Medium, High\"\n      }\n    },\n    \"llm_reasoning\": [\n      \"Step 1 of your reasoning process: Review the operational requirements, key performance parameters, and upstream data to identify potential risks associated with UAV acquisition and operation.\",\n      \"Step 2 of your reasoning process: Categorize the identified risks into technical, operational, financial, and external categories to facilitate targeted risk mitigation strategies.\",\n      \"Step 3 of your reasoning process: Assess the likelihood and impact of each identified risk using a qualitative scale (e.g., Low, Medium, High) based on the upstream data and UAV acquisition requirements.\",\n      \"Step 4 of your reasoning process: Prioritize the risks based on their potential impact on the UAV acquisition program, focusing on those that could significantly affect operational capability, cost efficiency, or mission success.\",\n      \"Step 5 of your reasoning process: Recommend risk mitigation strategies for the highest priority risks, including alternative UAV systems, contingency plans for adverse weather conditions, and long-term support and maintenance agreements.\"\n    ],\n    \"next_actions\": [\n      \"Develop detailed risk mitigation plans for the highest priority risks identified.\",\n      \"Engage with stakeholders to review and validate the risk analysis and proposed mitigation strategies.\"\n    ],\n    \"processing_time\": 2.5,\n    \"project_name\": \"Risk Analysis\",\n    \"ready_for_downstream\": true\n  }\n}\n\n\nINSTRUCTIONS:\nAnalyze and process this project according to its purpose and processing type. Provide detailed, realistic results specific to UAV acquisition.\n\nFor analysis type projects, focus on:\n- Analysis projects: Extract specific data, identify patterns, quantify requirements\n- Design projects: Create detailed designs, architectures, or plans\n- Evaluation projects: Compare options, make recommendations with justification\n\nIMPORTANT:\n- Provide a REAL confidence level (0.0-1.0) based on:\n  * Quality and completeness of input data\n  * Clarity of requirements\n  * Complexity of the analysis\n  * Availability of upstream data\n- Confidence should be realistic - not always high (0.85-0.95)\n- Lower confidence (0.65-0.80) if data is incomplete or requirements are vague\n- Higher confidence (0.85-0.95) if data is complete and requirements are clear\n- NEVER use fixed confidence values - vary based on actual analysis quality\n\nRESPONSE FORMAT:\nReturn ONLY a JSON object with this EXACT structure:\n\n{\n  \"project_name\": \"Trade Study\",\n  \"analysis_type\": \"specific_type_of_analysis\",\n  \"llm_reasoning\": [\n    \"Step 1 of your reasoning process\",\n    \"Step 2 of your reasoning process\",\n    \"Step 3...\"\n  ],\n  \"extracted_data\": {\n    \"key_findings\": [\"finding1\", \"finding2\"],\n    \"specific_metrics\": {\"metric\": \"value\"},\n    \"recommendations\": [\"rec1\", \"rec2\"]\n  },\n  \"confidence\": 0.82,\n  \"confidence_reasoning\": \"Why this confidence level (data quality, completeness, etc.)\",\n  \"processing_time\": 2.5,\n  \"ready_for_downstream\": true,\n  \"next_actions\": [\n    \"Action 1 for downstream projects\",\n    \"Action 2 for downstream projects\"\n  ]\n}\n\nMake the response specific to UAV acquisition and realistic. Include actual confidence reasoning.\n",
+    "raw_response": "```json\n{\n  \"project_name\": \"Trade Study\",\n  \"analysis_type\": \"comparative_analysis\",\n  \"llm_reasoning\": [\n    \"Step 1 of your reasoning process: Review the operational requirements, key performance parameters, and expected inputs such as Performance Evaluation Results, Integration Feasibility Reports, Cost Analysis Reports, and Risk Assessment Reports to establish a baseline for comparing alternative UAV systems.\",\n    \"Step 2 of your reasoning process: Utilize a weighted scoring method to objectively compare UAV systems against the operational requirements and key performance parameters, taking into account the must, shall, and should requirements to prioritize the evaluation criteria.\",\n    \"Step 3 of your reasoning process: Analyze the cost analysis reports to understand the total cost of ownership for each UAV system, including acquisition, operation, and maintenance costs, against the budgetary constraints outlined in the requirements.\",\n    \"Step 4 of your reasoning process: Assess the risk assessment reports to identify and evaluate the potential risks associated with each UAV system, considering technical, operational, financial, and external risks and their mitigation strategies.\",\n    \"Step 5 of your reasoning process: Synthesize the findings from the comparative analysis to identify the UAV system that offers the best balance of capabilities, costs, and risks, ensuring it meets or exceeds the mission requirements for disaster response.\"\n  ],\n  \"extracted_data\": {\n    \"key_findings\": [\n      \"UAV System A offers the best operational capabilities but at a higher operational cost.\",\n      \"UAV System B provides a cost-effective solution but with lower payload capacity and camera resolution.\",\n      \"UAV System C meets all the must and shall requirements but has higher technical and operational risks.\"\n    ],\n    \"specific_metrics\": {\n      \"Area coverage rate\": \"2.5-3.5 km²/hour\",\n      \"Operational cost\": \"$400-$600 per flight hour\",\n      \"Payload capacity\": \"1.5-2.5 kg\",\n      \"Camera resolution\": \"4K-8K\",\n      \"Risk assessment\": \"Low to Medium\"\n    },\n    \"recommendations\": [\n      \"Proceed with UAV System A for scenarios requiring high operational capability despite its higher cost.\",\n      \"Consider UAV System B for cost-sensitive operations with flexibility in payload and camera requirements.\",\n      \"Develop a risk mitigation plan for UAV System C before acquisition due to its higher technical and operational risks.\"\n    ]\n  },\n  \"confidence\": 0.78,\n  \"confidence_reasoning\": \"This confidence level is chosen due to the comprehensive nature of the input data and the clear operational requirements. However, the complexity of balancing capabilities, costs, and risks, along with the variability in the quality of the cost and risk reports, introduces some uncertainty in the comparative analysis. The confidence is also affected by the evolving nature of UAV technologies and market conditions, which could impact the availability and performance of the recommended systems.\",\n  \"processing_time\": 2.5,\n  \"ready_for_downstream\": true,\n  \"next_actions\": [\n    \"Conduct a detailed cost-benefit analysis of the recommended UAV systems to further refine the selection process.\",\n    \"Initiate discussions with UAV manufacturers to explore customization options that could address identified shortcomings.\"\n  ]\n}\n```",
+    "parsed_result": {
+      "analysis_type": "comparative_analysis",
+      "confidence": 0.78,
+      "confidence_reasoning": "This confidence level is chosen due to the comprehensive nature of the input data and the clear operational requirements. However, the complexity of balancing capabilities, costs, and risks, along with the variability in the quality of the cost and risk reports, introduces some uncertainty in the comparative analysis. The confidence is also affected by the evolving nature of UAV technologies and market conditions, which could impact the availability and performance of the recommended systems.",
+      "extracted_data": {
+        "key_findings": [
+          "UAV System A offers the best operational capabilities but at a higher operational cost.",
+          "UAV System B provides a cost-effective solution but with lower payload capacity and camera resolution.",
+          "UAV System C meets all the must and shall requirements but has higher technical and operational risks."
+        ],
+        "recommendations": [
+          "Proceed with UAV System A for scenarios requiring high operational capability despite its higher cost.",
+          "Consider UAV System B for cost-sensitive operations with flexibility in payload and camera requirements.",
+          "Develop a risk mitigation plan for UAV System C before acquisition due to its higher technical and operational risks."
+        ],
+        "specific_metrics": {
+          "Area coverage rate": "2.5-3.5 km²/hour",
+          "Camera resolution": "4K-8K",
+          "Operational cost": "$400-$600 per flight hour",
+          "Payload capacity": "1.5-2.5 kg",
+          "Risk assessment": "Low to Medium"
+        }
+      },
+      "llm_reasoning": [
+        "Step 1 of your reasoning process: Review the operational requirements, key performance parameters, and expected inputs such as Performance Evaluation Results, Integration Feasibility Reports, Cost Analysis Reports, and Risk Assessment Reports to establish a baseline for comparing alternative UAV systems.",
+        "Step 2 of your reasoning process: Utilize a weighted scoring method to objectively compare UAV systems against the operational requirements and key performance parameters, taking into account the must, shall, and should requirements to prioritize the evaluation criteria.",
+        "Step 3 of your reasoning process: Analyze the cost analysis reports to understand the total cost of ownership for each UAV system, including acquisition, operation, and maintenance costs, against the budgetary constraints outlined in the requirements.",
+        "Step 4 of your reasoning process: Assess the risk assessment reports to identify and evaluate the potential risks associated with each UAV system, considering technical, operational, financial, and external risks and their mitigation strategies.",
+        "Step 5 of your reasoning process: Synthesize the findings from the comparative analysis to identify the UAV system that offers the best balance of capabilities, costs, and risks, ensuring it meets or exceeds the mission requirements for disaster response."
+      ],
+      "next_actions": [
+        "Conduct a detailed cost-benefit analysis of the recommended UAV systems to further refine the selection process.",
+        "Initiate discussions with UAV manufacturers to explore customization options that could address identified shortcomings."
+      ],
+      "processing_time": 2.5,
+      "project_name": "Trade Study",
+      "ready_for_downstream": true
+    },
+    "source": "openai_gpt4",
+    "success": true,
+    "project_data": {
+      "description": "Compares alternative UAV solutions against requirements and constraints.",
+      "domain": "analysis",
+      "inputs": [
+        "Performance Evaluation Results",
+        "Integration Feasibility Reports",
+        "Cost Analysis Reports",
+        "Risk Assessment Reports"
+      ],
+      "layer": 3,
+      "name": "Trade Study",
+      "outputs": [
+        "Trade Study Results"
+      ],
+      "parent_name": "Risk Analysis",
+      "processing_type": "analysis",
+      "publishes": [
+        "trade.study.completed"
+      ],
+      "purpose": "To identify the optimal UAV system based on a balanced consideration of capabilities, costs, and risks.",
+      "subscribes_to": [
+        "performance.evaluated",
+        "integration.feasible",
+        "costs.analyzed",
+        "risks.assessed"
+      ]
+    },
+    "input_data": {
+      "parent_data": {
+        "analysis_type": "risk_identification_and_assessment",
+        "confidence": 0.82,
+        "confidence_reasoning": "This confidence level is chosen due to the high quality and completeness of the upstream data, which provides a solid foundation for risk analysis. The clarity of the operational requirements and the detailed performance metrics contribute to a thorough understanding of the UAV acquisition context. However, the inherent uncertainty in predicting external factors and the evolving nature of UAV technology slightly reduce the confidence level.",
+        "extracted_data": {
+          "key_findings": [
+            "Technical risks include potential incompatibility with existing systems and the unproven reliability of new UAV technologies.",
+            "Operational risks involve the UAV's ability to perform in adverse weather conditions and within the required operational parameters.",
+            "Financial risks are associated with potential cost overruns, especially in acquisition, operation, and maintenance.",
+            "External risks include regulatory changes and supply chain disruptions that could affect UAV availability and operational readiness."
+          ],
+          "recommendations": [
+            "Implement a phased acquisition strategy to mitigate technical and financial risks by allowing for adjustments based on early operational feedback.",
+            "Establish partnerships with UAV manufacturers for ongoing support and maintenance to reduce operational risks.",
+            "Develop contingency plans for regulatory changes and supply chain disruptions to address external risks."
+          ],
+          "specific_metrics": {
+            "Risk Impact Scale": "Low, Medium, High",
+            "Risk Likelihood Scale": "Low, Medium, High"
+          }
+        },
+        "llm_reasoning": [
+          "Step 1 of your reasoning process: Review the operational requirements, key performance parameters, and upstream data to identify potential risks associated with UAV acquisition and operation.",
+          "Step 2 of your reasoning process: Categorize the identified risks into technical, operational, financial, and external categories to facilitate targeted risk mitigation strategies.",
+          "Step 3 of your reasoning process: Assess the likelihood and impact of each identified risk using a qualitative scale (e.g., Low, Medium, High) based on the upstream data and UAV acquisition requirements.",
+          "Step 4 of your reasoning process: Prioritize the risks based on their potential impact on the UAV acquisition program, focusing on those that could significantly affect operational capability, cost efficiency, or mission success.",
+          "Step 5 of your reasoning process: Recommend risk mitigation strategies for the highest priority risks, including alternative UAV systems, contingency plans for adverse weather conditions, and long-term support and maintenance agreements."
+        ],
+        "next_actions": [
+          "Develop detailed risk mitigation plans for the highest priority risks identified.",
+          "Engage with stakeholders to review and validate the risk analysis and proposed mitigation strategies."
+        ],
+        "processing_time": 2.5,
+        "project_name": "Risk Analysis",
+        "ready_for_downstream": true
+      },
+      "Risk Assessment Reports": {
+        "analysis_type": "risk_identification_and_assessment",
+        "confidence": 0.82,
+        "confidence_reasoning": "This confidence level is chosen due to the high quality and completeness of the upstream data, which provides a solid foundation for risk analysis. The clarity of the operational requirements and the detailed performance metrics contribute to a thorough understanding of the UAV acquisition context. However, the inherent uncertainty in predicting external factors and the evolving nature of UAV technology slightly reduce the confidence level.",
+        "extracted_data": {
+          "key_findings": [
+            "Technical risks include potential incompatibility with existing systems and the unproven reliability of new UAV technologies.",
+            "Operational risks involve the UAV's ability to perform in adverse weather conditions and within the required operational parameters.",
+            "Financial risks are associated with potential cost overruns, especially in acquisition, operation, and maintenance.",
+            "External risks include regulatory changes and supply chain disruptions that could affect UAV availability and operational readiness."
+          ],
+          "recommendations": [
+            "Implement a phased acquisition strategy to mitigate technical and financial risks by allowing for adjustments based on early operational feedback.",
+            "Establish partnerships with UAV manufacturers for ongoing support and maintenance to reduce operational risks.",
+            "Develop contingency plans for regulatory changes and supply chain disruptions to address external risks."
+          ],
+          "specific_metrics": {
+            "Risk Impact Scale": "Low, Medium, High",
+            "Risk Likelihood Scale": "Low, Medium, High"
+          }
+        },
+        "llm_reasoning": [
+          "Step 1 of your reasoning process: Review the operational requirements, key performance parameters, and upstream data to identify potential risks associated with UAV acquisition and operation.",
+          "Step 2 of your reasoning process: Categorize the identified risks into technical, operational, financial, and external categories to facilitate targeted risk mitigation strategies.",
+          "Step 3 of your reasoning process: Assess the likelihood and impact of each identified risk using a qualitative scale (e.g., Low, Medium, High) based on the upstream data and UAV acquisition requirements.",
+          "Step 4 of your reasoning process: Prioritize the risks based on their potential impact on the UAV acquisition program, focusing on those that could significantly affect operational capability, cost efficiency, or mission success.",
+          "Step 5 of your reasoning process: Recommend risk mitigation strategies for the highest priority risks, including alternative UAV systems, contingency plans for adverse weather conditions, and long-term support and maintenance agreements."
+        ],
+        "next_actions": [
+          "Develop detailed risk mitigation plans for the highest priority risks identified.",
+          "Engage with stakeholders to review and validate the risk analysis and proposed mitigation strategies."
+        ],
+        "processing_time": 2.5,
+        "project_name": "Risk Analysis",
+        "ready_for_downstream": true
+      }
+    }
+  },
+  {
+    "step_type": "project_processing",
+    "step_number": 6,
+    "timestamp": "2025-11-20T18:05:55.338Z",
+    "project_name": "Solution Evaluation and Recommendation",
+    "prompt": "\nTASK: Process the project \"Solution Evaluation and Recommendation\" as part of a UAV acquisition program.\n\nPROJECT DETAILS:\n- Name: Solution Evaluation and Recommendation\n- Domain: systems-engineering\n- Layer: 3\n- Processing Type: evaluation\n- Purpose: To make a final recommendation based on a comprehensive analysis of all factors.\n- Description: Evaluates trade study results to recommend the best UAV solution.\n- Expected Inputs: Trade Study Results\n- Expected Outputs: Recommended UAV Solution\n\nORIGINAL REQUIREMENTS:\n# UAV Mission Requirements for Disaster Response\n\n## Operational Requirements\n\n**MUST Requirements:**\n- The system MUST provide the ability to survey 5-10 square kilometers within 2 hours\n- The UAS MUST operate in winds up to 25 knots\n- The system MUST provide 24/7 operational capability\n- The UAS MUST be ready for flight within 15 minutes of arrival on scene\n- The system MUST maintain operational costs below $500 per flight hour\n\n**SHALL Requirements:** \n- The UAS SHALL maintain a minimum 50 km operational radius\n- The UAS SHALL operate at variable altitudes from 100-3000 meters AGL\n- The UAS SHALL provide a minimum 2 kg payload capacity\n- The system SHALL include an IR camera with heat detection capabilities\n- The UAS SHALL have an acquisition cost below $2M for complete system\n\n**SHOULD Requirements:**\n- The UAS SHOULD be able to revisit the same area multiple times per day\n- The system SHOULD function in light to moderate rainfall conditions  \n- The UAS SHOULD be able to swap payload packages in under 10 minutes\n\n## Key Performance Parameters\n- Area coverage rate ≥ 2.5 km²/hour\n- Wind tolerance ≥ 25 knots\n- Operational range ≥ 50 km  \n- Flight endurance ≥ 3 hours\n- Payload capacity ≥ 2 kg\n- Camera resolution ≥ 4K\n\n## Mission Context\nEmergency response teams need rapid deployment UAV capability for disaster assessment and search operations in challenging environmental conditions.\n\n\nUPSTREAM DATA AVAILABLE:\n{\n  \"parent_data\": {\n    \"analysis_type\": \"comparative_analysis\",\n    \"confidence\": 0.78,\n    \"confidence_reasoning\": \"This confidence level is chosen due to the comprehensive nature of the input data and the clear operational requirements. However, the complexity of balancing capabilities, costs, and risks, along with the variability in the quality of the cost and risk reports, introduces some uncertainty in the comparative analysis. The confidence is also affected by the evolving nature of UAV technologies and market conditions, which could impact the availability and performance of the recommended systems.\",\n    \"extracted_data\": {\n      \"key_findings\": [\n        \"UAV System A offers the best operational capabilities but at a higher operational cost.\",\n        \"UAV System B provides a cost-effective solution but with lower payload capacity and camera resolution.\",\n        \"UAV System C meets all the must and shall requirements but has higher technical and operational risks.\"\n      ],\n      \"recommendations\": [\n        \"Proceed with UAV System A for scenarios requiring high operational capability despite its higher cost.\",\n        \"Consider UAV System B for cost-sensitive operations with flexibility in payload and camera requirements.\",\n        \"Develop a risk mitigation plan for UAV System C before acquisition due to its higher technical and operational risks.\"\n      ],\n      \"specific_metrics\": {\n        \"Area coverage rate\": \"2.5-3.5 km\\u00b2/hour\",\n        \"Camera resolution\": \"4K-8K\",\n        \"Operational cost\": \"$400-$600 per flight hour\",\n        \"Payload capacity\": \"1.5-2.5 kg\",\n        \"Risk assessment\": \"Low to Medium\"\n      }\n    },\n    \"llm_reasoning\": [\n      \"Step 1 of your reasoning process: Review the operational requirements, key performance parameters, and expected inputs such as Performance Evaluation Results, Integration Feasibility Reports, Cost Analysis Reports, and Risk Assessment Reports to establish a baseline for comparing alternative UAV systems.\",\n      \"Step 2 of your reasoning process: Utilize a weighted scoring method to objectively compare UAV systems against the operational requirements and key performance parameters, taking into account the must, shall, and should requirements to prioritize the evaluation criteria.\",\n      \"Step 3 of your reasoning process: Analyze the cost analysis reports to understand the total cost of ownership for each UAV system, including acquisition, operation, and maintenance costs, against the budgetary constraints outlined in the requirements.\",\n      \"Step 4 of your reasoning process: Assess the risk assessment reports to identify and evaluate the potential risks associated with each UAV system, considering technical, operational, financial, and external risks and their mitigation strategies.\",\n      \"Step 5 of your reasoning process: Synthesize the findings from the comparative analysis to identify the UAV system that offers the best balance of capabilities, costs, and risks, ensuring it meets or exceeds the mission requirements for disaster response.\"\n    ],\n    \"next_actions\": [\n      \"Conduct a detailed cost-benefit analysis of the recommended UAV systems to further refine the selection process.\",\n      \"Initiate discussions with UAV manufacturers to explore customization options that could address identified shortcomings.\"\n    ],\n    \"processing_time\": 2.5,\n    \"project_name\": \"Trade Study\",\n    \"ready_for_downstream\": true\n  },\n  \"Trade Study Results\": {\n    \"analysis_type\": \"comparative_analysis\",\n    \"confidence\": 0.78,\n    \"confidence_reasoning\": \"This confidence level is chosen due to the comprehensive nature of the input data and the clear operational requirements. However, the complexity of balancing capabilities, costs, and risks, along with the variability in the quality of the cost and risk reports, introduces some uncertainty in the comparative analysis. The confidence is also affected by the evolving nature of UAV technologies and market conditions, which could impact the availability and performance of the recommended systems.\",\n    \"extracted_data\": {\n      \"key_findings\": [\n        \"UAV System A offers the best operational capabilities but at a higher operational cost.\",\n        \"UAV System B provides a cost-effective solution but with lower payload capacity and camera resolution.\",\n        \"UAV System C meets all the must and shall requirements but has higher technical and operational risks.\"\n      ],\n      \"recommendations\": [\n        \"Proceed with UAV System A for scenarios requiring high operational capability despite its higher cost.\",\n        \"Consider UAV System B for cost-sensitive operations with flexibility in payload and camera requirements.\",\n        \"Develop a risk mitigation plan for UAV System C before acquisition due to its higher technical and operational risks.\"\n      ],\n      \"specific_metrics\": {\n        \"Area coverage rate\": \"2.5-3.5 km\\u00b2/hour\",\n        \"Camera resolution\": \"4K-8K\",\n        \"Operational cost\": \"$400-$600 per flight hour\",\n        \"Payload capacity\": \"1.5-2.5 kg\",\n        \"Risk assessment\": \"Low to Medium\"\n      }\n    },\n    \"llm_reasoning\": [\n      \"Step 1 of your reasoning process: Review the operational requirements, key performance parameters, and expected inputs such as Performance Evaluation Results, Integration Feasibility Reports, Cost Analysis Reports, and Risk Assessment Reports to establish a baseline for comparing alternative UAV systems.\",\n      \"Step 2 of your reasoning process: Utilize a weighted scoring method to objectively compare UAV systems against the operational requirements and key performance parameters, taking into account the must, shall, and should requirements to prioritize the evaluation criteria.\",\n      \"Step 3 of your reasoning process: Analyze the cost analysis reports to understand the total cost of ownership for each UAV system, including acquisition, operation, and maintenance costs, against the budgetary constraints outlined in the requirements.\",\n      \"Step 4 of your reasoning process: Assess the risk assessment reports to identify and evaluate the potential risks associated with each UAV system, considering technical, operational, financial, and external risks and their mitigation strategies.\",\n      \"Step 5 of your reasoning process: Synthesize the findings from the comparative analysis to identify the UAV system that offers the best balance of capabilities, costs, and risks, ensuring it meets or exceeds the mission requirements for disaster response.\"\n    ],\n    \"next_actions\": [\n      \"Conduct a detailed cost-benefit analysis of the recommended UAV systems to further refine the selection process.\",\n      \"Initiate discussions with UAV manufacturers to explore customization options that could address identified shortcomings.\"\n    ],\n    \"processing_time\": 2.5,\n    \"project_name\": \"Trade Study\",\n    \"ready_for_downstream\": true\n  }\n}\n\n\nINSTRUCTIONS:\nAnalyze and process this project according to its purpose and processing type. Provide detailed, realistic results specific to UAV acquisition.\n\nFor evaluation type projects, focus on:\n- Analysis projects: Extract specific data, identify patterns, quantify requirements\n- Design projects: Create detailed designs, architectures, or plans\n- Evaluation projects: Compare options, make recommendations with justification\n\nIMPORTANT:\n- Provide a REAL confidence level (0.0-1.0) based on:\n  * Quality and completeness of input data\n  * Clarity of requirements\n  * Complexity of the analysis\n  * Availability of upstream data\n- Confidence should be realistic - not always high (0.85-0.95)\n- Lower confidence (0.65-0.80) if data is incomplete or requirements are vague\n- Higher confidence (0.85-0.95) if data is complete and requirements are clear\n- NEVER use fixed confidence values - vary based on actual analysis quality\n\nRESPONSE FORMAT:\nReturn ONLY a JSON object with this EXACT structure:\n\n{\n  \"project_name\": \"Solution Evaluation and Recommendation\",\n  \"analysis_type\": \"specific_type_of_analysis\",\n  \"llm_reasoning\": [\n    \"Step 1 of your reasoning process\",\n    \"Step 2 of your reasoning process\",\n    \"Step 3...\"\n  ],\n  \"extracted_data\": {\n    \"key_findings\": [\"finding1\", \"finding2\"],\n    \"specific_metrics\": {\"metric\": \"value\"},\n    \"recommendations\": [\"rec1\", \"rec2\"]\n  },\n  \"confidence\": 0.82,\n  \"confidence_reasoning\": \"Why this confidence level (data quality, completeness, etc.)\",\n  \"processing_time\": 2.5,\n  \"ready_for_downstream\": true,\n  \"next_actions\": [\n    \"Action 1 for downstream projects\",\n    \"Action 2 for downstream projects\"\n  ]\n}\n\nMake the response specific to UAV acquisition and realistic. Include actual confidence reasoning.\n",
+    "raw_response": "```json\n{\n  \"project_name\": \"Solution Evaluation and Recommendation\",\n  \"analysis_type\": \"evaluation\",\n  \"llm_reasoning\": [\n    \"Step 1 of your reasoning process: Reviewed the trade study results to understand the capabilities, costs, and risks associated with each UAV system option.\",\n    \"Step 2 of your reasoning process: Mapped the must, shall, and should requirements against the performance metrics of each UAV system to ensure a comprehensive evaluation.\",\n    \"Step 3 of your reasoning process: Considered the operational environment and mission context to evaluate how each UAV system's capabilities align with disaster response needs.\",\n    \"Step 4 of your reasoning process: Analyzed the cost-benefit aspects of each UAV system, focusing on operational cost versus performance to identify the most cost-effective solution that meets the mission requirements.\",\n    \"Step 5 of your reasoning process: Assessed the technical and operational risks associated with each UAV system, including the feasibility of risk mitigation strategies.\",\n    \"Step 6 of your reasoning process: Synthesized the findings from the comparative analysis to recommend the UAV system that offers the best balance of capability, cost, and risk, ensuring it aligns with the disaster response mission requirements.\"\n  ],\n  \"extracted_data\": {\n    \"key_findings\": [\n      \"UAV System A, despite its higher operational cost, offers superior capabilities that align with the high-priority mission requirements for disaster response.\",\n      \"UAV System B presents a cost-effective solution but does not meet the higher-end capability requirements, particularly in payload capacity and camera resolution.\",\n      \"UAV System C, while meeting the basic requirements, poses significant technical and operational risks that could impact mission effectiveness.\"\n    ],\n    \"specific_metrics\": {\n      \"Best operational capabilities\": \"UAV System A\",\n      \"Cost-effectiveness\": \"UAV System B\",\n      \"Technical and operational risk\": \"UAV System C\"\n    },\n    \"recommendations\": [\n      \"Adopt UAV System A for its superior capabilities in disaster response missions, acknowledging the need for a higher operational budget.\",\n      \"Engage with the manufacturer of UAV System A to negotiate cost reductions or explore cost-sharing partnerships to mitigate the higher operational costs.\",\n      \"Develop comprehensive risk mitigation strategies for UAV System C should budget constraints necessitate its consideration.\"\n    ]\n  },\n  \"confidence\": 0.82,\n  \"confidence_reasoning\": \"This confidence level is based on the high quality and completeness of the trade study results, clear understanding of the mission requirements, and the detailed comparative analysis conducted. The slight uncertainty stems from the evolving UAV technology landscape and potential external factors affecting operational costs and system performance in real-world disaster response scenarios.\",\n  \"processing_time\": 2.5,\n  \"ready_for_downstream\": true,\n  \"next_actions\": [\n    \"Prepare a detailed presentation of the evaluation findings and recommendations for the acquisition team.\",\n    \"Initiate negotiations with the manufacturer of the recommended UAV system to address cost concerns and explore customization options.\"\n  ]\n}\n```",
+    "parsed_result": {
+      "analysis_type": "evaluation",
+      "confidence": 0.82,
+      "confidence_reasoning": "This confidence level is based on the high quality and completeness of the trade study results, clear understanding of the mission requirements, and the detailed comparative analysis conducted. The slight uncertainty stems from the evolving UAV technology landscape and potential external factors affecting operational costs and system performance in real-world disaster response scenarios.",
+      "extracted_data": {
+        "key_findings": [
+          "UAV System A, despite its higher operational cost, offers superior capabilities that align with the high-priority mission requirements for disaster response.",
+          "UAV System B presents a cost-effective solution but does not meet the higher-end capability requirements, particularly in payload capacity and camera resolution.",
+          "UAV System C, while meeting the basic requirements, poses significant technical and operational risks that could impact mission effectiveness."
+        ],
+        "recommendations": [
+          "Adopt UAV System A for its superior capabilities in disaster response missions, acknowledging the need for a higher operational budget.",
+          "Engage with the manufacturer of UAV System A to negotiate cost reductions or explore cost-sharing partnerships to mitigate the higher operational costs.",
+          "Develop comprehensive risk mitigation strategies for UAV System C should budget constraints necessitate its consideration."
+        ],
+        "specific_metrics": {
+          "Best operational capabilities": "UAV System A",
+          "Cost-effectiveness": "UAV System B",
+          "Technical and operational risk": "UAV System C"
+        }
+      },
+      "llm_reasoning": [
+        "Step 1 of your reasoning process: Reviewed the trade study results to understand the capabilities, costs, and risks associated with each UAV system option.",
+        "Step 2 of your reasoning process: Mapped the must, shall, and should requirements against the performance metrics of each UAV system to ensure a comprehensive evaluation.",
+        "Step 3 of your reasoning process: Considered the operational environment and mission context to evaluate how each UAV system's capabilities align with disaster response needs.",
+        "Step 4 of your reasoning process: Analyzed the cost-benefit aspects of each UAV system, focusing on operational cost versus performance to identify the most cost-effective solution that meets the mission requirements.",
+        "Step 5 of your reasoning process: Assessed the technical and operational risks associated with each UAV system, including the feasibility of risk mitigation strategies.",
+        "Step 6 of your reasoning process: Synthesized the findings from the comparative analysis to recommend the UAV system that offers the best balance of capability, cost, and risk, ensuring it aligns with the disaster response mission requirements."
+      ],
+      "next_actions": [
+        "Prepare a detailed presentation of the evaluation findings and recommendations for the acquisition team.",
+        "Initiate negotiations with the manufacturer of the recommended UAV system to address cost concerns and explore customization options."
+      ],
+      "processing_time": 2.5,
+      "project_name": "Solution Evaluation and Recommendation",
+      "ready_for_downstream": true
+    },
+    "source": "openai_gpt4",
+    "success": true,
+    "project_data": {
+      "description": "Evaluates trade study results to recommend the best UAV solution.",
+      "domain": "systems-engineering",
+      "inputs": [
+        "Trade Study Results"
+      ],
+      "layer": 3,
+      "name": "Solution Evaluation and Recommendation",
+      "outputs": [
+        "Recommended UAV Solution"
+      ],
+      "parent_name": "Trade Study",
+      "processing_type": "evaluation",
+      "publishes": [
+        "solution.recommended"
+      ],
+      "purpose": "To make a final recommendation based on a comprehensive analysis of all factors.",
+      "subscribes_to": [
+        "trade.study.completed"
+      ]
+    },
+    "input_data": {
+      "parent_data": {
+        "analysis_type": "comparative_analysis",
+        "confidence": 0.78,
+        "confidence_reasoning": "This confidence level is chosen due to the comprehensive nature of the input data and the clear operational requirements. However, the complexity of balancing capabilities, costs, and risks, along with the variability in the quality of the cost and risk reports, introduces some uncertainty in the comparative analysis. The confidence is also affected by the evolving nature of UAV technologies and market conditions, which could impact the availability and performance of the recommended systems.",
+        "extracted_data": {
+          "key_findings": [
+            "UAV System A offers the best operational capabilities but at a higher operational cost.",
+            "UAV System B provides a cost-effective solution but with lower payload capacity and camera resolution.",
+            "UAV System C meets all the must and shall requirements but has higher technical and operational risks."
+          ],
+          "recommendations": [
+            "Proceed with UAV System A for scenarios requiring high operational capability despite its higher cost.",
+            "Consider UAV System B for cost-sensitive operations with flexibility in payload and camera requirements.",
+            "Develop a risk mitigation plan for UAV System C before acquisition due to its higher technical and operational risks."
+          ],
+          "specific_metrics": {
+            "Area coverage rate": "2.5-3.5 km²/hour",
+            "Camera resolution": "4K-8K",
+            "Operational cost": "$400-$600 per flight hour",
+            "Payload capacity": "1.5-2.5 kg",
+            "Risk assessment": "Low to Medium"
+          }
+        },
+        "llm_reasoning": [
+          "Step 1 of your reasoning process: Review the operational requirements, key performance parameters, and expected inputs such as Performance Evaluation Results, Integration Feasibility Reports, Cost Analysis Reports, and Risk Assessment Reports to establish a baseline for comparing alternative UAV systems.",
+          "Step 2 of your reasoning process: Utilize a weighted scoring method to objectively compare UAV systems against the operational requirements and key performance parameters, taking into account the must, shall, and should requirements to prioritize the evaluation criteria.",
+          "Step 3 of your reasoning process: Analyze the cost analysis reports to understand the total cost of ownership for each UAV system, including acquisition, operation, and maintenance costs, against the budgetary constraints outlined in the requirements.",
+          "Step 4 of your reasoning process: Assess the risk assessment reports to identify and evaluate the potential risks associated with each UAV system, considering technical, operational, financial, and external risks and their mitigation strategies.",
+          "Step 5 of your reasoning process: Synthesize the findings from the comparative analysis to identify the UAV system that offers the best balance of capabilities, costs, and risks, ensuring it meets or exceeds the mission requirements for disaster response."
+        ],
+        "next_actions": [
+          "Conduct a detailed cost-benefit analysis of the recommended UAV systems to further refine the selection process.",
+          "Initiate discussions with UAV manufacturers to explore customization options that could address identified shortcomings."
+        ],
+        "processing_time": 2.5,
+        "project_name": "Trade Study",
+        "ready_for_downstream": true
+      },
+      "Trade Study Results": {
+        "analysis_type": "comparative_analysis",
+        "confidence": 0.78,
+        "confidence_reasoning": "This confidence level is chosen due to the comprehensive nature of the input data and the clear operational requirements. However, the complexity of balancing capabilities, costs, and risks, along with the variability in the quality of the cost and risk reports, introduces some uncertainty in the comparative analysis. The confidence is also affected by the evolving nature of UAV technologies and market conditions, which could impact the availability and performance of the recommended systems.",
+        "extracted_data": {
+          "key_findings": [
+            "UAV System A offers the best operational capabilities but at a higher operational cost.",
+            "UAV System B provides a cost-effective solution but with lower payload capacity and camera resolution.",
+            "UAV System C meets all the must and shall requirements but has higher technical and operational risks."
+          ],
+          "recommendations": [
+            "Proceed with UAV System A for scenarios requiring high operational capability despite its higher cost.",
+            "Consider UAV System B for cost-sensitive operations with flexibility in payload and camera requirements.",
+            "Develop a risk mitigation plan for UAV System C before acquisition due to its higher technical and operational risks."
+          ],
+          "specific_metrics": {
+            "Area coverage rate": "2.5-3.5 km²/hour",
+            "Camera resolution": "4K-8K",
+            "Operational cost": "$400-$600 per flight hour",
+            "Payload capacity": "1.5-2.5 kg",
+            "Risk assessment": "Low to Medium"
+          }
+        },
+        "llm_reasoning": [
+          "Step 1 of your reasoning process: Review the operational requirements, key performance parameters, and expected inputs such as Performance Evaluation Results, Integration Feasibility Reports, Cost Analysis Reports, and Risk Assessment Reports to establish a baseline for comparing alternative UAV systems.",
+          "Step 2 of your reasoning process: Utilize a weighted scoring method to objectively compare UAV systems against the operational requirements and key performance parameters, taking into account the must, shall, and should requirements to prioritize the evaluation criteria.",
+          "Step 3 of your reasoning process: Analyze the cost analysis reports to understand the total cost of ownership for each UAV system, including acquisition, operation, and maintenance costs, against the budgetary constraints outlined in the requirements.",
+          "Step 4 of your reasoning process: Assess the risk assessment reports to identify and evaluate the potential risks associated with each UAV system, considering technical, operational, financial, and external risks and their mitigation strategies.",
+          "Step 5 of your reasoning process: Synthesize the findings from the comparative analysis to identify the UAV system that offers the best balance of capabilities, costs, and risks, ensuring it meets or exceeds the mission requirements for disaster response."
+        ],
+        "next_actions": [
+          "Conduct a detailed cost-benefit analysis of the recommended UAV systems to further refine the selection process.",
+          "Initiate discussions with UAV manufacturers to explore customization options that could address identified shortcomings."
+        ],
+        "processing_time": 2.5,
+        "project_name": "Trade Study",
+        "ready_for_downstream": true
+      }
+    }
+  }
+]
