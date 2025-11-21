@@ -290,9 +290,24 @@ class DesktopEnvironment {
             box-shadow: 0 10px 40px rgba(0, 0, 0, 0.3);
             display: flex;
             flex-direction: column;
-            min-width: 800px;
-            min-height: 600px;
+            min-width: 400px;
+            min-height: 300px;
             z-index: 1000;
+            transition: all 0.2s ease;
+        }
+        .window.maximized {
+            border-radius: 0;
+            transition: none;
+        }
+        .window.resizing {
+            transition: none;
+        }
+        .window-resize-handle {
+            position: absolute;
+            background: transparent;
+        }
+        .window-resize-handle:hover {
+            background: rgba(102, 126, 234, 0.2);
         }
         .window-titlebar {
             background: #2d2d2d;
@@ -398,12 +413,22 @@ class DesktopEnvironment {
                 <div class="window-titlebar">
                     <div>\${title}</div>
                     <div class="window-controls">
-                        <button class="window-control" onclick="closeWindow('\${windowId}')">×</button>
+                        <button class="window-control" onclick="minimizeWindow('\${windowId}')" title="Minimize">_</button>
+                        <button class="window-control" onclick="maximizeWindow('\${windowId}')" title="Maximize/Restore">□</button>
+                        <button class="window-control" onclick="closeWindow('\${windowId}')" title="Close">×</button>
                     </div>
                 </div>
                 <div class="window-content">
                     <iframe id="\${windowId}-iframe" style="width: 100%; height: 100%; border: none;" src="\${url}" sandbox="allow-same-origin allow-scripts allow-forms allow-popups allow-modals"></iframe>
                 </div>
+                <div class="window-resize-handle window-resize-e" style="position: absolute; right: 0; top: 40px; bottom: 40px; width: 5px; cursor: ew-resize;"></div>
+                <div class="window-resize-handle window-resize-s" style="position: absolute; left: 40px; right: 40px; bottom: 0; height: 5px; cursor: ns-resize;"></div>
+                <div class="window-resize-handle window-resize-w" style="position: absolute; left: 0; top: 40px; bottom: 40px; width: 5px; cursor: ew-resize;"></div>
+                <div class="window-resize-handle window-resize-n" style="position: absolute; left: 40px; right: 40px; top: 28px; height: 5px; cursor: ns-resize;"></div>
+                <div class="window-resize-handle window-resize-se" style="position: absolute; right: 0; bottom: 0; width: 20px; height: 20px; cursor: nwse-resize;"></div>
+                <div class="window-resize-handle window-resize-sw" style="position: absolute; left: 0; bottom: 0; width: 20px; height: 20px; cursor: nesw-resize;"></div>
+                <div class="window-resize-handle window-resize-ne" style="position: absolute; right: 0; top: 28px; width: 20px; height: 20px; cursor: nesw-resize;"></div>
+                <div class="window-resize-handle window-resize-nw" style="position: absolute; left: 0; top: 28px; width: 20px; height: 20px; cursor: nwse-resize;"></div>
             \`;
 
             makeDraggable(win);
@@ -444,15 +469,26 @@ class DesktopEnvironment {
                 <div class="window-titlebar">
                     <div>📁 \${folderName}</div>
                     <div class="window-controls">
-                        <button class="window-control" onclick="closeWindow('\${windowId}')">×</button>
+                        <button class="window-control" onclick="minimizeWindow('\${windowId}')" title="Minimize">_</button>
+                        <button class="window-control" onclick="maximizeWindow('\${windowId}')" title="Maximize/Restore">□</button>
+                        <button class="window-control" onclick="closeWindow('\${windowId}')" title="Close">×</button>
                     </div>
                 </div>
                 <div class="window-content" style="padding: 16px; overflow: auto;">
                     \${itemsHTML}
                 </div>
+                <div class="window-resize-handle window-resize-e" style="position: absolute; right: 0; top: 40px; bottom: 40px; width: 5px; cursor: ew-resize;"></div>
+                <div class="window-resize-handle window-resize-s" style="position: absolute; left: 40px; right: 40px; bottom: 0; height: 5px; cursor: ns-resize;"></div>
+                <div class="window-resize-handle window-resize-w" style="position: absolute; left: 0; top: 40px; bottom: 40px; width: 5px; cursor: ew-resize;"></div>
+                <div class="window-resize-handle window-resize-n" style="position: absolute; left: 40px; right: 40px; top: 28px; height: 5px; cursor: ns-resize;"></div>
+                <div class="window-resize-handle window-resize-se" style="position: absolute; right: 0; bottom: 0; width: 20px; height: 20px; cursor: nwse-resize;"></div>
+                <div class="window-resize-handle window-resize-sw" style="position: absolute; left: 0; bottom: 0; width: 20px; height: 20px; cursor: nesw-resize;"></div>
+                <div class="window-resize-handle window-resize-ne" style="position: absolute; right: 0; top: 28px; width: 20px; height: 20px; cursor: nesw-resize;"></div>
+                <div class="window-resize-handle window-resize-nw" style="position: absolute; left: 0; top: 28px; width: 20px; height: 20px; cursor: nwse-resize;"></div>
             \`;
 
             makeDraggable(win);
+            makeResizable(win);
             document.body.appendChild(win);
             windows.push(windowId);
         }
@@ -483,12 +519,124 @@ class DesktopEnvironment {
             });
         }
 
+        function minimizeWindow(windowId) {
+            const win = document.getElementById(windowId);
+            if (win) {
+                win.style.display = 'none';
+                // TODO: Add to taskbar's minimized windows
+            }
+        }
+
+        function maximizeWindow(windowId) {
+            const win = document.getElementById(windowId);
+            if (!win) return;
+            
+            const isMaximized = win.classList.contains('maximized');
+            
+            if (isMaximized) {
+                // Restore to previous size
+                win.classList.remove('maximized');
+                win.style.width = win.dataset.prevWidth || '1200px';
+                win.style.height = win.dataset.prevHeight || '800px';
+                win.style.left = win.dataset.prevLeft || '100px';
+                win.style.top = win.dataset.prevTop || '100px';
+            } else {
+                // Save current size and maximize
+                win.dataset.prevWidth = win.style.width;
+                win.dataset.prevHeight = win.style.height;
+                win.dataset.prevLeft = win.style.left;
+                win.dataset.prevTop = win.style.top;
+                
+                win.classList.add('maximized');
+                win.style.width = '100%';
+                win.style.height = '100%';
+                win.style.left = '0';
+                win.style.top = '0';
+            }
+        }
+
         function closeWindow(windowId) {
             const win = document.getElementById(windowId);
             if (win) {
                 win.remove();
                 windows = windows.filter(id => id !== windowId);
             }
+        }
+
+        function makeResizable(element) {
+            const handles = element.querySelectorAll('.window-resize-handle');
+            
+            handles.forEach(handle => {
+                let isResizing = false;
+                let startX, startY, startWidth, startHeight, startLeft, startTop;
+                let resizeDirection = '';
+                
+                // Determine resize direction from class
+                if (handle.classList.contains('window-resize-e')) resizeDirection = 'e';
+                else if (handle.classList.contains('window-resize-s')) resizeDirection = 's';
+                else if (handle.classList.contains('window-resize-w')) resizeDirection = 'w';
+                else if (handle.classList.contains('window-resize-n')) resizeDirection = 'n';
+                else if (handle.classList.contains('window-resize-se')) resizeDirection = 'se';
+                else if (handle.classList.contains('window-resize-sw')) resizeDirection = 'sw';
+                else if (handle.classList.contains('window-resize-ne')) resizeDirection = 'ne';
+                else if (handle.classList.contains('window-resize-nw')) resizeDirection = 'nw';
+                
+                handle.addEventListener('mousedown', (e) => {
+                    isResizing = true;
+                    startX = e.clientX;
+                    startY = e.clientY;
+                    startWidth = element.offsetWidth;
+                    startHeight = element.offsetHeight;
+                    startLeft = element.offsetLeft;
+                    startTop = element.offsetTop;
+                    element.classList.add('resizing');
+                    e.preventDefault();
+                    e.stopPropagation();
+                });
+                
+                document.addEventListener('mousemove', (e) => {
+                    if (!isResizing) return;
+                    
+                    const deltaX = e.clientX - startX;
+                    const deltaY = e.clientY - startY;
+                    
+                    let newWidth = startWidth;
+                    let newHeight = startHeight;
+                    let newLeft = startLeft;
+                    let newTop = startTop;
+                    
+                    // Calculate new dimensions based on resize direction
+                    if (resizeDirection.includes('e')) {
+                        newWidth = startWidth + deltaX;
+                    }
+                    if (resizeDirection.includes('w')) {
+                        newWidth = startWidth - deltaX;
+                        newLeft = startLeft + deltaX;
+                    }
+                    if (resizeDirection.includes('s')) {
+                        newHeight = startHeight + deltaY;
+                    }
+                    if (resizeDirection.includes('n')) {
+                        newHeight = startHeight - deltaY;
+                        newTop = startTop + deltaY;
+                    }
+                    
+                    // Apply minimum size constraints
+                    if (newWidth >= 400 && newHeight >= 300) {
+                        element.style.width = newWidth + 'px';
+                        element.style.height = newHeight + 'px';
+                        element.style.left = newLeft + 'px';
+                        element.style.top = newTop + 'px';
+                    }
+                });
+                
+                document.addEventListener('mouseup', () => {
+                    if (isResizing) {
+                        isResizing = false;
+                        element.classList.remove('resizing');
+                    }
+                });
+            });
         }
     </script>
 </body>
