@@ -68,3 +68,9 @@ data/cursor_chat_backups/
 
 # Spec/story cache
 .specstory/
+
+# Insight workbooks (user data)
+.insight/
+
+# Continue.dev fork (separate repo for Insight Platform)
+insight-platform/

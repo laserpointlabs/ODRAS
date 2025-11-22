@@ -183,6 +183,11 @@ class IntelligentLatticeGenerator {
             this.generateLattice();
         });
         
+        // Save results
+        document.getElementById('saveResultsBtn')?.addEventListener('click', () => {
+            this.saveResults();
+        });
+        
         // Controls
         document.getElementById('activateProjectsBtn')?.addEventListener('click', () => {
             this.startProcessing();
@@ -312,6 +317,9 @@ Emergency response teams need rapid deployment UAV capability for disaster asses
                 
                 // Show audit trail button
                 document.getElementById('showAuditTrailBtn').style.display = 'block';
+                
+                // Show save results button
+                document.getElementById('saveResultsBtn').style.display = 'block';
             } else {
                 throw new Error(`LLM service error: ${response.status}`);
             }
@@ -345,6 +353,9 @@ Emergency response teams need rapid deployment UAV capability for disaster asses
             
             // Show debug button even for mock
             document.getElementById('showDebugBtn').style.display = 'block';
+            
+            // Show save results button
+            document.getElementById('saveResultsBtn').style.display = 'block';
         } finally {
             document.getElementById('generateLatticeBtn').disabled = false;
         }
@@ -2156,6 +2167,7 @@ Emergency response teams need rapid deployment UAV capability for disaster asses
         document.getElementById('results').innerHTML = '<div class="no-results">No results yet...</div>';
         document.getElementById('workflowHistory').innerHTML = '<div class="no-history">No workflow steps yet...</div>';
         document.getElementById('showAuditTrailBtn').style.display = 'none';
+        document.getElementById('saveResultsBtn').style.display = 'none';
         document.getElementById('currentData').innerHTML = '<div class="no-data">No data flowing yet...</div>';
         
         document.getElementById('activateProjectsBtn').disabled = true;
@@ -2328,6 +2340,82 @@ Emergency response teams need rapid deployment UAV capability for disaster asses
         
         this.updateAnalysisStatus(`✅ Created ${this.createdProjects.length} projects in ODRAS`);
         console.log(`✅ Created ${this.createdProjects.length} projects in ODRAS`);
+    }
+    
+    saveResults() {
+        if (!this.currentLattice) {
+            alert('No lattice generated yet. Please generate a lattice first.');
+            return;
+        }
+        
+        const data = {
+            lattice: this.currentLattice,
+            projects: this.createdProjects || [],
+            registry: this.projectRegistry || {},
+            workflowHistory: this.workflowHistory || [],
+            llmAuditTrail: this.llmAuditTrail || []
+        };
+        
+        // Check if vscode API is available (when embedded directly in VS Code webview)
+        if (typeof vscode !== 'undefined' && vscode) {
+            // Direct call to extension host - no iframe needed!
+            vscode.postMessage({
+                command: 'saveLattice',
+                data: data
+            });
+            
+            this.updateAnalysisStatus('💾 Saving to .odras/demo/...');
+            return;
+        }
+        
+        // Fallback: Try iframe communication (for backward compatibility)
+        if (window.parent && window.parent !== window) {
+            // We're in an iframe - send message to parent (desktop webview)
+            window.parent.postMessage({
+                source: 'lattice-demo-iframe',
+                command: 'saveLattice',
+                data: data
+            }, '*');
+            
+            this.updateAnalysisStatus('💾 Saving to .odras/demo/...');
+            return;
+        }
+        
+        // Fallback: browser downloads if not in VS Code extension
+        const files = [
+            { name: 'lattice.json', data: data.lattice },
+            { name: 'projects.json', data: data.projects },
+            { name: 'registry.json', data: data.registry },
+            { name: 'workflow-history.json', data: data.workflowHistory },
+            { name: 'llm-audit-trail.json', data: data.llmAuditTrail }
+        ];
+        
+        let savedCount = 0;
+        files.forEach((file, index) => {
+            if (file.data !== undefined && file.data !== null) {
+                const jsonStr = JSON.stringify(file.data, null, 2);
+                const blob = new Blob([jsonStr], { type: 'application/json' });
+                const url = URL.createObjectURL(blob);
+                const a = document.createElement('a');
+                a.href = url;
+                a.download = file.name;
+                document.body.appendChild(a);
+                // Stagger downloads slightly to avoid browser blocking
+                setTimeout(() => {
+                    a.click();
+                    document.body.removeChild(a);
+                    URL.revokeObjectURL(url);
+                    savedCount++;
+                    if (savedCount === files.filter(f => f.data !== undefined && f.data !== null).length) {
+                        this.updateAnalysisStatus(`✅ Saved ${savedCount} files. Save them to .odras/demo/ folder.`);
+                    }
+                }, index * 100);
+            }
+        });
+        
+        if (savedCount === 0) {
+            alert('No data to save. Please generate a lattice first.');
+        }
     }
 }
 
