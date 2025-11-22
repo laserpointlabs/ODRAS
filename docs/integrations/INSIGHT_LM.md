@@ -1,0 +1,234 @@
+# Insight-LM Integration
+
+## Overview
+
+**Insight-LM** is a Continue.dev fork that adds workbook management capabilities for document organization and AI-powered analysis.
+
+- **Repository**: https://github.com/laserpointlabs/insight-lm
+- **Type**: VS Code extension
+- **Relationship to ODRAS**: Separate project, no code dependencies
+
+## What is Insight-LM?
+
+Insight-LM extends Continue.dev (an open-source AI code assistant) with:
+
+- **Workbooks**: NotebookLM-style document organization
+- **Document Management**: Upload and organize files for AI analysis
+- **Continue.dev AI**: Full AI agent capabilities for code and document analysis
+- **Integration**: AI can read and create files in workbooks
+
+## Use Cases
+
+### For ODRAS Users
+
+Insight-LM can complement ODRAS workflows:
+
+1. **Requirements Analysis**: Organize RFP documents in workbooks, use Continue AI to extract requirements
+2. **Knowledge Management**: Store reference documents, specifications, and standards
+3. **Documentation Review**: Analyze large documents with AI assistance
+4. **Project Planning**: Organize project documents and chat with AI about them
+
+### Standalone Use
+
+Insight-LM can also be used independently:
+- General document organization and AI analysis
+- Code project documentation management
+- Research document organization
+- Any NotebookLM-style workflow
+
+## Installation
+
+### Prerequisites
+
+- VS Code (not Cursor)
+- Node.js >=20.19.0
+
+### Running Insight-LM
+
+1. **Clone the repository:**
+   ```bash
+   cd /home/jdehart/working
+   git clone https://github.com/laserpointlabs/insight-lm.git
+   ```
+
+2. **Install dependencies:**
+   ```bash
+   cd insight-lm/extensions/vscode
+   npm install
+   cd ../../gui && npm install
+   cd ../../core && npm install
+   ```
+
+3. **Launch:**
+   ```bash
+   cd /home/jdehart/working/insight-lm/extensions/vscode
+   ./RUN_WORKBOOK_DEMO.sh
+   ```
+
+4. **Wait 15 seconds** for Extension Development Host to load
+
+## Using Insight-LM
+
+### Creating Workbooks
+
+In Extension Development Host window:
+- Press `Ctrl+Shift+P`
+- Type: `Insight: Create New Workbook`
+- Enter workbook name
+- Workbook appears in Continue sidebar
+
+### Adding Documents
+
+- Press `Ctrl+Shift+P`
+- Type: `Insight: Add Document to Workbook`
+- Select workbook
+- Select file (.md, .txt, .pdf, .docx)
+
+### Analyzing Documents with AI
+
+1. Open Continue chat (click C icon in sidebar)
+2. Add workbook files to context:
+   - Type: `@Folder`
+   - Select: `.insight/workbooks`
+3. Ask Continue questions about your documents
+4. Continue can create new files in the workbook
+
+### Workbook Storage
+
+Files are stored in `.insight/workbooks/{uuid}/`:
+- `workbook.json` - Metadata
+- `documents/` - Your uploaded and AI-generated files
+
+## Integration with ODRAS
+
+### No Code Dependencies
+
+Insight-LM and ODRAS are **completely separate** projects:
+- No shared code
+- No submodules
+- No version dependencies
+- Independent development cycles
+
+### Data Sharing (Manual)
+
+To use ODRAS data in Insight-LM:
+
+1. Export data from ODRAS (requirements, documents, etc.)
+2. Save as files in filesystem
+3. Add to Insight-LM workbook
+4. Analyze with Continue AI
+
+### Workflow Example
+
+```
+ODRAS                          Insight-LM
+-----                          ----------
+1. Create project
+2. Extract requirements   →    3. Copy requirements.md to workbook
+                               4. Use Continue AI to analyze
+                          ←    5. AI generates analysis
+6. Import analysis
+```
+
+## Development
+
+### Separate Repositories
+
+- **ODRAS**: https://github.com/laserpointlabs/ODRAS
+- **Insight-LM**: https://github.com/laserpointlabs/insight-lm
+
+Developed independently, no cross-dependencies.
+
+### Development Workflow
+
+See Insight-LM's `DEVELOPMENT.md` for:
+- Setting up development environment
+- Cross-IDE workflow (edit in Cursor, test in VS Code)
+- Build and test procedures
+
+## Architecture
+
+### Insight-LM Components
+
+```
+insight-lm/
+├── extensions/vscode/      # VS Code extension with workbooks
+│   └── src/workbooks/      # Workbook system code
+├── core/                   # Continue.dev core (mostly unchanged)
+├── gui/                    # Continue.dev React UI (mostly unchanged)
+└── docs/                   # Documentation
+```
+
+### Workbook System
+
+- **WorkbookManager**: CRUD operations for workbooks
+- **WorkbookTreeProvider**: VS Code tree view integration
+- **activateWorkbooks**: Extension activation and command registration
+
+### Continue.dev Integration
+
+- Workbooks appear in Continue sidebar
+- AI can access workbook files via @mentions
+- AI can create files in workbook documents folder
+- Full Continue.dev agent functionality intact
+
+## Differences from Continue.dev
+
+Insight-LM is a **static fork** of Continue.dev with additions:
+
+**Additions:**
+- Workbook management system
+- Enhanced file organization
+- Improved development scripts
+
+**No Upstream Syncing:**
+- Forked at Continue.dev v1.3.26
+- No plans to merge upstream changes
+- Maintained independently
+
+## Support
+
+### Insight-LM Issues
+
+Report at: https://github.com/laserpointlabs/insight-lm/issues
+
+### ODRAS Integration Questions
+
+For questions about using Insight-LM with ODRAS:
+- Check this document first
+- Open ODRAS issue if ODRAS-specific
+- Open Insight-LM issue if extension-specific
+
+## Future Enhancements
+
+Potential Insight-LM features:
+
+1. **ODRAS-specific connectors**: Direct ODRAS API integration
+2. **Requirements extraction**: Specialized tools for requirements documents
+3. **Project templates**: Pre-configured workbooks for ODRAS projects
+4. **Export to ODRAS**: Direct export to ODRAS knowledge base
+
+These would be Insight-LM features, not ODRAS features.
+
+## License
+
+Insight-LM inherits Continue.dev's Apache 2.0 license.
+
+## Quick Reference
+
+| Task | Command |
+|------|---------|
+| Launch Insight-LM | `cd insight-lm/extensions/vscode && ./RUN_WORKBOOK_DEMO.sh` |
+| Stop Insight-LM | `./STOP_DEMO.sh` |
+| Rebuild after changes | `./quick-rebuild.sh` |
+| Create workbook | Ctrl+Shift+P → "Insight: Create New Workbook" |
+| Add document | Ctrl+Shift+P → "Insight: Add Document to Workbook" |
+| Use Continue AI | Click C icon, type @Folder to add workbooks |
+
+## Links
+
+- Insight-LM Repository: https://github.com/laserpointlabs/insight-lm
+- Insight-LM Documentation: See repository README
+- Continue.dev Docs: https://docs.continue.dev
+- ODRAS Repository: https://github.com/laserpointlabs/ODRAS
+
