@@ -4,7 +4,7 @@
 
 **Insight-LM** is a Continue.dev fork that adds workbook management capabilities for document organization and AI-powered analysis.
 
-- **Repository**: https://github.com/laserpointlabs/insight-lm
+- **Repository**: https://github.com/laserpointlabs/insightLM
 - **Type**: VS Code extension
 - **Relationship to ODRAS**: Separate project, no code dependencies
 
@@ -48,12 +48,12 @@ Insight-LM can also be used independently:
 1. **Clone the repository:**
    ```bash
    cd /home/jdehart/working
-   git clone https://github.com/laserpointlabs/insight-lm.git
+   git clone https://github.com/laserpointlabs/insightLM.git
    ```
 
 2. **Install dependencies:**
    ```bash
-   cd insight-lm/extensions/vscode
+   cd insightLM/extensions/vscode
    npm install
    cd ../../gui && npm install
    cd ../../core && npm install
@@ -61,7 +61,7 @@ Insight-LM can also be used independently:
 
 3. **Launch:**
    ```bash
-   cd /home/jdehart/working/insight-lm/extensions/vscode
+   cd /home/jdehart/working/insightLM/extensions/vscode
    ./RUN_WORKBOOK_DEMO.sh
    ```
 
@@ -135,7 +135,7 @@ ODRAS                          Insight-LM
 ### Separate Repositories
 
 - **ODRAS**: https://github.com/laserpointlabs/ODRAS
-- **Insight-LM**: https://github.com/laserpointlabs/insight-lm
+- **Insight-LM**: https://github.com/laserpointlabs/insightLM
 
 Developed independently, no cross-dependencies.
 
@@ -151,7 +151,7 @@ See Insight-LM's `DEVELOPMENT.md` for:
 ### Insight-LM Components
 
 ```
-insight-lm/
+insightLM/
 ├── extensions/vscode/      # VS Code extension with workbooks
 │   └── src/workbooks/      # Workbook system code
 ├── core/                   # Continue.dev core (mostly unchanged)
@@ -190,7 +190,7 @@ Insight-LM is a **static fork** of Continue.dev with additions:
 
 ### Insight-LM Issues
 
-Report at: https://github.com/laserpointlabs/insight-lm/issues
+Report at: https://github.com/laserpointlabs/insightLM/issues
 
 ### ODRAS Integration Questions
 
@@ -218,7 +218,7 @@ Insight-LM inherits Continue.dev's Apache 2.0 license.
 
 | Task | Command |
 |------|---------|
-| Launch Insight-LM | `cd insight-lm/extensions/vscode && ./RUN_WORKBOOK_DEMO.sh` |
+| Launch Insight-LM | `cd insightLM/extensions/vscode && ./RUN_WORKBOOK_DEMO.sh` |
 | Stop Insight-LM | `./STOP_DEMO.sh` |
 | Rebuild after changes | `./quick-rebuild.sh` |
 | Create workbook | Ctrl+Shift+P → "Insight: Create New Workbook" |
@@ -227,7 +227,7 @@ Insight-LM inherits Continue.dev's Apache 2.0 license.
 
 ## Links
 
-- Insight-LM Repository: https://github.com/laserpointlabs/insight-lm
+- Insight-LM Repository: https://github.com/laserpointlabs/insightLM
 - Insight-LM Documentation: See repository README
 - Continue.dev Docs: https://docs.continue.dev
 - ODRAS Repository: https://github.com/laserpointlabs/ODRAS
