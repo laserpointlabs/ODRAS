@@ -1,16 +1,16 @@
-# Insight-LM Integration
+# InsightLM Integration
 
 ## Overview
 
-**Insight-LM** is a Continue.dev fork that adds workbook management capabilities for document organization and AI-powered analysis.
+**InsightLM** is a Continue.dev fork that adds workbook management capabilities for document organization and AI-powered analysis.
 
 - **Repository**: https://github.com/laserpointlabs/insightLM
 - **Type**: VS Code extension
 - **Relationship to ODRAS**: Separate project, no code dependencies
 
-## What is Insight-LM?
+## What is InsightLM?
 
-Insight-LM extends Continue.dev (an open-source AI code assistant) with:
+InsightLM extends Continue.dev (an open-source AI code assistant) with:
 
 - **Workbooks**: NotebookLM-style document organization
 - **Document Management**: Upload and organize files for AI analysis
@@ -21,7 +21,7 @@ Insight-LM extends Continue.dev (an open-source AI code assistant) with:
 
 ### For ODRAS Users
 
-Insight-LM can complement ODRAS workflows:
+InsightLM can complement ODRAS workflows:
 
 1. **Requirements Analysis**: Organize RFP documents in workbooks, use Continue AI to extract requirements
 2. **Knowledge Management**: Store reference documents, specifications, and standards
@@ -30,7 +30,7 @@ Insight-LM can complement ODRAS workflows:
 
 ### Standalone Use
 
-Insight-LM can also be used independently:
+InsightLM can also be used independently:
 - General document organization and AI analysis
 - Code project documentation management
 - Research document organization
@@ -43,7 +43,7 @@ Insight-LM can also be used independently:
 - VS Code (not Cursor)
 - Node.js >=20.19.0
 
-### Running Insight-LM
+### Running InsightLM
 
 1. **Clone the repository:**
    ```bash
@@ -67,7 +67,7 @@ Insight-LM can also be used independently:
 
 4. **Wait 15 seconds** for Extension Development Host to load
 
-## Using Insight-LM
+## Using InsightLM
 
 ### Creating Workbooks
 
@@ -103,7 +103,7 @@ Files are stored in `.insight/workbooks/{uuid}/`:
 
 ### No Code Dependencies
 
-Insight-LM and ODRAS are **completely separate** projects:
+InsightLM and ODRAS are **completely separate** projects:
 - No shared code
 - No submodules
 - No version dependencies
@@ -111,17 +111,17 @@ Insight-LM and ODRAS are **completely separate** projects:
 
 ### Data Sharing (Manual)
 
-To use ODRAS data in Insight-LM:
+To use ODRAS data in InsightLM:
 
 1. Export data from ODRAS (requirements, documents, etc.)
 2. Save as files in filesystem
-3. Add to Insight-LM workbook
+3. Add to InsightLM workbook
 4. Analyze with Continue AI
 
 ### Workflow Example
 
 ```
-ODRAS                          Insight-LM
+ODRAS                          InsightLM
 -----                          ----------
 1. Create project
 2. Extract requirements   →    3. Copy requirements.md to workbook
@@ -135,20 +135,20 @@ ODRAS                          Insight-LM
 ### Separate Repositories
 
 - **ODRAS**: https://github.com/laserpointlabs/ODRAS
-- **Insight-LM**: https://github.com/laserpointlabs/insightLM
+- **InsightLM**: https://github.com/laserpointlabs/insightLM
 
 Developed independently, no cross-dependencies.
 
 ### Development Workflow
 
-See Insight-LM's `DEVELOPMENT.md` for:
+See InsightLM's `DEVELOPMENT.md` for:
 - Setting up development environment
 - Cross-IDE workflow (edit in Cursor, test in VS Code)
 - Build and test procedures
 
 ## Architecture
 
-### Insight-LM Components
+### InsightLM Components
 
 ```
 insightLM/
@@ -174,7 +174,7 @@ insightLM/
 
 ## Differences from Continue.dev
 
-Insight-LM is a **static fork** of Continue.dev with additions:
+InsightLM is a **static fork** of Continue.dev with additions:
 
 **Additions:**
 - Workbook management system
@@ -188,38 +188,38 @@ Insight-LM is a **static fork** of Continue.dev with additions:
 
 ## Support
 
-### Insight-LM Issues
+### InsightLM Issues
 
 Report at: https://github.com/laserpointlabs/insightLM/issues
 
 ### ODRAS Integration Questions
 
-For questions about using Insight-LM with ODRAS:
+For questions about using InsightLM with ODRAS:
 - Check this document first
 - Open ODRAS issue if ODRAS-specific
-- Open Insight-LM issue if extension-specific
+- Open InsightLM issue if extension-specific
 
 ## Future Enhancements
 
-Potential Insight-LM features:
+Potential InsightLM features:
 
 1. **ODRAS-specific connectors**: Direct ODRAS API integration
 2. **Requirements extraction**: Specialized tools for requirements documents
 3. **Project templates**: Pre-configured workbooks for ODRAS projects
 4. **Export to ODRAS**: Direct export to ODRAS knowledge base
 
-These would be Insight-LM features, not ODRAS features.
+These would be InsightLM features, not ODRAS features.
 
 ## License
 
-Insight-LM inherits Continue.dev's Apache 2.0 license.
+InsightLM inherits Continue.dev's Apache 2.0 license.
 
 ## Quick Reference
 
 | Task | Command |
 |------|---------|
-| Launch Insight-LM | `cd insightLM/extensions/vscode && ./RUN_WORKBOOK_DEMO.sh` |
-| Stop Insight-LM | `./STOP_DEMO.sh` |
+| Launch InsightLM | `cd insightLM/extensions/vscode && ./RUN_WORKBOOK_DEMO.sh` |
+| Stop InsightLM | `./STOP_DEMO.sh` |
 | Rebuild after changes | `./quick-rebuild.sh` |
 | Create workbook | Ctrl+Shift+P → "Insight: Create New Workbook" |
 | Add document | Ctrl+Shift+P → "Insight: Add Document to Workbook" |
@@ -227,8 +227,8 @@ Insight-LM inherits Continue.dev's Apache 2.0 license.
 
 ## Links
 
-- Insight-LM Repository: https://github.com/laserpointlabs/insightLM
-- Insight-LM Documentation: See repository README
+- InsightLM Repository: https://github.com/laserpointlabs/insightLM
+- InsightLM Documentation: See repository README
 - Continue.dev Docs: https://docs.continue.dev
 - ODRAS Repository: https://github.com/laserpointlabs/ODRAS
 
