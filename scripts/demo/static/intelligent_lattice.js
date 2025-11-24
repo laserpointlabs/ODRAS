@@ -20,6 +20,8 @@ class IntelligentLatticeGenerator {
         this.projectRegistry = {}; // Maps project names to created project IDs
         this.createdProjects = [];
         this.baseUrl = 'http://localhost:8000';
+        this.materialSolutions = []; // Available material solutions for evaluation
+        this.finalRecommendation = null; // Final LLM recommendation after processing
         
         this.init();
     }
@@ -28,8 +30,225 @@ class IntelligentLatticeGenerator {
         console.log('🧠 Initializing Intelligent Lattice Generator...');
         this.initCytoscape();
         this.initEventHandlers();
+        this.initSolutionsHandlers();
         this.loadExampleRequirements();
+        this.renderSolutionsList();
         console.log('✅ Intelligent generator ready');
+    }
+    
+    initSolutionsHandlers() {
+        // Load sample solutions button
+        document.getElementById('loadSampleSolutionsBtn')?.addEventListener('click', () => {
+            this.loadSampleSolutions();
+        });
+        
+        // Add custom solution button
+        document.getElementById('addSolutionBtn')?.addEventListener('click', () => {
+            this.showAddSolutionDialog();
+        });
+        
+        // Clear all solutions button
+        document.getElementById('clearSolutionsBtn')?.addEventListener('click', () => {
+            this.materialSolutions = [];
+            this.renderSolutionsList();
+            this.updateSolutionSummary();
+        });
+    }
+    
+    loadSampleSolutions() {
+        // Sample UAV solutions - these are just context for the LLM
+        this.materialSolutions = [
+            {
+                id: 'solution-1',
+                name: 'SkyEagle X500',
+                type: 'Fixed-Wing UAV',
+                manufacturer: 'AeroTech Systems',
+                specifications: {
+                    endurance: '8-10 hours',
+                    range: '150 km',
+                    payload: '3.5 kg',
+                    max_speed: '120 km/h',
+                    wind_tolerance: '30 knots',
+                    setup_time: '20 minutes',
+                    cost: '$1.2M'
+                },
+                capabilities: ['Long endurance', 'High payload capacity', 'All-weather operation', 'Real-time video'],
+                limitations: ['Requires runway/launcher', 'Complex setup', 'Limited hover capability']
+            },
+            {
+                id: 'solution-2',
+                name: 'AeroMapper X8',
+                type: 'Fixed-Wing UAV',
+                manufacturer: 'Precision Aero',
+                specifications: {
+                    endurance: '12-14 hours',
+                    range: '200 km',
+                    payload: '5 kg',
+                    max_speed: '100 km/h',
+                    wind_tolerance: '35 knots',
+                    setup_time: '25 minutes',
+                    cost: '$1.7M'
+                },
+                capabilities: ['Extended endurance', 'Heavy payload', 'Multi-sensor integration', 'Extreme weather operation'],
+                limitations: ['Pneumatic launcher required', 'Higher cost', 'Longer setup time']
+            },
+            {
+                id: 'solution-3',
+                name: 'Falcon VTOL-X',
+                type: 'VTOL Hybrid UAV',
+                manufacturer: 'VertiFlight Inc',
+                specifications: {
+                    endurance: '5-6 hours',
+                    range: '80 km',
+                    payload: '2.5 kg',
+                    max_speed: '90 km/h',
+                    wind_tolerance: '25 knots',
+                    setup_time: '10 minutes',
+                    cost: '$850K'
+                },
+                capabilities: ['VTOL capability', 'Rapid deployment', 'Hover for inspection', 'Compact transport'],
+                limitations: ['Lower endurance', 'Moderate payload', 'Complex transition mechanics']
+            },
+            {
+                id: 'solution-4',
+                name: 'SwiftScout Pro',
+                type: 'Quadcopter UAV',
+                manufacturer: 'DroneWorks',
+                specifications: {
+                    endurance: '45 minutes',
+                    range: '10 km',
+                    payload: '1.5 kg',
+                    max_speed: '70 km/h',
+                    wind_tolerance: '20 knots',
+                    setup_time: '5 minutes',
+                    cost: '$150K'
+                },
+                capabilities: ['Ultra-fast deployment', 'Precise hovering', 'Low cost', 'Easy operation'],
+                limitations: ['Very limited endurance', 'Short range', 'Weather sensitive']
+            },
+            {
+                id: 'solution-5',
+                name: 'Endurance One',
+                type: 'Solar-Electric UAV',
+                manufacturer: 'SolarWing Systems',
+                specifications: {
+                    endurance: '24+ hours',
+                    range: '500 km',
+                    payload: '2 kg',
+                    max_speed: '60 km/h',
+                    wind_tolerance: '20 knots',
+                    setup_time: '45 minutes',
+                    cost: '$2.5M'
+                },
+                capabilities: ['Extreme endurance', 'Persistent surveillance', 'Low operating cost', 'Quiet operation'],
+                limitations: ['Weather dependent', 'Slow speed', 'Complex assembly', 'High acquisition cost']
+            }
+        ];
+        
+        this.renderSolutionsList();
+        this.updateSolutionSummary();
+        console.log(`✅ Loaded ${this.materialSolutions.length} sample solutions`);
+    }
+    
+    renderSolutionsList() {
+        const container = document.getElementById('solutionsList');
+        if (!container) return;
+        
+        if (this.materialSolutions.length === 0) {
+            container.innerHTML = '<div class="no-solutions">No solutions defined. Click "Load Sample Solutions" to add example UAVs.</div>';
+            return;
+        }
+        
+        container.innerHTML = this.materialSolutions.map(solution => `
+            <div class="solution-card" data-solution-id="${solution.id}">
+                <button class="solution-remove-btn" onclick="window.intelligentLattice.removeSolution('${solution.id}')" title="Remove">✕</button>
+                <div class="solution-card-header">
+                    <div class="solution-card-name">${solution.name}</div>
+                    <div class="solution-card-type">${solution.type}</div>
+                </div>
+                <div class="solution-card-specs">
+                    <strong>Endurance:</strong> ${solution.specifications.endurance}<br>
+                    <strong>Range:</strong> ${solution.specifications.range}<br>
+                    <strong>Payload:</strong> ${solution.specifications.payload}<br>
+                    <strong>Setup:</strong> ${solution.specifications.setup_time}<br>
+                    <strong>Cost:</strong> ${solution.specifications.cost}
+                </div>
+            </div>
+        `).join('');
+    }
+    
+    removeSolution(solutionId) {
+        this.materialSolutions = this.materialSolutions.filter(s => s.id !== solutionId);
+        this.renderSolutionsList();
+        this.updateSolutionSummary();
+    }
+    
+    updateSolutionSummary() {
+        const summaryDiv = document.getElementById('solutionSummary');
+        if (!summaryDiv) return;
+        
+        if (this.materialSolutions.length === 0) {
+            summaryDiv.style.display = 'none';
+            return;
+        }
+        
+        summaryDiv.style.display = 'block';
+        summaryDiv.innerHTML = `
+            <strong>📊 ${this.materialSolutions.length} solutions available for evaluation</strong>
+            <div style="font-size: 0.85rem; color: var(--text-light); margin-top: 4px;">
+                Types: ${[...new Set(this.materialSolutions.map(s => s.type))].join(', ')}
+            </div>
+        `;
+    }
+    
+    showAddSolutionDialog() {
+        const name = prompt('Solution Name (e.g., "Custom UAV Model"):');
+        if (!name) return;
+        
+        const type = prompt('Solution Type (e.g., "Fixed-Wing UAV", "VTOL", "Quadcopter"):') || 'UAV';
+        const endurance = prompt('Endurance (e.g., "4 hours"):') || 'Unknown';
+        const range = prompt('Range (e.g., "50 km"):') || 'Unknown';
+        const payload = prompt('Payload capacity (e.g., "2 kg"):') || 'Unknown';
+        const cost = prompt('Cost (e.g., "$500K"):') || 'Unknown';
+        const capabilities = prompt('Capabilities (comma-separated):') || '';
+        
+        const newSolution = {
+            id: `solution-custom-${Date.now()}`,
+            name: name,
+            type: type,
+            manufacturer: 'Custom',
+            specifications: {
+                endurance: endurance,
+                range: range,
+                payload: payload,
+                max_speed: 'Unknown',
+                wind_tolerance: 'Unknown',
+                setup_time: 'Unknown',
+                cost: cost
+            },
+            capabilities: capabilities.split(',').map(c => c.trim()).filter(c => c),
+            limitations: []
+        };
+        
+        this.materialSolutions.push(newSolution);
+        this.renderSolutionsList();
+        this.updateSolutionSummary();
+    }
+    
+    getSolutionsContext() {
+        // Format solutions as context for the LLM
+        if (this.materialSolutions.length === 0) {
+            return null;
+        }
+        
+        return this.materialSolutions.map(s => ({
+            name: s.name,
+            type: s.type,
+            manufacturer: s.manufacturer,
+            specifications: s.specifications,
+            capabilities: s.capabilities,
+            limitations: s.limitations
+        }));
     }
     
     initCytoscape() {
@@ -271,15 +490,24 @@ Emergency response teams need rapid deployment UAV capability for disaster asses
         document.getElementById('generateLatticeBtn').disabled = true;
         
         try {
-            // Call the actual LLM service
+            // Call the actual LLM service with solutions context
             console.log('📡 Calling LLM Service...');
+            const solutionsContext = this.getSolutionsContext();
+            const requestBody = { 
+                requirements: requirementsText,
+                max_projects: 6
+            };
+            
+            // Include solutions if available
+            if (solutionsContext && solutionsContext.length > 0) {
+                requestBody.available_solutions = solutionsContext;
+                console.log(`📦 Including ${solutionsContext.length} material solutions in context`);
+            }
+            
             const response = await fetch('http://localhost:8083/generate-lattice', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ 
-                    requirements: requirementsText,
-                    max_projects: 6 
-                })
+                body: JSON.stringify(requestBody)
             });
             
             if (response.ok) {
@@ -1130,12 +1358,35 @@ Emergency response teams need rapid deployment UAV capability for disaster asses
             
             console.log(`🧠 Calling LLM to process project: ${projectName}`);
             
-            // Build the request payload
+            // Build the request payload with solutions context
+            const solutionsContext = this.getSolutionsContext();
+            
+            // Determine if this is a terminal project (no downstream projects)
+            const hasDownstreamProjects = this.currentLattice.projects.some(p => 
+                p.parent_name === projectName || 
+                this.currentLattice.data_flows.some(flow => 
+                    flow.from_project === projectName && flow.to_project === p.name
+                )
+            );
+            const isTerminalProject = !hasDownstreamProjects;
+            
+            if (isTerminalProject) {
+                console.log(`🏁 ${projectName} is a TERMINAL project - will make final selection`);
+            } else {
+                console.log(`📋 ${projectName} has downstream projects - will NOT make final selection`);
+            }
+            
             const requestPayload = {
                 project: projectData,
                 requirements: requirements,
-                upstream_data: inputData
+                upstream_data: inputData,
+                is_terminal_project: isTerminalProject
             };
+            
+            // Include solutions if available
+            if (solutionsContext && solutionsContext.length > 0) {
+                requestPayload.available_solutions = solutionsContext;
+            }
             
             const response = await fetch('http://localhost:8083/process-project', {
                 method: 'POST',
@@ -2126,13 +2377,194 @@ Emergency response teams need rapid deployment UAV capability for disaster asses
         } else if (results.performance_evaluation) {
             const topUav = results.performance_evaluation.evaluated_uavs?.[0];
             content += `<div style="font-size: 0.75rem; color: var(--text-light);">${topUav?.name || 'Evaluated'}: ${Math.round((topUav?.performance_score || 0) * 100)}%</div>`;
-        } else if (results.final_recommendation) {
-            content += `<div style="font-size: 0.75rem; color: var(--success); font-weight: bold;">${results.final_recommendation.selected_uav}</div>`;
         } else {
             content += `<div style="font-size: 0.75rem; color: var(--text-light);">Complete</div>`;
         }
         
         resultsDiv.innerHTML = content;
+        
+        // Check if this result contains a final recommendation/selection
+        this.checkForFinalRecommendation(projectName, results);
+    }
+    
+    checkForFinalRecommendation(projectName, results) {
+        // Only check for recommendation from terminal projects (those with no downstream projects)
+        // This ensures the recommendation uses ALL workflow analysis data
+        
+        if (!this.currentLattice) return;
+        
+        // Check if this project has any downstream projects
+        const hasDownstreamProjects = this.currentLattice.projects.some(p => 
+            p.parent_name === projectName || 
+            this.currentLattice.data_flows.some(flow => 
+                flow.from_project === projectName && flow.to_project === p.name
+            )
+        );
+        
+        // Only process recommendation from terminal projects (no downstream)
+        if (hasDownstreamProjects) {
+            console.log(`📋 ${projectName} has downstream projects - waiting for full workflow completion before recommendation`);
+            return;
+        }
+        
+        console.log(`🏁 ${projectName} is a terminal project - checking for final recommendation`);
+        
+        // Look for any recommendation-like output from the LLM
+        const recommendation = results.final_recommendation || 
+                               results.selected_solution ||
+                               results.recommendation ||
+                               results.solution_selection;
+        
+        if (recommendation) {
+            // Extract confidence from recommendation or results
+            const selectionConfidence = recommendation.selection_confidence || 
+                                        recommendation.confidence || 
+                                        results.confidence || 
+                                        0.8;
+            
+            this.finalRecommendation = {
+                projectName: projectName,
+                recommendation: recommendation,
+                confidence: selectionConfidence,
+                timestamp: new Date().toISOString(),
+                solutionEvaluation: results.solution_evaluation || null,
+                workflowComplete: true
+            };
+            
+            console.log(`🎯 Workflow complete - displaying final recommendation from ${projectName}`);
+            this.displayFinalRecommendation();
+        } else {
+            console.log(`⚠️ Terminal project ${projectName} completed but no explicit recommendation found in output`);
+        }
+    }
+    
+    displayFinalRecommendation() {
+        if (!this.finalRecommendation) return;
+        
+        const rec = this.finalRecommendation.recommendation;
+        const selectedName = rec.selected_solution || rec.selected_uav || rec.name || rec.selection || 'No Selection Made';
+        const rationale = rec.rationale || rec.justification || rec.reasoning || rec.explanation || '';
+        const confidence = Math.round((this.finalRecommendation.confidence || 0.8) * 100);
+        const keyFactors = rec.key_deciding_factors || [];
+        const comparisonToAlternatives = rec.comparison_to_alternatives || '';
+        
+        // Create or update the recommendation panel
+        let panel = document.getElementById('finalRecommendationPanel');
+        if (!panel) {
+            panel = document.createElement('div');
+            panel.id = 'finalRecommendationPanel';
+            panel.className = 'final-recommendation-panel';
+            
+            // Insert into the content-wrapper after the solutions panel
+            const solutionsPanel = document.getElementById('solutionsPanel');
+            if (solutionsPanel && solutionsPanel.parentNode) {
+                solutionsPanel.parentNode.insertBefore(panel, solutionsPanel.nextSibling);
+            } else {
+                // Fallback - insert into the content wrapper
+                const contentWrapper = document.querySelector('.content-wrapper');
+                if (contentWrapper) {
+                    const bottomSection = contentWrapper.querySelector('.bottom-section');
+                    if (bottomSection) {
+                        contentWrapper.insertBefore(panel, bottomSection);
+                    } else {
+                        contentWrapper.appendChild(panel);
+                    }
+                } else {
+                    // Last resort
+                    document.body.appendChild(panel);
+                }
+            }
+        }
+        
+        // Ensure panel is visible
+        panel.style.display = 'block';
+        
+        // Build the solution evaluation section if available
+        let evaluationHtml = '';
+        if (this.finalRecommendation.solutionEvaluation && this.finalRecommendation.solutionEvaluation.evaluated_solutions) {
+            const evalSolutions = this.finalRecommendation.solutionEvaluation.evaluated_solutions;
+            evaluationHtml = `
+                <div style="margin-top: 16px; padding-top: 16px; border-top: 1px solid var(--border-dark);">
+                    <h4 style="color: var(--primary); margin-bottom: 12px;">📊 Solution Comparison</h4>
+                    <div style="display: grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap: 12px;">
+                        ${evalSolutions.map(sol => `
+                            <div style="background: ${sol.name === selectedName ? 'rgba(16, 185, 129, 0.2)' : 'var(--dark-3)'}; 
+                                        padding: 12px; border-radius: 8px; 
+                                        border: 2px solid ${sol.name === selectedName ? 'var(--success)' : 'var(--border-dark)'};">
+                                <div style="font-weight: bold; color: ${sol.name === selectedName ? 'var(--success)' : 'var(--light)'}; margin-bottom: 4px;">
+                                    ${sol.name === selectedName ? '✅ ' : ''}${sol.name}
+                                </div>
+                                <div style="font-size: 0.85rem; color: var(--text-light);">
+                                    Score: ${Math.round((sol.score || 0) * 100)}%
+                                </div>
+                                ${sol.meets_requirements !== undefined ? `
+                                    <div style="font-size: 0.8rem; color: ${sol.meets_requirements ? 'var(--success)' : 'var(--danger)'};">
+                                        ${sol.meets_requirements ? '✓ Meets requirements' : '✗ Does not meet requirements'}
+                                    </div>
+                                ` : ''}
+                            </div>
+                        `).join('')}
+                    </div>
+                </div>
+            `;
+        }
+        
+        panel.innerHTML = `
+            <div class="final-recommendation-header" onclick="toggleRecommendationPanel()">
+                <div class="final-recommendation-header-left">
+                    <div class="final-recommendation-title">🎯 LLM Solution Selection</div>
+                    <div class="final-recommendation-confidence">${confidence}% confidence</div>
+                    <span style="color: var(--light); font-size: 0.9rem;">→ ${selectedName}</span>
+                </div>
+                <span class="final-recommendation-collapse-icon">▼</span>
+            </div>
+            <div class="final-recommendation-content">
+                <div class="selected-solution-name">${selectedName}</div>
+                
+                <div class="recommendation-rationale">
+                    <h4>📝 Rationale</h4>
+                    <p style="margin: 0; line-height: 1.6;">${rationale || 'The LLM selected this solution based on the analysis of requirements and available options.'}</p>
+                </div>
+                
+                ${keyFactors.length > 0 ? `
+                    <div style="margin-top: 16px;">
+                        <h4 style="color: var(--success); margin-bottom: 8px;">✓ Key Deciding Factors</h4>
+                        <ul style="margin: 0; padding-left: 20px; font-size: 0.9rem;">
+                            ${keyFactors.map(f => `<li>${f}</li>`).join('')}
+                        </ul>
+                    </div>
+                ` : ''}
+                
+                ${comparisonToAlternatives ? `
+                    <div style="margin-top: 16px;">
+                        <h4 style="color: var(--warning); margin-bottom: 8px;">🔄 Comparison to Alternatives</h4>
+                        <p style="margin: 0; font-size: 0.9rem; color: var(--text-light);">${comparisonToAlternatives}</p>
+                    </div>
+                ` : ''}
+                
+                ${rec.risk_factors && rec.risk_factors.length > 0 ? `
+                    <div style="margin-top: 16px;">
+                        <h4 style="color: var(--danger); margin-bottom: 8px;">⚠️ Risk Factors</h4>
+                        <ul style="margin: 0; padding-left: 20px; font-size: 0.9rem;">
+                            ${rec.risk_factors.map(r => `<li>${r}</li>`).join('')}
+                        </ul>
+                    </div>
+                ` : ''}
+                
+                ${rec.implementation_notes && rec.implementation_notes.length > 0 ? `
+                    <div style="margin-top: 16px;">
+                        <h4 style="color: var(--primary); margin-bottom: 8px;">📋 Implementation Notes</h4>
+                        <ul style="margin: 0; padding-left: 20px; font-size: 0.9rem;">
+                            ${rec.implementation_notes.map(n => `<li>${n}</li>`).join('')}
+                        </ul>
+                    </div>
+                ` : ''}
+                
+                ${evaluationHtml}
+            </div>
+        `;
+        
+        console.log('🎯 Final recommendation displayed:', selectedName, `(${confidence}% confidence)`);
     }
     
     async stepThroughProcessing() {
@@ -2157,6 +2589,11 @@ Emergency response teams need rapid deployment UAV capability for disaster asses
         this.pendingProjects.clear();
         this.projectRegistry = {};
         this.createdProjects = [];
+        this.finalRecommendation = null;
+        
+        // Remove final recommendation panel if exists
+        const recPanel = document.getElementById('finalRecommendationPanel');
+        if (recPanel) recPanel.remove();
         
         this.cy.elements().remove();
         document.getElementById('requirementsInput').value = '';
@@ -2422,4 +2859,7 @@ Emergency response teams need rapid deployment UAV capability for disaster asses
 // Initialize when DOM is ready
 document.addEventListener('DOMContentLoaded', () => {
     window.intelligentLattice = new IntelligentLatticeGenerator();
+    
+    // Auto-load sample solutions on page load
+    window.intelligentLattice.loadSampleSolutions();
 });

@@ -221,7 +221,8 @@
             border-right: 1px solid var(--border-dark);
             display: flex;
             flex-direction: column;
-            overflow: hidden;
+            overflow-y: auto;
+            overflow-x: hidden;
         }
         
         .right-panel {
@@ -808,6 +809,172 @@
             align-items: center;
             gap: 8px;
         }
+        
+        /* Solutions Grid */
+        .solutions-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+            gap: 12px;
+            max-height: 300px;
+            overflow-y: auto;
+            padding: 4px;
+        }
+        
+        .solution-card {
+            background: var(--dark-3);
+            border: 1px solid var(--border-dark);
+            border-radius: 8px;
+            padding: 12px;
+            position: relative;
+        }
+        
+        .solution-card:hover {
+            border-color: var(--primary);
+        }
+        
+        .solution-card-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-start;
+            margin-bottom: 8px;
+        }
+        
+        .solution-card-name {
+            font-weight: bold;
+            color: var(--primary);
+            font-size: 0.95rem;
+        }
+        
+        .solution-card-type {
+            font-size: 0.7rem;
+            background: var(--dark-2);
+            padding: 2px 8px;
+            border-radius: 10px;
+            color: var(--text-light);
+        }
+        
+        .solution-card-specs {
+            font-size: 0.8rem;
+            color: var(--text-light);
+            line-height: 1.5;
+        }
+        
+        .solution-card-specs strong {
+            color: var(--light);
+        }
+        
+        .solution-remove-btn {
+            position: absolute;
+            top: 8px;
+            right: 8px;
+            background: transparent;
+            border: none;
+            color: var(--text-light);
+            cursor: pointer;
+            font-size: 0.9rem;
+            padding: 2px 6px;
+            border-radius: 4px;
+        }
+        
+        .solution-remove-btn:hover {
+            background: var(--danger);
+            color: white;
+        }
+        
+        .no-solutions {
+            color: var(--text-light);
+            font-style: italic;
+            text-align: center;
+            padding: 30px;
+            grid-column: 1 / -1;
+        }
+        
+        /* Final Recommendation Panel - Collapsible */
+        .final-recommendation-panel {
+            background: linear-gradient(135deg, rgba(16, 185, 129, 0.1), rgba(59, 130, 246, 0.1));
+            border: 2px solid var(--success);
+            border-radius: 12px;
+            margin-top: 16px;
+            overflow: hidden;
+        }
+        
+        .final-recommendation-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 16px 20px;
+            cursor: pointer;
+            user-select: none;
+            background: rgba(16, 185, 129, 0.15);
+        }
+        
+        .final-recommendation-header:hover {
+            background: rgba(16, 185, 129, 0.25);
+        }
+        
+        .final-recommendation-header-left {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+        
+        .final-recommendation-title {
+            font-size: 1.1rem;
+            font-weight: bold;
+            color: var(--success);
+        }
+        
+        .final-recommendation-confidence {
+            background: var(--success);
+            color: white;
+            padding: 4px 12px;
+            border-radius: 20px;
+            font-size: 0.85rem;
+            font-weight: bold;
+        }
+        
+        .final-recommendation-collapse-icon {
+            color: var(--success);
+            font-size: 0.9rem;
+            transition: transform 0.3s ease;
+        }
+        
+        .final-recommendation-panel.collapsed .final-recommendation-collapse-icon {
+            transform: rotate(-90deg);
+        }
+        
+        .final-recommendation-content {
+            padding: 20px;
+            transition: max-height 0.3s ease, padding 0.3s ease;
+            max-height: 2000px;
+            overflow: hidden;
+        }
+        
+        .final-recommendation-panel.collapsed .final-recommendation-content {
+            max-height: 0;
+            padding: 0 20px;
+        }
+        
+        .selected-solution-name {
+            font-size: 1.5rem;
+            font-weight: bold;
+            color: var(--light);
+            margin-bottom: 12px;
+        }
+        
+        .recommendation-rationale {
+            background: var(--dark-3);
+            padding: 16px;
+            border-radius: 8px;
+            font-size: 0.9rem;
+            line-height: 1.6;
+            color: var(--light);
+        }
+        
+        .recommendation-rationale h4 {
+            color: var(--primary);
+            margin-bottom: 8px;
+        }
     </style>
 </head>
 <body>
@@ -859,6 +1026,33 @@
                 
                 <div id="analysisSummary" class="analysis-summary" style="display: none;">
                     <!-- LLM analysis summary will appear here -->
+                </div>
+            </div>
+        </div>
+
+        <!-- Collapsible Material Solutions Panel -->
+        <div class="requirements-panel" id="solutionsPanel">
+            <div class="requirements-panel-header" onclick="toggleSolutionsPanel()">
+                <h3>🛩️ Available Material Solutions</h3>
+                <span class="collapse-icon">▼</span>
+            </div>
+            <div class="requirements-panel-content">
+                <p style="margin-bottom: 12px; font-size: 0.9rem; color: var(--text-light);">
+                    Define available UAV solutions for evaluation. The LLM will select the best option after processing.
+                </p>
+                
+                <div id="solutionsList" class="solutions-grid">
+                    <!-- Solutions will be populated here -->
+                </div>
+                
+                <div style="display: flex; gap: 12px; margin-top: 12px;">
+                    <button id="loadSampleSolutionsBtn" class="btn-small">📦 Load Sample Solutions</button>
+                    <button id="addSolutionBtn" class="btn-small">➕ Add Custom Solution</button>
+                    <button id="clearSolutionsBtn" class="btn-small" style="background: var(--danger);">🗑️ Clear All</button>
+                </div>
+                
+                <div id="solutionSummary" class="analysis-summary" style="display: none; margin-top: 12px;">
+                    <!-- Solution count and summary -->
                 </div>
             </div>
         </div>
@@ -1018,6 +1212,18 @@
         function toggleRequirementsPanel() {
             const panel = document.getElementById('requirementsPanel');
             panel.classList.toggle('collapsed');
+        }
+        
+        function toggleSolutionsPanel() {
+            const panel = document.getElementById('solutionsPanel');
+            panel.classList.toggle('collapsed');
+        }
+        
+        function toggleRecommendationPanel() {
+            const panel = document.getElementById('finalRecommendationPanel');
+            if (panel) {
+                panel.classList.toggle('collapsed');
+            }
         }
         
         function closeWorkflowModal() {
