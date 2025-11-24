@@ -10,7 +10,7 @@
 
 ```bash
 cd scripts/demo
-./demo.sh start
+x
 ```
 
 Open browser: `http://localhost:8082/intelligent_lattice_demo.html`

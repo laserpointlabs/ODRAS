@@ -58,11 +58,11 @@ class LLMService:
             logger.warning("❌ No valid OpenAI API key found")
             return None
     
-    def generate_with_context(self, requirements_text: str, max_projects: int = 6) -> Dict[str, Any]:
+    def generate_with_context(self, requirements_text: str, max_projects: int = 6, available_solutions: list = None) -> Dict[str, Any]:
         """Generate lattice with full context exposure."""
         
-        # Build the prompt
-        prompt = self._build_detailed_prompt(requirements_text, max_projects)
+        # Build the prompt with solutions context
+        prompt = self._build_detailed_prompt(requirements_text, max_projects, available_solutions)
         self.last_prompt = prompt
         
         generation_id = f"gen_{int(time.time())}"
@@ -117,15 +117,15 @@ class LLMService:
             except Exception as e:
                 logger.error(f"OpenAI generation failed: {e}")
                 # Fallback to mock but mark as fallback
-                return self._generate_mock_with_context(requirements_text, generation_id, str(e))
+                return self._generate_mock_with_context(requirements_text, generation_id, str(e), available_solutions)
         else:
             logger.info("Using mock LLM (no API key)")
-            return self._generate_mock_with_context(requirements_text, generation_id, "No OpenAI API key")
+            return self._generate_mock_with_context(requirements_text, generation_id, "No OpenAI API key", available_solutions)
     
-    def _generate_mock_with_context(self, requirements: str, generation_id: str, reason: str) -> Dict[str, Any]:
+    def _generate_mock_with_context(self, requirements: str, generation_id: str, reason: str, available_solutions: list = None) -> Dict[str, Any]:
         """Generate mock lattice but expose it as if it was LLM generated."""
         
-        prompt = self._build_detailed_prompt(requirements, 6)
+        prompt = self._build_detailed_prompt(requirements, 6, available_solutions)
         
         # Generate probabilistic mock response (different each time)
         import random
@@ -415,15 +415,27 @@ class LLMService:
             "domains": ["systems-engineering", "architecture", "analysis"]
         }
     
-    def _build_detailed_prompt(self, requirements_text: str, max_projects: int) -> str:
+    def _build_detailed_prompt(self, requirements_text: str, max_projects: int, available_solutions: list = None) -> str:
         """Build detailed prompt for LLM."""
+        
+        # Build solutions context if available
+        solutions_context = ""
+        if available_solutions and len(available_solutions) > 0:
+            solutions_context = f"""
+AVAILABLE MATERIAL SOLUTIONS FOR EVALUATION:
+The following solutions are available and should be considered in the analysis. Design the project lattice to evaluate and ultimately recommend the best solution.
+
+{json.dumps(available_solutions, indent=2)}
+
+IMPORTANT: Since material solutions are provided, ensure your project lattice includes appropriate evaluation/selection projects that will analyze these specific solutions against the requirements and make a final recommendation with rationale.
+"""
         
         return f"""
 TASK: Analyze UAV acquisition requirements and design an intelligent project lattice structure.
 
 REQUIREMENTS DOCUMENT TO ANALYZE:
 {requirements_text}
-
+{solutions_context}
 ANALYSIS INSTRUCTIONS:
 You are designing a project lattice for a UAV acquisition program. Each project should be a logical analysis component that processes specific aspects of the requirements.
 
@@ -494,14 +506,22 @@ IMPORTANT:
 - Make the lattice specifically relevant to the provided requirements
 """
     
-    def process_project(self, project: Dict[str, Any], requirements: str, upstream_data: Dict[str, Any] = None) -> Dict[str, Any]:
-        """Process a single project using LLM to generate detailed analysis."""
+    def process_project(self, project: Dict[str, Any], requirements: str, upstream_data: Dict[str, Any] = None, available_solutions: list = None, is_terminal_project: bool = False) -> Dict[str, Any]:
+        """Process a single project using LLM to generate detailed analysis.
+        
+        Args:
+            project: Project configuration
+            requirements: Original requirements text
+            upstream_data: Data from upstream projects
+            available_solutions: List of material solutions for evaluation
+            is_terminal_project: If True, this is the final project in the workflow chain and should make the selection
+        """
         
         if not self.client:
             raise RuntimeError("OpenAI API key not configured. Set OPENAI_API_KEY in .env file or environment variables.")
         
-        # Build project-specific prompt
-        prompt = self._build_project_processing_prompt(project, requirements, upstream_data)
+        # Build project-specific prompt with solutions context
+        prompt = self._build_project_processing_prompt(project, requirements, upstream_data, available_solutions, is_terminal_project)
         
         generation_id = f"project_{project.get('name', 'unknown')}_{int(time.time())}"
         
@@ -558,14 +578,79 @@ IMPORTANT:
             logger.error(f"Project processing failed: {e}")
             raise RuntimeError(f"OpenAI API call failed: {e}") from e
     
-    def _build_project_processing_prompt(self, project: Dict[str, Any], requirements: str, upstream_data: Dict[str, Any] = None) -> str:
-        """Build prompt for processing a specific project."""
+    def _build_project_processing_prompt(self, project: Dict[str, Any], requirements: str, upstream_data: Dict[str, Any] = None, available_solutions: list = None, is_terminal_project: bool = False) -> str:
+        """Build prompt for processing a specific project.
+        
+        Args:
+            project: Project configuration
+            requirements: Original requirements text
+            upstream_data: Data from upstream projects
+            available_solutions: List of material solutions for evaluation
+            is_terminal_project: If True, this project should make the final selection
+        """
         
         upstream_info = ""
         if upstream_data:
             upstream_info = f"""
 UPSTREAM DATA AVAILABLE:
 {json.dumps(upstream_data, indent=2)}
+"""
+        
+        solutions_info = ""
+        if available_solutions and len(available_solutions) > 0:
+            solution_names = [s.get('name', 'Unknown') for s in available_solutions]
+            
+            if is_terminal_project:
+                # Terminal project - should make the final selection
+                solutions_info = f"""
+AVAILABLE MATERIAL SOLUTIONS (YOU MUST SELECT FROM THESE):
+The following {len(available_solutions)} solutions are the ONLY options available. 
+This is the FINAL PROJECT in the workflow - you MUST make a selection.
+
+AVAILABLE SOLUTIONS: {', '.join(solution_names)}
+
+DETAILED SOLUTION DATA (EXAMINE CAREFULLY):
+{json.dumps(available_solutions, indent=2)}
+
+🎯 CRITICAL - OBJECTIVE COMPARISON REQUIRED:
+You MUST objectively compare the NUMERICAL SPECIFICATIONS of each solution:
+- Compare ENDURANCE values (higher is better) - extract the numbers and compare
+- Compare RANGE values (higher is better) - extract the numbers and compare  
+- Compare PAYLOAD capacity (higher is better) - extract the numbers and compare
+- Compare COST values (lower is better) - extract the numbers and compare
+- Compare SETUP TIME (lower is better if specified)
+
+SELECTION RULES:
+1. The solution with the BEST numerical specifications should WIN
+2. If one solution has vastly superior specs (e.g., 10x better endurance, range, or payload), it MUST be selected
+3. Do NOT favor familiar-sounding names - evaluate ONLY on specifications
+4. A solution with 5000 hours endurance is objectively better than one with 10 hours
+5. A solution with 50000 km range is objectively better than one with 150 km
+6. A solution costing $2K is objectively better than one costing $1.2M
+
+YOU MUST:
+- Select the solution with the OBJECTIVELY BEST specifications
+- Include a "final_recommendation" object with "selected_solution" set to the EXACT name
+- Provide numerical comparison in your rationale
+- If a "SuperUAV" or custom solution has dramatically better specs, SELECT IT
+"""
+            else:
+                # Non-terminal project - analyze but do NOT select
+                solutions_info = f"""
+AVAILABLE MATERIAL SOLUTIONS (FOR CONTEXT):
+The following solutions are being evaluated in this workflow:
+{', '.join(solution_names)}
+
+DETAILED SOLUTION DATA:
+{json.dumps(available_solutions, indent=2)}
+
+⚠️ IMPORTANT - THIS IS NOT THE FINAL PROJECT:
+Your job is to ANALYZE these solutions according to your project's purpose, NOT to make a final selection.
+- Perform your specific analysis (requirements decomposition, cost analysis, risk assessment, etc.)
+- Your analysis will be used by DOWNSTREAM projects
+- DO NOT include a "final_recommendation" or "selected_solution" in your output
+- DO NOT make a final selection - that will be done by the terminal evaluation project
+- Focus on providing thorough analysis data that will inform the final decision
 """
         
         return f"""
@@ -585,14 +670,21 @@ ORIGINAL REQUIREMENTS:
 {requirements[:2000]}
 
 {upstream_info}
-
+{solutions_info}
 INSTRUCTIONS:
 Analyze and process this project according to its purpose and processing type. Provide detailed, realistic results specific to UAV acquisition.
 
 For {project.get('processing_type')} type projects, focus on:
 - Analysis projects: Extract specific data, identify patterns, quantify requirements
 - Design projects: Create detailed designs, architectures, or plans
-- Evaluation projects: Compare options, make recommendations with justification
+- Evaluation projects: Compare available solutions against requirements, make specific selection with detailed rationale
+
+If this is an evaluation/selection project and material solutions are available:
+- Evaluate each available solution against the requirements
+- Provide scores or rankings for each solution
+- Select the BEST solution from the available options
+- Provide detailed rationale explaining WHY this solution was selected
+- Include any risk factors or implementation considerations
 
 IMPORTANT:
 - Provide a REAL confidence level (0.0-1.0) based on:
@@ -631,7 +723,33 @@ Return ONLY a JSON object with this EXACT structure:
   ]
 }}
 
-Make the response specific to UAV acquisition and realistic. Include actual confidence reasoning.
+FOR EVALUATION/SELECTION/RECOMMENDATION PROJECTS, you MUST include this structure:
+{{
+  "solution_evaluation": {{
+    "evaluated_solutions": [
+      {{"name": "EXACT NAME FROM AVAILABLE SOLUTIONS", "score": 0.85, "meets_requirements": true/false, "strengths": [...], "weaknesses": [...]}},
+      ... (evaluate ALL available solutions)
+    ]
+  }},
+  "final_recommendation": {{
+    "selected_solution": "EXACT NAME of the selected solution (e.g., 'SkyEagle X500')",
+    "selection_confidence": 0.87,
+    "rationale": "Detailed explanation (3-5 sentences) of WHY this specific solution was selected. Reference specific requirements from the document that this solution meets better than alternatives.",
+    "key_deciding_factors": ["Factor 1 that made this the best choice", "Factor 2", "Factor 3"],
+    "comparison_to_alternatives": "Explain why runner-up solutions were not selected (e.g., 'AeroMapper X8 was close but exceeded budget constraints')",
+    "risk_factors": ["Risk 1", "Risk 2"],
+    "implementation_notes": ["Note 1", "Note 2"]
+  }}
+}}
+
+ABSOLUTE REQUIREMENTS FOR FINAL RECOMMENDATION:
+1. "selected_solution" MUST be the EXACT name of one available solution (e.g., "SkyEagle X500", "Falcon VTOL-X")
+2. "selection_confidence" MUST be a number between 0.0 and 1.0 indicating how confident you are in this selection
+3. "rationale" MUST explain WHY this solution - reference specific requirements it meets
+4. Do NOT give generic recommendations - NAME the specific solution you are selecting
+
+Make the response specific to UAV acquisition and realistic.
+The rationale MUST clearly justify the selection with specific evidence from requirements analysis.
 """
     
     def get_debug_info(self) -> Dict[str, Any]:
@@ -655,12 +773,13 @@ def generate_lattice():
         data = request.json
         requirements = data.get('requirements', '')
         max_projects = data.get('max_projects', 6)
+        available_solutions = data.get('available_solutions', None)
         
         if not requirements.strip():
             return jsonify({"error": "Requirements text is required"}), 400
         
-        # Generate with full context
-        result = llm_service.generate_with_context(requirements, max_projects)
+        # Generate with full context including solutions
+        result = llm_service.generate_with_context(requirements, max_projects, available_solutions)
         
         # Return just the lattice data (debug info available via separate endpoint)
         return jsonify(result['parsed_lattice'])
@@ -699,6 +818,8 @@ def process_project():
         project = data.get('project')
         requirements = data.get('requirements', '')
         upstream_data = data.get('upstream_data')
+        available_solutions = data.get('available_solutions', None)
+        is_terminal_project = data.get('is_terminal_project', False)
         
         if not project:
             return jsonify({"error": "Project data is required"}), 400
@@ -706,8 +827,8 @@ def process_project():
         if not requirements.strip():
             return jsonify({"error": "Requirements text is required"}), 400
         
-        # Process project with LLM
-        result = llm_service.process_project(project, requirements, upstream_data)
+        # Process project with LLM including solutions context
+        result = llm_service.process_project(project, requirements, upstream_data, available_solutions, is_terminal_project)
         
         # Return both the result data AND the full interaction details
         return jsonify({
